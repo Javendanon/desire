@@ -3,3 +3,5 @@
 pub mod flags;
 
 pub const PROTOCOL_VERSION: u32 = 1;
+
+pub mod contracts;
