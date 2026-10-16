@@ -2,6 +2,7 @@
 
 Las [reglas de código fundamentales](docs/reglas-de-codigo.md) están activas y mandan
 cuando hay dudas. Leerlas antes de escribir o modificar código en cualquier lenguaje.
+Para tomar o entregar tarjetas, seguir [desarrollo paralelo](docs/desarrollo-paralelo.md).
 
 - Usar pnpm para el frontend y Cargo para Rust.
 - Apuntar al objetivo A- (87), no solo al piso B- (77).

@@ -18,6 +18,9 @@ No hay implementación de mapas, autenticación, persistencia, sincronización, 
 
 ## Estructura
 
+La coordinación de agentes, ramas y entregas está en
+[docs/desarrollo-paralelo.md](docs/desarrollo-paralelo.md).
+
 ```text
 src/                  # Svelte y TypeScript
 crates/api/           # Proceso Rust nativo
