@@ -1,0 +1,13 @@
+[package]
+name = "desire-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+desire-core.workspace = true
+wasm-bindgen.workspace = true

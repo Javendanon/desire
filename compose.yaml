@@ -1,0 +1,20 @@
+# Conserva la identidad de recursos Docker previa al cambio de carpeta.
+name: monas-chinas-medievales
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: umbra
+      POSTGRES_PASSWORD: umbra_local
+      POSTGRES_DB: umbra
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - umbra_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umbra"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  umbra_data:

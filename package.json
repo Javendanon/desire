@@ -1,0 +1,29 @@
+{
+  "name": "desire",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.11.2",
+  "engines": { "node": "^22.13.0 || >=24.0.0" },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:api": "cargo run -p desire-api",
+    "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json",
+    "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
+    "build": "pnpm run check && vite build",
+    "build:api": "cargo build -p desire-api --release",
+    "build:wasm": "wasm-pack build crates/wasm --target web --out-dir ../../src/generated/wasm",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:rust": "cargo test --workspace",
+    "db:up": "docker compose up -d db",
+    "db:stop": "docker compose stop db"
+  },
+  "dependencies": { "playcanvas": "2.23.2", "svelte": "5.57.2" },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "^22.0.0",
+    "svelte-check": "4.7.6",
+    "typescript": "5.9.3",
+    "vite": "8.2.0"
+  }
+}

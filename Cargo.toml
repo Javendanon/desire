@@ -1,0 +1,20 @@
+[workspace]
+members = ["crates/core", "crates/api", "crates/wasm"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+publish = false
+
+[workspace.dependencies]
+desire-core = { path = "crates/core" }
+axum = "=0.8.9"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+wasm-bindgen = "=0.2.128"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
