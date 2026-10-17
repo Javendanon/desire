@@ -1,7 +1,7 @@
-"""Análisis de fuentes activas: descubrimiento, F16, F11 y tamaño de archivo.
+"""Active source analysis: discovery, F16, F11 and file size.
 
-Cubre Svelte, HTML y CSS, que `km` no analiza. Las heurísticas son de texto y
-se documentan como tales; no sustituyen un AST.
+Covers Svelte, HTML and CSS, which `km` does not analyze. The heuristics are
+text based and are documented as such; they do not replace an AST.
 """
 
 from __future__ import annotations
@@ -12,88 +12,88 @@ from pathlib import Path
 
 from . import config
 
-PREFIJOS_COMENTARIO = ("//", "*", "/*", "*/", "<!--")
+COMMENT_PREFIXES = ("//", "*", "/*", "*/", "<!--")
 
-PATRONES_F11 = (
+F11_PATTERNS = (
     ("Rust", re.compile(r"\blet\s+_\s*="), "valor descartado sin manejo (Result sin usar)"),
     ("Python", re.compile(r"except\s*:\s*pass"), "except sin manejo"),
     ("JS/TS", re.compile(r"catch\s*(\([^)]*\))?\s*\{\s*\}"), "catch vacío"),
 )
 
-SELECTOR_SCRIPT = re.compile(r"<script[^>]*>(.*?)</script>", re.DOTALL)
-PAR_FOR = re.compile(r"\bfor\s*\(")
-FIN_SENTENCIA = re.compile(r";\s*\S")
-ETIQUETAS_HTML = re.compile(r"><")
+SCRIPT_SELECTOR = re.compile(r"<script[^>]*>(.*?)</script>", re.DOTALL)
+FOR_PATTERN = re.compile(r"\bfor\s*\(")
+STATEMENT_END = re.compile(r";\s*\S")
+HTML_TAGS = re.compile(r"><")
 
 
 @dataclass(frozen=True)
 class SourceFile:
     path: str
-    lineas: tuple[str, ...]
+    lines: tuple[str, ...]
     code_lines: int
 
 
-def descubrir_fuentes(root: Path) -> list[SourceFile]:
-    fuentes = []
-    for ruta in sorted(root.rglob("*")):
-        if not _es_fuente(root, ruta):
+def discover_sources(root: Path) -> list[SourceFile]:
+    sources = []
+    for path in sorted(root.rglob("*")):
+        if not _is_source(root, path):
             continue
-        fuentes.append(leer_fuente(root, ruta))
-    return fuentes
+        sources.append(read_source(root, path))
+    return sources
 
 
-def _es_fuente(root: Path, ruta: Path) -> bool:
-    if not ruta.is_file() or ruta.suffix not in config.EXTS_FUENTE:
+def _is_source(root: Path, path: Path) -> bool:
+    if not path.is_file() or path.suffix not in config.SOURCE_EXTS:
         return False
-    relativa = ruta.relative_to(root)
-    if any(parte in config.DIRS_EXCLUIDOS for parte in relativa.parts[:-1]):
+    relative = path.relative_to(root)
+    if any(part in config.EXCLUDED_DIRS for part in relative.parts[:-1]):
         return False
-    return not relativa.name.endswith(".test.ts")
+    return not relative.name.endswith(".test.ts")
 
 
-def leer_fuente(root: Path, ruta: Path) -> SourceFile:
-    texto = ruta.read_text(encoding="utf-8", errors="replace")
-    lineas = tuple(texto.splitlines())
+def read_source(root: Path, path: Path) -> SourceFile:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    lines = tuple(text.splitlines())
     return SourceFile(
-        path=ruta.relative_to(root).as_posix(),
-        lineas=lineas,
-        code_lines=sum(1 for linea in lineas if es_codigo(linea)),
+        path=path.relative_to(root).as_posix(),
+        lines=lines,
+        code_lines=sum(1 for line in lines if is_code(line)),
     )
 
 
-def es_codigo(linea: str) -> bool:
-    texto = linea.strip()
-    return bool(texto) and not texto.startswith(PREFIJOS_COMENTARIO)
+def is_code(line: str) -> bool:
+    text = line.strip()
+    return bool(text) and not text.startswith(COMMENT_PREFIXES)
 
 
-def extraer_scripts(fuente: str) -> str:
-    return "\n".join(bloque.group(1) for bloque in SELECTOR_SCRIPT.finditer(fuente))
+def extract_scripts(source: str) -> str:
+    return "\n".join(block.group(1) for block in SCRIPT_SELECTOR.finditer(source))
 
 
-def linea_comprimida(linea: str, path: str) -> bool:
+def is_compressed_line(line: str, path: str) -> bool:
     if path.endswith((".html", ".svelte")):
-        return len(ETIQUETAS_HTML.findall(linea)) >= 3 or _sentencias(linea) >= 2
-    if PAR_FOR.search(linea):
+        return len(HTML_TAGS.findall(line)) >= 3 or _statements(line) >= 2
+    if FOR_PATTERN.search(line):
         return False
-    return _sentencias(linea) >= 2
+    return _statements(line) >= 2
 
 
-def _sentencias(linea: str) -> int:
-    return len(FIN_SENTENCIA.findall(linea))
+def _statements(line: str) -> int:
+    return len(STATEMENT_END.findall(line))
 
 
-def lineas_largas(fuente: SourceFile) -> list[tuple[int, int]]:
+def long_lines(source: SourceFile) -> list[tuple[int, int]]:
     return [
-        (numero, len(linea))
-        for numero, linea in enumerate(fuente.lineas, start=1)
-        if len(linea) > config.MAX_COLUMNAS
+        (number, len(line))
+        for number, line in enumerate(source.lines, start=1)
+        if len(line) > config.MAX_COLUMNS
     ]
 
 
-def errores_silenciosos(fuente: SourceFile) -> list[tuple[int, str]]:
-    encontrados = []
-    for numero, linea in enumerate(fuente.lineas, start=1):
-        for _, patron, mensaje in PATRONES_F11:
-            if patron.search(linea):
-                encontrados.append((numero, mensaje))
-    return encontrados
+def silent_errors(source: SourceFile) -> list[tuple[int, str]]:
+    found = []
+    for number, line in enumerate(source.lines, start=1):
+        for _, pattern, message in F11_PATTERNS:
+            if pattern.search(line):
+                found.append((number, message))
+    return found

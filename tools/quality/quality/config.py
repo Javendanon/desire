@@ -1,8 +1,8 @@
-"""Umbrales, alcance y listas de revisión del gate. Un solo lugar de verdad.
+"""Gate thresholds, scope and review lists. A single place of truth.
 
-Los umbrales provienen de docs/reglas-de-codigo.md (§1 y §2). El piso bloquea;
-el objetivo solo avisa. Ninguna regla se desactiva de forma global: los falsos
-positivos se documentan uno por uno en known-false-positives.json.
+Thresholds come from docs/reglas-de-codigo.md (§1 and §2). The floor blocks;
+the target only warns. No rule is disabled globally: false positives are
+documented one by one in known-false-positives.json.
 """
 
 from __future__ import annotations
@@ -11,31 +11,31 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-PISO_SCORE = 77.0
-OBJETIVO_SCORE = 87.0
+SCORE_FLOOR = 77.0
+SCORE_TARGET = 87.0
 
-MAX_LINEAS_FUNCION_PISO = 40
-MAX_LINEAS_FUNCION_OBJETIVO = 25
+MAX_FUNCTION_LINES_FLOOR = 40
+MAX_FUNCTION_LINES_TARGET = 25
 
-MAX_PARAMETROS_PISO = 4
-MAX_PARAMETROS_OBJETIVO = 3
+MAX_PARAMS_FLOOR = 4
+MAX_PARAMS_TARGET = 3
 
-CYCOM_PISO = 15
-CYCOM_OBJETIVO = 10
+CYCOM_FLOOR = 15
+CYCOM_TARGET = 10
 
-COGCOM_PISO = 15
-COGCOM_OBJETIVO = 10
+COGCOM_FLOOR = 15
+COGCOM_TARGET = 10
 
-DUP_RATIO_PISO = 10.0
-DUP_RATIO_OBJETIVO = 5.0
-DUP_COPIAS_REGLA_TRES = 3
+DUP_RATIO_FLOOR = 10.0
+DUP_RATIO_TARGET = 5.0
+DUP_COPIES_RULE_OF_THREE = 3
 
-LOC_ARCHIVO_PISO = 400
-LOC_ARCHIVO_OBJETIVO = 300
+LOC_FILE_FLOOR = 400
+LOC_FILE_TARGET = 300
 
-MAX_COLUMNAS = 100
+MAX_COLUMNS = 100
 
-DIRS_EXCLUIDOS = (
+EXCLUDED_DIRS = (
     "docs",
     "vendor",
     ".agents",
@@ -51,12 +51,12 @@ DIRS_EXCLUIDOS = (
     "__pycache__",
 )
 
-EXTS_PRODUCTO = ("rs", "ts", "js")
-EXTS_FUENTE = (".rs", ".ts", ".js", ".svelte", ".html", ".css", ".py")
+PRODUCT_EXTS = ("rs", "ts", "js")
+SOURCE_EXTS = (".rs", ".ts", ".js", ".svelte", ".html", ".css", ".py")
 
 SVELTE = "src/App.svelte"
 
-REVISION_MANUAL = (
+MANUAL_REVIEW = (
     ("F7", "SRP: una razón para cambiar por archivo; nombres con 'y' o 'manager'."),
     ("F8", "Números mágicos de dominio que km no distingue (reglas D&D, precios)."),
     ("F10", "Nombres con intención: verificar sobre el diff, no automático."),
@@ -67,7 +67,7 @@ REVISION_MANUAL = (
     ("Deuda", "docs/archive/react-draft/: retirar tras consolidar historial Git."),
 )
 
-COBERTURA = (
+COVERAGE = (
     ("km (rs/ts/js)", "score, olores, complejidad ciclomática y cognitiva, duplicación"),
     ("scripts Svelte extraídos", "olores y complejidad del bloque <script>, vía km"),
     ("herramientas (py)", "olores y complejidad de tools/quality, vía km"),
@@ -78,22 +78,22 @@ COBERTURA = (
 
 
 @dataclass(frozen=True)
-class FalsoPositivo:
-    """Hallazgo automático descartado por nombre, archivo y motivo explícitos."""
+class FalsePositive:
+    """Automatically discarded finding, identified by origin, file and reason."""
 
-    origen: str
-    regla: str
+    origin: str
+    rule: str
     path: str
-    contiene: str
-    justificacion: str
-    linea: int | None = None
+    contains: str
+    justification: str
+    line: int | None = None
 
     def describe(self) -> str:
-        return f"{self.path} · {self.regla}: {self.justificacion}"
+        return f"{self.path} · {self.rule}: {self.justification}"
 
 
-def cargar_falsos_positivos(ruta: Path) -> list[FalsoPositivo]:
-    if not ruta.exists():
+def load_false_positives(path: Path) -> list[FalsePositive]:
+    if not path.exists():
         return []
-    crudos = json.loads(ruta.read_text(encoding="utf-8"))
-    return [FalsoPositivo(**entrada) for entrada in crudos]
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return [FalsePositive(**entry) for entry in raw]

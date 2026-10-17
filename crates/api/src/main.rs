@@ -1,4 +1,4 @@
-//! Servidor HTTP de Desire: expone la salud del servicio para el frontend.
+//! Desire HTTP server: exposes service health for the frontend.
 
 use axum::{Json, Router, routing::get};
 use serde::Serialize;
@@ -21,13 +21,13 @@ async fn health() -> Json<Health> {
     })
 }
 
-fn mensaje_de_apagado(error: &std::io::Error) -> String {
+fn shutdown_error_message(error: &std::io::Error) -> String {
     format!("No se pudo escuchar la señal de apagado: {error}")
 }
 
-async fn esperar_apagado() {
+async fn wait_for_shutdown() {
     if let Err(error) = tokio::signal::ctrl_c().await {
-        eprintln!("{}", mensaje_de_apagado(&error));
+        eprintln!("{}", shutdown_error_message(&error));
     }
 }
 
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new().route("/api/health", get(health));
     println!("Desire API: http://{address}");
     axum::serve(listener, app)
-        .with_graceful_shutdown(esperar_apagado())
+        .with_graceful_shutdown(wait_for_shutdown())
         .await?;
     Ok(())
 }
@@ -54,17 +54,17 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn health_declara_servicio_y_protocolo() {
-        let Json(respuesta) = health().await;
-        assert_eq!(respuesta.service, "desire-api");
-        assert_eq!(respuesta.status, "ok");
-        assert_eq!(respuesta.scope, "liveness");
-        assert_eq!(respuesta.protocol_version, desire_core::PROTOCOL_VERSION);
+    async fn health_declares_service_and_protocol() {
+        let Json(response) = health().await;
+        assert_eq!(response.service, "desire-api");
+        assert_eq!(response.status, "ok");
+        assert_eq!(response.scope, "liveness");
+        assert_eq!(response.protocol_version, desire_core::PROTOCOL_VERSION);
     }
 
     #[test]
-    fn apagado_conserva_la_causa() {
+    fn shutdown_preserves_cause() {
         let error = std::io::Error::other("sin señal disponible");
-        assert!(mensaje_de_apagado(&error).contains("sin señal disponible"));
+        assert!(shutdown_error_message(&error).contains("sin señal disponible"));
     }
 }
