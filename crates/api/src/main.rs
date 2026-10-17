@@ -1,3 +1,5 @@
+//! Desire HTTP server: exposes service health for the frontend.
+
 use axum::{Json, Router, routing::get};
 use serde::Serialize;
 use std::net::{IpAddr, SocketAddr};
@@ -19,6 +21,16 @@ async fn health() -> Json<Health> {
     })
 }
 
+fn shutdown_error_message(error: &std::io::Error) -> String {
+    format!("No se pudo escuchar la señal de apagado: {error}")
+}
+
+async fn wait_for_shutdown() {
+    if let Err(error) = tokio::signal::ctrl_c().await {
+        eprintln!("{}", shutdown_error_message(&error));
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host: IpAddr = std::env::var("HOST")
@@ -32,9 +44,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new().route("/api/health", get(health));
     println!("Desire API: http://{address}");
     axum::serve(listener, app)
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
+        .with_graceful_shutdown(wait_for_shutdown())
         .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn health_declares_service_and_protocol() {
+        let Json(response) = health().await;
+        assert_eq!(response.service, "desire-api");
+        assert_eq!(response.status, "ok");
+        assert_eq!(response.scope, "liveness");
+        assert_eq!(response.protocol_version, desire_core::PROTOCOL_VERSION);
+    }
+
+    #[test]
+    fn shutdown_preserves_cause() {
+        let error = std::io::Error::other("sin señal disponible");
+        assert!(shutdown_error_message(&error).contains("sin señal disponible"));
+    }
 }
