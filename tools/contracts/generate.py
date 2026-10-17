@@ -1,4 +1,4 @@
-"""Genera DTOs Rust/TypeScript desde contracts/schema.json de forma determinista."""
+"""Generate Rust/TypeScript DTOs from contracts/schema.json deterministically."""
 
 import argparse
 import json

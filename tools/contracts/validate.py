@@ -1,4 +1,4 @@
-"""Valida el subconjunto explícito de JSON Schema usado por Desire, sin I/O de red."""
+"""Validate the explicit JSON Schema subset used by Desire, with no network I/O."""
 
 import json
 import math
@@ -18,7 +18,7 @@ def fail(path: str, detail: str) -> None:
 
 
 def check_shape(value: Any, node: dict, path: str) -> None:
-    """Valida el tipo JSON antes de recorrer hijos o restricciones."""
+    """Validate the JSON type before walking children or constraints."""
     predicates = {
         'object': lambda item: isinstance(item, dict),
         'array': lambda item: isinstance(item, list),
@@ -49,7 +49,7 @@ def check_limits(value: Any, node: dict, path: str) -> None:
 
 
 def check_object(value: dict, context: tuple, path: str) -> None:
-    """Recorre una vez los campos presentes; O(campos)."""
+    """Walk the present fields once; O(fields)."""
     node, definitions = context
     missing = set(node['required']) - value.keys()
     unknown = value.keys() - node['properties'].keys()
@@ -60,7 +60,7 @@ def check_object(value: dict, context: tuple, path: str) -> None:
 
 
 def check_union(value: Any, context: tuple, path: str) -> None:
-    """Prueba las ramas del anyOf; O(ramas × tamaño del valor)."""
+    """Try the anyOf branches; O(branches × value size)."""
     node, definitions = context
     errors = []
     for branch in node['anyOf']:
@@ -73,7 +73,7 @@ def check_union(value: Any, context: tuple, path: str) -> None:
 
 
 def visit(value: Any, context: tuple, path: str) -> None:
-    """Recorre el árbol de valores; O(n) salvo alternativas anyOf."""
+    """Walk the value tree; O(n) except for anyOf alternatives."""
     node, definitions = context
     unsupported = node.keys() - SUPPORTED
     if unsupported:
@@ -94,7 +94,7 @@ def visit(value: Any, context: tuple, path: str) -> None:
 
 
 def validate(value: Any, schema: dict) -> None:
-    """Valida datos ya cargados; no resuelve referencias remotas."""
+    """Validate already-loaded data; it does not resolve remote references."""
     visit(value, (schema, schema['$defs']), '$')
 
 

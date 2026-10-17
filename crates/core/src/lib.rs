@@ -1,4 +1,4 @@
-//! Núcleo compartido por el servidor nativo y el módulo WebAssembly.
+//! Shared core for the native server and the WebAssembly module.
 
 pub mod flags;
 

@@ -1,4 +1,4 @@
-"""Aislamiento y coherencia de los ejemplos de dos campañas."""
+"""Isolation and coherence of the two-campaign examples."""
 
 import json
 from pathlib import Path
