@@ -1,3 +1,5 @@
-//! Núcleo compartido por el servidor nativo y el módulo WebAssembly.
+//! Shared core for the native server and the WebAssembly module.
 
 pub const PROTOCOL_VERSION: u32 = 1;
+
+pub mod contracts;

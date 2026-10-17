@@ -1,0 +1,1107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:desire:contracts:v1",
+  "$ref": "#/$defs/Examples",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "format": "uuid",
+      "x-module": "common"
+    },
+    "Revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295,
+      "x-module": "common"
+    },
+    "RulesEdition": {
+      "enum": [
+        "dnd_2014",
+        "dnd_2024"
+      ],
+      "x-module": "common"
+    },
+    "Visibility": {
+      "enum": [
+        "players",
+        "dm"
+      ],
+      "x-module": "common"
+    },
+    "Evidence": {
+      "enum": [
+        "verified",
+        "interpretation",
+        "synthetic"
+      ],
+      "x-module": "common"
+    },
+    "MemberRole": {
+      "enum": [
+        "dm",
+        "player"
+      ],
+      "x-module": "common"
+    },
+    "TravelStatus": {
+      "enum": [
+        "planned",
+        "moving",
+        "completed",
+        "cancelled"
+      ],
+      "x-module": "common"
+    },
+    "Provenance": {
+      "type": "object",
+      "x-module": "common",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "attribution",
+        "evidence"
+      ],
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      }
+    },
+    "Position": {
+      "type": "object",
+      "x-module": "common",
+      "additionalProperties": false,
+      "required": [
+        "x_m",
+        "y_m",
+        "z_m"
+      ],
+      "properties": {
+        "x_m": {
+          "type": "number"
+        },
+        "y_m": {
+          "type": "number"
+        },
+        "z_m": {
+          "type": "number"
+        }
+      }
+    },
+    "Calibration": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "origin_px_x",
+        "origin_px_y",
+        "meters_per_pixel",
+        "rotation_radians",
+        "provenance"
+      ],
+      "properties": {
+        "origin_px_x": {
+          "type": "number"
+        },
+        "origin_px_y": {
+          "type": "number"
+        },
+        "meters_per_pixel": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rotation_radians": {
+          "type": "number"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "World": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "Era": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "world_id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "world_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "City": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "era_id",
+        "name",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "era_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "District": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "city_id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "city_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "Place": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "city_id",
+        "district_id",
+        "name",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "city_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "district_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "MapVersion": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "map_id",
+        "city_id",
+        "revision",
+        "calibration",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "map_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "city_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "calibration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Calibration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "Chunk": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "map_version_id",
+        "origin",
+        "size_m",
+        "asset_uri"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "map_version_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "origin": {
+          "$ref": "#/$defs/Position"
+        },
+        "size_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "asset_uri": {
+          "type": "string"
+        }
+      }
+    },
+    "KnowledgeEntry": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "rules_edition",
+        "language",
+        "title",
+        "body",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "language": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "Campaign": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "owner_id",
+        "city_id",
+        "name",
+        "rules_edition",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "owner_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "city_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Membership": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "user_id",
+        "role"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "user_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "$ref": "#/$defs/MemberRole"
+        }
+      }
+    },
+    "PlaceOverride": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "place_id",
+        "revision",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "place_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "Scene": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "map_version_id",
+        "name",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "map_version_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Character": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "controller_id",
+        "name",
+        "rules_edition",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "controller_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Condition": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "character_id",
+        "knowledge_entry_id",
+        "remaining_rounds",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "character_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "knowledge_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "remaining_rounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Travel": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "scene_id",
+        "character_id",
+        "position",
+        "destination",
+        "distance_m",
+        "narrative_seconds",
+        "visual_seconds",
+        "status",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "scene_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "character_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "destination": {
+          "$ref": "#/$defs/Position"
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "narrative_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "visual_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/$defs/TravelStatus"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Session": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "title",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "JournalEntry": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "session_id",
+        "body",
+        "visibility",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "session_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "body": {
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "CampaignKnowledge": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "title",
+        "body",
+        "visibility",
+        "revision",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "DmSecret": {
+      "type": "object",
+      "x-module": "campaign",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "subject_id",
+        "body",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "body": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "PlayerSnapshot": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "campaign",
+        "scenes",
+        "characters",
+        "journal",
+        "knowledge"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "campaign": {
+          "$ref": "#/$defs/Campaign"
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Scene"
+          }
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Character"
+          }
+        },
+        "journal": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlayerJournalEntry"
+          }
+        },
+        "knowledge": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlayerKnowledge"
+          }
+        }
+      }
+    },
+    "SceneChanged": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "event_id",
+        "campaign_id",
+        "revision",
+        "scene_id",
+        "kind"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "scene_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "type": "string",
+          "const": "scene_changed"
+        }
+      }
+    },
+    "TravelUpdated": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "event_id",
+        "campaign_id",
+        "revision",
+        "travel",
+        "kind"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "travel": {
+          "$ref": "#/$defs/Travel"
+        },
+        "kind": {
+          "type": "string",
+          "const": "travel_updated"
+        }
+      }
+    },
+    "ApiError": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "request_id"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "request_id": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "Examples": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "worlds",
+        "eras",
+        "cities",
+        "districts",
+        "places",
+        "maps",
+        "chunks",
+        "campaigns",
+        "memberships",
+        "overrides",
+        "scenes",
+        "characters",
+        "entries",
+        "conditions",
+        "travels",
+        "sessions",
+        "journal",
+        "knowledge",
+        "secrets",
+        "snapshots",
+        "scene_events",
+        "travel_events"
+      ],
+      "properties": {
+        "worlds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/World"
+          }
+        },
+        "eras": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Era"
+          }
+        },
+        "cities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/City"
+          }
+        },
+        "districts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/District"
+          }
+        },
+        "places": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Place"
+          }
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapVersion"
+          }
+        },
+        "chunks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Chunk"
+          }
+        },
+        "campaigns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Campaign"
+          }
+        },
+        "memberships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Membership"
+          }
+        },
+        "overrides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaceOverride"
+          }
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Scene"
+          }
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Character"
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KnowledgeEntry"
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          }
+        },
+        "travels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Travel"
+          }
+        },
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Session"
+          }
+        },
+        "journal": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JournalEntry"
+          }
+        },
+        "knowledge": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CampaignKnowledge"
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DmSecret"
+          }
+        },
+        "snapshots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlayerSnapshot"
+          }
+        },
+        "scene_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SceneChanged"
+          }
+        },
+        "travel_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TravelUpdated"
+          }
+        }
+      }
+    },
+    "PlayerJournalEntry": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "session_id",
+        "body",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "session_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "body": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "PlayerKnowledge": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "title",
+        "body",
+        "revision",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    }
+  }
+}

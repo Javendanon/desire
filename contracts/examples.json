@@ -1,0 +1,351 @@
+{
+  "worlds": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Mundo de prueba",
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "eras": [
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "world_id": "00000000-0000-4000-8000-000000000001",
+      "name": "\u00c9poca de prueba"
+    }
+  ],
+  "cities": [
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "era_id": "00000000-0000-4000-8000-000000000002",
+      "name": "Waterdeep",
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "districts": [
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "city_id": "00000000-0000-4000-8000-000000000003",
+      "name": "Barrio sint\u00e9tico"
+    }
+  ],
+  "places": [
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "city_id": "00000000-0000-4000-8000-000000000003",
+      "district_id": null,
+      "name": "Lugar sint\u00e9tico",
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "maps": [
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "map_id": "00000000-0000-4000-8000-000000000060",
+      "city_id": "00000000-0000-4000-8000-000000000003",
+      "revision": 1,
+      "calibration": {
+        "origin_px_x": 0.0,
+        "origin_px_y": 0.0,
+        "meters_per_pixel": 1.0,
+        "rotation_radians": 0.0,
+        "provenance": {
+          "source": "fixture:D04",
+          "attribution": "Ejemplo sint\u00e9tico de Desire",
+          "evidence": "synthetic"
+        }
+      },
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "map_id": "00000000-0000-4000-8000-000000000070",
+      "city_id": null,
+      "revision": 1,
+      "calibration": null,
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "chunks": [
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "map_version_id": "00000000-0000-4000-8000-000000000007",
+      "origin": {
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "z_m": 0.0
+      },
+      "size_m": 10.0,
+      "asset_uri": "fixture://caverna.glb"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "owner_id": "00000000-0000-4000-8000-000000000090",
+      "city_id": "00000000-0000-4000-8000-000000000003",
+      "name": "Campa\u00f1a de ejemplo 1",
+      "rules_edition": "dnd_2014",
+      "revision": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "owner_id": "00000000-0000-4000-8000-000000000091",
+      "city_id": "00000000-0000-4000-8000-000000000003",
+      "name": "Campa\u00f1a de ejemplo 2",
+      "rules_edition": "dnd_2024",
+      "revision": 1
+    }
+  ],
+  "memberships": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "user_id": "00000000-0000-4000-8000-000000000090",
+      "role": "dm"
+    },
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000011",
+      "user_id": "00000000-0000-4000-8000-000000000091",
+      "role": "dm"
+    }
+  ],
+  "overrides": [
+    {
+      "id": "00000000-0000-4000-8000-000000000020",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "place_id": "00000000-0000-4000-8000-000000000005",
+      "revision": 1,
+      "name": "Nombre exclusivo de campa\u00f1a 1"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000030",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "map_version_id": "00000000-0000-4000-8000-000000000006",
+      "name": "Ciudad demo",
+      "revision": 1
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000031",
+      "campaign_id": "00000000-0000-4000-8000-000000000011",
+      "map_version_id": "00000000-0000-4000-8000-000000000007",
+      "name": "Caverna demo",
+      "revision": 1
+    }
+  ],
+  "characters": [
+    {
+      "id": "00000000-0000-4000-8000-000000000040",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "controller_id": null,
+      "name": "Personaje demo",
+      "rules_edition": "dnd_2014",
+      "revision": 1
+    }
+  ],
+  "entries": [
+    {
+      "id": "00000000-0000-4000-8000-000000000050",
+      "revision": 1,
+      "rules_edition": "dnd_2014",
+      "language": "es",
+      "title": "Condici\u00f3n de prueba",
+      "body": "Sin contenido de reglas oficial.",
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "conditions": [
+    {
+      "id": "00000000-0000-4000-8000-000000000051",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "character_id": "00000000-0000-4000-8000-000000000040",
+      "knowledge_entry_id": "00000000-0000-4000-8000-000000000050",
+      "remaining_rounds": null,
+      "revision": 1
+    }
+  ],
+  "travels": [
+    {
+      "id": "00000000-0000-4000-8000-000000000052",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "scene_id": "00000000-0000-4000-8000-000000000030",
+      "character_id": "00000000-0000-4000-8000-000000000040",
+      "position": {
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "z_m": 0.0
+      },
+      "destination": {
+        "x_m": 10.0,
+        "y_m": 0.0,
+        "z_m": 0.0
+      },
+      "distance_m": 10.0,
+      "narrative_seconds": 60.0,
+      "visual_seconds": 2.0,
+      "status": "planned",
+      "revision": 1
+    }
+  ],
+  "sessions": [
+    {
+      "id": "00000000-0000-4000-8000-000000000053",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "title": "Sesi\u00f3n demo",
+      "revision": 1
+    }
+  ],
+  "journal": [
+    {
+      "id": "00000000-0000-4000-8000-000000000054",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "session_id": "00000000-0000-4000-8000-000000000053",
+      "body": "Nota p\u00fablica demo",
+      "visibility": "players",
+      "revision": 1
+    }
+  ],
+  "knowledge": [
+    {
+      "id": "00000000-0000-4000-8000-000000000055",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "title": "Pista p\u00fablica demo",
+      "body": "Demo",
+      "visibility": "players",
+      "revision": 1,
+      "provenance": {
+        "source": "fixture:D04",
+        "attribution": "Ejemplo sint\u00e9tico de Desire",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "secrets": [
+    {
+      "id": "00000000-0000-4000-8000-000000000056",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "subject_id": "00000000-0000-4000-8000-000000000005",
+      "body": "Secreto demo",
+      "revision": 1
+    }
+  ],
+  "snapshots": [
+    {
+      "protocol_version": 1,
+      "campaign": {
+        "id": "00000000-0000-4000-8000-000000000010",
+        "owner_id": "00000000-0000-4000-8000-000000000090",
+        "city_id": "00000000-0000-4000-8000-000000000003",
+        "name": "Campa\u00f1a de ejemplo 1",
+        "rules_edition": "dnd_2014",
+        "revision": 1
+      },
+      "scenes": [
+        {
+          "id": "00000000-0000-4000-8000-000000000030",
+          "campaign_id": "00000000-0000-4000-8000-000000000010",
+          "map_version_id": "00000000-0000-4000-8000-000000000006",
+          "name": "Ciudad demo",
+          "revision": 1
+        }
+      ],
+      "characters": [
+        {
+          "id": "00000000-0000-4000-8000-000000000040",
+          "campaign_id": "00000000-0000-4000-8000-000000000010",
+          "controller_id": null,
+          "name": "Personaje demo",
+          "rules_edition": "dnd_2014",
+          "revision": 1
+        }
+      ],
+      "journal": [
+        {
+          "id": "00000000-0000-4000-8000-000000000054",
+          "campaign_id": "00000000-0000-4000-8000-000000000010",
+          "session_id": "00000000-0000-4000-8000-000000000053",
+          "body": "Nota p\u00fablica demo",
+          "revision": 1
+        }
+      ],
+      "knowledge": [
+        {
+          "id": "00000000-0000-4000-8000-000000000055",
+          "campaign_id": "00000000-0000-4000-8000-000000000010",
+          "title": "Pista p\u00fablica demo",
+          "body": "Demo",
+          "revision": 1,
+          "provenance": {
+            "source": "fixture:D04",
+            "attribution": "Ejemplo sint\u00e9tico de Desire",
+            "evidence": "synthetic"
+          }
+        }
+      ]
+    }
+  ],
+  "scene_events": [
+    {
+      "protocol_version": 1,
+      "event_id": "00000000-0000-4000-8000-000000000080",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "revision": 1,
+      "scene_id": "00000000-0000-4000-8000-000000000030",
+      "kind": "scene_changed"
+    }
+  ],
+  "travel_events": [
+    {
+      "protocol_version": 1,
+      "event_id": "00000000-0000-4000-8000-000000000081",
+      "campaign_id": "00000000-0000-4000-8000-000000000010",
+      "revision": 1,
+      "travel": {
+        "id": "00000000-0000-4000-8000-000000000052",
+        "campaign_id": "00000000-0000-4000-8000-000000000010",
+        "scene_id": "00000000-0000-4000-8000-000000000030",
+        "character_id": "00000000-0000-4000-8000-000000000040",
+        "position": {
+          "x_m": 0.0,
+          "y_m": 0.0,
+          "z_m": 0.0
+        },
+        "destination": {
+          "x_m": 10.0,
+          "y_m": 0.0,
+          "z_m": 0.0
+        },
+        "distance_m": 10.0,
+        "narrative_seconds": 60.0,
+        "visual_seconds": 2.0,
+        "status": "planned",
+        "revision": 1
+      },
+      "kind": "travel_updated"
+    }
+  ]
+}
