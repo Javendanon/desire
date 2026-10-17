@@ -1,3 +1,3 @@
-"""Gate de calidad de Desire: umbrales, alcance y revisiones manuales."""
+"""Desire quality gate: thresholds, scope and manual reviews."""
 
 from __future__ import annotations

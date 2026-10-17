@@ -1,24 +1,24 @@
 [
   {
-    "origen": "km-smells",
-    "regla": "F2",
+    "origin": "km-smells",
+    "rule": "F2",
     "path": "vite.config.ts",
-    "contiene": "defineConfig",
-    "justificacion": "defineConfig recibe un único objeto de configuración; no declara una función de 6 parámetros. km usa heurística de texto, no AST. No se relaja F2 de forma global, solo esta línea."
+    "contains": "defineConfig",
+    "justification": "defineConfig recibe un único objeto de configuración; no declara una función de 6 parámetros. km usa heurística de texto, no AST. No se relaja F2 de forma global, solo esta línea."
   },
   {
-    "origen": "km-smells",
-    "regla": "Revisión",
+    "origin": "km-smells",
+    "rule": "Revisión",
     "path": "vite.config.ts",
-    "linea": 7,
-    "contiene": "",
-    "justificacion": "El literal 5173 es configuración de puerto de red, no un número mágico de dominio D&D (F8). Se documenta; la regla sigue activa."
+    "line": 7,
+    "contains": "",
+    "justification": "El literal 5173 es configuración de puerto de red, no un número mágico de dominio D&D (F8). Se documenta; la regla sigue activa."
   },
   {
-    "origen": "km-smells",
-    "regla": "F2",
+    "origin": "km-smells",
+    "rule": "F2",
     "path": "src/App.svelte",
-    "contiene": "onMount",
-    "justificacion": "onMount recibe un único callback; km suma los parámetros de los callbacks anidados (.then/.catch) y reporta 4. El callback real no declara parámetros. Se documenta por ocurrencia; F2 sigue activa."
+    "contains": "onMount",
+    "justification": "onMount recibe un único callback; km suma los parámetros de los callbacks anidados (.then/.catch) y reporta 4. El callback real no declara parámetros. Se documenta por ocurrencia; F2 sigue activa."
   }
 ]

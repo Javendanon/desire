@@ -1,4 +1,4 @@
-"""Ejecuta kimün (km) con el alcance acordado y parsea su salida JSON."""
+"""Run kimün (km) with the agreed scope and parse its JSON output."""
 
 from __future__ import annotations
 
@@ -13,71 +13,71 @@ Alias = dict[str, str]
 
 
 class KmError(RuntimeError):
-    """km no está disponible o devolvió un error de ejecución."""
+    """km is not available or returned a runtime error."""
 
 
-def hay_km() -> bool:
+def has_km() -> bool:
     return shutil.which("km") is not None
 
 
 @dataclass(frozen=True)
-class Peticion:
-    """Comando km y flags extra que no dependen del alcance de archivos."""
+class Request:
+    """km command and extra flags that do not depend on the file scope."""
 
-    comando: str
+    command: str
     extra: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class Scope:
-    """Alcance de una medición: ruta, carpetas excluidas, extensiones y alias."""
+    """Scope of a measurement: path, excluded folders, extensions and alias."""
 
     path: str = "."
     dirs: tuple[str, ...] = ()
     exts: tuple[str, ...] = ()
-    informativos: bool = True
+    informative: bool = True
     alias: Alias | None = None
 
-    def consulta(self, comando: str, *extra: str) -> "Consulta":
-        return Consulta(comando, self.path, self._argumentos(), tuple(extra))
+    def query(self, command: str, *extra: str) -> "Query":
+        return Query(command, self.path, self._arguments(), tuple(extra))
 
-    def _argumentos(self) -> list[str]:
-        dirs = [arg for nombre in self.dirs for arg in ("--exclude-dir", nombre)]
+    def _arguments(self) -> list[str]:
+        dirs = [arg for name in self.dirs for arg in ("--exclude-dir", name)]
         exts = [arg for ext in self.exts for arg in ("--include-ext", ext)]
         return dirs + exts
 
 
 @dataclass(frozen=True)
-class Consulta:
-    comando: str
+class Query:
+    command: str
     path: str
-    alcance: tuple[str, ...]
+    scope_flags: tuple[str, ...]
     extra: tuple[str, ...] = ()
 
 
-def ejecutar(root: Path, consulta: Consulta) -> Any:
-    partes = [
+def run(root: Path, query: Query) -> Any:
+    parts = [
         "km",
-        consulta.comando,
-        consulta.path,
-        *consulta.alcance,
-        *consulta.extra,
+        query.command,
+        query.path,
+        *query.scope_flags,
+        *query.extra,
         "--format",
         "json",
     ]
     try:
-        proceso = subprocess.run(partes, cwd=root, capture_output=True, text=True)
+        process = subprocess.run(parts, cwd=root, capture_output=True, text=True)
     except FileNotFoundError as error:
         raise KmError("km no está instalado en PATH") from error
-    if proceso.returncode != 0:
-        detalle = proceso.stderr.strip()
-        raise KmError(f"km {consulta.comando} falló ({proceso.returncode}): {detalle}")
-    return json.loads(proceso.stdout)
+    if process.returncode != 0:
+        detail = process.stderr.strip()
+        raise KmError(f"km {query.command} falló ({process.returncode}): {detail}")
+    return json.loads(process.stdout)
 
 
-def reescribir_paths(resultado: Any, alias: Alias) -> None:
-    normalizado = {clave.lstrip("./"): valor for clave, valor in alias.items()}
-    for archivo in resultado:
-        clave = str(archivo.get("path", "")).lstrip("./")
-        if clave in normalizado:
-            archivo["path"] = normalizado[clave]
+def rewrite_paths(result: Any, alias: Alias) -> None:
+    normalized = {key.lstrip("./"): value for key, value in alias.items()}
+    for file in result:
+        key = str(file.get("path", "")).lstrip("./")
+        if key in normalized:
+            file["path"] = normalized[key]

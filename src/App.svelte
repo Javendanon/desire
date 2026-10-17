@@ -1,35 +1,35 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { cargarMotor, consultarSalud } from './lib/health';
+  import { checkHealth, loadEngine } from './lib/health';
 
   let api = $state('Comprobando conexión…');
   let engine = $state('Comprobando biblioteca…');
 
-  function reportarError(contexto: string, error: unknown): void {
-    console.warn(contexto, error);
+  function reportError(context: string, error: unknown): void {
+    console.warn(context, error);
   }
 
   onMount(() => {
     const controller = new AbortController();
     let disposed = false;
-    const definirApi = (valor: string): void => {
-      if (!disposed) api = valor;
+    const setApi = (value: string): void => {
+      if (!disposed) api = value;
     };
 
-    void consultarSalud(fetch, controller.signal)
-      .then(definirApi)
+    void checkHealth(fetch, controller.signal)
+      .then(setApi)
       .catch((error: unknown) => {
-        definirApi('Servidor pendiente · ejecuta pnpm dev:api');
-        reportarError('No se pudo consultar /api/health', error);
+        setApi('Servidor pendiente · ejecuta pnpm dev:api');
+        reportError('No se pudo consultar /api/health', error);
       });
 
-    void cargarMotor(() => import('playcanvas'))
-      .then((mensaje) => {
-        if (!disposed) engine = mensaje;
+    void loadEngine(() => import('playcanvas'))
+      .then((message) => {
+        if (!disposed) engine = message;
       })
       .catch((error: unknown) => {
         if (!disposed) engine = 'No se pudo importar PlayCanvas';
-        reportarError('No se pudo importar PlayCanvas', error);
+        reportError('No se pudo importar PlayCanvas', error);
       });
 
     return () => {

@@ -1,85 +1,85 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { cargarMotor, consultarSalud, healthMessage, parseHealth } from '../src/lib/health.ts';
+import { checkHealth, healthMessage, loadEngine, parseHealth } from '../src/lib/health.ts';
 
-const RESPUESTA_VALIDA = {
+const VALID_RESPONSE = {
   service: 'desire-api',
   status: 'ok',
   scope: 'liveness',
   protocol_version: 1,
 };
 
-const NO_RECONOCIDA = 'Respuesta de servidor no reconocida';
+const UNRECOGNIZED = 'Respuesta de servidor no reconocida';
 
-function respuesta(cuerpo: unknown, status = 200): Response {
-  return new Response(JSON.stringify(cuerpo), {
+function response(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json' },
   });
 }
 
-function buscarCon(cuerpo: unknown, status = 200): typeof fetch {
-  return (async () => respuesta(cuerpo, status)) as unknown as typeof fetch;
+function fetchWith(body: unknown, status = 200): typeof fetch {
+  return (async () => response(body, status)) as unknown as typeof fetch;
 }
 
-test('rechaza respuestas que no son objetos', () => {
-  for (const cuerpo of [null, undefined, 'ok', 42, true, []]) {
-    assert.equal(parseHealth(cuerpo), null, `cuerpo inválido: ${String(cuerpo)}`);
-    assert.equal(healthMessage(cuerpo), NO_RECONOCIDA);
+test('rejects non-object responses', () => {
+  for (const body of [null, undefined, 'ok', 42, true, []]) {
+    assert.equal(parseHealth(body), null, `invalid body: ${String(body)}`);
+    assert.equal(healthMessage(body), UNRECOGNIZED);
   }
 });
 
-test('rechaza objetos sin los campos del contrato', () => {
-  for (const cuerpo of [{}, { service: 'desire-api' }, { status: 'ok' }]) {
-    assert.equal(parseHealth(cuerpo), null);
-    assert.equal(healthMessage(cuerpo), NO_RECONOCIDA);
+test('rejects objects without the contract fields', () => {
+  for (const body of [{}, { service: 'desire-api' }, { status: 'ok' }]) {
+    assert.equal(parseHealth(body), null);
+    assert.equal(healthMessage(body), UNRECOGNIZED);
   }
 });
 
-test('rechaza servicio o estado distintos', () => {
-  assert.equal(parseHealth({ ...RESPUESTA_VALIDA, service: 'otro' }), null);
-  assert.equal(parseHealth({ ...RESPUESTA_VALIDA, status: 'degraded' }), null);
+test('rejects a different service or status', () => {
+  assert.equal(parseHealth({ ...VALID_RESPONSE, service: 'otro' }), null);
+  assert.equal(parseHealth({ ...VALID_RESPONSE, status: 'degraded' }), null);
 });
 
-test('rechaza tipos de campo incorrectos', () => {
-  assert.equal(parseHealth({ ...RESPUESTA_VALIDA, protocol_version: '1' }), null);
-  assert.equal(parseHealth({ ...RESPUESTA_VALIDA, scope: 3 }), null);
+test('rejects wrong field types', () => {
+  assert.equal(parseHealth({ ...VALID_RESPONSE, protocol_version: '1' }), null);
+  assert.equal(parseHealth({ ...VALID_RESPONSE, scope: 3 }), null);
 });
 
-test('acepta el contrato válido y conserva el mensaje conectado', () => {
-  assert.deepEqual(parseHealth(RESPUESTA_VALIDA), RESPUESTA_VALIDA);
-  assert.equal(healthMessage(RESPUESTA_VALIDA), 'Servidor Rust conectado');
+test('accepts the valid contract and keeps the connected message', () => {
+  assert.deepEqual(parseHealth(VALID_RESPONSE), VALID_RESPONSE);
+  assert.equal(healthMessage(VALID_RESPONSE), 'Servidor Rust conectado');
 });
 
-test('acepta campos extra sin romper el contrato', () => {
-  const extendido = { ...RESPUESTA_VALIDA, uptime_ms: 10 };
-  assert.equal(parseHealth(extendido)?.service, 'desire-api');
-  assert.equal(healthMessage(extendido), 'Servidor Rust conectado');
+test('accepts extra fields without breaking the contract', () => {
+  const extended = { ...VALID_RESPONSE, uptime_ms: 10 };
+  assert.equal(parseHealth(extended)?.service, 'desire-api');
+  assert.equal(healthMessage(extended), 'Servidor Rust conectado');
 });
 
-test('consultarSalud conecta con una respuesta válida', async () => {
-  const mensaje = await consultarSalud(buscarCon(RESPUESTA_VALIDA), new AbortController().signal);
-  assert.equal(mensaje, 'Servidor Rust conectado');
+test('checkHealth connects with a valid response', async () => {
+  const message = await checkHealth(fetchWith(VALID_RESPONSE), new AbortController().signal);
+  assert.equal(message, 'Servidor Rust conectado');
 });
 
-test('consultarSalud falla con el código HTTP en el mensaje', async () => {
-  const buscar = buscarCon({ error: 'no' }, 503);
-  await assert.rejects(() => consultarSalud(buscar, new AbortController().signal), /HTTP 503/);
+test('checkHealth fails with the HTTP code in the message', async () => {
+  const fetchImpl = fetchWith({ error: 'no' }, 503);
+  await assert.rejects(() => checkHealth(fetchImpl, new AbortController().signal), /HTTP 503/);
 });
 
-test('consultarSalud no reconoce un cuerpo inválido', async () => {
-  const buscar = buscarCon({ hola: 1 });
-  assert.equal(await consultarSalud(buscar, new AbortController().signal), NO_RECONOCIDA);
+test('checkHealth does not recognize an invalid body', async () => {
+  const fetchImpl = fetchWith({ hola: 1 });
+  assert.equal(await checkHealth(fetchImpl, new AbortController().signal), UNRECOGNIZED);
 });
 
-test('cargarMotor informa la versión importada', async () => {
-  const mensaje = await cargarMotor(async () => ({ version: '2.23.2' }));
-  assert.match(mensaje, /2\.23\.2/);
+test('loadEngine reports the imported version', async () => {
+  const message = await loadEngine(async () => ({ version: '2.23.2' }));
+  assert.match(message, /2\.23\.2/);
 });
 
-test('cargarMotor propaga el fallo de importación', async () => {
-  await assert.rejects(() => cargarMotor(async () => {
+test('loadEngine propagates the import failure', async () => {
+  await assert.rejects(() => loadEngine(async () => {
     throw new Error('sin red');
   }));
 });

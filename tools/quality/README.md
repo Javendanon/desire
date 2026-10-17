@@ -55,5 +55,5 @@ salida `!= 0`, y una fuente limpia produce `0`.
 - `km` no analiza `.svelte`; la plantilla y el CSS se cubren por heurística de texto
   y revisión manual.
 - Markdown, JSON, TOML y el artefacto Wasm quedan fuera de medición.
-- La lista de revisión manual (`config.REVISION_MANUAL`) se imprime en cada corrida y
+- La lista de revisión manual (`config.MANUAL_REVIEW`) se imprime en cada corrida y
   no bloquea; impide declarar aprobación integral.

@@ -1,4 +1,4 @@
-"""Pruebas de la clasificación piso/objetivo y de los falsos positivos."""
+"""Tests for floor/target classification and for false positives."""
 
 import sys
 import unittest
@@ -7,81 +7,83 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from quality import config, evaluate
-from quality.evaluate import AVISA, BLOQUEA, Hallazgo
+from quality.evaluate import BLOCKS, WARNS, Finding
 
 
 def _smell(path: str, kind: str, line: int) -> dict:
     return {"path": path, "smells": [{"kind": kind, "line": line, "detail": f"{kind}@{line}"}]}
 
 
-def _funcion(path: str, nombre: str, complexity: int) -> dict:
-    ficha = {"name": nombre, "start_line": 1, "complexity": complexity}
-    return {"path": path, "functions": [ficha]}
+def _function(path: str, name: str, complexity: int) -> dict:
+    record = {"name": name, "start_line": 1, "complexity": complexity}
+    return {"path": path, "functions": [record]}
 
 
 class ScoreTest(unittest.TestCase):
-    def test_bajo_piso_bloquea(self):
-        self.assertEqual(evaluate.evaluar_score(70.0, "D")[0].severidad, BLOQUEA)
+    def test_below_floor_blocks(self):
+        self.assertEqual(evaluate.evaluate_score(70.0, "D")[0].severity, BLOCKS)
 
-    def test_entre_piso_y_objetivo_avisa(self):
-        self.assertEqual(evaluate.evaluar_score(80.0, "B")[0].severidad, AVISA)
+    def test_between_floor_and_target_warns(self):
+        self.assertEqual(evaluate.evaluate_score(80.0, "B")[0].severity, WARNS)
 
-    def test_en_objetivo_limpio(self):
-        self.assertEqual(evaluate.evaluar_score(90.0, "A-"), [])
+    def test_at_target_clean(self):
+        self.assertEqual(evaluate.evaluate_score(90.0, "A-"), [])
 
 
 class SmellsTest(unittest.TestCase):
-    def test_piso_bloquea_y_objetivo_avisa(self):
-        piso = [_smell("./a.ts", "long_function", 3)]
-        objetivo = [_smell("./a.ts", "long_function", 3), _smell("./a.ts", "long_function", 9)]
-        hallazgos = evaluate.evaluar_smells(piso, objetivo)
-        severidades = {(h.ubicacion, h.severidad) for h in hallazgos}
-        self.assertIn(("a.ts:3", BLOQUEA), severidades)
-        self.assertIn(("a.ts:9", AVISA), severidades)
+    def test_floor_blocks_and_target_warns(self):
+        floor = [_smell("./a.ts", "long_function", 3)]
+        target = [_smell("./a.ts", "long_function", 3), _smell("./a.ts", "long_function", 9)]
+        findings = evaluate.evaluate_smells(floor, target)
+        severities = {(f.location, f.severity) for f in findings}
+        self.assertIn(("a.ts:3", BLOCKS), severities)
+        self.assertIn(("a.ts:9", WARNS), severities)
 
 
-class ComplejidadTest(unittest.TestCase):
-    def test_ciclomatica_sobre_piso(self):
-        hallazgos = evaluate.evaluar_complejidad([_funcion("./a.rs", "f", 16)], [])
-        self.assertEqual(hallazgos[0].regla, "F4")
-        self.assertEqual(hallazgos[0].severidad, BLOQUEA)
+class ComplexityTest(unittest.TestCase):
+    def test_cyclomatic_above_floor(self):
+        findings = evaluate.evaluate_complexity([_function("./a.rs", "f", 16)], [])
+        self.assertEqual(findings[0].rule, "F4")
+        self.assertEqual(findings[0].severity, BLOCKS)
 
-    def test_cognitiva_sobre_objetivo(self):
-        hallazgos = evaluate.evaluar_complejidad([], [_funcion("./a.rs", "f", 12)])
-        self.assertEqual(hallazgos[0].regla, "F5")
-        self.assertEqual(hallazgos[0].severidad, AVISA)
+    def test_cognitive_above_target(self):
+        findings = evaluate.evaluate_complexity([], [_function("./a.rs", "f", 12)])
+        self.assertEqual(findings[0].rule, "F5")
+        self.assertEqual(findings[0].severity, WARNS)
 
 
-class DuplicacionTest(unittest.TestCase):
-    def test_ratio_sobre_piso(self):
+class DuplicationTest(unittest.TestCase):
+    def test_ratio_above_floor(self):
         dups = {"metrics": {"duplication_percentage": 11.0}, "groups": []}
-        self.assertEqual(evaluate.evaluar_duplicacion(dups)[0].severidad, BLOQUEA)
+        self.assertEqual(evaluate.evaluate_duplication(dups)[0].severity, BLOCKS)
 
-    def test_regla_de_tres_bloquea(self):
-        grupo = {"line_count": 8, "locations": [{"file_path": f"{n}.ts"} for n in "abc"]}
-        hallazgos = evaluate.evaluar_duplicacion({"metrics": {"duplication_percentage": 0.0}, "groups": [grupo]})
-        self.assertTrue(any(h.severidad == BLOQUEA for h in hallazgos))
-
-
-class FalsosPositivosTest(unittest.TestCase):
-    def test_suprime_con_justificacion(self):
-        falso = config.FalsoPositivo(
-            origen="km-smells",
-            regla="F2",
-            path="vite.config.ts",
-            contiene="defineConfig",
-            justificacion="defineConfig recibe un objeto",
+    def test_rule_of_three_blocks(self):
+        group = {"line_count": 8, "locations": [{"file_path": f"{n}.ts"} for n in "abc"]}
+        findings = evaluate.evaluate_duplication(
+            {"metrics": {"duplication_percentage": 0.0}, "groups": [group]}
         )
-        hallazgo = Hallazgo("F2", BLOQUEA, "vite.config.ts:4", "function `defineConfig` has 6 params", "km-smells")
-        admitidos, suprimidos = evaluate.aplicar_falsos_positivos([hallazgo], [falso])
-        self.assertEqual(admitidos, [])
-        self.assertEqual(len(suprimidos), 1)
+        self.assertTrue(any(f.severity == BLOCKS for f in findings))
 
-    def test_no_suprime_si_no_coincide(self):
-        falso = config.FalsoPositivo("km-smells", "F2", "otro.ts", "defineConfig", "otro")
-        hallazgo = Hallazgo("F2", BLOQUEA, "vite.config.ts:4", "function `defineConfig`", "km-smells")
-        admitidos, _ = evaluate.aplicar_falsos_positivos([hallazgo], [falso])
-        self.assertEqual(len(admitidos), 1)
+
+class FalsePositivesTest(unittest.TestCase):
+    def test_suppresses_with_justification(self):
+        false_positive = config.FalsePositive(
+            origin="km-smells",
+            rule="F2",
+            path="vite.config.ts",
+            contains="defineConfig",
+            justification="defineConfig recibe un objeto",
+        )
+        finding = Finding("F2", BLOCKS, "vite.config.ts:4", "function `defineConfig` has 6 params", "km-smells")
+        accepted, suppressed = evaluate.apply_false_positives([finding], [false_positive])
+        self.assertEqual(accepted, [])
+        self.assertEqual(len(suppressed), 1)
+
+    def test_does_not_suppress_on_mismatch(self):
+        false_positive = config.FalsePositive("km-smells", "F2", "otro.ts", "defineConfig", "otro")
+        finding = Finding("F2", BLOCKS, "vite.config.ts:4", "function `defineConfig`", "km-smells")
+        accepted, _ = evaluate.apply_false_positives([finding], [false_positive])
+        self.assertEqual(len(accepted), 1)
 
 
 if __name__ == "__main__":

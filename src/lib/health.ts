@@ -1,4 +1,4 @@
-// Contrato de la respuesta /api/health y su lógica, con la I/O inyectada.
+// Contract for the /api/health response and its logic, with injected I/O.
 export interface HealthResponse {
   service: string;
   status: string;
@@ -6,42 +6,42 @@ export interface HealthResponse {
   protocol_version: number;
 }
 
-export interface Motor {
+export interface Engine {
   version: string;
 }
 
-const SERVICIO_ESPERADO = 'desire-api';
-const ESTADO_ESPERADO = 'ok';
+const EXPECTED_SERVICE = 'desire-api';
+const EXPECTED_STATUS = 'ok';
 
-function esRegistro(cuerpo: unknown): cuerpo is Record<string, unknown> {
-  return typeof cuerpo === 'object' && cuerpo !== null;
+function isRecord(body: unknown): body is Record<string, unknown> {
+  return typeof body === 'object' && body !== null;
 }
 
-export function parseHealth(cuerpo: unknown): HealthResponse | null {
-  if (!esRegistro(cuerpo)) return null;
-  if (cuerpo.service !== SERVICIO_ESPERADO) return null;
-  if (cuerpo.status !== ESTADO_ESPERADO) return null;
-  if (typeof cuerpo.scope !== 'string') return null;
-  if (typeof cuerpo.protocol_version !== 'number') return null;
+export function parseHealth(body: unknown): HealthResponse | null {
+  if (!isRecord(body)) return null;
+  if (body.service !== EXPECTED_SERVICE) return null;
+  if (body.status !== EXPECTED_STATUS) return null;
+  if (typeof body.scope !== 'string') return null;
+  if (typeof body.protocol_version !== 'number') return null;
   return {
-    service: cuerpo.service,
-    status: cuerpo.status,
-    scope: cuerpo.scope,
-    protocol_version: cuerpo.protocol_version,
+    service: body.service,
+    status: body.status,
+    scope: body.scope,
+    protocol_version: body.protocol_version,
   };
 }
 
-export function healthMessage(cuerpo: unknown): string {
-  return parseHealth(cuerpo) ? 'Servidor Rust conectado' : 'Respuesta de servidor no reconocida';
+export function healthMessage(body: unknown): string {
+  return parseHealth(body) ? 'Servidor Rust conectado' : 'Respuesta de servidor no reconocida';
 }
 
-export async function consultarSalud(buscar: typeof fetch, signal: AbortSignal): Promise<string> {
-  const response = await buscar('/api/health', { signal });
+export async function checkHealth(fetchImpl: typeof fetch, signal: AbortSignal): Promise<string> {
+  const response = await fetchImpl('/api/health', { signal });
   if (!response.ok) throw new Error(`API no disponible (HTTP ${response.status})`);
   return healthMessage(await response.json());
 }
 
-export async function cargarMotor(importar: () => Promise<Motor>): Promise<string> {
-  const motor = await importar();
-  return `PlayCanvas ${motor.version} importado · GPU aún no comprobada`;
+export async function loadEngine(importEngine: () => Promise<Engine>): Promise<string> {
+  const engine = await importEngine();
+  return `PlayCanvas ${engine.version} importado · GPU aún no comprobada`;
 }
