@@ -1,4 +1,4 @@
-"""Comprueba referencias e aislamiento de fixtures D04; O(entidades + enlaces)."""
+"""Check references and isolation of the D04 fixtures; O(entities + links)."""
 
 import json
 from pathlib import Path
@@ -24,7 +24,7 @@ def check_reference(record: dict, target: dict, context: tuple) -> None:
 
 
 def check_links(record: dict, index: dict, location: str) -> None:
-    """Valida las referencias de un registro; O(campos)."""
+    """Validate the references of a record; O(fields)."""
     campaign = index['campaigns'].get(record.get('campaign_id'), {})
     edition = record.get('rules_edition', campaign.get('rules_edition'))
     for field, value in record.items():
@@ -48,7 +48,7 @@ def check_projection(record: dict, index: dict, collection: str) -> None:
 
 
 def check_snapshot(snapshot: dict, index: dict) -> None:
-    """Comprueba referencias y proyecciones públicas de un snapshot; O(objetos)."""
+    """Check references and public projections of a snapshot; O(objects)."""
     campaign_id = snapshot['campaign']['id']
     if index['campaigns'].get(campaign_id) != snapshot['campaign']:
         raise ValueError('snapshot.campaign: inconsistent projection')
@@ -67,7 +67,7 @@ def check_travel_event(event: dict, index: dict) -> None:
 
 
 def build_index(examples: dict) -> dict:
-    """Construye índices por ID y rechaza duplicados globales; O(entidades)."""
+    """Build indexes by ID and reject global duplicates; O(entities)."""
     index = {}
     identifiers = set()
     for collection, records in examples.items():
@@ -84,7 +84,7 @@ def build_index(examples: dict) -> dict:
 
 
 def check_examples(examples: dict, schema: dict) -> None:
-    """Valida forma, unicidad global de IDs y referencias; O(entidades + enlaces)."""
+    """Validate shape, global ID uniqueness and references; O(entities + links)."""
     validate(examples, schema)
     index = build_index(examples)
     for collection, records in examples.items():

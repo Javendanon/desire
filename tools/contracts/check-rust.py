@@ -1,4 +1,4 @@
-"""Prueba el core exacto en un workspace temporal sin resolver Axum ni Wasm."""
+"""Test the exact core in a temporary workspace without resolving Axum or Wasm."""
 
 from pathlib import Path
 import shutil

@@ -1,4 +1,4 @@
-//! Verifica forma, nombres wire y ausencia de campos DM en DTOs de jugador.
+//! Verify shape, wire names and absence of DM fields in player DTOs.
 
 use super::common::RulesEdition;
 use super::transport::{Examples, PlayerSnapshot};

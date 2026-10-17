@@ -1,4 +1,4 @@
-"""Regresiones de la frontera compartida y de los artefactos generados."""
+"""Regressions for the shared boundary and the generated artifacts."""
 
 import copy
 import json

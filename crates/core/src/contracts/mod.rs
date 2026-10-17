@@ -1,11 +1,11 @@
-//! DTOs v1 generados; validar restricciones JSON Schema antes de aceptar datos externos.
+//! Generated v1 DTOs; validate JSON Schema constraints before accepting external data.
 
 pub mod campaign;
 pub mod catalog;
 pub mod common;
 pub mod transport;
 
-/// Un campo nullable sigue siendo obligatorio: omitirlo no equivale a enviar null.
+/// A nullable field is still required: omitting it is not the same as sending null.
 fn required_nullable<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
