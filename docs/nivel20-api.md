@@ -1,60 +1,76 @@
-# Nivel20 · Evidencia de API en modo lectura
+# Nivel20 · Read-only API evidence
 
-Investigación de solo lectura retomada el 16 de octubre de 2026 (America/Santiago).
-Alcance: qué puede leerse realmente de Nivel20 (campaña «La maldicion de la luz ✨» e
-Ionyth) sin ejecutar escrituras ni persistir credenciales. No implementa el importador;
-D19 consumirá este inventario.
+Read-only investigation carried out on 16 October 2026 (America/Santiago). Scope: what can
+really be read from Nivel20 (campaign «La maldicion de la luz ✨» and character Ionyth)
+without executing writes or persisting credentials. It does not implement the importer;
+D19 will consume this inventory.
 
-Fuentes base (fuera de este worktree):
-`/Users/javendano/dev/nivel20-api-investigation/outputs/nivel20-api-scan.md` (informe previo)
-y los insumos de sesión en
-`/Users/javendano/Documents/Codex/2026-10-15/estoy-pensando-en-hacer-un-wrapper/work/nivel20-scan/`
-(`tabletop.html`, `application.js`, cabeceras y respuestas character/folders). Este documento
-no copia cookies, tokens ni credenciales; la descripción de campaña se redacta.
+## Evidence legend
 
-## Leyenda de evidencia
-
-| Marca | Significado | Fuerza |
+| Mark | Meaning | Strength |
 |---|---|---|
-| **T** | Tráfico observado (Network/HAR/CDP/frames) | Prueba de red |
-| **U** | Interfaz autenticada (navegación y DOM) | No acredita método ni cuerpo |
-| **C** | Contrato esperado por el código JavaScript público | Intención del cliente |
-| **H** | HTTP previo conservado en los insumos | Captura histórica, no repetida |
-| **P** | Prueba HTTP nueva de esta sesión | Prueba reproducible hoy |
+| **T** | Observed traffic (Network/HAR/CDP/WebSocket frames) | Network proof |
+| **U** | Authenticated UI (navigation and DOM attributes) | Does not prove method or body |
+| **C** | Contract expected by the public JavaScript client | Client intent |
+| **H** | Prior HTTP kept in the input files | Historical capture, not repeated |
+| **P** | New HTTP probe from this session | Reproducible today |
 
-## Resultado y límites
+## Source map (capture identifiers)
 
-- La red sí está disponible en esta sesión (**P**): `nivel20.com` resuelve y responde.
-- Se confirma **un** endpoint de lectura pública sin autenticación: metadatos de campaña
-  en JSON (**P**). El resto de lecturas de ficha y estado no se pudo reproducir sin sesión
+Every row below cites one of these capture identifiers. Inputs live outside this worktree at
+`/Users/javendano/Documents/Codex/2026-10-15/estoy-pensando-en-hacer-un-wrapper/work/nivel20-scan/`;
+the prior report is `/Users/javendano/dev/nivel20-api-investigation/outputs/nivel20-api-scan.md`.
+This document copies no cookies, tokens or credentials; the campaign description is redacted.
+
+| ID | File / offset | Size | Integrity | Used for |
+|---|---|---:|---|---|
+| **C1** | `application.js`, character offsets (0-based) | 2 080 054 B | SHA-256 `3ba89129229015561f198c31f2173a2b91e0536875bfad69cd53590d25fadebd` | Client contracts (**C**) |
+| **C2** | `tabletop.html`, lines 41–42 (CSRF meta) | 58 577 B | SHA-256 `41dd029e79c669dae25f781850aca8da391bb2c93ae3245e9f8a4836d663de6b` | CSRF presence (**C**) |
+| **H1** | `headers.txt` lines 1–20 | 994 B | — | `/tabletop` 200 (**H**) |
+| **H2** | `character-headers.txt` lines 1–15, `character-body.txt` line 1 | 511 / 74 B | — | Ionyth 401 (**H**) |
+| **H3** | `folders-headers.txt` lines 1–13, `folders-body.txt` | 412 / 7 227 B | — | `/folders.json` 403 (**H**) |
+| **U** | Authenticated UI session (navigation + DOM attributes) | — | — | Interface observations (**U**) |
+| **P** | New HTTP probes from this session | — | — | Reproducible-today results (**P**) |
+| **PREV** | Prior report `nivel20-api-scan.md` | 24 089 B | — | Corroboration of **C/U** |
+
+Offsets are character indices into the minified bundle read as text, not line or byte offsets.
+The bundle hash matches the script referenced by the authenticated page
+(`/assets/application-3ba89129229015561f198c31f2173a2b91e0536875bfad69cd53590d25fadebd.js`);
+the interface reported version `v2.20.5`.
+
+## Result and limits
+
+- The network is available in this session (**P**): `nivel20.com` resolves and responds.
+- **One** unauthenticated read endpoint is confirmed: campaign metadata in JSON (**P**).
+  The remaining character and state reads could not be reproduced without a session
   (**P** → 401/403).
-- **No hay evidencia T**: no se capturó ningún request/response autenticado ni frame
-  WebSocket. La ficha, el equipo, los conjuros, las acciones, el diario y el registro siguen
-  en nivel **C/U**, igual que en el informe previo.
-- Por tanto **no se ha demostrado una API completa de fichas en JSON ni un cliente HTTP
-  autenticado externo**. Este documento es un inventario parcial, no un contrato.
+- **There is no T evidence**: no authenticated request/response and no WebSocket frame was
+  captured. Character sheet, equipment, spells, actions, journal and combat log remain at
+  **C/U** level, as in the prior report.
+- Therefore **no complete character API in JSON nor an external authenticated HTTP client is
+  demonstrated**. This is a partial inventory, not a contract.
 
-## Bloqueo concreto de la captura autenticada
+## Concrete blocker for the authenticated capture
 
-Chrome está abierto y con sesión, pero **no expone depuración**:
+Chrome is open and authenticated, but it **does not expose debugging**:
 
-- No existe `DevToolsActivePort` en el perfil por defecto ni un socket CDP escuchando
-  (`lsof -nP -iTCP -sTCP:LISTEN | grep -iE 'chrome|9222|9229'` → sin resultados). Sin el flag
-  de arranque no es posible atacharse a una instancia ya iniciada.
-- Reiniciar Chrome con `--remote-debugging-port` está fuera de alcance (el protocolo y la
-  tarjeta prohíben reiniciarlo o cerrar el perfil).
-- La interfaz de automatización soportada expone `viewport` y `pageAssets`, no eventos
-  request/response ni exportación HAR; dos intentos de abrir DevTools por esa vía
-  terminaron en timeout.
-- Un perfil nuevo con CDP serviría solo para tráfico **sin** sesión, que es lo que ya cubre
-  **P**; no aporta la captura autenticada que falta.
+- There is neither a `DevToolsActivePort` file in the default profile nor a listening CDP
+  socket (`lsof -nP -iTCP -sTCP:LISTEN | grep -iE 'chrome|9222|9229'` → no results). Without
+  the startup flag it is not possible to attach to an already-running instance.
+- Restarting Chrome with `--remote-debugging-port` is out of scope (the protocol and the card
+  forbid restarting it or closing the profile).
+- The supported automation interface exposes `viewport` and `pageAssets`, but not
+  request/response events or HAR export; two attempts to open DevTools through that path
+  ended in timeout.
+- A fresh profile with CDP would only serve **unauthenticated** traffic, which is what **P**
+  already covers; it does not provide the missing authenticated capture.
 
-Conclusión: la captura `T` queda **pendiente y bloqueada por herramienta**, no por falta de
-datos. La vía mínima sigue siendo manual y del usuario (DevTools → Network con Preserve log,
-filtro `domain:nivel20.com`, exportar HAR **sanitizado**; revisar cuerpos, query y
-cabeceras antes de compartir). Referencia: [Chrome DevTools, Network reference](https://developer.chrome.com/docs/devtools/network/reference).
+Conclusion: the **T** capture is **pending and blocked by tooling**, not by missing data. The
+minimum path remains manual and user-driven (DevTools → Network with Preserve log, filter
+`domain:nivel20.com`, export a **sanitized** HAR; review bodies, query and headers before
+sharing). Reference: [Chrome DevTools, Network reference](https://developer.chrome.com/docs/devtools/network/reference).
 
-## URLs base e IDs verificados en la interfaz (U)
+## Base URLs and IDs verified in the interface (U)
 
 ```text
 ORIGIN       = https://nivel20.com
@@ -64,136 +80,183 @@ COMBAT_BASE  = CAM
 SPELL_BASE   = CHAR
 ```
 
-IDs de interfaz (U), sin validar como entidades de servidor: `profession_id=68`,
-`messages-room_id=181220`, `character_levels/8444174`, `items/4180199-cuero`. No se
-enumeraron IDs ajenos ni se asumió que `181220` comparta espacio con `tabletop_room`.
+| Relation | Evidence U |
+|---|---|
+| Campaign → character | The `CAM/characters` listing links to `CHAR` |
+| Combat → campaign | In `CAM/tracking_log`, `.combat-tracking[data-base-url]` equals `CAM` |
+| Spells → character | In the sheet, `.character-magic-panel[data-base-url]` equals `CHAR` |
+| Character → profession | `.spell-list-panel[data-profession-id]` equals `68`; its server entity is unverified |
+| Campaign/character → message room | `body[data-messages-room-id]` equals `181220` in both Ionyth and `tracking_log` |
+| Inventory → item instance | Edit links to items under `CHAR/items/4180199-cuero`, among others; not opened |
+| Character → level | Link to `CHAR/character_levels/8444174/edit`; not opened |
 
-## Lecturas: qué está probado y con qué fuerza
+`room_id=181220` is a messaging ID; it is **not proven** to share the ID space with
+`tabletop_room`. The slug is part of the visible path; whether the server accepts the number
+alone was not tested, and no third-party IDs were enumerated.
 
-| Ruta | Fuerza | Resultado |
-|---|---|---|
-| `/tabletop` | H + P | H: 200 `text/html`; P (HEAD): 200 `text/html; charset=utf-8` |
-| `CAM` (Accept JSON) | **P** | 200 `application/json; charset=utf-8`, 537 bytes, metadatos públicos |
-| `CAM` (navegación) | U | Página autenticada |
-| `CAM/characters` | U | Listado autenticado con enlace a Ionyth |
-| `CHAR` | H + P | H: 401 JSON sin sesión; P: 401 `application/json`, 74 bytes |
-| `CHAR` (navegación) | U | Ficha renderizada; contenido ya presente en el DOM |
-| `CAM/log` | U | Diario accesible; paginación convencional no observada |
-| `CAM/tracking_log` | U | Personajes, tiradas y chat; base de combate y sala verificadas |
-| `COMBAT_BASE/status` | C | `dataType: json`; consume stamps, characters, creatures |
-| `COMBAT_BASE/tracking_rows` | C | `character_ids`; JSON cuyo `response` es HTML |
-| `COMBAT_BASE/resources/{id}` | C | HTML de modal vía `loadModal` |
-| `SPELL_BASE/spell_list` | C | HTML; `query`, `order`, `page`, `profession_id`, `list`… |
-| `/folders.json` | H + C + **P** | P: 403 `text/html`, 7227 bytes (página de error estática, mismo tamaño que H); C espera JSON `results` |
-| `/tabletop_assets.json` | C | JSON paginado (`results`, `pagination`, `pinned_results`) |
-| `/games/dnd-5/conditions.json` | **P (parcial)** | 200 `application/json` (19 490 bytes) y luego 202 vacío; ver nota |
+## Read inventory
 
-### Metadatos de campaña públicos (hallazgo nuevo, P)
+Columns: method and query/body are the client-declared contract for **C** rows and the
+observed navigation for **U** rows. "Response MIME" distinguishes the **observed** type from
+the type **expected by the client**; where a value was never captured it is marked
+`not captured`. "Evidence" cites the capture ID from the source map.
 
-`GET CAM` con `Accept: application/json`, **sin sesión**, devuelve 200 y un objeto JSON. La
-estructura observada (descripción redactada):
+| # | Route | Method | Query / body | Response MIME | Evidence |
+|---|---|---|---|---|---|
+| 1 | `/tabletop` | GET | none | **observed** `text/html; charset=utf-8` (200) | **H1** `headers.txt:1`; **P** (HEAD 200 `text/html; charset=utf-8`) |
+| 2 | `CAM` (Accept JSON) | GET | header `Accept: application/json`; no body | **observed** `application/json; charset=utf-8`, 537 B (200) | **P** |
+| 3 | `CAM` (navigation) | not captured | none | **observed** `text/html` (rendered page) | **U** |
+| 4 | `CAM/characters` | not captured | none | **expected** `text/html` (authenticated listing) | **U**; **PREV** |
+| 5 | `CHAR` (Accept JSON) | GET | header `Accept: application/json`; no body | **observed** `application/json; charset=utf-8`, 74 B (401) | **H2** `character-headers.txt:1-2`, `character-body.txt:1`; **P** |
+| 6 | `CHAR` (navigation) | not captured | none | **observed** `text/html` (rendered sheet) | **U** |
+| 7 | `CAM/log` | not captured | none | **observed** `text/html` (journal page) | **U**; pagination not observed |
+| 8 | `CAM/tracking_log` | not captured | none | **observed** `text/html` (Characters/Dice/chat view) | **U** |
+| 9 | `COMBAT_BASE/status` | GET | no explicit `data`; jQuery default body | **expected** `json` (`dataType: json`); server MIME `not captured` | **C1** @ 746 291 |
+| 10 | `COMBAT_BASE/tracking_rows` | GET | `character_ids` copied from the current URL (`searchParams.getAll` then `set`, so the last value wins) | **expected** JSON envelope whose `response` field is HTML; server MIME `not captured` | **C1** @ 752 367 |
+| 11 | `COMBAT_BASE/resources/{row_id}` | GET (via `loadModal`) | `modal=true` added by the loader | **expected** HTML fragment (no `dataType`); server MIME `not captured` | **C1** @ 752 200, 763 563 |
+| 12 | `SPELL_BASE/spell_list` | GET | `query` (lowercased), `order`, `spell_levels` (ints), `schools` (ints), `tags` (ints), `profession_id`, `list` (`prepared`\|`known`\|`available`\|`all`), `page` | **expected** HTML (no `dataType`); server MIME `not captured` | **C1** @ 929 900–932 900; **U** (`list` options, `profession_id=68`) |
+| 13 | `/folders.json` | GET | `content_type`, `all=true`; variant `moving_folder_id`, `target_folder_type`; no `page` | **expected** JSON `results`; **observed** without auth `text/html`, 7 227 B (403) | **C1** @ 965 405, 966 377; **H3** `folders-headers.txt:1-3` |
+| 14 | `/tabletop_assets.json` | GET | `owned=true`, `asset_type`, `tabletop_room`, `tags`, `q`, `order`, `folder_type`, `folder_id`, `page`, `per_page=15` | **expected** JSON (`results`, `pagination`, optional `pinned_results`); server MIME `not captured` | **C1** @ 770 900–772 000, 971 790 |
+| 15 | `/games/dnd-5/conditions.json` | not captured | query `not captured` (async select `data-url` in `tracking_log`) | **observed** `application/json` (200, 19 490 B) then `not captured` (202, empty body); see note | **U**; **P** (partial) |
+
+Unavailable details are marked `not captured`: for U navigation rows the HTTP method is
+pending; for C rows the method is the client's `type` value but the server's accepted method
+and real MIME type are pending. No authenticated response body was captured for any C row.
+
+### Pagination and parameters
+
+- **`spell_list`**: the first page replaces `.spell-list-content`; later pages append. The
+  next page number comes from the `data-page` of the load-more control. Server page size and
+  end condition `not captured`. (**C** via **PREV** line 106; **C1** @ 929 900–932 900.)
+- **`tabletop_assets.json`**: the loader adds `page` and `per_page` (15) and consumes
+  `pagination.current_page`, `pagination.more`, `pagination.total_results` and `results`;
+  `pinned_results` is optional and may carry folders and pinned results, so totals may refer
+  only to paginated results. Server semantics `not captured`. (**C1** @ 771 187, 771 728.)
+- **`tracking_rows`**: the client reads `searchParams.getAll("character_ids")` but calls
+  `set("character_ids", id)` inside the loop, so a multi-value URL keeps the last value. This
+  is a client observation, not a server contract and not a multi-character test. (**C1** @
+  752 461.)
+- **`folders.json`**: `all=true` is sent and no `page` field is observed; pagination
+  contract `not captured`. (**C1** @ 965 405.)
+- **`CAM/log`**: no conventional pagination was found in the DOM; global absence of
+  pagination is not proven. (**U**.)
+- jQuery receives objects and arrays; the exact serialization, including `[]` suffixes, empty
+  values and Content-Type on the wire, is `not captured`. (**PREV** line 109.)
+
+### Public campaign metadata (new finding, P)
+
+`GET CAM` with `Accept: application/json`, **unauthenticated**, returns 200 and a JSON object.
+Observed structure (description redacted):
 
 ```json
 {
   "id": 109662,
   "game_id": 3,
   "name": "La maldicion de la luz ✨",
-  "description": "<REDACTADO>",
+  "description": "<REDACTED>",
   "created_at": "2025-03-05T13:05:22.000-03:00",
   "updated_at": "2026-10-03T22:38:30.000-03:00",
   "url": "https://nivel20.com/campaigns/109662-la-maldicion-de-la-luz.json"
 }
 ```
 
-Es lectura estructurada real, pero limitada a **metadatos de cabecera**: no incluye ficha,
-personajes, estado de combate, inventario ni lore. Es un endpoint interno **no documentado**,
-sin garantía de estabilidad ni disponibilidad futura, y no debe tratarse como contrato. El
-campo `url` es un valor devuelto por el servidor: el formato `/campaigns/<id>.json` (sin el
-prefijo `/games/dnd-5`) **no** se verificó como endpoint válido ni como forma canónica.
+This is real structured read, but limited to **header metadata**: it includes no sheet,
+characters, combat state, inventory or lore. It is an internal **undocumented** endpoint with
+no stability or availability guarantee and must not be treated as a contract. The `url` field
+is a server-returned value: the `/campaigns/<id>.json` form (without the `/games/dnd-5`
+prefix) was **not** verified as a valid endpoint or canonical form.
 
-### Nota sobre `conditions.json`
+### Note on `conditions.json`
 
-La primera lectura devolvió 200 `application/json` con ~19 KB; una repetición inmediata
-devolvió 202 con cuerpo vacío y `x-cache: Error from cloudfront`. La inconsistencia indica
-un control perimetral (WAF/CloudFront), no un contrato estable. **No se forzó el endpoint**;
-queda como lectura probable pendiente de confirmar, sin usarla como base de diseño.
+The first read returned 200 `application/json` with ~19 KB; an immediate repeat returned 202
+with an empty body and `x-cache: Error from cloudfront`. The inconsistency indicates a
+perimeter control (WAF/CloudFront), not a stable contract. **The endpoint was not forced**;
+it remains a probable read pending confirmation and is not used as a design basis.
 
-### Lectura autenticada desde cliente externo (P → fallida)
+### Authenticated read from an external client (P → failed)
 
-Ninguna lectura de ficha funcionó sin sesión (`CHAR` → 401; `folders.json` → 403). El 401
-JSON solo demuestra el mensaje de login (`{"error":"Tienes que iniciar sesión o
-registrarte para poder continuar."}`); **no** prueba la existencia de una ficha JSON. No se
-trasladaron cookies ni tokens a ningún cliente para reintentar.
+No sheet read worked without a session (`CHAR` → 401; `folders.json` → 403). The JSON 401
+only proves the login message (`{"error":"Tienes que iniciar sesión o registrarte para poder
+continuar."}`); it does **not** prove the existence of a JSON sheet. No cookies or tokens were
+transferred to any client for a retry.
 
-## Escrituras detectadas — documentadas, NO ejecutadas (C)
+## Writes detected — documented, NOT executed (C)
 
-| Ruta | Método | Efecto |
-|---|---|---|
-| `COMBAT_BASE/set_row_status` | POST | Daño, PG, recursos, condiciones |
-| `COMBAT_BASE/set_characters_status` | POST | Estado por personaje/criatura |
-| `SPELL_BASE/update_spell` | POST | add/remove/prepare/unprepare |
-| `/room_messages` | POST | Mensajes y tiradas |
-| `/room_messages/clear_chat` | POST | Vaciar chat |
-| `/folders.json` y `/folders/{id}.json` | POST/PATCH/DELETE | Carpetas |
-| `/tabletop_assets/{id}.json` | DELETE | Recurso de tablero |
+| Route | Method | Known fields / effect | Evidence |
+|---|---|---|---|
+| `COMBAT_BASE/set_row_status` | POST | `row_id`, `row_type`, `row_index`, `damage`, `temp_hp`, `max_hp`, `resources`, `notes`, `conditions`; expects JSON | **C1** @ 745 863 |
+| `COMBAT_BASE/set_characters_status` | POST | `characters` and `creatures` indexed by ID; observed for initiative `{initiative: ...}` | **C1** @ 746 044, 748 700–749 400 |
+| `SPELL_BASE/update_spell` | POST | `spell_id`, `profession_id`, `spell_action`: `add`, `remove`, `prepare`, `unprepare`; expects JSON | **C1** @ 931 396 |
+| `/room_messages` | POST | `room_message`: `room_id`, `sender_info`, `visibility`, `data`, `message_type`, `icon_url`, `parent_icon_url`, `icon_id`, `parent_icon_id` | **C1** @ 2 068 192 |
+| `/room_messages/clear_chat` | POST | `room_id`; clears chat | **C1** @ 2 072 139 |
+| `/folders.json` | POST | `folder[name]`, `folder[content_type]`, `folder[parent_folder_id]` | **C1** @ 965 915 |
+| `/folders/{id}.json` | PATCH | `folder`: name, parent_folder_id, folder_type | **C1** @ 967 327 |
+| `/folders/{id}.json` | DELETE | Folder deletion | **C1** @ 968 346 |
+| `/tabletop_assets/{id}.json` | DELETE | Asset deletion | **C1** @ 970 450 |
 
-Todo lo anterior es contrato de cliente (**C**). No se ejecutó ninguna. No se presupone la
-lista completa.
+All of the above is client contract (**C**). None was executed and the list is not assumed
+complete. The combat code also has a helper that POSTs to a URL received as an argument. The
+sheet contains edit, create, import and a `?update_cache=true` link; none was followed. Not
+every link that looks like navigation is a safe read.
 
-## Autenticación, CSRF y sesión
+## Authentication, CSRF and session
 
-- La sesión es una cookie Rails `HttpOnly`; su nombre y valor **no** se persistieron ni
-  mostraron. Atributos de caducidad/renovación del servidor: desconocidos.
-- `tabletop.html` incluye `<meta name="csrf-param">` y `csrf-token`; Rails UJS copia el token
-  a `X-CSRF-Token`. Presencia confirmada; valor no leído. Cualquier HAR debe revisarse antes
-  de compartirse.
-- `Access-Control-Allow-Origin: *` aparece en respuestas, pero no acredita CORS autenticado
-  ni una API pública: preflight, `credentials` y permisos reales siguen sin probar.
+- The session is an `HttpOnly` Rails cookie; its name and value were **not** persisted or
+  shown. Server expiry/renewal attributes: unknown.
+- `tabletop.html` lines 41–42 include `<meta name="csrf-param">` and `csrf-token`; Rails UJS
+  copies the token to `X-CSRF-Token`. Presence confirmed; value not read. Any HAR must be
+  reviewed before sharing. (**C2**.)
+- `Access-Control-Allow-Origin: *` appears in responses, but it does not prove authenticated
+  CORS or a public API: preflight, `credentials` and real permissions remain untested.
+- The prior `/tabletop` header carries a `Set-Cookie` with `HttpOnly` and no explicit
+  `Expires`/`Max-Age`; that sample does not establish the attributes of the authenticated
+  cookie. Its value is **not** reproduced here. (**H1** `headers.txt:15`.)
 
 ## ActionCable / WebSocket
 
-Solo evidencia **C/U**; sin handshake, endpoint efectivo ni frame real.
+Only **C/U** evidence; no handshake, effective endpoint nor real frame.
 
-- El bundle crea `ActionCable.createConsumer()`; sin meta `action-cable-url` la ruta por
-  defecto es `/cable` → se predice `wss://nivel20.com/cable` (pendiente de captura).
-- Protocolos: `actioncable-v1-json` y `actioncable-unsupported`.
-- Suscripción `{channel:"RoomChannel", room:<messages-room-id>}` si hay
-  `[data-channel-subscribe="room"]` (dos en `tracking_log`, ninguno en Ionyth).
-- Recibe `chat`, `dice_roll`, `status_update`, `clear_messages`. El envío de chat/tiradas va
-  por POST `/room_messages`; la recepción por RoomChannel.
+- The bundle calls `ActionCable.createConsumer()`; with no `action-cable-url` meta the default
+  path is `/cable` → predicted `wss://nivel20.com/cable` (pending capture). (**C1** @ 2 057 654.)
+- Protocols: `actioncable-v1-json` and `actioncable-unsupported`.
+- Subscription `{channel:"RoomChannel", room:<messages-room-id>}` if
+  `[data-channel-subscribe="room"]` is present (two in `tracking_log`, none in Ionyth).
+  (**C1** @ 2 071 018.)
+- Receives `chat`, `dice_roll`, `status_update`, `clear_messages`. Chat and dice are sent via
+  POST `/room_messages`; reception goes through RoomChannel.
 
-## Decisión de arquitectura (provisional, condicional)
+## Architecture decision (provisional, conditional)
 
-| Opción | Evaluación con la evidencia |
+| Option | Evaluation against the evidence |
 |---|---|
-| Backend directo a Nivel20 | **No justificado todavía.** Falta autenticación soportada, lecturas autenticadas externas y contrato estable. Concentraría el manejo de sesiones |
-| Puente local / extensión | **Candidato** para uso personal porque la sesión ya vive en Chrome; debe limitarse a lecturas explícitas y entregar datos normalizados sin credenciales. Capacidad aún no implementada ni probada |
-| Combinación | **Preferida, condicional:** puente local de lectura + backend propio para campañas y mapas 3D, con referencias a los IDs de origen. Mantener secretos de Nivel20 fuera del backend |
+| Backend directly to Nivel20 | **Not justified yet.** Missing supported authentication, external authenticated reads and a stable contract. It would concentrate session handling |
+| Local bridge / extension | **Candidate** for personal use because the session already lives in Chrome; it must be limited to explicit reads and return normalized data without credentials. Capability not implemented or tested yet |
+| Combination | **Preferred, conditional:** local read bridge + own backend for campaigns and 3D maps, with references to source IDs. Keep Nivel20 secrets out of the backend |
 
-La decisión **no** está cerrada: sin evidencia `T` no se puede prometer viabilidad. Antes de
-diseñar el adaptador hay que capturar contratos reales y comprobar si la ficha se obtiene
-sin analizar HTML. No se adopta el scraping del DOM como primera opción.
+The decision is **not** closed: without **T** evidence, viability cannot be promised. Before
+designing the adapter, real contracts must be captured and it must be checked whether the
+sheet can be obtained without parsing HTML. DOM scraping is not adopted as a first option.
 
-## Pruebas pendientes y criterio de cierre
+## Pending tests and closing criterion
 
-1. Captura Network real por sección (método, URL, query, cuerpo, status, Content-Type,
-   secuencia), con secretos redactados antes de persistir.
-2. Distinguir HTML inicial de JSON/fragmentos/peticiones de fondo en la carga de Ionyth.
-3. Verificar `status`, `tracking_rows`, `spell_list` y paginación mediante lecturas
-   autenticadas (sin escrituras).
-4. Confirmar serialización exacta de arrays (sufijos `[]`, valores vacíos, Content-Type).
-5. Capturar WS existente (handshake, protocolo, confirmación de RoomChannel, ping) sin
-   enviar frames.
-6. Comprobar atributos y caducidad de sesión con metadatos, sin valores.
-7. Reproducir ≥ 2 GET autenticados con cliente externo y verificar equivalencia, con un
-   método seguro de autenticación.
-8. Confirmar el contrato de `conditions.json` pese al control perimetral observado.
+1. Real Network capture per section (method, URL, query, body, status, Content-Type,
+   sequence), with secrets redacted before persisting.
+2. Distinguish initial HTML from JSON/fragments/background requests when loading Ionyth.
+3. Verify `status`, `tracking_rows`, `spell_list` and pagination via authenticated reads
+   (no writes).
+4. Confirm exact array serialization (`[]` suffixes, empty values, Content-Type).
+5. Capture the existing WS (handshake, protocol, RoomChannel confirmation, ping) without
+   sending frames.
+6. Check session attributes and expiry from metadata, without values.
+7. Reproduce ≥ 2 authenticated GETs with an external client and verify equivalence, using a
+   safe authentication method.
+8. Confirm the `conditions.json` contract despite the observed perimeter control.
 
-El análisis estará completo con esas evidencias, no por la mera presencia de rutas en el
-JavaScript. No se atribuye esquema completo de API, compatibilidad ni soporte oficial.
+The analysis is complete with that evidence, not by the mere presence of routes in the
+JavaScript. No full API schema, compatibility guarantee or official support is attributed.
 
-## Higiene de secretos
+## Secret hygiene
 
-No se guardaron cookies, tokens CSRF ni datos personales en este documento, en el repositorio
-ni en logs. Los ejemplos son estructurales o redactados. Los insumos `nivel20-scan/` vivieron
-fuera del árbol de trabajo y **no** se copiaron.
+No cookies, CSRF tokens or personal data were saved in this document, in the repository or in
+logs. Examples are structural or redacted. The `nivel20-scan/` inputs lived outside the
+working tree and were **not** copied.
