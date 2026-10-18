@@ -8,7 +8,7 @@ command executed in this worktree; nothing blocked is reported as passing.
 
 | Tool | Version used | Selection note |
 | --- | --- | --- |
-| Node | 24.18.0 | Pinned in `.nvmrc`. Node 22.17.1 ships Corepack 0.33.0, which cannot run pnpm 12.11.2 (writes `bin/pnpm.cjs`, while pnpm ships `bin/pnpm.mjs`). |
+| Node | 24.18.0 | Pinned in `.nvmrc` and required by `engines` (`>=24.0.0`). Node 22.17.1 ships Corepack 0.33.0, which cannot run pnpm 12.11.2 on a clean cache (MODULE_NOT_FOUND, `bin/pnpm.cjs` vs `bin/pnpm.mjs`). Verified with an empty `COREPACK_HOME` on both Node lines. |
 | Corepack | 0.35.0 | Bundled with Node 24.18.0. Required to launch pnpm 12.11.2. |
 | pnpm | 12.11.2 | Resolved from `packageManager`; reports `12.11.2`. |
 | Rust / Cargo | 1.97.1 | Pinned by `rust-toolchain.toml`. Rustup-managed toolchain is used for Wasm; Homebrew Rust 1.97.1 reports the same compiler version for native gates. |
@@ -28,10 +28,33 @@ cache entry was replaced by a fresh download. No global pnpm package was install
 
 | Blocker in the 15 October report | Result now | Evidence |
 | --- | --- | --- |
-| Package registry unreachable; no pnpm, no lockfile | Resolved | `pnpm install` resolved 52 packages; `pnpm-lock.yaml` generated and `pnpm install --frozen-lockfile` passes. |
+| Package registry unreachable; no pnpm, no lockfile | Resolved | `pnpm install` resolved 52 packages; `pnpm-lock.yaml` is a single YAML document and `pnpm install --frozen-lockfile` passes. |
 | `cargo check --offline` failed because Axum was not cached | Resolved | `cargo check --workspace --locked` passes with the registry available; `Cargo.lock` generated. |
 | No Wasm target or wasm-pack | Resolved | rustup installed `wasm32-unknown-unknown`; `pnpm build:wasm` produced `src/generated/wasm/desire_wasm_bg.wasm`. |
 | Docker unreachable from the agent | Resolved | `docker info` returns 28.1.1; the project database was started and stopped without touching other containers. |
+
+## Lockfile shape
+
+pnpm 12 records the pinned package manager (from `packageManager` or
+`devEngines.packageManager`) as a leading env document, so a default install writes
+`pnpm-lock.yaml` as two concatenated YAML documents (verified on 12.11.2: one doc for
+`packageManagerDependencies`, a second for the project graph). That breaks readers
+that call a single-document YAML loader. The project keeps the lockfile
+single-document by setting `pmOnFail: ignore` in `pnpm-workspace.yaml`: Corepack still
+enforces the `packageManager` version from `package.json`, but pnpm does not manage
+itself and does not append the env document.
+
+Evidence:
+
+```sh
+corepack pnpm install           # writes pnpm-lock.yaml
+corepack pnpm install --frozen-lockfile
+grep -c '^---' pnpm-lock.yaml   # 0: no document separator
+```
+
+A hand merge of the two generated documents is not valid: pnpm 12 rejects it with
+`Cannot update packageManagerDependencies with "frozen-lockfile" because the lockfile
+is not up to date`. Removing the `pmOnFail` setting restores the two-document form.
 
 ## Frontend gates
 
@@ -42,7 +65,7 @@ corepack pnpm build
 
 - `pnpm check`: `svelte-check found 0 errors and 0 warnings`; the TypeScript project
   for `tsconfig.node.json` also passed.
-- `pnpm build`: 1359 modules transformed, production build completed in 410 ms.
+- `pnpm build`: 1359 modules transformed, production build completed in 519 ms.
   Output: `dist/index.html`, one CSS bundle and two JS bundles.
 - `pnpm install --frozen-lockfile`: `Lockfile is up to date, resolution step is skipped`.
 
@@ -148,16 +171,25 @@ analyzed directly by `km`; that limitation is unchanged and is not counted as a 
 
 ## Review notes
 
-- Only `.nvmrc`, the two generated lockfiles and documentation changed; no product
-  source code was touched.
+- Changed files: `.nvmrc`, `package.json` (engines), `pnpm-workspace.yaml` (new),
+  `pnpm-lock.yaml`, `Cargo.lock`, `README.md` and this report. No product source code
+  was touched.
 - `pnpm-lock.yaml` and `Cargo.lock` are generated artifacts; they were not edited by
   hand.
 - The comparable `km` active-scope score is unchanged, so no quality improvement is
   claimed from this environment work.
 - The known `vite.config.ts` smells and the Svelte analysis gap remain pre-existing
   debt; they are not silently waived.
-- No separate reviewer agent was available in this session. The diff and command
-  logs were self-reviewed, but the independent advisor step is still pending.
+- Independent advisor: the D01 rework was reviewed by a separate reviewer before this
+  revision. The reviewer raised four findings; all four are addressed below. This
+  closes the advisor step that the earlier revision left pending.
+
+| Finding | Severity | Disposition |
+| --- | --- | --- |
+| Two concatenated YAML documents in `pnpm-lock.yaml` | HIGH | Fixed: `pmOnFail: ignore` in `pnpm-workspace.yaml`; the lockfile is now one document. |
+| `engines.node` still admitted Node 22 | MEDIUM | Fixed: `engines.node` is now `>=24.0.0`, matching `.nvmrc` and the Corepack 0.35 requirement. |
+| `README.md` mixed Spanish and English | LOW | Fixed: the whole file is English. |
+| The report claimed a finished flow while the advisor step was pending | LOW | Fixed: the independent review was performed and its findings are recorded above. |
 
 ## Reproduction
 
