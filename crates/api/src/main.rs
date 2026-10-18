@@ -22,7 +22,7 @@ async fn health() -> Json<Health> {
 }
 
 fn shutdown_error_message(error: &std::io::Error) -> String {
-    format!("No se pudo escuchar la señal de apagado: {error}")
+    format!("Could not listen for the shutdown signal: {error}")
 }
 
 async fn wait_for_shutdown() {
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn shutdown_preserves_cause() {
-        let error = std::io::Error::other("sin señal disponible");
-        assert!(shutdown_error_message(&error).contains("sin señal disponible"));
+        let error = std::io::Error::other("no signal available");
+        assert!(shutdown_error_message(&error).contains("no signal available"));
     }
 }

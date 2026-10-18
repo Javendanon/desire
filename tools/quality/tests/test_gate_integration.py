@@ -27,20 +27,20 @@ def _fixture(content: dict[str, str]) -> tempfile.TemporaryDirectory:
 
 class GateAcceptanceTest(unittest.TestCase):
     def test_long_line_fails(self):
-        line = 'pub const TEXTO: &str = "' + "x" * 120 + '";\n'
-        with _fixture({"src/roto.rs": line}) as root:
+        line = 'pub const TEXT: &str = "' + "x" * 120 + '";\n'
+        with _fixture({"src/broken.rs": line}) as root:
             result = _run_gate(Path(root), "--no-km")
         self.assertEqual(result.returncode, 2)
         self.assertIn("F16", result.stdout)
 
     def test_silent_error_fails(self):
-        with _fixture({"src/roto.rs": "pub fn f() {\n    let _ = leer();\n}\n"}) as root:
+        with _fixture({"src/broken.rs": "pub fn f() {\n    let _ = read();\n}\n"}) as root:
             result = _run_gate(Path(root), "--no-km")
         self.assertEqual(result.returncode, 2)
         self.assertIn("F11", result.stdout)
 
     def test_clean_source_passes(self):
-        with _fixture({"src/bien.rs": "pub fn suma(a: i32) -> i32 {\n    a + 1\n}\n"}) as root:
+        with _fixture({"src/clean.rs": "pub fn increment(a: i32) -> i32 {\n    a + 1\n}\n"}) as root:
             result = _run_gate(Path(root), "--no-km")
         self.assertEqual(result.returncode, 0)
 

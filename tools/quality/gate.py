@@ -37,9 +37,9 @@ class Report:
 
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", default=".", help="raíz del proyecto a medir")
-    parser.add_argument("--no-km", action="store_true", help="omitir métricas de km")
-    parser.add_argument("--json", help="ruta para volcar hallazgos en JSON")
+    parser.add_argument("--root", default=".", help="project root to measure")
+    parser.add_argument("--no-km", action="store_true", help="skip km metrics")
+    parser.add_argument("--json", help="path to dump findings as JSON")
     return parser.parse_args(argv)
 
 
@@ -82,7 +82,7 @@ def measure_product(root: Path, notes: list[str]) -> tuple[list[Finding], dict]:
     dups = km.run(root, scope.query("dups", *extra_dups))
     findings: list[Finding] = []
     if score.get("files_analyzed", 0) == 0:
-        notes.append("Alcance km sin archivos rs/ts/js: score no evaluado (evita falso piso).")
+        notes.append("km scope has no rs/ts/js files: score not evaluated (avoids a false floor).")
     else:
         findings += evaluate.evaluate_score(score["score"], score["grade"])
     findings += measure_scope(root, scope) + evaluate.evaluate_duplication(dups)
@@ -99,7 +99,7 @@ def measure_tools(root: Path) -> list[Finding]:
 def measure_svelte(root: Path, notes: list[str]) -> list[Finding]:
     path = root / config.SVELTE
     if not path.exists():
-        notes.append(f"{config.SVELTE} ausente: sin cobertura de script Svelte.")
+        notes.append(f"{config.SVELTE} missing: no Svelte script coverage.")
         return []
     with tempfile.TemporaryDirectory() as tmp:
         dest = Path(tmp) / "App.script.ts"
@@ -110,8 +110,8 @@ def measure_svelte(root: Path, notes: list[str]) -> list[Finding]:
 
 def measure_km(root: Path, notes: list[str]) -> tuple[list[Finding], dict]:
     if not km.has_km():
-        detail = "km ausente: no se midieron score, olores, complejidad ni duplicación"
-        return [Finding("Entorno", evaluate.BLOCKS, "km", detail, "tooling")], {}
+        detail = "km missing: score, smells, complexity and duplication were not measured"
+        return [Finding("Environment", evaluate.BLOCKS, "km", detail, "tooling")], {}
     product, score = measure_product(root, notes)
     return product + measure_tools(root) + measure_svelte(root, notes), score
 
@@ -121,7 +121,7 @@ def collect(root: Path, no_km: bool, notes: list[str]) -> tuple[list[Finding], d
     findings = evaluate.evaluate_size(sources_found)
     findings += evaluate.evaluate_f16(sources_found) + evaluate.evaluate_f11(sources_found)
     if no_km:
-        notes.append("Modo --no-km: sin métricas de score, olores ni complejidad.")
+        notes.append("--no-km mode: no score, smells or complexity metrics.")
         return findings, {}
     from_km, score = measure_km(root, notes)
     return findings + from_km, score
@@ -134,7 +134,7 @@ def describe(finding: Finding) -> str:
 def print_section(title: str, findings: list[Finding]) -> None:
     print(f"\n{title} ({len(findings)})")
     if not findings:
-        print("  — sin hallazgos")
+        print("  — no findings")
         return
     for finding in findings:
         print(describe(finding))
@@ -142,27 +142,27 @@ def print_section(title: str, findings: list[Finding]) -> None:
 
 def print_score(score: dict) -> None:
     if not score:
-        print("Score km: no medido")
+        print("km score: not measured")
         return
-    print(f"Score km (rs/ts/js): {score['score']:.2f} / {score['grade']}")
-    print(f"  {score['files_analyzed']} archivos · {score['total_loc']} LOC")
-    print(f"  piso {config.SCORE_FLOOR} · objetivo {config.SCORE_TARGET}")
+    print(f"km score (rs/ts/js): {score['score']:.2f} / {score['grade']}")
+    print(f"  {score['files_analyzed']} files · {score['total_loc']} LOC")
+    print(f"  floor {config.SCORE_FLOOR} · target {config.SCORE_TARGET}")
 
 
 def print_false_positives(false_positives: list, active: int) -> None:
-    print(f"\nFalsos positivos documentados ({len(false_positives)}; {active} activos ahora)")
+    print(f"\nDocumented false positives ({len(false_positives)}; {active} active now)")
     for false_positive in false_positives:
         print(f"  - {false_positive.describe()}")
 
 
 def print_manual_review() -> None:
-    print("\nRevisión manual pendiente (no bloquea el gate; impide aprobación integral)")
+    print("\nPending manual review (does not block the gate; blocks integral approval)")
     for rule, detail in config.MANUAL_REVIEW:
         print(f"  - {rule}: {detail}")
 
 
 def print_coverage() -> None:
-    print("\nCobertura y límites del gate")
+    print("\nGate coverage and limits")
     for name, detail in config.COVERAGE:
         print(f"  - {name}: {detail}")
 
@@ -170,7 +170,7 @@ def print_coverage() -> None:
 def print_notes(notes: list[str]) -> None:
     if not notes:
         return
-    print("\nNotas de medición")
+    print("\nMeasurement notes")
     for note in notes:
         print(f"  - {note}")
 
@@ -179,24 +179,24 @@ def print_report(report: Report) -> int:
     blocks = evaluate.only_blocks(report.findings)
     warnings = [f for f in report.findings if f.severity == evaluate.WARNS]
     informative = [f for f in report.findings if f.severity == evaluate.INFO]
-    print("== Gate de calidad Desire ==")
+    print("== Desire quality gate ==")
     print_score(report.score)
-    print_section("Bloqueos de piso", blocks)
-    print_section("Avisos bajo objetivo", warnings)
-    print_section("Informativos para revisión", informative)
+    print_section("Floor blocks", blocks)
+    print_section("Below-target warnings", warnings)
+    print_section("Informational for review", informative)
     print_false_positives(report.false_positives, len(report.suppressed))
     print_manual_review()
     print_coverage()
     print_notes(report.notes)
-    print("\nVeredicto del gate:", "FALLIDO" if blocks else "OK (parcial)")
-    print("Aprobación integral: NO — revisión manual pendiente y cobertura no universal.")
+    print("\nGate verdict:", "FAILED" if blocks else "OK (partial)")
+    print("Integral approval: NO — manual review pending and coverage is not universal.")
     return len(blocks)
 
 
 def dump_json(dest: Path, accepted: list[Finding], suppressed: list[Finding]) -> None:
     data = {
-        "hallazgos": [vars(finding) for finding in accepted],
-        "falsos_positivos_suprimidos": [vars(finding) for finding in suppressed],
+        "findings": [vars(finding) for finding in accepted],
+        "suppressed_false_positives": [vars(finding) for finding in suppressed],
     }
     dest.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 

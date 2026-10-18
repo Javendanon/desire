@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { checkHealth, loadEngine } from './lib/health';
 
-  let api = $state('Comprobando conexión…');
-  let engine = $state('Comprobando biblioteca…');
+  let api = $state('Checking connection…');
+  let engine = $state('Checking library…');
 
   function reportError(context: string, error: unknown): void {
     console.warn(context, error);
@@ -19,8 +19,8 @@
     void checkHealth(fetch, controller.signal)
       .then(setApi)
       .catch((error: unknown) => {
-        setApi('Servidor pendiente · ejecuta pnpm dev:api');
-        reportError('No se pudo consultar /api/health', error);
+        setApi('Server pending · run pnpm dev:api');
+        reportError('Could not query /api/health', error);
       });
 
     void loadEngine(() => import('playcanvas'))
@@ -28,8 +28,8 @@
         if (!disposed) engine = message;
       })
       .catch((error: unknown) => {
-        if (!disposed) engine = 'No se pudo importar PlayCanvas';
-        reportError('No se pudo importar PlayCanvas', error);
+        if (!disposed) engine = 'Could not import PlayCanvas';
+        reportError('Could not import PlayCanvas', error);
       });
 
     return () => {
@@ -50,7 +50,7 @@
     <li>Svelte 5 y TypeScript</li>
     <li>{api}</li>
     <li>{engine}</li>
-    <li>PostgreSQL y WebAssembly: verificación externa pendiente</li>
+    <li>PostgreSQL and WebAssembly: external verification pending</li>
   </ul>
 </main>
 

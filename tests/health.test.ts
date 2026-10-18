@@ -10,7 +10,7 @@ const VALID_RESPONSE = {
   protocol_version: 1,
 };
 
-const UNRECOGNIZED = 'Respuesta de servidor no reconocida';
+const UNRECOGNIZED = 'Unrecognized server response';
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -38,7 +38,7 @@ test('rejects objects without the contract fields', () => {
 });
 
 test('rejects a different service or status', () => {
-  assert.equal(parseHealth({ ...VALID_RESPONSE, service: 'otro' }), null);
+  assert.equal(parseHealth({ ...VALID_RESPONSE, service: 'other' }), null);
   assert.equal(parseHealth({ ...VALID_RESPONSE, status: 'degraded' }), null);
 });
 
@@ -49,18 +49,18 @@ test('rejects wrong field types', () => {
 
 test('accepts the valid contract and keeps the connected message', () => {
   assert.deepEqual(parseHealth(VALID_RESPONSE), VALID_RESPONSE);
-  assert.equal(healthMessage(VALID_RESPONSE), 'Servidor Rust conectado');
+  assert.equal(healthMessage(VALID_RESPONSE), 'Rust server connected');
 });
 
 test('accepts extra fields without breaking the contract', () => {
   const extended = { ...VALID_RESPONSE, uptime_ms: 10 };
   assert.equal(parseHealth(extended)?.service, 'desire-api');
-  assert.equal(healthMessage(extended), 'Servidor Rust conectado');
+  assert.equal(healthMessage(extended), 'Rust server connected');
 });
 
 test('checkHealth connects with a valid response', async () => {
   const message = await checkHealth(fetchWith(VALID_RESPONSE), new AbortController().signal);
-  assert.equal(message, 'Servidor Rust conectado');
+  assert.equal(message, 'Rust server connected');
 });
 
 test('checkHealth fails with the HTTP code in the message', async () => {

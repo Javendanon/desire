@@ -32,16 +32,16 @@ export function parseHealth(body: unknown): HealthResponse | null {
 }
 
 export function healthMessage(body: unknown): string {
-  return parseHealth(body) ? 'Servidor Rust conectado' : 'Respuesta de servidor no reconocida';
+  return parseHealth(body) ? 'Rust server connected' : 'Unrecognized server response';
 }
 
 export async function checkHealth(fetchImpl: typeof fetch, signal: AbortSignal): Promise<string> {
   const response = await fetchImpl('/api/health', { signal });
-  if (!response.ok) throw new Error(`API no disponible (HTTP ${response.status})`);
+  if (!response.ok) throw new Error(`API unavailable (HTTP ${response.status})`);
   return healthMessage(await response.json());
 }
 
 export async function loadEngine(importEngine: () => Promise<Engine>): Promise<string> {
   const engine = await importEngine();
-  return `PlayCanvas ${engine.version} importado · GPU aún no comprobada`;
+  return `PlayCanvas ${engine.version} imported · GPU not checked yet`;
 }

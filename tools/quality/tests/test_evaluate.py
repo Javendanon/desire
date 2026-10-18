@@ -72,7 +72,7 @@ class FalsePositivesTest(unittest.TestCase):
             rule="F2",
             path="vite.config.ts",
             contains="defineConfig",
-            justification="defineConfig recibe un objeto",
+            justification="defineConfig takes an object",
         )
         finding = Finding("F2", BLOCKS, "vite.config.ts:4", "function `defineConfig` has 6 params", "km-smells")
         accepted, suppressed = evaluate.apply_false_positives([finding], [false_positive])
@@ -80,7 +80,7 @@ class FalsePositivesTest(unittest.TestCase):
         self.assertEqual(len(suppressed), 1)
 
     def test_does_not_suppress_on_mismatch(self):
-        false_positive = config.FalsePositive("km-smells", "F2", "otro.ts", "defineConfig", "otro")
+        false_positive = config.FalsePositive("km-smells", "F2", "other.ts", "defineConfig", "other")
         finding = Finding("F2", BLOCKS, "vite.config.ts:4", "function `defineConfig`", "km-smells")
         accepted, _ = evaluate.apply_false_positives([finding], [false_positive])
         self.assertEqual(len(accepted), 1)

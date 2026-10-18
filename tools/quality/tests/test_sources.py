@@ -43,7 +43,7 @@ class F16CompressedTest(unittest.TestCase):
 
 class F11SilentErrorsTest(unittest.TestCase):
     def test_detects_discarded_result_in_rust(self):
-        cases = sources.silent_errors(source("a.rs", "    let _ = leer();"))
+        cases = sources.silent_errors(source("a.rs", "    let _ = read();"))
         self.assertEqual(len(cases), 1)
 
     def test_detects_except_without_handling(self):
@@ -56,7 +56,7 @@ class F11SilentErrorsTest(unittest.TestCase):
         self.assertEqual(len(sources.silent_errors(source("a.ts", "} catch {}"))), 1)
 
     def test_does_not_flag_catch_with_body(self):
-        self.assertEqual(len(sources.silent_errors(source("a.ts", "} catch (e) { aviso(e); }"))), 0)
+        self.assertEqual(len(sources.silent_errors(source("a.ts", "} catch (e) { warn(e); }"))), 0)
 
 
 class SvelteExtractionTest(unittest.TestCase):
@@ -65,14 +65,14 @@ class SvelteExtractionTest(unittest.TestCase):
         self.assertEqual(sources.extract_scripts(svelte).strip(), "const a = 1;")
 
     def test_concatenates_several_blocks(self):
-        svelte = "<script>uno</script><script>dos</script>"
-        self.assertEqual(sources.extract_scripts(svelte), "uno\ndos")
+        svelte = "<script>one</script><script>two</script>"
+        self.assertEqual(sources.extract_scripts(svelte), "one\ntwo")
 
 
 class CodeTest(unittest.TestCase):
     def test_ignores_blank_lines_and_comments(self):
         self.assertFalse(sources.is_code("   "))
-        self.assertFalse(sources.is_code("// comentario"))
+        self.assertFalse(sources.is_code("// comment"))
         self.assertFalse(sources.is_code("<!-- html -->"))
         self.assertTrue(sources.is_code("let a = 1;"))
 

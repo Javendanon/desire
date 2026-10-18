@@ -57,23 +57,23 @@ SOURCE_EXTS = (".rs", ".ts", ".js", ".svelte", ".html", ".css", ".py")
 SVELTE = "src/App.svelte"
 
 MANUAL_REVIEW = (
-    ("F7", "SRP: una razón para cambiar por archivo; nombres con 'y' o 'manager'."),
-    ("F8", "Números mágicos de dominio que km no distingue (reglas D&D, precios)."),
-    ("F10", "Nombres con intención: verificar sobre el diff, no automático."),
-    ("F12/F14", "Fronteras de I/O y un nivel de abstracción por función."),
-    ("F13", "Tipos en la frontera pública; estructura de campos fijos, no dicts sueltos."),
-    ("Svelte", "Plantilla y CSS de App.svelte: km no analiza .svelte; revisión estructural."),
-    ("HTML", "index.html: semántica y accesibilidad, no solo longitud de línea."),
-    ("Deuda", "docs/archive/react-draft/: retirar tras consolidar historial Git."),
+    ("F7", "SRP: one reason to change per file; names with 'and' or 'manager'."),
+    ("F8", "Domain magic numbers km cannot tell apart (D&D rules, prices)."),
+    ("F10", "Intent-revealing names: verify on the diff, not automatically."),
+    ("F12/F14", "I/O boundaries and one level of abstraction per function."),
+    ("F13", "Types at the public boundary; fixed-field structures, not loose dicts."),
+    ("Svelte", "App.svelte template and CSS: km does not analyze .svelte; structural review."),
+    ("HTML", "index.html: semantics and accessibility, not just line length."),
+    ("Debt", "docs/archive/react-draft/: remove after consolidating the Git history."),
 )
 
 COVERAGE = (
-    ("km (rs/ts/js)", "score, olores, complejidad ciclomática y cognitiva, duplicación"),
-    ("scripts Svelte extraídos", "olores y complejidad del bloque <script>, vía km"),
-    ("herramientas (py)", "olores y complejidad de tools/quality, vía km"),
-    ("HTML/CSS/plantilla Svelte", "longitud de línea, compresión y LOC; el resto manual"),
-    ("Markdown/JSON/TOML/Wasm", "fuera de medición: solo revisión manual"),
-    ("public/vendor/", "fuente de terceros excluida del score; no cuenta como aprobación"),
+    ("km (rs/ts/js)", "score, smells, cyclomatic and cognitive complexity, duplication"),
+    ("extracted Svelte scripts", "smells and complexity of the <script> block, via km"),
+    ("tools (py)", "smells and complexity of tools/quality, via km"),
+    ("HTML/CSS/Svelte template", "line length, compression and LOC; the rest is manual"),
+    ("Markdown/JSON/TOML/Wasm", "unmeasured: manual review only"),
+    ("public/vendor/", "third-party source excluded from the score; not an approval"),
 )
 
 

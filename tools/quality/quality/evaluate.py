@@ -43,12 +43,12 @@ def normalize(path: str) -> str:
 
 
 def evaluate_score(score: float, grade: str) -> list[Finding]:
-    location = f"alcance km ({grade})"
+    location = f"km scope ({grade})"
     if score < config.SCORE_FLOOR:
-        detail = f"{score:.2f} < piso {config.SCORE_FLOOR}"
+        detail = f"{score:.2f} < floor {config.SCORE_FLOOR}"
         return [Finding("Score", BLOCKS, location, detail, "km-score")]
     if score < config.SCORE_TARGET:
-        detail = f"{score:.2f} < objetivo {config.SCORE_TARGET}"
+        detail = f"{score:.2f} < target {config.SCORE_TARGET}"
         return [Finding("Score", WARNS, location, detail, "km-score")]
     return []
 
@@ -79,7 +79,7 @@ def informative_smells(result: Records) -> list[Finding]:
             if smell["kind"] not in INFORMATIVE_SMELLS:
                 continue
             location = f'{normalize(entry["path"])}:{smell["line"]}'
-            findings.append(Finding("Revisión", INFO, location, smell["detail"], "km-smells"))
+            findings.append(Finding("Review", INFO, location, smell["detail"], "km-smells"))
     return findings
 
 
@@ -96,7 +96,7 @@ def _function_location(entry: Record, function: Record) -> str:
 
 
 def _threshold_detail(value: int, threshold: Threshold) -> str:
-    return f"{threshold.label} {value} (piso {threshold.floor}/objetivo {threshold.target})"
+    return f"{threshold.label} {value} (floor {threshold.floor}/target {threshold.target})"
 
 
 def evaluate_metric(result: Records, threshold: Threshold) -> list[Finding]:
@@ -109,13 +109,13 @@ def evaluate_metric(result: Records, threshold: Threshold) -> list[Finding]:
             rule = threshold.rule
             location = _function_location(entry, function)
             detail = _threshold_detail(function["complexity"], threshold)
-            findings.append(Finding(rule, severity, location, detail, "km-complejidad"))
+            findings.append(Finding(rule, severity, location, detail, "km-complexity"))
     return findings
 
 
 def evaluate_complexity(cycom: Records, cogcom: Records) -> list[Finding]:
-    cyclomatic = Threshold("F4", config.CYCOM_FLOOR, config.CYCOM_TARGET, "ciclomática")
-    cognitive = Threshold("F5", config.COGCOM_FLOOR, config.COGCOM_TARGET, "cognitiva")
+    cyclomatic = Threshold("F4", config.CYCOM_FLOOR, config.CYCOM_TARGET, "cyclomatic")
+    cognitive = Threshold("F5", config.COGCOM_FLOOR, config.COGCOM_TARGET, "cognitive")
     return evaluate_metric(cycom, cyclomatic) + evaluate_metric(cogcom, cognitive)
 
 
@@ -127,11 +127,11 @@ def evaluate_duplication(dups: dict[str, Any]) -> list[Finding]:
 
 def _duplication_ratio(ratio: float) -> list[Finding]:
     if ratio > config.DUP_RATIO_FLOOR:
-        detail = f"{ratio:.2f}% > piso {config.DUP_RATIO_FLOOR}%"
-        return [Finding("F9", BLOCKS, "alcance km", detail, "km-dups")]
+        detail = f"{ratio:.2f}% > floor {config.DUP_RATIO_FLOOR}%"
+        return [Finding("F9", BLOCKS, "km scope", detail, "km-dups")]
     if ratio > config.DUP_RATIO_TARGET:
-        detail = f"{ratio:.2f}% > objetivo {config.DUP_RATIO_TARGET}%"
-        return [Finding("F9", WARNS, "alcance km", detail, "km-dups")]
+        detail = f"{ratio:.2f}% > target {config.DUP_RATIO_TARGET}%"
+        return [Finding("F9", WARNS, "km scope", detail, "km-dups")]
     return []
 
 
@@ -141,7 +141,7 @@ def _rule_of_three_groups(groups: Records) -> list[Finding]:
         copies = len(group.get("locations", []))
         if copies >= config.DUP_COPIES_RULE_OF_THREE:
             location = normalize(group["locations"][0]["file_path"])
-            detail = f"{copies} copias de {group['line_count']} líneas (regla de tres)"
+            detail = f"{copies} copies of {group['line_count']} lines (rule of three)"
             findings.append(Finding("F9", BLOCKS, location, detail, "km-dups"))
     return findings
 
@@ -150,10 +150,10 @@ def evaluate_size(sources: list[SourceFile]) -> list[Finding]:
     findings = []
     for source in sources:
         if source.code_lines > config.LOC_FILE_FLOOR:
-            detail = f"{source.code_lines} LOC > piso {config.LOC_FILE_FLOOR}"
+            detail = f"{source.code_lines} LOC > floor {config.LOC_FILE_FLOOR}"
             findings.append(Finding("F6", BLOCKS, source.path, detail, "sources"))
         elif source.code_lines > config.LOC_FILE_TARGET:
-            detail = f"{source.code_lines} LOC > objetivo {config.LOC_FILE_TARGET}"
+            detail = f"{source.code_lines} LOC > target {config.LOC_FILE_TARGET}"
             findings.append(Finding("F6", WARNS, source.path, detail, "sources"))
     return findings
 
@@ -172,7 +172,7 @@ def evaluate_f16(sources: list[SourceFile]) -> list[Finding]:
 def _f16_long_lines(source: SourceFile) -> list[Finding]:
     findings = []
     for number, width in long_lines(source):
-        detail = f"{width} columnas > {config.MAX_COLUMNS}"
+        detail = f"{width} columns > {config.MAX_COLUMNS}"
         findings.append(_source_finding("F16", f"{source.path}:{number}", detail))
     return findings
 
@@ -181,7 +181,7 @@ def _f16_compressed(source: SourceFile) -> list[Finding]:
     findings = []
     for number, line in enumerate(source.lines, start=1):
         if is_compressed_line(line, source.path):
-            detail = "varias sentencias en una línea"
+            detail = "multiple statements on one line"
             findings.append(_source_finding("F16", f"{source.path}:{number}", detail))
     return findings
 

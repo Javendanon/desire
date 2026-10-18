@@ -15,9 +15,9 @@ from . import config
 COMMENT_PREFIXES = ("//", "*", "/*", "*/", "<!--")
 
 F11_PATTERNS = (
-    ("Rust", re.compile(r"\blet\s+_\s*="), "valor descartado sin manejo (Result sin usar)"),
-    ("Python", re.compile(r"except\s*:\s*pass"), "except sin manejo"),
-    ("JS/TS", re.compile(r"catch\s*(\([^)]*\))?\s*\{\s*\}"), "catch vacío"),
+    ("Rust", re.compile(r"\blet\s+_\s*="), "discarded value without handling (unused Result)"),
+    ("Python", re.compile(r"except\s*:\s*pass"), "except without handling"),
+    ("JS/TS", re.compile(r"catch\s*(\([^)]*\))?\s*\{\s*\}"), "empty catch"),
 )
 
 SCRIPT_SELECTOR = re.compile(r"<script[^>]*>(.*?)</script>", re.DOTALL)
