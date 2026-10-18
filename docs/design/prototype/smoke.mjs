@@ -133,6 +133,9 @@ async function checkTable(page) {
   assert.equal(await page.count('.marker'), 6, 'map markers');
   assert.equal(await page.count('[data-action="select-participant"]'), 5, 'initiative rows');
 
+  await assert.rejects(page.click('[data-action="next-turn"]'), /not visible/);
+  await page.click('.rail [data-view="encounter"]');
+  assert.equal(await page.visible('#view-encounter'), true, 'combat controls are reachable');
   await page.click('[data-action="next-turn"]');
   const activeName = '[data-active="true"] .turn__name';
   assert.equal(await page.read(activeName), 'Sera', 'next turn is immediate');
@@ -140,6 +143,7 @@ async function checkTable(page) {
   await page.click('[data-action="damage"]');
   const activeMeta = '[data-active="true"] .turn__meta';
   assert.match(await page.read(activeMeta), /14\/24 PV/, 'damage updates');
+  await page.click('.rail [data-view="start"]');
 }
 
 async function checkSearch(page) {
@@ -178,8 +182,10 @@ async function checkPanels(page) {
   assert.equal(await page.read('#side-panel-title'), 'Portal Bostezante', 'lore panel opens');
   assert.equal(await page.read('#side-panel', 'hidden'), false, 'panel is visible');
 
+  await page.click('[data-action="close-panel"]');
   await page.click('[data-action="open-sheet"]');
   assert.equal(await page.read('#side-panel-title'), 'Aubrey Valcourt', 'sheet panel opens');
+  await page.click('[data-action="close-panel"]');
 }
 
 async function checkScenarioJump(page) {
