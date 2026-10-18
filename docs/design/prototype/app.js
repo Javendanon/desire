@@ -152,6 +152,7 @@ function renderScenarios() {
 }
 
 function renderEncounter() {
+  const focusedParticipant = document.activeElement?.dataset.participant;
   const scenario = currentScenario();
   const place = placeOf(scenario);
   document.querySelector('#encounter-title').textContent = scenario.title;
@@ -161,6 +162,9 @@ function renderEncounter() {
     (participant) => turnMarkup(participant, state.activeParticipantId),
   );
   document.querySelector('#encounter-log').innerHTML = listMarkup(state.log, itemMarkup);
+  if (focusedParticipant) {
+    document.querySelector(`[data-participant="${focusedParticipant}"]`)?.focus();
+  }
 }
 
 function renderParty() {
