@@ -1,0 +1,22 @@
+# Code owners for the paths merge-policy.json lists as `never_paths`: changes here never merge
+# without a human owner's approval. Keep this file and `never_paths` in sync; see
+# docs/merge-policy.md. GitHub reads this file from the base branch of the pull request.
+
+# CI, the merge policy, the gate's own tooling and this file
+/.github/                 @Javendanon
+/merge-policy.json        @Javendanon
+/CODEOWNERS               @Javendanon
+/tools/ci/                @Javendanon
+/tools/quality/           @Javendanon
+
+# Database migrations, authentication, secrets
+**/migrations/            @Javendanon
+**/auth/                  @Javendanon
+*secret*                  @Javendanon
+.env*                     @Javendanon
+
+# Dependency manifests and lockfiles
+*.lock                    @Javendanon
+pnpm-lock.yaml            @Javendanon
+Cargo.toml                @Javendanon
+package.json              @Javendanon
