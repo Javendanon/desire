@@ -2,7 +2,9 @@
 // Usage: node docs/design/prototype/smoke.mjs
 // Requires the prototype served by Vite on the port in PROTOTYPE_URL.
 import assert from 'node:assert/strict';
-import { checkInitiativeFocus, checkLiveHp, checkSearchDismissal } from './rework-smoke.mjs';
+import {
+  checkFallenContrast, checkInitiativeFocus, checkLiveHp, checkSearchDismissal,
+} from './rework-smoke.mjs';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -279,6 +281,7 @@ async function main() {
     await checkLiveHp(page);
     await checkInitiativeFocus(page);
     await checkSearchDismissal(page);
+    await checkFallenContrast(page);
     await checkMobile(page, send);
 
     console.log('smoke ok: map, turn, search states, panel, scenario, mobile rail');

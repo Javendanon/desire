@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 const TAB_LIMIT = 80;
 const SEARCH_SETTLE_MS = 600;
+const WCAG_AA = 4.5;
+const LUMINANCE_WEIGHTS = [0.2126, 0.7152, 0.0722];
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function activateWithKeyboard(page, selector) {
@@ -27,6 +29,35 @@ async function assertHpEverywhere(page, hp) {
   await page.click('.rail [data-view="start"]');
   assert.match(await page.read('#start-party li'), hp);
   await page.click('.rail [data-view="encounter"]');
+}
+
+function luminance(rgb) {
+  return rgb.match(/[\d.]+/g).slice(0, 3).reduce((sum, channel, index) => {
+    const value = Number(channel) / 255;
+    const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    return sum + linear * LUMINANCE_WEIGHTS[index];
+  }, 0);
+}
+
+export async function checkFallenContrast(page) {
+  await page.click('.rail [data-view="encounter"]');
+  for (const id of ['aubrey', 'celeste']) {
+    await page.click(`[data-participant="${id}"]`);
+    const colors = await page.evaluate(`(() => {
+      const row = $('.turn[data-fallen="true"]');
+      const meta = row.querySelector('.turn__meta');
+      let opacity = 1;
+      for (let element = meta; element; element = element.parentElement) {
+        opacity *= Number(getComputedStyle(element).opacity);
+      }
+      return { opacity, text: getComputedStyle(meta).color,
+        background: getComputedStyle(row).backgroundColor };
+    })()`);
+    assert.equal(colors.opacity, 1, 'fallen text and its ancestors must remain opaque');
+    const [high, low] = [luminance(colors.text), luminance(colors.background)].sort((a, b) => b - a);
+    const ratio = (high + 0.05) / (low + 0.05);
+    assert.ok(ratio >= WCAG_AA, `rendered fallen HP contrast: ${ratio.toFixed(2)}:1`);
+  }
 }
 
 export async function checkSearchDismissal(page, input = 'click') {
