@@ -99,29 +99,32 @@ alone was not tested, and no third-party IDs were enumerated.
 Columns: method and query/body are the client-declared contract for **C** rows and the
 observed navigation for **U** rows. "Response MIME" distinguishes the **observed** type from
 the type **expected by the client**; where a value was never captured it is marked
-`not captured`. "Evidence" cites the capture ID from the source map.
+`not captured`. "Evidence" cites the capture ID from the source map. A rendered page visible
+in **U** navigation is not response-header evidence: it is recorded as **expected**
+`text/html` with the server MIME `not captured`.
 
 | # | Route | Method | Query / body | Response MIME | Evidence |
 |---|---|---|---|---|---|
 | 1 | `/tabletop` | GET | none | **observed** `text/html; charset=utf-8` (200) | **H1** `headers.txt:1`; **P** (HEAD 200 `text/html; charset=utf-8`) |
 | 2 | `CAM` (Accept JSON) | GET | header `Accept: application/json`; no body | **observed** `application/json; charset=utf-8`, 537 B (200) | **P** |
-| 3 | `CAM` (navigation) | not captured | none | **observed** `text/html` (rendered page) | **U** |
+| 3 | `CAM` (navigation) | not captured | none | **expected** `text/html` (rendered page); server MIME `not captured` | **U** |
 | 4 | `CAM/characters` | not captured | none | **expected** `text/html` (authenticated listing) | **U**; **PREV** |
 | 5 | `CHAR` (Accept JSON) | GET | header `Accept: application/json`; no body | **observed** `application/json; charset=utf-8`, 74 B (401) | **H2** `character-headers.txt:1-2`, `character-body.txt:1`; **P** |
-| 6 | `CHAR` (navigation) | not captured | none | **observed** `text/html` (rendered sheet) | **U** |
-| 7 | `CAM/log` | not captured | none | **observed** `text/html` (journal page) | **U**; pagination not observed |
-| 8 | `CAM/tracking_log` | not captured | none | **observed** `text/html` (Characters/Dice/chat view) | **U** |
+| 6 | `CHAR` (navigation) | not captured | none | **expected** `text/html` (rendered sheet); server MIME `not captured` | **U** |
+| 7 | `CAM/log` | not captured | none | **expected** `text/html` (journal page); server MIME `not captured` | **U**; pagination not observed |
+| 8 | `CAM/tracking_log` | not captured | none | **expected** `text/html` (Characters/Dice/chat view); server MIME `not captured` | **U** |
 | 9 | `COMBAT_BASE/status` | GET | no explicit `data`; jQuery default body | **expected** `json` (`dataType: json`); server MIME `not captured` | **C1** @ 746 291 |
 | 10 | `COMBAT_BASE/tracking_rows` | GET | `character_ids` copied from the current URL (`searchParams.getAll` then `set`, so the last value wins) | **expected** JSON envelope whose `response` field is HTML; server MIME `not captured` | **C1** @ 752 367 |
 | 11 | `COMBAT_BASE/resources/{row_id}` | GET (via `loadModal`) | `modal=true` added by the loader | **expected** HTML fragment (no `dataType`); server MIME `not captured` | **C1** @ 752 200, 763 563 |
 | 12 | `SPELL_BASE/spell_list` | GET | `query` (lowercased), `order`, `spell_levels` (ints), `schools` (ints), `tags` (ints), `profession_id`, `list` (`prepared`\|`known`\|`available`\|`all`), `page` | **expected** HTML (no `dataType`); server MIME `not captured` | **C1** @ 929 900–932 900; **U** (`list` options, `profession_id=68`) |
 | 13 | `/folders.json` | GET | `content_type`, `all=true`; variant `moving_folder_id`, `target_folder_type`; no `page` | **expected** JSON `results`; **observed** without auth `text/html`, 7 227 B (403) | **C1** @ 965 405, 966 377; **H3** `folders-headers.txt:1-3` |
 | 14 | `/tabletop_assets.json` | GET | `owned=true`, `asset_type`, `tabletop_room`, `tags`, `q`, `order`, `folder_type`, `folder_id`, `page`, `per_page=15` | **expected** JSON (`results`, `pagination`, optional `pinned_results`); server MIME `not captured` | **C1** @ 770 900–772 000, 971 790 |
-| 15 | `/games/dnd-5/conditions.json` | not captured | query `not captured` (async select `data-url` in `tracking_log`) | **observed** `application/json` (200, 19 490 B) then `not captured` (202, empty body); see note | **U**; **P** (partial) |
+| 15 | `/games/dnd-5/conditions.json` | not captured | query `not captured` (async select `data-url` in `tracking_log`) | **observed** `application/json` (200, 19 490 B) then `not captured` (202, empty body); see note | **U** (route discovery); **P** (partial response) |
 
-Unavailable details are marked `not captured`: for U navigation rows the HTTP method is
-pending; for C rows the method is the client's `type` value but the server's accepted method
-and real MIME type are pending. No authenticated response body was captured for any C row.
+Unavailable details are marked `not captured`: for U navigation rows the HTTP method, status
+and response headers are pending (the rendered page proves neither MIME nor status); for C
+rows the method is the client's `type` value but the server's accepted method and real MIME
+type are pending. No authenticated response body was captured for any C row.
 
 ### Pagination and parameters
 
