@@ -1,0 +1,327 @@
+/* Buttons, map, encounter and party. */
+/* Buttons, map, encounter, party and side panel. */
+/* Buttons ---------------------------------------------------------------- */
+
+.button {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-75) var(--space-100);
+  background: var(--color-raised);
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 200ms var(--ease-fluid), transform 200ms var(--ease-fluid);
+}
+
+.button:hover {
+  background: var(--color-line);
+}
+
+.button:active {
+  transform: scale(0.98);
+}
+
+.button--primary,
+.button[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+}
+
+.button--quiet {
+  background: transparent;
+}
+
+.button--icon {
+  min-width: 36px;
+  font-family: var(--font-mono);
+}
+
+/* Atlas ------------------------------------------------------------------ */
+
+.atlas__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-200);
+  flex-wrap: wrap;
+}
+
+.atlas__place {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.map-frame {
+  position: relative;
+  flex: 1;
+  min-height: 380px;
+  overflow: hidden;
+  background: #181818;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+}
+
+.map-stage {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+  transition: transform 400ms var(--ease-fluid);
+}
+
+.map {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.map__sea {
+  fill: #181818;
+}
+
+.map__land {
+  fill: #272727;
+}
+
+.map__wave {
+  stroke: #313131;
+  stroke-width: 3;
+  fill: none;
+}
+
+.map__wall {
+  fill: rgba(212, 223, 155, 0.04);
+  stroke: #313131;
+  stroke-width: 3;
+}
+
+.map__canal {
+  stroke: #181818;
+  stroke-width: 22;
+  fill: none;
+}
+
+.map__road {
+  stroke: #313131;
+  stroke-width: 6;
+  fill: none;
+}
+
+.map__wards path {
+  fill: rgba(212, 223, 155, 0.05);
+  stroke: rgba(212, 223, 155, 0.35);
+  stroke-width: 1.5;
+}
+
+.map__labels text {
+  fill: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 22px;
+}
+
+.map-stage--labels-off .map__labels {
+  display: none;
+}
+
+.hex-layer {
+  display: none;
+}
+
+.map-stage--hex .hex-layer {
+  display: block;
+}
+
+.marker-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-deep);
+  color: var(--color-text);
+  border: 2px solid var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 200ms var(--ease-fluid), background 200ms var(--ease-fluid);
+}
+
+.marker:hover,
+.marker[aria-current="true"] {
+  transform: translate(-50%, -50%) scale(1.15);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.atlas__hint {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+/* Encounter -------------------------------------------------------------- */
+
+.encounter__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-200);
+  flex-wrap: wrap;
+  margin-block-end: var(--space-300);
+}
+
+.encounter__grid {
+  align-items: start;
+}
+
+.turn-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-75);
+}
+
+.turn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-100);
+  width: 100%;
+  padding: var(--space-100) var(--space-200);
+  background: var(--color-panel);
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.turn[data-active="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-raised);
+}
+
+.turn[data-fallen="true"] {
+  opacity: 0.55;
+}
+
+.turn__init {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+.turn__name {
+  font-weight: 600;
+}
+
+.turn__meta {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+}
+
+.hp-bar {
+  width: 72px;
+  height: 6px;
+  background: var(--color-line);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.hp-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+
+.hp-bar--low span {
+  background: var(--color-danger);
+}
+
+.log-list li {
+  padding-block: var(--space-75);
+  border-block-start: 1px solid var(--color-line);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.log-list li:first-child {
+  border-block-start: 0;
+}
+
+/* Party ------------------------------------------------------------------ */
+
+.party-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-200);
+}
+
+.party-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-100);
+  padding: var(--space-200);
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+}
+
+.party-card__meta {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+}
+
+/* Scenario bar ----------------------------------------------------------- */
+
+.scenario-bar {
+  grid-area: scenario;
+  display: flex;
+  align-items: center;
+  gap: var(--space-200);
+  padding: var(--space-100) var(--space-300);
+  background: var(--color-panel);
+  border-block-start: 1px solid var(--color-line);
+  flex-wrap: wrap;
+}
+
+.scenario-bar__label {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.scenario-bar__chips {
+  display: flex;
+  gap: var(--space-75);
+  flex-wrap: wrap;
+}
+
+.scenario-chip {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-50) var(--space-100);
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 200ms var(--ease-fluid);
+}
+
+.scenario-chip:hover {
+  background: var(--color-raised);
+}
+
+.scenario-chip[aria-current="true"] {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+}
+

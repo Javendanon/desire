@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#131209" />
+    <meta
+      name="description"
+      content="Prototipo aislado de la mesa de Desire: inicio, atlas, encuentros, ficha y lore."
+    />
+    <title>Desire · Prototipo de mesa D03</title>
+    <link rel="icon" href="../../../public/assets/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="layout.css" />
+    <link rel="stylesheet" href="components.css" />
+    <link rel="stylesheet" href="overlays.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Saltar al contenido</a>
+    <div class="app-shell" id="app" data-view="start">
+      <header class="hud" aria-label="Estado de la sesión">
+        <div class="hud__brand">
+          <img src="../../../public/assets/mark.svg" alt="" width="28" height="28" />
+          <span>Desire</span>
+        </div>
+        <p class="hud__stat">
+          <span class="hud__label">Campaña</span> <span id="hud-campaign"></span>
+        </p>
+        <p class="hud__stat">
+          <span class="hud__label">Reloj</span> <span id="hud-clock"></span>
+        </p>
+        <p class="hud__stat hud__stat--hide">
+          <span class="hud__label">Tiempo</span> <span id="hud-weather"></span>
+        </p>
+        <div class="hud__actions">
+          <button type="button" class="button" data-action="open-search">
+            Buscar lore <kbd>⌘K</kbd>
+          </button>
+          <button type="button" class="button" data-action="open-sheet">Ficha de Aubrey</button>
+          <button type="button" class="button button--quiet" data-action="show-scenarios">
+            Escenarios
+          </button>
+        </div>
+      </header>
+
+      <nav class="rail" aria-label="Vistas de la mesa">
+        <button
+          type="button"
+          class="rail__item"
+          data-action="set-view"
+          data-view="start"
+          aria-current="page"
+        >
+          Inicio
+        </button>
+        <button type="button" class="rail__item" data-action="set-view" data-view="atlas">
+          Atlas
+        </button>
+        <button type="button" class="rail__item" data-action="set-view" data-view="encounter">
+          Mesa
+        </button>
+        <button type="button" class="rail__item" data-action="set-view" data-view="characters">
+          Grupo
+        </button>
+        <button type="button" class="rail__item rail__item--help" data-action="open-help">
+          Teclas
+        </button>
+      </nav>
+
+      <main id="main" class="main">
+        <section class="view view--start" id="view-start" aria-labelledby="start-title">
+          <p class="eyebrow">Waterdeep · sesión en curso</p>
+          <h1 id="start-title">El manifiesto del muelle siete</h1>
+          <p class="lede">
+            La niebla tapa las grúas y el grupo ya está en el puerto. Retomá la sesión
+            donde quedó o abrí el atlas para revisar la ciudad antes de la próxima escena.
+          </p>
+          <div class="start__actions">
+            <button
+              type="button"
+              class="button button--primary"
+              data-action="set-view"
+              data-view="atlas"
+            >
+              Continuar en el atlas
+            </button>
+            <button
+              type="button"
+              class="button"
+              data-action="set-view"
+              data-view="encounter"
+            >
+              Ir a la mesa de encuentro
+            </button>
+          </div>
+          <div class="start__grid">
+            <article class="panel">
+              <h2>Grupo</h2>
+              <ul class="plain-list" id="start-party"></ul>
+            </article>
+            <article class="panel">
+              <h2>Notas de la sesión</h2>
+              <ul class="plain-list" id="start-notes"></ul>
+            </article>
+            <article class="panel">
+              <h2>Qué falta resolver</h2>
+              <ul class="plain-list">
+                <li>Recuperar el manifiesto antes del amanecer.</li>
+                <li>Decidir si se avisa a la Guardia Gris.</li>
+                <li>Estabilizar a Celeste: cero pociones en el inventario.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="view view--atlas" id="view-atlas" aria-labelledby="atlas-title" hidden>
+          <div class="atlas__toolbar">
+            <h1 class="visually-hidden" id="atlas-title">Atlas de Waterdeep</h1>
+            <p class="atlas__place">
+              <span id="atlas-place">Puerto Profundo</span> · mapa despejado
+            </p>
+            <div class="atlas__controls" role="group" aria-label="Controles del mapa">
+              <button
+                type="button"
+                class="button button--icon"
+                data-action="zoom-out"
+                aria-label="Alejar mapa"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                class="button button--icon"
+                data-action="zoom-reset"
+                aria-label="Restablecer zoom"
+              >
+                1:1
+              </button>
+              <button
+                type="button"
+                class="button button--icon"
+                data-action="zoom-in"
+                aria-label="Acercar mapa"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                class="button button--toggle"
+                data-action="toggle-labels"
+                aria-pressed="true"
+              >
+                Etiquetas
+              </button>
+              <button
+                type="button"
+                class="button button--toggle"
+                data-action="toggle-hex"
+                aria-pressed="false"
+              >
+                Hexágonos
+              </button>
+            </div>
+          </div>
+          <div class="map-frame">
+            <div class="map-stage" id="map-stage">
+              <svg
+                class="map"
+                viewBox="0 0 1200 820"
+                role="img"
+                aria-label="Mapa estilizado de Waterdeep"
+              >
+                <rect class="map__sea" width="1200" height="820" />
+                <path
+                  class="map__wave"
+                  d="M980 120 h120 M1030 180 h150 M960 260 h170 M1010 620 h140"
+                />
+                <path
+                  class="map__land"
+                  d="M0 0 H735 L800 130 L742 250 L845 350 L935 505 L800 655 L690 745 L545 820 H0 Z"
+                />
+                <path
+                  class="map__wall"
+                  d="M120 90 H640 L690 210 L600 330 L660 470 L560 640 L380 700 L150 620 Z"
+                />
+                <path class="map__canal" d="M420 60 L470 220 L610 260 L700 380 L760 560" />
+                <path
+                  class="map__road"
+                  d="M120 300 H820 M300 70 V720 M520 120 L640 620 M700 120 L820 520"
+                />
+                <g class="map__wards">
+                  <path d="M120 90 H400 L380 330 L160 350 Z" />
+                  <path d="M400 90 H640 L690 210 L600 330 H380 Z" />
+                  <path d="M160 350 L380 330 L470 590 L300 640 Z" />
+                  <path d="M470 590 L600 330 L690 210 L660 470 L560 640 Z" />
+                </g>
+                <defs>
+                  <pattern
+                    id="hex-grid"
+                    width="52"
+                    height="45"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <path
+                      d="M26 0 L52 15 L52 30 L26 45 L0 30 L0 15 Z"
+                      fill="none"
+                      stroke="#313131"
+                      stroke-width="1.5"
+                    />
+                  </pattern>
+                </defs>
+                <rect class="hex-layer" width="1200" height="820" fill="url(#hex-grid)" />
+                <g class="map__labels">
+                  <text x="240" y="220">Ciudad de los Muertos</text>
+                  <text x="520" y="160">Castillo</text>
+                  <text x="250" y="470">Barrio del Puerto</text>
+                  <text x="660" y="420">Calle del Dragón</text>
+                  <text x="880" y="700">Mar de las Espadas</text>
+                </g>
+              </svg>
+              <div class="marker-layer" id="marker-layer"></div>
+            </div>
+          </div>
+          <p class="atlas__hint">
+            Elegí un marcador para leer la ficha del lugar. El HUD de arriba y la barra de
+            escenarios conviven con el mapa sin taparlo.
+          </p>
+        </section>
+
+        <section
+          class="view view--encounter"
+          id="view-encounter"
+          aria-labelledby="encounter-title"
+          hidden
+        >
+          <header class="encounter__head">
+            <div>
+              <p class="eyebrow" id="encounter-place"></p>
+              <h1 id="encounter-title"></h1>
+            </div>
+            <div class="encounter__controls" role="group" aria-label="Controles de combate">
+              <button type="button" class="button button--primary" data-action="next-turn">
+                Siguiente turno
+              </button>
+              <button type="button" class="button" data-action="damage">Daño 5</button>
+              <button type="button" class="button" data-action="heal">Curar 5</button>
+              <button type="button" class="button button--quiet" data-action="reset-encounter">
+                Reiniciar
+              </button>
+            </div>
+          </header>
+          <div class="encounter__grid">
+            <ol class="turn-list" id="participant-list" aria-label="Orden de iniciativa"></ol>
+            <article class="panel panel--log">
+              <h2>Registro de la escena</h2>
+              <ol class="log-list" id="encounter-log"></ol>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="view view--characters"
+          id="view-characters"
+          aria-labelledby="characters-title"
+          hidden
+        >
+          <h1 id="characters-title">Grupo de la campaña</h1>
+          <p class="lede">Abrí una ficha lateral para consultar atributos, pericias y notas.</p>
+          <ul class="party-grid" id="party-list"></ul>
+        </section>
+      </main>
+
+      <nav class="scenario-bar" id="scenario-bar" aria-label="Escenarios de la sesión">
+        <p class="scenario-bar__label">
+          Escenario actual: <span id="scenario-current"></span>
+        </p>
+        <ul class="scenario-bar__chips" id="scenario-chips"></ul>
+      </nav>
+
+      <aside
+        class="side-panel"
+        id="side-panel"
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="side-panel-title"
+        hidden
+      >
+        <div class="side-panel__head">
+          <h2 id="side-panel-title">Ficha</h2>
+          <button
+            type="button"
+            class="button button--icon"
+            data-action="close-panel"
+            aria-label="Cerrar panel"
+          >
+            ×
+          </button>
+        </div>
+        <div class="side-panel__body" id="side-panel-body"></div>
+      </aside>
+
+      <dialog class="search" id="search-dialog" aria-labelledby="search-title">
+        <form method="dialog" class="search__form">
+          <label class="search__label" for="lore-input" id="search-title">Buscar en el lore</label>
+          <input
+            class="search__input"
+            id="lore-input"
+            type="search"
+            name="query"
+            placeholder="Lugar, persona, facción o rumor"
+            autocomplete="off"
+            aria-describedby="search-status"
+            aria-controls="search-results"
+          />
+        </form>
+        <p class="search__status" id="search-status" aria-live="polite"></p>
+        <ul class="search__results" id="search-results" aria-label="Resultados de lore"></ul>
+        <div class="search__demo" role="group" aria-label="Estados de demostración">
+          <span>Estados:</span>
+          <button
+            type="button"
+            class="button button--quiet"
+            data-action="demo-state"
+            data-demo-state="idle"
+          >
+            Listo
+          </button>
+          <button
+            type="button"
+            class="button button--quiet"
+            data-action="demo-state"
+            data-demo-state="loading"
+          >
+            Cargando
+          </button>
+          <button
+            type="button"
+            class="button button--quiet"
+            data-action="demo-state"
+            data-demo-state="error"
+          >
+            Error
+          </button>
+        </div>
+      </dialog>
+
+      <dialog class="help" id="help-dialog" aria-labelledby="help-title">
+        <h2 id="help-title">Teclas de la mesa</h2>
+        <dl class="help__list">
+          <dt><kbd>⌘K</kbd> o <kbd>/</kbd></dt>
+          <dd>Abrir el buscador de lore</dd>
+          <dt><kbd>Esc</kbd></dt>
+          <dd>Cerrar buscador o ficha lateral</dd>
+          <dt><kbd>?</kbd></dt>
+          <dd>Abrir esta ayuda</dd>
+          <dt><kbd>1</kbd> a <kbd>4</kbd></dt>
+          <dd>Inicio, Atlas, Mesa y Grupo</dd>
+          <dt>Flechas</dt>
+          <dd>Recorrer resultados del buscador</dd>
+        </dl>
+        <form method="dialog"><button class="button" type="submit">Cerrar</button></form>
+      </dialog>
+
+      <p class="toast" id="toast" role="status" aria-live="polite"></p>
+    </div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

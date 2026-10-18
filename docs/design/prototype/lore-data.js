@@ -1,0 +1,253 @@
+// Sample table content for the isolated prototype. All prose is original and
+// summarised from the campaign brief; no atlas text or geometry was copied.
+// UI copy stays in Spanish because the table plays in Spanish.
+
+const ORIGINAL = {
+  kind: 'original',
+  label: 'Original text written for this prototype',
+  note: 'Waterdeep place names are campaign references; the text and the map art are original.',
+};
+
+export const loreEntries = [
+  {
+    id: 'deep-harbor',
+    title: 'Puerto Profundo',
+    kind: 'place',
+    district: 'Puerto',
+    summary: 'Muelles, grúas y almacenes donde llega casi todo el grano del norte.',
+    tags: ['puerto', 'comercio', 'muelle', 'grano'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'bostezante',
+    title: 'Portal Bostezante',
+    kind: 'place',
+    district: 'Castillo',
+    summary: 'Posada de aventureros con un pozo que baja a las alcantarillas.',
+    tags: ['posada', 'aventura', 'pozo', 'descanso'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'castle-ward',
+    title: 'Castillo Waterdeep',
+    kind: 'place',
+    district: 'Castillo',
+    summary: 'Sede del gobierno abierto de la ciudad y de la Guardia Gris.',
+    tags: ['castillo', 'guardia', 'gobierno'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'dragon-street',
+    title: 'Calle del Dragón',
+    kind: 'place',
+    district: 'Trollskull',
+    summary: 'Vía comercial de tiendas altas, tejados inclinados y faroles de aceite.',
+    tags: ['calle', 'comercio', 'tiendas', 'trollskull'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'city-of-dead',
+    title: 'Ciudad de los Muertos',
+    kind: 'place',
+    district: 'Norte',
+    summary: 'Cementerio amurallado con bóvedas familiares y pasajes sellados.',
+    tags: ['cementerio', 'cripta', 'norte'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'aubrey',
+    title: 'Aubrey Valcourt',
+    kind: 'person',
+    district: 'Castillo',
+    summary: 'Exploradora de la Guardia Gris que conoce los túneles del puerto.',
+    tags: ['guardia', 'exploradora', 'aliada', 'tuneles'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'xanathar',
+    title: 'Gremio de Xanathar',
+    kind: 'faction',
+    district: 'Alcantarillas',
+    summary: 'Red de contrabando que mueve mercancía bajo los muelles.',
+    tags: ['gremio', 'contrabando', 'alcantarillas', 'enemigo'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'grey-guard',
+    title: 'Guardia Gris',
+    kind: 'faction',
+    district: 'Ciudad',
+    summary: 'Cuerpo armado que protege la ciudad y persigue el contrabando.',
+    tags: ['guardia', 'orden', 'aliada'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'griffin-crash',
+    title: 'La grúa rota',
+    kind: 'event',
+    district: 'Puerto',
+    summary: 'Una grúa cedió sobre el muelle siete y dejó un cargamento a la vista.',
+    tags: ['puerto', 'accidente', 'gancho', 'escenario'],
+    source: ORIGINAL,
+  },
+  {
+    id: 'well-whispers',
+    title: 'Susurros en el pozo',
+    kind: 'event',
+    district: 'Castillo',
+    summary: 'Voces bajo el Portal Bostezante anuncian una puerta que no debería abrirse.',
+    tags: ['pozo', 'rumor', 'escenario', 'posada'],
+    source: ORIGINAL,
+  },
+];
+
+export const scenarios = [
+  {
+    id: 'broken-crane',
+    title: 'La grúa rota',
+    placeId: 'deep-harbor',
+    markerId: 'deep-harbor',
+    hook: 'El cargamento del muelle siete no figura en ningún registro.',
+  },
+  {
+    id: 'well-whispers',
+    title: 'Susurros en el pozo',
+    placeId: 'bostezante',
+    markerId: 'bostezante',
+    hook: 'La posada cierra la puerta del patio y nadie explica por qué.',
+  },
+  {
+    id: 'sealed-vault',
+    title: 'La bóveda sellada',
+    placeId: 'city-of-dead',
+    markerId: 'city-of-dead',
+    hook: 'Una bóveda familiar lleva tres días abierta sin ceremonia.',
+  },
+];
+
+export const mapMarkers = [
+  { id: 'deep-harbor', label: '1', x: 62, y: 74, title: 'Puerto Profundo' },
+  { id: 'bostezante', label: '2', x: 44, y: 40, title: 'Portal Bostezante' },
+  { id: 'castle-ward', label: '3', x: 52, y: 24, title: 'Castillo Waterdeep' },
+  { id: 'dragon-street', label: '4', x: 68, y: 48, title: 'Calle del Dragón' },
+  { id: 'city-of-dead', label: '5', x: 38, y: 14, title: 'Ciudad de los Muertos' },
+  { id: 'xanathar', label: '6', x: 74, y: 66, title: 'Bajo los muelles' },
+];
+
+export const party = [
+  {
+    id: 'aubrey',
+    name: 'Aubrey Valcourt',
+    role: 'Exploradora',
+    level: 5,
+    hp: 22,
+    maxHp: 26,
+    armor: 16,
+    stats: { FOR: 12, DES: 18, CON: 14, INT: 13, SAB: 15, CAR: 11 },
+    skills: ['Percepción +5', 'Sigilo +7', 'Supervivencia +5'],
+    notes: 'Mapa de los túneles del puerto a medio dibujar.',
+  },
+  {
+    id: 'sera',
+    name: 'Sera Dunmore',
+    role: 'Clériga',
+    level: 5,
+    hp: 19,
+    maxHp: 24,
+    armor: 18,
+    stats: { FOR: 14, DES: 10, CON: 16, INT: 12, SAB: 18, CAR: 13 },
+    skills: ['Religión +4', 'Medicina +7', 'Persuasión +4'],
+    notes: 'Guarda dos hechizos de curación para el descanso corto.',
+  },
+  {
+    id: 'celeste',
+    name: 'Celeste Marwyn',
+    role: 'Maga',
+    level: 5,
+    hp: 0,
+    maxHp: 20,
+    armor: 12,
+    stats: { FOR: 8, DES: 14, CON: 12, INT: 18, SAB: 13, CAR: 15 },
+    skills: ['Arcanos +7', 'Historia +7', 'Investigación +7'],
+    notes: 'Inconsciente en el suelo del almacén. Estabilizada.',
+  },
+  {
+    id: 'bram',
+    name: 'Bram Oakhollow',
+    role: 'Bárbaro',
+    level: 5,
+    hp: 34,
+    maxHp: 38,
+    armor: 15,
+    stats: { FOR: 18, DES: 14, CON: 17, INT: 9, SAB: 12, CAR: 10 },
+    skills: ['Atletismo +7', 'Intimidación +3', 'Supervivencia +4'],
+    notes: 'Carga la escalera plegable del inventario del grupo.',
+  },
+];
+
+export const encounter = {
+  title: 'La grúa rota',
+  place: 'Puerto Profundo · muelle siete',
+  participants: [
+    {
+      id: 'aubrey',
+      name: 'Aubrey',
+      side: 'party',
+      hp: 22,
+      maxHp: 26,
+      initiative: 18,
+      condition: 'Concentrada',
+    },
+    {
+      id: 'sera',
+      name: 'Sera',
+      side: 'party',
+      hp: 19,
+      maxHp: 24,
+      initiative: 14,
+      condition: '',
+    },
+    {
+      id: 'celeste',
+      name: 'Celeste',
+      side: 'party',
+      hp: 0,
+      maxHp: 20,
+      initiative: 16,
+      condition: 'Caída',
+    },
+    {
+      id: 'thug',
+      name: 'Matón de Xanathar',
+      side: 'foe',
+      hp: 11,
+      maxHp: 16,
+      initiative: 12,
+      condition: 'Herido',
+    },
+    {
+      id: 'crab',
+      name: 'Cangrejo gigante',
+      side: 'foe',
+      hp: 7,
+      maxHp: 7,
+      initiative: 9,
+      condition: '',
+    },
+  ],
+  log: [
+    'Aubrey abre el turno con Percepción sobre la grúa caída.',
+    'El matón falla su ataque y retrocede hasta los barriles.',
+  ],
+};
+
+export const campaign = {
+  title: 'Waterdeep, año de los tres escudos',
+  session: 'Sesión 4 · la niebla del puerto',
+  clock: 'Día 12 · 19:40',
+  weather: 'Niebla baja',
+  notes: [
+    'La Guardia Gris paga por recuperar el manifiesto perdido.',
+    'Celeste no debe llegar a cero otra vez: nadie cargó pociones.',
+  ],
+};
