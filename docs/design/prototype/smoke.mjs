@@ -3,7 +3,9 @@
 // Requires the prototype served by Vite on the port in PROTOTYPE_URL.
 import assert from 'node:assert/strict';
 import {
-  checkFallenContrast, checkInitiativeFocus, checkLiveHp, checkSearchDismissal,
+  checkFallenContrast, checkGroupSheetReturnFocus, checkInitiativeFocus, checkLiveHp,
+  checkScenarioLoreJump,
+  checkSearchDismissal,
 } from './rework-smoke.mjs';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -21,6 +23,8 @@ const DEBUG_PORT = 9333;
 const PAGE_URL =
   process.env.PROTOTYPE_URL ?? 'http://127.0.0.1:5199/docs/design/prototype/index.html';
 const SEARCH_SETTLE_MS = 600;
+const DESKTOP_WIDTH = 1440;
+const DESKTOP_HEIGHT = 1000;
 const MOBILE_WIDTH = 390;
 const MOBILE_HEIGHT = 844;
 const MAP_MIN_HEIGHT_PX = 320;
@@ -107,20 +111,27 @@ function connect(webSocketUrl) {
   return { opened, send: createSend(socket, pending) };
 }
 
-async function clickControl(send, evaluate, selector) {
-  const point = await evaluate(`(() => {
-    const element = document.querySelector(${JSON.stringify(selector)});
-    if (!element?.checkVisibility()) throw new Error('not visible: ' + ${JSON.stringify(selector)});
-    if (element.disabled) throw new Error('disabled control: ' + ${JSON.stringify(selector)});
+async function hitPoint(evaluate, selector) {
+  return evaluate(`(() => {
+    const selector = ${JSON.stringify(selector)};
+    const element = document.querySelector(selector);
+    if (!element?.checkVisibility()) throw new Error('not visible: ' + selector);
+    if (element.disabled) throw new Error('disabled control: ' + selector);
     element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
     const rect = element.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
-    if (!element.contains(document.elementFromPoint(x, y))) {
-      throw new Error('obstructed control: ' + ${JSON.stringify(selector)});
+    const hit = document.elementFromPoint(x, y);
+    if (!element.contains(hit)) {
+      throw new Error('obstructed control: ' + selector +
+        ' by ' + hit?.outerHTML.slice(0, 200));
     }
     return { x, y };
   })()`);
+}
+
+async function clickControl(send, evaluate, selector) {
+  const point = await hitPoint(evaluate, selector);
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
   await send('Input.dispatchMouseEvent', {
     type: 'mousePressed', button: 'left', clickCount: 1, ...point,
@@ -146,6 +157,12 @@ function browserApi(send) {
   return {
     evaluate,
     click: (selector) => clickControl(send, evaluate, selector),
+    tap: async (selector) => {
+      const point = await hitPoint(evaluate, selector);
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    },
+    type: (text) => send('Input.insertText', { text }),
     press: async (key) => {
       const keyCode = { Tab: 9, Enter: 13, Escape: 27 }[key];
       const params = { key, code: key, windowsVirtualKeyCode: keyCode };
@@ -237,12 +254,16 @@ async function checkScenarioJump(page) {
 }
 
 async function checkMobile(page, send) {
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true });
   await send('Emulation.setDeviceMetricsOverride', {
     width: MOBILE_WIDTH,
     height: MOBILE_HEIGHT,
     deviceScaleFactor: 2,
     mobile: true,
   });
+  await page.evaluate(`new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  })`);
   assert.equal(
     await page.evaluate('getComputedStyle($(".rail")).flexDirection'),
     'row',
@@ -255,13 +276,29 @@ async function checkMobile(page, send) {
   );
 }
 
+async function checkReviewRegressions(page, send) {
+  await checkLiveHp(page);
+  await checkGroupSheetReturnFocus(page);
+  await checkInitiativeFocus(page);
+  await checkSearchDismissal(page);
+  await checkFallenContrast(page);
+  await checkScenarioLoreJump(page);
+  await checkMobile(page, send);
+  await checkSearchDismissal(page, 'tap');
+  await send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+  });
+  assert.equal(await page.evaluate('getComputedStyle($(".button")).transitionDuration'), '0s');
+  await checkFallenContrast(page);
+}
+
 async function main() {
   const { chrome, profile } = startChrome();
   try {
     const { opened, send } = connect(await waitForTarget());
     await opened;
     await send('Emulation.setDeviceMetricsOverride', {
-      width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false,
+      width: DESKTOP_WIDTH, height: DESKTOP_HEIGHT, deviceScaleFactor: 1, mobile: false,
     });
     await send('Page.enable');
     await send('Runtime.enable');
@@ -278,13 +315,9 @@ async function main() {
     await checkSearch(page);
     await checkPanels(page);
     await checkScenarioJump(page);
-    await checkLiveHp(page);
-    await checkInitiativeFocus(page);
-    await checkSearchDismissal(page);
-    await checkFallenContrast(page);
-    await checkMobile(page, send);
+    await checkReviewRegressions(page, send);
 
-    console.log('smoke ok: map, turn, search states, panel, scenario, mobile rail');
+    console.log('smoke ok: reachable controls, live HP, focus, search cancel, contrast, mobile');
   } finally {
     chrome.kill('SIGKILL');
     await wait(400);

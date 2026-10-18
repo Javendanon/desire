@@ -1,5 +1,6 @@
 // Browser regressions for the D03 review; all actions use the shared input driver.
 import assert from 'node:assert/strict';
+import { loreEntries } from './lore-data.js';
 
 const TAB_LIMIT = 80;
 const SEARCH_SETTLE_MS = 600;
@@ -54,10 +55,54 @@ export async function checkFallenContrast(page) {
         background: getComputedStyle(row).backgroundColor };
     })()`);
     assert.equal(colors.opacity, 1, 'fallen text and its ancestors must remain opaque');
-    const [high, low] = [luminance(colors.text), luminance(colors.background)].sort((a, b) => b - a);
+    const values = [luminance(colors.text), luminance(colors.background)];
+    const [high, low] = values.sort((a, b) => b - a);
     const ratio = (high + 0.05) / (low + 0.05);
     assert.ok(ratio >= WCAG_AA, `rendered fallen HP contrast: ${ratio.toFixed(2)}:1`);
   }
+}
+
+export async function checkScenarioLoreJump(page) {
+  const entry = loreEntries.find((item) => item.id === 'well-whispers');
+  await page.click('.rail [data-view="atlas"]');
+  await page.click('[data-scenario="broken-crane"]');
+  await page.click('.rail [data-view="atlas"]');
+  assert.notEqual(await page.read('#scenario-current'), entry.title);
+  assert.equal(await page.read('#app', 'dataset.view'), 'atlas');
+  await page.click('[data-action="open-search"]');
+  await page.type(entry.title.split(' ')[0]);
+  await wait(SEARCH_SETTLE_MS);
+  await page.click('.result[data-lore="well-whispers"]');
+  assert.equal(await page.read('#side-panel-title'), entry.title);
+  await page.click('#side-panel [data-action="use-scenario"]');
+  assert.equal(await page.visible('#view-encounter'), true);
+  assert.equal(await page.read('#encounter-title'), entry.title);
+  await page.click('[data-action="close-panel"]');
+}
+
+async function assertSearchState(page, requestState) {
+  const markers = {
+    idle: '.result',
+    empty: '.state-note:not(.state-note--error)',
+    loading: '.skeleton',
+    error: '.state-note--error',
+  };
+  assert.equal(await page.visible(markers[requestState]), true, `rendered ${requestState} state`);
+  assert.notEqual((await page.read('#search-status')).trim(), '', 'state is announced');
+}
+
+export async function checkGroupSheetReturnFocus(page) {
+  await page.click('.rail [data-view="characters"]');
+  const opener = '[data-action="open-sheet"][data-member="aubrey"]';
+  await activateWithKeyboard(page, opener);
+  for (const action of ['damage', 'heal', 'reset-encounter']) {
+    await page.click('.rail [data-view="encounter"]');
+    await activateWithKeyboard(page, `[data-action="${action}"]`);
+    await page.click('.rail [data-view="characters"]');
+  }
+  await activateWithKeyboard(page, '[data-action="close-panel"]');
+  assert.equal(await page.evaluate('document.activeElement.dataset.member'), 'aubrey');
+  assert.equal(await page.evaluate('document.activeElement.matches(":focus-visible")'), true);
 }
 
 export async function checkSearchDismissal(page, input = 'click') {
@@ -74,6 +119,7 @@ export async function checkSearchDismissal(page, input = 'click') {
     } else {
       await page[input](`[data-demo-state="${requestState}"]`);
     }
+    await assertSearchState(page, requestState);
     const close = '#search-dialog button[type="submit"]';
     assert.equal(await page.has(close), true, `visible cancel control in ${requestState}`);
     await page[input](close);
