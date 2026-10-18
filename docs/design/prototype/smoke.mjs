@@ -147,7 +147,9 @@ function browserApi(send) {
     press: async (key) => {
       const keyCode = { Tab: 9, Enter: 13, Escape: 27 }[key];
       const params = { key, code: key, windowsVirtualKeyCode: keyCode };
-      await send('Input.dispatchKeyEvent', { type: 'keyDown', ...params });
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyDown', text: key === 'Enter' ? '\r' : '', ...params,
+      });
       await send('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
     },
     read: (selector, property = 'textContent') => evaluate(`$(${literal(selector)}).${property}`),

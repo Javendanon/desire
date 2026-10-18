@@ -81,8 +81,17 @@ function activeParticipant() {
   return findById(state.participants, state.activeParticipantId);
 }
 
+// Project live encounter HP without overwriting character names or sheet attributes. O(p + n).
+function currentParty() {
+  const participants = new Map(state.participants.map((participant) => [participant.id, participant]));
+  return party.map((member) => {
+    const live = participants.get(member.id) ?? member;
+    return { ...member, hp: live.hp, maxHp: live.maxHp };
+  });
+}
+
 function requireMember(id) {
-  const member = findById(party, id);
+  const member = findById(currentParty(), id);
   if (!member) throw new Error(`unknown party member: ${id}`);
   return member;
 }
@@ -119,7 +128,7 @@ function renderHud() {
 }
 
 function renderStart() {
-  const members = party.map(
+  const members = currentParty().map(
     (member) => `${member.name} · ${member.role} · ${member.hp}/${member.maxHp} PV`,
   );
   document.querySelector('#start-party').innerHTML = listMarkup(members, itemMarkup);
@@ -155,7 +164,13 @@ function renderEncounter() {
 }
 
 function renderParty() {
-  document.querySelector('#party-list').innerHTML = listMarkup(party, partyCardMarkup);
+  document.querySelector('#party-list').innerHTML = listMarkup(currentParty(), partyCardMarkup);
+}
+
+function refreshPartyDisplays() {
+  renderStart();
+  renderParty();
+  if (state.panel?.kind === 'sheet') renderPanel();
 }
 
 function renderPanel() {
@@ -213,6 +228,7 @@ function applyHp(delta) {
   const line = hpLogLine(updated, delta);
   state.log.unshift(line);
   renderEncounter();
+  refreshPartyDisplays();
   toast(line);
 }
 
@@ -221,6 +237,7 @@ function resetEncounter() {
   state.log = [...encounter.log];
   state.activeParticipantId = state.participants[0].id;
   renderEncounter();
+  refreshPartyDisplays();
   toast('Encuentro reiniciado');
 }
 
