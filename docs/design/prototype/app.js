@@ -83,7 +83,9 @@ function activeParticipant() {
 
 // Project live encounter HP without overwriting character names or sheet attributes. O(p + n).
 function currentParty() {
-  const participants = new Map(state.participants.map((participant) => [participant.id, participant]));
+  const participants = new Map(
+    state.participants.map((participant) => [participant.id, participant]),
+  );
   return party.map((member) => {
     const live = participants.get(member.id) ?? member;
     return { ...member, hp: live.hp, maxHp: live.maxHp };
@@ -205,7 +207,12 @@ function openPanel(panel) {
 function closePanel() {
   state.panel = null;
   renderPanel();
-  if (state.panelReturnFocus?.isConnected) state.panelReturnFocus.focus();
+  const opener = state.panelReturnFocus;
+  const memberId = opener?.dataset.member;
+  const currentOpener = opener?.isConnected
+    ? opener
+    : document.querySelector(`[data-action="open-sheet"][data-member="${memberId}"]`);
+  currentOpener?.focus();
 }
 
 function setScenario(id) {
