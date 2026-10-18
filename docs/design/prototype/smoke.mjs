@@ -104,6 +104,29 @@ function connect(webSocketUrl) {
   return { opened, send: createSend(socket, pending) };
 }
 
+async function clickControl(send, evaluate, selector) {
+  const point = await evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element?.checkVisibility()) throw new Error('not visible: ' + ${JSON.stringify(selector)});
+    if (element.disabled) throw new Error('disabled control: ' + ${JSON.stringify(selector)});
+    element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    if (!element.contains(document.elementFromPoint(x, y))) {
+      throw new Error('obstructed control: ' + ${JSON.stringify(selector)});
+    }
+    return { x, y };
+  })()`);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+  await send('Input.dispatchMouseEvent', {
+    type: 'mousePressed', button: 'left', clickCount: 1, ...point,
+  });
+  await send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased', button: 'left', clickCount: 1, ...point,
+  });
+}
+
 function browserApi(send) {
   const evaluate = async (expression) => {
     const reply = await send('Runtime.evaluate', {
@@ -119,7 +142,7 @@ function browserApi(send) {
   const literal = (selector) => `'${selector.replace(/'/g, "\\'")}'`;
   return {
     evaluate,
-    click: (selector) => evaluate(`$(${literal(selector)}).click()`),
+    click: (selector) => clickControl(send, evaluate, selector),
     read: (selector, property = 'textContent') => evaluate(`$(${literal(selector)}).${property}`),
     count: (selector) => evaluate(`$$(${literal(selector)}).length`),
     has: (selector) => evaluate(`Boolean($(${literal(selector)}))`),
