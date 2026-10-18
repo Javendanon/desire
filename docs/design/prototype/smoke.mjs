@@ -6,6 +6,7 @@ import {
   checkFallenContrast, checkGroupSheetReturnFocus, checkInitiativeFocus, checkLiveHp,
   checkScenarioLoreJump,
   checkSearchDismissal,
+  checkSearchEnterSelectsResult,
 } from './rework-smoke.mjs';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -281,6 +282,7 @@ async function checkReviewRegressions(page, send) {
   await checkGroupSheetReturnFocus(page);
   await checkInitiativeFocus(page);
   await checkSearchDismissal(page);
+  await checkSearchEnterSelectsResult(page);
   await checkFallenContrast(page);
   await checkScenarioLoreJump(page);
   await checkMobile(page, send);

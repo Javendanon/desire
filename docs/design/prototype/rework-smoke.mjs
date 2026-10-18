@@ -63,20 +63,43 @@ export async function checkFallenContrast(page) {
 }
 
 export async function checkScenarioLoreJump(page) {
-  const entry = loreEntries.find((item) => item.id === 'well-whispers');
-  await page.click('.rail [data-view="atlas"]');
-  await page.click('[data-scenario="broken-crane"]');
-  await page.click('.rail [data-view="atlas"]');
-  assert.notEqual(await page.read('#scenario-current'), entry.title);
-  assert.equal(await page.read('#app', 'dataset.view'), 'atlas');
+  const cases = [
+    { entryId: 'well-whispers', from: 'broken-crane', query: 'rumor' },
+    { entryId: 'broken-crane', from: 'well-whispers', query: 'accidente' },
+  ];
+  for (const { entryId, from, query } of cases) {
+    const entry = loreEntries.find((item) => item.id === entryId);
+    assert.ok(entry, `scenario lore fixture: ${entryId}`);
+    await page.click('.rail [data-view="atlas"]');
+    await page.click(`[data-scenario="${from}"]`);
+    await page.click('.rail [data-view="atlas"]');
+    assert.notEqual(await page.read('#scenario-current'), entry.title);
+    assert.equal(await page.read('#app', 'dataset.view'), 'atlas');
+    await page.click('[data-action="open-search"]');
+    await page.type(query);
+    await wait(SEARCH_SETTLE_MS);
+    await page.click(`.result[data-lore="${entryId}"]`);
+    assert.equal(await page.read('#side-panel-title'), entry.title);
+    assert.equal(
+      await page.visible('#side-panel [data-action="use-scenario"]'),
+      true,
+      `scenario jump button for ${entryId}`,
+    );
+    await page.click('#side-panel [data-action="use-scenario"]');
+    assert.equal(await page.visible('#view-encounter'), true);
+    assert.equal(await page.read('#encounter-title'), entry.title);
+    await page.click('[data-action="close-panel"]');
+  }
+}
+
+export async function checkSearchEnterSelectsResult(page) {
   await page.click('[data-action="open-search"]');
-  await page.type(entry.title.split(' ')[0]);
+  await page.type('pozo');
   await wait(SEARCH_SETTLE_MS);
-  await page.click('.result[data-lore="well-whispers"]');
-  assert.equal(await page.read('#side-panel-title'), entry.title);
-  await page.click('#side-panel [data-action="use-scenario"]');
-  assert.equal(await page.visible('#view-encounter'), true);
-  assert.equal(await page.read('#encounter-title'), entry.title);
+  assert.equal(await page.read('#search-dialog', 'open'), true, 'typing keeps the dialog open');
+  await page.press('Enter');
+  assert.equal(await page.read('#search-dialog', 'open'), false, 'Enter selects without closing');
+  assert.equal(await page.read('#side-panel-title'), 'Portal Bostezante', 'Enter opens the first result');
   await page.click('[data-action="close-panel"]');
 }
 
@@ -120,7 +143,7 @@ export async function checkSearchDismissal(page, input = 'click') {
       await page[input](`[data-demo-state="${requestState}"]`);
     }
     await assertSearchState(page, requestState);
-    const close = '#search-dialog button[type="submit"]';
+    const close = '#search-dialog [data-action="close-search"]';
     assert.equal(await page.has(close), true, `visible cancel control in ${requestState}`);
     assert.equal(await page.read(close, 'lang'), 'en', 'new label declares its language');
     await page[input](close);
