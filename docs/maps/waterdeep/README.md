@@ -57,8 +57,8 @@ optional in a fresh checkout.
   2 shared coordinate pairs. **768 entries are not 768 unique places.**
 - Twenty control points from gates, ward centroids, and landmarks fall inside the image and
   were cross-checked visually on the source raster at the recorded pixels.
-- The North Gate to South Gate distance implied by the source scale is about 3.36 miles,
-  consistent with the commonly cited ~3.5 mile north-south extent of Waterdeep.
+- The straight-line North Gate to South Gate distance implied by the source scale is about
+  3.36 miles. This is a derived distance, not independent scale validation or the city's extent.
 
 ## Interpretation, not confirmed canon
 
@@ -77,7 +77,7 @@ optional in a fresh checkout.
 | Requirement | Evidence |
 | --- | --- |
 | Verifiable control-point overlay | `overlay.svg` + 20 points in JSON + verifier bounds/transform checks |
-| Justified or explicitly unknown scale | Source-asserted 310 px per 1000 ft, sanity check, and explicit "not georeferenced" status |
+| Justified or explicitly unknown scale | AideDD dataset constant and comment: 310 px per 1000 ft; explicitly not independently georeferenced |
 | Small initial place selection with provenance | 10 entries in `initial_places`, each with source ref (when present) and provenance tags |
 | No fictional city labelled Waterdeep | This package is reference/calibration only; no procedural geometry is generated |
 | Data design coordinated with D04 | Transform is marked `proposed_pending_D04`; runtime contract is not frozen here |

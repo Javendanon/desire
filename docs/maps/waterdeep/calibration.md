@@ -50,17 +50,17 @@ pixel_y   = plan_y_m / 0.983225806451613
 to world `z` or `-z`; D04/D11 own that choice. Stored world values are rounded to 3 decimals
 (about 1 mm), which is bookkeeping precision, not survey accuracy.
 
-### Scale sanity check
+### Derived gate-to-gate distance
 
 | Check | Result |
 | --- | --- |
 | North Gate `(2156, 559)` to South Gate `(3041, 5994)` | 5506.6 px |
 | Implied length at 310 px per 1000 ft | 17,763 ft = 3.36 mi = 5.41 km |
-| Commonly cited Waterdeep north-south extent | about 3.5 mi |
-| Difference | about 4% |
 
-This is supporting evidence, not proof. The scale remains **source-asserted and not
-independently georeferenced**. No scale bar was found on the artwork.
+This straight-line calculation uses the source scale; it does not independently validate it.
+The gate-to-gate segment is not established as the city's full north-south extent.
+The scale remains **source-asserted and not independently georeferenced**.
+No scale bar was found on the artwork.
 
 ## 3. Control points
 
@@ -187,7 +187,8 @@ from AideDD is included in these entries.
    an entry dated 1494 DR and a Baldur's Gate 3 character), so it is not a single-date
    Waterdeep snapshot.
 2. **Scale provenance.** `310 px = 1000 ft` is AideDD's internal distance constant. The gate
-   sanity check supports it, but no independent survey or scale bar was available.
+   distance is derived from that constant, not independent corroboration. No independent
+   survey or scale bar was available.
 3. **Marker identity.** 768 entries are not 768 unique places. Aliases and spelling variants
    exist. Future imports need an explicit identity and deduplication rule owned by D04.
 4. **Ward boundaries.** The reduced boxes over-cover irregular wards. D13 should not treat

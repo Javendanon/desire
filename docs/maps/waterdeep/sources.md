@@ -13,7 +13,7 @@ than treated as a permanent block.
 | --- | --- | --- | --- |
 | AideDD Waterdeep atlas page | `GET https://www.aidedd.org/atlas/es/waterdeep` -> 200 | 18,012 bytes; SHA-256 `9660a2ecc3dbe08a17ee971db21227e8923fb8dd6891a923d24224324094d7d7` | Page title, attribution link to Jason Engle, declared scripts, Spanish UI |
 | AideDD map dataset | `GET https://www.aidedd.org/atlas/dataW.js?v=7` -> 200 | 155,973 bytes; SHA-256 `72f0baff203370bf46bf966d3acd742b1a8a03468b976362dda29ee8c870af93`; `Last-Modified: Sat, 03 Oct 2026 00:44:11 GMT` | Image dimensions, `factorDist = 310`, `310 px = 1000 ft`, 8 ward zone paths, 768 active marker entries |
-| AideDD map raster | `GET https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg` -> 200 | 12,039,169 bytes; SHA-256 `45f5f862095ebd7d279592b8c20ad23a8b52918504f6cc87369cf3b246790e16`; `Last-Modified: Tue, 27 Jul 2021 00:01:49 GMT`; 3560 x 7256 JPEG | The artwork used for visual cross-checks and for scale sanity checks |
+| AideDD map raster | `GET https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg` -> 200 | 12,039,169 bytes; SHA-256 `45f5f862095ebd7d279592b8c20ad23a8b52918504f6cc87369cf3b246790e16`; `Last-Modified: Tue, 27 Jul 2021 00:01:49 GMT`; 3560 x 7256 JPEG | The artwork used for visual control-point cross-checks; not independent scale validation |
 | AideDD mobile raster | `GET https://www.aidedd.org/atlas/images/waterdeep-1780-3628.jpg` -> 200 | 3,544,158 bytes; `Content-Length` observed in `HEAD` | Same map at half resolution; not used for calibration |
 | Jason Engle artwork page | `https://www.inprnt.com/gallery/j_a_e/waterdeep/` | Linked by AideDD as the author page; not mirrored here | Attribution target for the map artwork |
 

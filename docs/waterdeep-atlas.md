@@ -25,4 +25,9 @@ Propuesta: vista elevada estilizada, calles y barrios reconocibles, hexágonos o
 
 El contenido base de la ciudad y las modificaciones de cada campaña deberán almacenarse por separado. La referencia externa se mantendrá como fuente, sin convertir su disponibilidad en una dependencia necesaria durante una sesión de juego. El esquema definitivo se acordará después de las reglas de código.
 
-La escala declarada por AideDD es `310 px = 1000 ft`, marcada como fuente no georreferenciada; la distancia entre North Gate y South Gate implica unas 3,36 millas, coherente con la extensión norte-sur citada de la ciudad. Quedan pendientes la edición/época exacta, la fuente de geometría reutilizable, la relación marcador–lugar y la procedencia de cada entrada de lore. No se ha generado una ciudad ficticia etiquetada como Waterdeep.
+The scale declared by AideDD is `310 px = 1000 ft`; it is not independently georeferenced.
+The straight-line distance from North Gate to South Gate is about 3.36 miles at that scale.
+This calculation does not independently validate the scale or establish the city's full extent.
+
+The exact edition/period, reusable geometry source, marker-to-place mapping, and provenance of
+individual lore entries remain unresolved. No fictional city labeled Waterdeep has been generated.
