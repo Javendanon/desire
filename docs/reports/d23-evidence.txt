@@ -1,0 +1,405 @@
+D23 rework evidence
+Captured in the D23 worktree at 2026-10-18T21:55:49.924246+00:00
+Command output below is verbatim, including historical non-English text.
+Empty output is followed immediately by the exit status.
+
+$ git --version
+git version 2.47.0
+[exit 0]
+
+$ git ls-remote --heads origin 'task/*'
+ca606c531bd9e2abf1112cd36a124906a1bcca4d	refs/heads/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po
+4e107ab9f63d04bcba44f52d33bd7c90f74b28ed	refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l
+ac73b09c9ec4f93fb64f962417322d88d69f0e25	refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-
+78b63eddba042a5b47def9d6ce0f41da2468f7b1	refs/heads/task/d04-contratos
+65226c376e5b85a0a186a80d3f512d591dc2a2a7	refs/heads/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r
+a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2	refs/heads/task/d06-nivel20
+bfd5edb791a5694c7b1482d5cdd342e1d5d1a656	refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr
+[exit 0]
+
+$ git branch -vv
++ main                                              676915e (/Users/javendano/dev/desire) [origin/main] docs: record D00 validation and independent review
++ task/d00-coordinacion                             676915e (/Users/javendano/dev/desire-worktrees/d00) docs: record D00 validation and independent review
++ task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po ca606c5 (/Users/javendano/dev/desire-worktrees/d01) [origin/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po] chore(env): resolve toolchain and verify the development environment
++ task/d02-automatizar-el-gate-de-calidad-y-crear-l 4e107ab (/Users/javendano/dev/desire-worktrees/d02) [origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l] refactor: translate D02 code and diagnostics to English
++ task/d03-dise-ar-la-experiencia-visual-de-desire- ac73b09 (/Users/javendano/dev/desire-worktrees/d03) [origin/task/d03-dise-ar-la-experiencia-visual-de-desire-] fix(design): finalize accessible review fixes and verification evidence
++ task/d04-contratos                                78b63ed (/Users/javendano/dev/desire-worktrees/d04) [origin/task/d04-contratos] refactor: use English comments and docstrings in D04 contracts
++ task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r 65226c3 (/Users/javendano/dev/desire-worktrees/d05) [origin/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r] docs(maps): add calibrated Waterdeep reference package
++ task/d06-nivel20                                  a9f63bc (/Users/javendano/dev/desire-worktrees/d06) [origin/task/d06-nivel20] docs: mark rendered Nivel20 pages as expected MIME
+* task/d23-publicar-y-reconciliar-ramas-sin-push-pr bfd5edb [origin/task/d23-publicar-y-reconciliar-ramas-sin-push-pr] docs(d23): avoid pinning this branch head in the report
+[exit 0]
+
+$ git for-each-ref --format='%(refname) %(upstream)' refs/heads
+refs/heads/main refs/remotes/origin/main
+refs/heads/task/d00-coordinacion 
+refs/heads/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po refs/remotes/origin/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po
+refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l
+refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire- refs/remotes/origin/task/d03-dise-ar-la-experiencia-visual-de-desire-
+refs/heads/task/d04-contratos refs/remotes/origin/task/d04-contratos
+refs/heads/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r refs/remotes/origin/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r
+refs/heads/task/d06-nivel20 refs/remotes/origin/task/d06-nivel20
+refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr refs/remotes/origin/task/d23-publicar-y-reconciliar-ramas-sin-push-pr
+[exit 0]
+
+$ git for-each-ref --format='%(objectname) %(refname)' refs/heads refs/remotes/origin
+676915ee922a090e2efdc7ec80539223cf9d763f refs/heads/main
+676915ee922a090e2efdc7ec80539223cf9d763f refs/heads/task/d00-coordinacion
+ca606c531bd9e2abf1112cd36a124906a1bcca4d refs/heads/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po
+4e107ab9f63d04bcba44f52d33bd7c90f74b28ed refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l
+ac73b09c9ec4f93fb64f962417322d88d69f0e25 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-
+78b63eddba042a5b47def9d6ce0f41da2468f7b1 refs/heads/task/d04-contratos
+65226c376e5b85a0a186a80d3f512d591dc2a2a7 refs/heads/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r
+a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2 refs/heads/task/d06-nivel20
+bfd5edb791a5694c7b1482d5cdd342e1d5d1a656 refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr
+676915ee922a090e2efdc7ec80539223cf9d763f refs/remotes/origin/main
+ca606c531bd9e2abf1112cd36a124906a1bcca4d refs/remotes/origin/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po
+4e107ab9f63d04bcba44f52d33bd7c90f74b28ed refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l
+ac73b09c9ec4f93fb64f962417322d88d69f0e25 refs/remotes/origin/task/d03-dise-ar-la-experiencia-visual-de-desire-
+78b63eddba042a5b47def9d6ce0f41da2468f7b1 refs/remotes/origin/task/d04-contratos
+65226c376e5b85a0a186a80d3f512d591dc2a2a7 refs/remotes/origin/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r
+a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2 refs/remotes/origin/task/d06-nivel20
+bfd5edb791a5694c7b1482d5cdd342e1d5d1a656 refs/remotes/origin/task/d23-publicar-y-reconciliar-ramas-sin-push-pr
+[exit 0]
+
+$ git config --get 'branch.task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r.merge'
+refs/heads/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r
+[exit 0]
+
+$ git log --all --oneline
+ac73b09 fix(design): finalize accessible review fixes and verification evidence
+f43c587 fix(design): restore focus to refreshed character sheet openers
+f1dcf8d test(design): strengthen review regressions and sheet focus return
+bfd5edb docs(d23): avoid pinning this branch head in the report
+2375ab9 docs(d23): reference reconciliation PR number
+a104d74 docs(d23): reconcile published branches and stale board states
+cf01460 fix(design): keep fallen participant text fully opaque
+0f177fe test(design): guard rendered fallen participant contrast
+481c8c2 fix(design): add native search dialog close control
+1f7cd9a test(design): require search dismissal in every request state
+76c99de fix(design): preserve initiative focus across encounter renders
+21d2ff1 test(design): reproduce lost keyboard focus in initiative rows
+fe7f32a fix(design): refresh character HP from live encounter state
+7027976 test(design): reproduce stale sheets and party HP summaries
+1a53647 fix(design): exercise visible controls through browser input
+1251f27 test(design): reject hidden combat controls in browser smoke
+1784001 fix(design): resolve scenario lore by its own identifier
+204b036 test(design): reproduce scenario lore association regression
+65226c3 docs(maps): add calibrated Waterdeep reference package
+6c376b1 feat(design): add isolated Spanish table UI prototype and design system
+ca606c5 chore(env): resolve toolchain and verify the development environment
+4e107ab refactor: translate D02 code and diagnostics to English
+a9f63bc docs: mark rendered Nivel20 pages as expected MIME
+004de7f fix: restore pr-review skill and pin it with a test (D02 rework)
+bc6fd89 docs: translate D06 Nivel20 evidence and complete read inventory
+78b63ed refactor: use English comments and docstrings in D04 contracts
+b5f96f4 refactor: use English identifiers and comments in D02 code
+3d8bc5a feat: add reproducible quality gate and initial test suite (D02)
+14bb7cb feat: define versioned campaign and city contracts
+3663914 docs: add read-only Nivel20 API evidence for D06
+676915e docs: record D00 validation and independent review
+4849c2b docs: define card ownership and parallel development workflow
+7f3d994 chore: capture existing Desire scaffold for isolated worktrees
+9bd88f3 first commit
+[exit 0]
+
+$ git log --all --not --remotes=origin --oneline
+[exit 0]
+
+$ git reflog --all --date=iso-strict
+ac73b09 refs/remotes/origin/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:51:44-03:00}: update by push
+ac73b09 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:51:28-03:00}: commit: fix(design): finalize accessible review fixes and verification evidence
+ac73b09 worktrees/d03/HEAD@{2026-10-18T18:51:28-03:00}: commit: fix(design): finalize accessible review fixes and verification evidence
+f43c587 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:46:29-03:00}: commit: fix(design): restore focus to refreshed character sheet openers
+f43c587 worktrees/d03/HEAD@{2026-10-18T18:46:29-03:00}: commit: fix(design): restore focus to refreshed character sheet openers
+f1dcf8d refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:46:07-03:00}: commit: test(design): strengthen review regressions and sheet focus return
+f1dcf8d worktrees/d03/HEAD@{2026-10-18T18:46:07-03:00}: commit: test(design): strengthen review regressions and sheet focus return
+bfd5edb refs/remotes/origin/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:42:09-03:00}: update by push
+bfd5edb refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:42:07-03:00}: commit: docs(d23): avoid pinning this branch head in the report
+bfd5edb HEAD@{2026-10-18T18:42:07-03:00}: commit: docs(d23): avoid pinning this branch head in the report
+2375ab9 refs/remotes/origin/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:41:56-03:00}: update by push
+2375ab9 refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:41:54-03:00}: commit: docs(d23): reference reconciliation PR number
+2375ab9 HEAD@{2026-10-18T18:41:54-03:00}: commit: docs(d23): reference reconciliation PR number
+a104d74 refs/remotes/origin/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:41:41-03:00}: update by push
+a104d74 refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:41:37-03:00}: commit: docs(d23): reconcile published branches and stale board states
+a104d74 HEAD@{2026-10-18T18:41:37-03:00}: commit: docs(d23): reconcile published branches and stale board states
+a9f63bc refs/remotes/origin/task/d06-nivel20@{2026-10-18T18:39:56-03:00}: update by push
+cf01460 refs/remotes/origin/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:39:54-03:00}: update by push
+cf01460 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:39:47-03:00}: commit: fix(design): keep fallen participant text fully opaque
+cf01460 worktrees/d03/HEAD@{2026-10-18T18:39:47-03:00}: commit: fix(design): keep fallen participant text fully opaque
+0f177fe refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:39:26-03:00}: commit: test(design): guard rendered fallen participant contrast
+0f177fe worktrees/d03/HEAD@{2026-10-18T18:39:26-03:00}: commit: test(design): guard rendered fallen participant contrast
+481c8c2 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:39:01-03:00}: commit: fix(design): add native search dialog close control
+481c8c2 worktrees/d03/HEAD@{2026-10-18T18:39:01-03:00}: commit: fix(design): add native search dialog close control
+1f7cd9a refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:38:50-03:00}: commit: test(design): require search dismissal in every request state
+1f7cd9a worktrees/d03/HEAD@{2026-10-18T18:38:50-03:00}: commit: test(design): require search dismissal in every request state
+76c99de refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:38:25-03:00}: commit: fix(design): preserve initiative focus across encounter renders
+76c99de worktrees/d03/HEAD@{2026-10-18T18:38:25-03:00}: commit: fix(design): preserve initiative focus across encounter renders
+21d2ff1 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:38:12-03:00}: commit: test(design): reproduce lost keyboard focus in initiative rows
+21d2ff1 worktrees/d03/HEAD@{2026-10-18T18:38:12-03:00}: commit: test(design): reproduce lost keyboard focus in initiative rows
+fe7f32a refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:37:51-03:00}: commit: fix(design): refresh character HP from live encounter state
+fe7f32a worktrees/d03/HEAD@{2026-10-18T18:37:51-03:00}: commit: fix(design): refresh character HP from live encounter state
+676915e refs/heads/task/d23-publicar-y-reconciliar-ramas-sin-push-pr@{2026-10-18T18:37:45-03:00}: branch: Created from main
+676915e HEAD@{2026-10-18T18:37:45-03:00}: reset: moving to HEAD
+676915e HEAD@{2026-10-18T18:37:45-03:00}: 
+7027976 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:37:16-03:00}: commit: test(design): reproduce stale sheets and party HP summaries
+7027976 worktrees/d03/HEAD@{2026-10-18T18:37:16-03:00}: commit: test(design): reproduce stale sheets and party HP summaries
+1a53647 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:36:45-03:00}: commit: fix(design): exercise visible controls through browser input
+1a53647 worktrees/d03/HEAD@{2026-10-18T18:36:45-03:00}: commit: fix(design): exercise visible controls through browser input
+1251f27 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:36:30-03:00}: commit: test(design): reject hidden combat controls in browser smoke
+1251f27 worktrees/d03/HEAD@{2026-10-18T18:36:30-03:00}: commit: test(design): reject hidden combat controls in browser smoke
+1784001 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:36:13-03:00}: commit: fix(design): resolve scenario lore by its own identifier
+1784001 worktrees/d03/HEAD@{2026-10-18T18:36:13-03:00}: commit: fix(design): resolve scenario lore by its own identifier
+204b036 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:36:08-03:00}: commit: test(design): reproduce scenario lore association regression
+204b036 worktrees/d03/HEAD@{2026-10-18T18:36:08-03:00}: commit: test(design): reproduce scenario lore association regression
+65226c3 refs/remotes/origin/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r@{2026-10-18T18:32:27-03:00}: update by push
+65226c3 refs/heads/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r@{2026-10-18T18:32:02-03:00}: commit: docs(maps): add calibrated Waterdeep reference package
+65226c3 worktrees/d05/HEAD@{2026-10-18T18:32:02-03:00}: commit: docs(maps): add calibrated Waterdeep reference package
+6c376b1 refs/remotes/origin/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:13:38-03:00}: update by push
+6c376b1 refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T18:13:21-03:00}: commit: feat(design): add isolated Spanish table UI prototype and design system
+6c376b1 worktrees/d03/HEAD@{2026-10-18T18:13:21-03:00}: commit: feat(design): add isolated Spanish table UI prototype and design system
+ca606c5 refs/remotes/origin/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po@{2026-10-18T17:47:43-03:00}: update by push
+ca606c5 refs/heads/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po@{2026-10-18T17:47:14-03:00}: commit: chore(env): resolve toolchain and verify the development environment
+ca606c5 worktrees/d01/HEAD@{2026-10-18T17:47:14-03:00}: commit: chore(env): resolve toolchain and verify the development environment
+4e107ab refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-18T17:32:19-03:00}: update by push
+4e107ab refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-18T17:32:00-03:00}: commit (amend): refactor: translate D02 code and diagnostics to English
+4e107ab worktrees/d02/HEAD@{2026-10-18T17:32:00-03:00}: commit (amend): refactor: translate D02 code and diagnostics to English
+40c0f82 refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-18T17:31:45-03:00}: commit (amend): refactor: translate D02 code and diagnostics to English
+40c0f82 worktrees/d02/HEAD@{2026-10-18T17:31:45-03:00}: commit (amend): refactor: translate D02 code and diagnostics to English
+77ac966 refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-18T17:31:18-03:00}: commit: refactor: translate D02 code and diagnostics to English
+77ac966 worktrees/d02/HEAD@{2026-10-18T17:31:18-03:00}: commit: refactor: translate D02 code and diagnostics to English
+a9f63bc refs/heads/task/d06-nivel20@{2026-10-18T17:17:57-03:00}: commit: docs: mark rendered Nivel20 pages as expected MIME
+a9f63bc worktrees/d06/HEAD@{2026-10-18T17:17:57-03:00}: commit: docs: mark rendered Nivel20 pages as expected MIME
+676915e refs/heads/task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r@{2026-10-18T16:40:45-03:00}: branch: Created from main
+676915e worktrees/d05/HEAD@{2026-10-18T16:40:45-03:00}: reset: moving to HEAD
+676915e worktrees/d05/HEAD@{2026-10-18T16:40:45-03:00}: 
+676915e refs/heads/task/d03-dise-ar-la-experiencia-visual-de-desire-@{2026-10-18T16:34:45-03:00}: branch: Created from main
+676915e worktrees/d03/HEAD@{2026-10-18T16:34:45-03:00}: reset: moving to HEAD
+676915e worktrees/d03/HEAD@{2026-10-18T16:34:45-03:00}: 
+004de7f refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T10:19:54-03:00}: update by push
+004de7f refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T10:19:43-03:00}: commit: fix: restore pr-review skill and pin it with a test (D02 rework)
+004de7f worktrees/d02/HEAD@{2026-10-17T10:19:43-03:00}: commit: fix: restore pr-review skill and pin it with a test (D02 rework)
+bc6fd89 refs/heads/task/d06-nivel20@{2026-10-17T10:13:45-03:00}: commit: docs: translate D06 Nivel20 evidence and complete read inventory
+bc6fd89 worktrees/d06/HEAD@{2026-10-17T10:13:45-03:00}: commit: docs: translate D06 Nivel20 evidence and complete read inventory
+78b63ed refs/remotes/origin/task/d04-contratos@{2026-10-17T02:30:18-03:00}: update by push
+78b63ed refs/heads/task/d04-contratos@{2026-10-17T02:30:16-03:00}: commit: refactor: use English comments and docstrings in D04 contracts
+78b63ed worktrees/d04/HEAD@{2026-10-17T02:30:16-03:00}: commit: refactor: use English comments and docstrings in D04 contracts
+b5f96f4 refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T02:27:02-03:00}: update by push
+b5f96f4 refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T02:26:57-03:00}: commit: refactor: use English identifiers and comments in D02 code
+b5f96f4 worktrees/d02/HEAD@{2026-10-17T02:26:57-03:00}: commit: refactor: use English identifiers and comments in D02 code
+3d8bc5a refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T02:13:09-03:00}: update by push
+3d8bc5a refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T02:13:01-03:00}: commit: feat: add reproducible quality gate and initial test suite (D02)
+3d8bc5a worktrees/d02/HEAD@{2026-10-17T02:13:01-03:00}: commit: feat: add reproducible quality gate and initial test suite (D02)
+676915e refs/remotes/origin/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T00:24:35-03:00}: update by push
+676915e refs/heads/task/d02-automatizar-el-gate-de-calidad-y-crear-l@{2026-10-17T00:22:45-03:00}: branch: Created from main
+676915e worktrees/d02/HEAD@{2026-10-17T00:22:45-03:00}: reset: moving to HEAD
+676915e worktrees/d02/HEAD@{2026-10-17T00:22:45-03:00}: 
+676915e refs/remotes/origin/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po@{2026-10-17T00:06:13-03:00}: update by push
+676915e refs/heads/task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po@{2026-10-17T00:04:26-03:00}: branch: Created from main
+676915e worktrees/d01/HEAD@{2026-10-17T00:04:26-03:00}: reset: moving to HEAD
+676915e worktrees/d01/HEAD@{2026-10-17T00:04:26-03:00}: 
+14bb7cb refs/remotes/origin/task/d04-contratos@{2026-10-16T11:41:34-03:00}: update by push
+14bb7cb refs/heads/task/d04-contratos@{2026-10-16T11:22:36-03:00}: commit: feat: define versioned campaign and city contracts
+14bb7cb worktrees/d04/HEAD@{2026-10-16T11:22:36-03:00}: commit: feat: define versioned campaign and city contracts
+3663914 refs/remotes/origin/task/d06-nivel20@{2026-10-16T11:20:20-03:00}: update by push
+3663914 refs/heads/task/d06-nivel20@{2026-10-16T11:20:10-03:00}: commit: docs: add read-only Nivel20 API evidence for D06
+3663914 worktrees/d06/HEAD@{2026-10-16T11:20:10-03:00}: commit: docs: add read-only Nivel20 API evidence for D06
+676915e refs/heads/task/d06-nivel20@{2026-10-16T11:15:15-03:00}: branch: Created from main
+676915e worktrees/d06/HEAD@{2026-10-16T11:15:15-03:00}: reset: moving to HEAD
+676915e worktrees/d06/HEAD@{2026-10-16T11:15:15-03:00}: 
+676915e refs/heads/task/d04-contratos@{2026-10-16T11:09:03-03:00}: branch: Created from main
+676915e worktrees/d04/HEAD@{2026-10-16T11:09:03-03:00}: reset: moving to HEAD
+676915e worktrees/d04/HEAD@{2026-10-16T11:09:03-03:00}: 
+676915e refs/remotes/origin/main@{2026-10-16T02:04:03-03:00}: update by push
+676915e refs/heads/main@{2026-10-16T01:41:44-03:00}: merge task/d00-coordinacion: Fast-forward
+676915e main-worktree/HEAD@{2026-10-16T01:41:44-03:00}: merge task/d00-coordinacion: Fast-forward
+676915e refs/heads/task/d00-coordinacion@{2026-10-16T01:41:23-03:00}: commit: docs: record D00 validation and independent review
+676915e worktrees/d00/HEAD@{2026-10-16T01:41:23-03:00}: commit: docs: record D00 validation and independent review
+4849c2b refs/heads/task/d00-coordinacion@{2026-10-16T01:39:52-03:00}: commit: docs: define card ownership and parallel development workflow
+4849c2b worktrees/d00-review/HEAD@{2026-10-16T01:39:52-03:00}: 
+4849c2b worktrees/d00/HEAD@{2026-10-16T01:39:52-03:00}: commit: docs: define card ownership and parallel development workflow
+7f3d994 refs/heads/main@{2026-10-16T01:38:38-03:00}: commit: chore: capture existing Desire scaffold for isolated worktrees
+7f3d994 refs/heads/task/d00-coordinacion@{2026-10-16T01:38:38-03:00}: branch: Created from main
+7f3d994 main-worktree/HEAD@{2026-10-16T01:38:38-03:00}: commit: chore: capture existing Desire scaffold for isolated worktrees
+7f3d994 worktrees/d00/HEAD@{2026-10-16T01:38:38-03:00}: reset: moving to HEAD
+7f3d994 worktrees/d00/HEAD@{2026-10-16T01:38:38-03:00}: 
+9bd88f3 refs/remotes/origin/main@{2026-10-15T23:49:25-03:00}: update by push
+9bd88f3 refs/heads/main@{2026-10-15T23:49:12-03:00}: Branch: renamed refs/heads/main to refs/heads/main
+9bd88f3 main-worktree/HEAD@{2026-10-15T23:49:12-03:00}: Branch: renamed refs/heads/main to refs/heads/main
+9bd88f3 refs/heads/main@{2026-10-15T23:49:09-03:00}: commit (initial): first commit
+9bd88f3 main-worktree/HEAD@{2026-10-15T23:49:09-03:00}: commit (initial): first commit
+[exit 0]
+
+$ git reflog show --date=iso-strict worktrees/d06/HEAD
+a9f63bc worktrees/d06/HEAD@{2026-10-18T17:17:57-03:00}: commit: docs: mark rendered Nivel20 pages as expected MIME
+bc6fd89 worktrees/d06/HEAD@{2026-10-17T10:13:45-03:00}: commit: docs: translate D06 Nivel20 evidence and complete read inventory
+3663914 worktrees/d06/HEAD@{2026-10-16T11:20:10-03:00}: commit: docs: add read-only Nivel20 API evidence for D06
+676915e worktrees/d06/HEAD@{2026-10-16T11:15:15-03:00}: reset: moving to HEAD
+676915e worktrees/d06/HEAD@{2026-10-16T11:15:15-03:00}: 
+[exit 0]
+
+$ git for-each-ref --format='%(objectname) %(refname)' 'refs/heads/task/d06*' 'refs/remotes/origin/task/d06*'
+a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2 refs/heads/task/d06-nivel20
+a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2 refs/remotes/origin/task/d06-nivel20
+[exit 0]
+
+$ git log --format='%H %P %s' 3663914..a9f63bc
+a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2 bc6fd89511fcfaa67eba77bffaa4cd78f3143da3 docs: mark rendered Nivel20 pages as expected MIME
+bc6fd89511fcfaa67eba77bffaa4cd78f3143da3 36639148bf18584b2b0769a762d703cbfadca728 docs: translate D06 Nivel20 evidence and complete read inventory
+[exit 0]
+
+$ git fsck --full --no-reflogs
+dangling blob 13c45cf81e0455230742a157bb575d5528ce3b42
+dangling commit 40c0f824efc7706913d7cb234a9a8669daa5837b
+dangling commit 77ac966163607e13d164d91f35f9e7614cf379a1
+dangling blob 7ca8fff6f6d531e8bdfc1e2e797b72eeea5c0c8e
+dangling blob 8cd4ed57086d0133539cc612c4ba0e969de36ab3
+dangling blob 930c5262bef3da3d283728e5749dc365545c0750
+dangling blob a3581a41b8167d33121b839e2f0235d0376f1629
+dangling blob f64c2b9d4d47b8513d5ed1224299dca7242bca81
+dangling blob 067d5b423f0776ed499bc4aaaafb488b9e096e53
+dangling blob 21090d8fdbb45cd4b4295cb835b4cfb4d4438e7b
+dangling blob 2375b2ab05065645c62b3e1c3fd79796dc470cf3
+dangling blob 4b89daed32c89f500d8c6de03a44d55bd5218ec9
+dangling blob 5e7591892e95abdc21295960d1080b1d474caadd
+dangling blob 6985b86f4d69926f189e1ec68d5aea30f947523c
+dangling blob b4d5996d399d6066bca9d5886c1f424dc927dc84
+dangling blob b5d9978def90385a767dacb8c52dd72a5e502296
+dangling blob cce90063a40dd3e314794bdc80cd20d38b07f8ca
+dangling blob dbe9a1fc36670275a12cd5c2c13376605fbf1f11
+dangling blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+dangling blob f0d10458197abe31bb9f8eb8570e33b2b9f99383
+dangling blob 0382a263a43b1939c07a299fc12a433e0cdea9e4
+dangling blob 08ea4a722b2ed874f5b2329b8fb925d948799141
+dangling blob 5b1acf3a00bb1f48e95094273bc7de2ebc38efe5
+dangling blob 807ed236d2209c1469a7d5d6d26727f60f4a4ad3
+dangling blob 901a2ab5be804e98126d7e51bb992056ba1922d6
+dangling blob 903e76b26f44c37e7af1e31404812c7006880c3d
+dangling blob a66e3c8795838b4659ffb75834e78ac3aa162196
+dangling blob eca279a1ae55dd338557473dff0e248fd839a3a7
+dangling blob 38e3701533364eeb9a21ca97e19edba705bad775
+dangling blob 65ebae958e8acbec5800a9d0ee8f53f536acfb62
+[exit 0]
+
+$ git show -s --format='%H tree=%T parents=%P %s' 77ac966 40c0f82 4e107ab9
+77ac966163607e13d164d91f35f9e7614cf379a1 tree=507a765d4fa58de54059eb9359e1a4379773622a parents=004de7fc5f89ba44c029370ac912783455591d5c refactor: translate D02 code and diagnostics to English
+40c0f824efc7706913d7cb234a9a8669daa5837b tree=d8ada5ffa50b8277e8f009eb4c8aeb0476c5aa90 parents=004de7fc5f89ba44c029370ac912783455591d5c refactor: translate D02 code and diagnostics to English
+4e107ab9f63d04bcba44f52d33bd7c90f74b28ed tree=0e0b01fc3726fb18378760b96de63e71990a7d78 parents=004de7fc5f89ba44c029370ac912783455591d5c refactor: translate D02 code and diagnostics to English
+[exit 0]
+
+$ git diff --no-ext-diff --no-textconv 77ac966 4e107ab9
+diff --git a/docs/reports/d02.md b/docs/reports/d02.md
+index fc82e58..1de72b4 100644
+--- a/docs/reports/d02.md
++++ b/docs/reports/d02.md
+@@ -54,16 +54,17 @@ bloqueos de piso en Svelte/HTML/Rust.
+ | `python3 -m unittest discover -s tools/quality/tests -p 'test_*.py'` | 34 pasan, 0 fallan |
+ | `python3 tools/quality/gate.py --root .` | exit 0, 0 bloqueos, 3 FP documentados |
+ | `cargo fmt --all --check` | correcto |
+-| `cargo test --workspace` | **bloqueado** por D01 (Axum ausente offline) |
++| `cargo clippy --workspace --all-targets -- -D warnings` | correcto, 0 warnings |
++| `cargo test --workspace` | 2 pasan, 0 fallan |
+ | `svelte-check` / `tsc` (`pnpm check`) | **bloqueado** por D01 (sin pnpm/node_modules) |
+ 
+ Aceptación verificada: `tests/test_gate_integration.py` rompe F16 y F11 en fixtures
+ y exige salida `!= 0`; una fuente limpia produce `0`. También se cubre el caso sin
+ `km` en PATH: el gate falla (exit 2) en lugar de quedar verde sin medir.
+ 
+-Los dos tests Rust añadidos en `crates/api/src/main.rs` (`#[cfg(test)]`) quedan
+-escritos y compilan en cuanto D01 resuelva Axum; hoy no son ejecutables y no se
+-declaran verdes.
++Los dos tests Rust añadidos en `crates/api/src/main.rs` (`#[cfg(test)]`) pasan en
++este entorno. `pnpm check`/`svelte-check` sigue bloqueado por D01; la suite frontend
++corre con el type-stripping nativo de Node, sin Vite.
+ 
+ ## Falsos positivos documentados
+ 
+@@ -79,7 +80,7 @@ resolución:
+ 
+ - **Bloqueante B1 — gate verde sin `km`.** Corregido: si `km` falta, se emite un
+   hallazgo de entorno que bloquea (exit 2). Solo `--no-km` explícito lo omite.
+-- O1 vendor no documentado: añadido a `COBERTURA` y al README; score sin exclusión
++- O1 vendor no documentado: añadido a `COVERAGE` y al README; score sin exclusión
+   es D+ y no se usa como aprobación.
+ - O2 score 0 en alcance vacío: ahora se omite el score si no hay archivos rs/ts/js.
+ - O4 `__pycache__` sin ignorar: añadido a `.gitignore`.
+diff --git a/tools/quality/gate.py b/tools/quality/gate.py
+index 62d95f8..1c16f76 100644
+--- a/tools/quality/gate.py
++++ b/tools/quality/gate.py
+@@ -99,7 +99,7 @@ def measure_tools(root: Path) -> list[Finding]:
+ def measure_svelte(root: Path, notes: list[str]) -> list[Finding]:
+     path = root / config.SVELTE
+     if not path.exists():
+-        notes.append(f"{config.SVELTE} ausente: sin cobertura de script Svelte.")
++        notes.append(f"{config.SVELTE} missing: no Svelte script coverage.")
+         return []
+     with tempfile.TemporaryDirectory() as tmp:
+         dest = Path(tmp) / "App.script.ts"
+@@ -111,7 +111,7 @@ def measure_svelte(root: Path, notes: list[str]) -> list[Finding]:
+ def measure_km(root: Path, notes: list[str]) -> tuple[list[Finding], dict]:
+     if not km.has_km():
+         detail = "km missing: score, smells, complexity and duplication were not measured"
+-        return [Finding("Entorno", evaluate.BLOCKS, "km", detail, "tooling")], {}
++        return [Finding("Environment", evaluate.BLOCKS, "km", detail, "tooling")], {}
+     product, score = measure_product(root, notes)
+     return product + measure_tools(root) + measure_svelte(root, notes), score
+ 
+diff --git a/tools/quality/quality/evaluate.py b/tools/quality/quality/evaluate.py
+index d6cd7af..f06f075 100644
+--- a/tools/quality/quality/evaluate.py
++++ b/tools/quality/quality/evaluate.py
+@@ -172,7 +172,7 @@ def evaluate_f16(sources: list[SourceFile]) -> list[Finding]:
+ def _f16_long_lines(source: SourceFile) -> list[Finding]:
+     findings = []
+     for number, width in long_lines(source):
+-        detail = f"{width} columnas > {config.MAX_COLUMNS}"
++        detail = f"{width} columns > {config.MAX_COLUMNS}"
+         findings.append(_source_finding("F16", f"{source.path}:{number}", detail))
+     return findings
+ 
+[exit 0]
+
+$ git diff --no-ext-diff --no-textconv 40c0f82 4e107ab9
+diff --git a/docs/reports/d02.md b/docs/reports/d02.md
+index fc82e58..1de72b4 100644
+--- a/docs/reports/d02.md
++++ b/docs/reports/d02.md
+@@ -54,16 +54,17 @@ bloqueos de piso en Svelte/HTML/Rust.
+ | `python3 -m unittest discover -s tools/quality/tests -p 'test_*.py'` | 34 pasan, 0 fallan |
+ | `python3 tools/quality/gate.py --root .` | exit 0, 0 bloqueos, 3 FP documentados |
+ | `cargo fmt --all --check` | correcto |
+-| `cargo test --workspace` | **bloqueado** por D01 (Axum ausente offline) |
++| `cargo clippy --workspace --all-targets -- -D warnings` | correcto, 0 warnings |
++| `cargo test --workspace` | 2 pasan, 0 fallan |
+ | `svelte-check` / `tsc` (`pnpm check`) | **bloqueado** por D01 (sin pnpm/node_modules) |
+ 
+ Aceptación verificada: `tests/test_gate_integration.py` rompe F16 y F11 en fixtures
+ y exige salida `!= 0`; una fuente limpia produce `0`. También se cubre el caso sin
+ `km` en PATH: el gate falla (exit 2) en lugar de quedar verde sin medir.
+ 
+-Los dos tests Rust añadidos en `crates/api/src/main.rs` (`#[cfg(test)]`) quedan
+-escritos y compilan en cuanto D01 resuelva Axum; hoy no son ejecutables y no se
+-declaran verdes.
++Los dos tests Rust añadidos en `crates/api/src/main.rs` (`#[cfg(test)]`) pasan en
++este entorno. `pnpm check`/`svelte-check` sigue bloqueado por D01; la suite frontend
++corre con el type-stripping nativo de Node, sin Vite.
+ 
+ ## Falsos positivos documentados
+ 
+@@ -79,7 +80,7 @@ resolución:
+ 
+ - **Bloqueante B1 — gate verde sin `km`.** Corregido: si `km` falta, se emite un
+   hallazgo de entorno que bloquea (exit 2). Solo `--no-km` explícito lo omite.
+-- O1 vendor no documentado: añadido a `COBERTURA` y al README; score sin exclusión
++- O1 vendor no documentado: añadido a `COVERAGE` y al README; score sin exclusión
+   es D+ y no se usa como aprobación.
+ - O2 score 0 en alcance vacío: ahora se omite el score si no hay archivos rs/ts/js.
+ - O4 `__pycache__` sin ignorar: añadido a `.gitignore`.
+[exit 0]
+
+$ git diff --exit-code 40c0f82 4e107ab9 -- . ':!docs/reports/d02.md'
+[exit 0]
+
+$ gh pr list --state open --json number,headRefName,headRefOid,baseRefName,url
+[{"baseRefName":"main","headRefName":"task/d23-publicar-y-reconciliar-ramas-sin-push-pr","headRefOid":"bfd5edb791a5694c7b1482d5cdd342e1d5d1a656","number":7,"url":"https://github.com/Javendanon/desire/pull/7"},{"baseRefName":"main","headRefName":"task/d05-calibrar-la-cartograf-a-de-waterdeep-y-r","headRefOid":"65226c376e5b85a0a186a80d3f512d591dc2a2a7","number":6,"url":"https://github.com/Javendanon/desire/pull/6"},{"baseRefName":"main","headRefName":"task/d03-dise-ar-la-experiencia-visual-de-desire-","headRefOid":"ac73b09c9ec4f93fb64f962417322d88d69f0e25","number":5,"url":"https://github.com/Javendanon/desire/pull/5"},{"baseRefName":"main","headRefName":"task/d01-verificar-el-entorno-pnpm-rust-wasm-y-po","headRefOid":"ca606c531bd9e2abf1112cd36a124906a1bcca4d","number":4,"url":"https://github.com/Javendanon/desire/pull/4"},{"baseRefName":"main","headRefName":"task/d02-automatizar-el-gate-de-calidad-y-crear-l","headRefOid":"4e107ab9f63d04bcba44f52d33bd7c90f74b28ed","number":3,"url":"https://github.com/Javendanon/desire/pull/3"},{"baseRefName":"main","headRefName":"task/d04-contratos","headRefOid":"78b63eddba042a5b47def9d6ce0f41da2468f7b1","number":2,"url":"https://github.com/Javendanon/desire/pull/2"},{"baseRefName":"main","headRefName":"task/d06-nivel20","headRefOid":"a9f63bc6265b71b857b14ef2c52f2d7bdc1b1ec2","number":1,"url":"https://github.com/Javendanon/desire/pull/1"}]
+[exit 0]
