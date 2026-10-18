@@ -2,6 +2,7 @@
 // Usage: node docs/design/prototype/smoke.mjs
 // Requires the prototype served by Vite on the port in PROTOTYPE_URL.
 import assert from 'node:assert/strict';
+import { checkLiveHp } from './rework-smoke.mjs';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -143,6 +144,12 @@ function browserApi(send) {
   return {
     evaluate,
     click: (selector) => clickControl(send, evaluate, selector),
+    press: async (key) => {
+      const keyCode = { Tab: 9, Enter: 13, Escape: 27 }[key];
+      const params = { key, code: key, windowsVirtualKeyCode: keyCode };
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', ...params });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', ...params });
+    },
     read: (selector, property = 'textContent') => evaluate(`$(${literal(selector)}).${property}`),
     count: (selector) => evaluate(`$$(${literal(selector)}).length`),
     has: (selector) => evaluate(`Boolean($(${literal(selector)}))`),
@@ -249,6 +256,9 @@ async function main() {
   try {
     const { opened, send } = connect(await waitForTarget());
     await opened;
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false,
+    });
     await send('Page.enable');
     await send('Runtime.enable');
     await send('Page.navigate', { url: PAGE_URL });
@@ -264,6 +274,7 @@ async function main() {
     await checkSearch(page);
     await checkPanels(page);
     await checkScenarioJump(page);
+    await checkLiveHp(page);
     await checkMobile(page, send);
 
     console.log('smoke ok: map, turn, search states, panel, scenario, mobile rail');
