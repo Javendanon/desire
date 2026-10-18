@@ -15,7 +15,7 @@ La interfaz ofrece búsqueda, información de lugares, zonas, distancias, tiempo
 - Ejemplo de un círculo: `id="circ1"`, `cx="1781"`, `cy="4238"`. No se ha establecido su relación con un lugar ni una escala en metros.
 - Scripts externos declarados: `lang_es.js?v=2`, `fonctions.js?v=5`, `dataW.js?v=7`, además de jQuery y Raphaël.
 
-Esto prueba una representación de imagen + geometría superpuesta. No prueba una API JSON, una exportación oficial, un grafo de calles, coordenadas geográficas ni alturas de edificios. El 18 de octubre de 2026 una petición directa a `dataW.js?v=7` devolvió HTTP 200 sin autenticación ni evasión de bloqueos. El paquete [`docs/maps/waterdeep/`](maps/waterdeep/README.md) registra el snapshot, la escala declarada, veinte puntos de control y diez lugares iniciales con procedencia. No se copió el lore ni se incorporó la base completa de marcadores.
+Esto prueba una representación de imagen + geometría superpuesta. No prueba una API JSON, una exportación oficial, un grafo de calles, coordenadas geográficas ni alturas de edificios. No se capturó tráfico de red. La herramienta web no pudo leer los scripts; navegar al recurso de datos en Chrome devolvió un bloqueo del cliente y no se intentó sortearlo. El 18 de octubre de 2026 una petición directa sin credenciales a `dataW.js?v=7` devolvió HTTP 200, sin autenticación ni evasión de bloqueos. El paquete [`docs/maps/waterdeep/`](maps/waterdeep/README.md) registra el snapshot, la escala declarada, veinte puntos de control y diez lugares iniciales con procedencia. No se copió el lore ni se incorporó la base completa de marcadores.
 
 ## Uso previsto, pendiente de implementar
 
@@ -25,9 +25,4 @@ Propuesta: vista elevada estilizada, calles y barrios reconocibles, hexágonos o
 
 El contenido base de la ciudad y las modificaciones de cada campaña deberán almacenarse por separado. La referencia externa se mantendrá como fuente, sin convertir su disponibilidad en una dependencia necesaria durante una sesión de juego. El esquema definitivo se acordará después de las reglas de código.
 
-The scale declared by AideDD is `310 px = 1000 ft`; it is not independently georeferenced.
-The straight-line distance from North Gate to South Gate is about 3.36 miles at that scale.
-This calculation does not independently validate the scale or establish the city's full extent.
-
-The exact edition/period, reusable geometry source, marker-to-place mapping, and provenance of
-individual lore entries remain unresolved. No fictional city labeled Waterdeep has been generated.
+Pendiente: confirmar de forma independiente la escala (por ahora solo está declarada por la fuente), la edición/época de Waterdeep, la fuente de geometría reutilizable, la relación marcador–lugar y la procedencia de cada entrada de lore. No se ha generado una ciudad ficticia etiquetada como Waterdeep.

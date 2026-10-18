@@ -22,6 +22,7 @@ const EXPECTED = {
   duplicateNames: 2,
   duplicateCoordinates: 2,
   wards: 8,
+  streets: 7,
   minControlPoints: 8,
   minPlaces: 5,
   maxPlaces: 20,
@@ -34,7 +35,7 @@ const check = (label, ok, detail = "") => {
 const checkEqual = (label, actual, expected) => check(label, actual === expected, String(actual));
 const nearly = (a, b) => Math.abs(a - b) <= NEAR;
 const within = (point, width, height) =>
-  point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height;
+  point.x >= 0 && point.x < width && point.y >= 0 && point.y < height;
 const insideBox = (point, box) =>
   point.x >= box.min_x && point.x <= box.max_x && point.y >= box.min_y && point.y <= box.max_y;
 
@@ -57,6 +58,15 @@ function verifyScale(data) {
   checkEqual("scale.pixels_per_1000_feet", scale.pixels_per_1000_feet, EXPECTED.pixelsPer1000Feet);
   const metersPerPixel = (1000 * FEET_TO_METERS) / scale.pixels_per_1000_feet;
   check("scale.meters_per_pixel", nearly(scale.meters_per_pixel, metersPerPixel));
+  check("scale.feet_per_pixel", nearly(scale.feet_per_pixel, 1000 / scale.pixels_per_1000_feet));
+  check(
+    "scale.pixels_per_meter",
+    nearly(scale.pixels_per_meter, scale.pixels_per_1000_feet / (1000 * FEET_TO_METERS)),
+  );
+  check(
+    "transform.meters_per_pixel matches scale",
+    nearly(data.transform?.meters_per_pixel, scale.meters_per_pixel),
+  );
 }
 
 function verifyControlPoints(data) {
@@ -115,10 +125,19 @@ function verifyPlaces(data) {
 function verifyStreets(data) {
   const { width, height } = data.image;
   const metersPerPixel = data.scale.meters_per_pixel;
-  for (const street of data.main_streets ?? []) {
+  const streets = data.main_streets ?? [];
+  checkEqual("main_streets.count", streets.length, EXPECTED.streets);
+  const ids = new Set();
+  for (const street of streets) {
+    check(`street ${street.id} duplicate id`, !ids.has(street.id), String(street.id));
+    ids.add(street.id);
+    const provenance = Array.isArray(street.provenance) && street.provenance.length > 0;
+    check(`street ${street.id} provenance`, provenance);
+    checkEqual(`street ${street.id} kind`, street.kind, "street-label-anchor");
+    check(`street ${street.id} source_ref key`, "source_ref" in street);
     const text = JSON.stringify(street.pixel);
-    check(`street ${street.name} in bounds`, within(street.pixel, width, height), text);
-    checkWorld(`street ${street.name}`, street.pixel, street.world_m, metersPerPixel);
+    check(`street ${street.id} in bounds`, within(street.pixel, width, height), text);
+    checkWorld(`street ${street.id}`, street.pixel, street.world_m, metersPerPixel);
   }
 }
 

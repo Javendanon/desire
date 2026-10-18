@@ -18,14 +18,15 @@
     {"name": "Trades Ward", "centroid_pixel": {"x": 2472, "y": 3924}, "bbox_pixel": {"min_x": 2093, "min_y": 2753, "max_x": 3037, "max_y": 4766}, "centroid_world_m": {"x": 2430.534, "y": 3858.178}, "source": "AideDD dataW.js zone path bbox and centroid only; path geometry not copied"},
     {"name": "City of the Dead", "centroid_pixel": {"x": 2675, "y": 3483}, "bbox_pixel": {"min_x": 2376, "min_y": 2952, "max_x": 2990, "max_y": 4035}, "centroid_world_m": {"x": 2630.129, "y": 3424.575}, "source": "AideDD dataW.js zone path bbox and centroid only; path geometry not copied"}
   ],
+  "main_streets_status": "Each entry is the AideDD street marker label anchor (a single point from dataW.js), not a routable polyline. The source provides no street geometry; these points must not be treated as a street graph.",
   "main_streets": [
-    {"name": "Waterdeep Way", "pixel": {"x": 1990, "y": 4063}, "source_ref": null, "world_m": {"x": 1956.619, "y": 3994.846}},
-    {"name": "Trader's Way", "pixel": {"x": 1466, "y": 2584}, "source_ref": null, "world_m": {"x": 1441.409, "y": 2540.655}},
-    {"name": "Bazaar Street", "pixel": {"x": 1630, "y": 2901}, "source_ref": null, "world_m": {"x": 1602.658, "y": 2852.338}},
-    {"name": "Swords Street", "pixel": {"x": 1193, "y": 3198}, "source_ref": null, "world_m": {"x": 1172.988, "y": 3144.356}},
-    {"name": "The High Road", "pixel": {"x": 2112, "y": 2971}, "source_ref": null, "world_m": {"x": 2076.573, "y": 2921.164}},
-    {"name": "The Wide Way", "pixel": {"x": 2691, "y": 4171}, "source_ref": null, "world_m": {"x": 2645.861, "y": 4101.035}},
-    {"name": "Dock Street", "pixel": {"x": 2034, "y": 5629}, "source_ref": null, "world_m": {"x": 1999.881, "y": 5534.578}}
+    {"id": "waterdeep-way", "name": "Waterdeep Way", "kind": "street-label-anchor", "pixel": {"x": 1990, "y": 4063}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 1956.619, "y": 3994.846}},
+    {"id": "traders-way", "name": "Trader's Way", "kind": "street-label-anchor", "pixel": {"x": 1466, "y": 2584}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 1441.409, "y": 2540.655}},
+    {"id": "bazaar-street", "name": "Bazaar Street", "kind": "street-label-anchor", "pixel": {"x": 1630, "y": 2901}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 1602.658, "y": 2852.338}},
+    {"id": "swords-street", "name": "Swords Street", "kind": "street-label-anchor", "pixel": {"x": 1193, "y": 3198}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 1172.988, "y": 3144.356}},
+    {"id": "the-high-road", "name": "The High Road", "kind": "street-label-anchor", "pixel": {"x": 2112, "y": 2971}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 2076.573, "y": 2921.164}},
+    {"id": "the-wide-way", "name": "The Wide Way", "kind": "street-label-anchor", "pixel": {"x": 2691, "y": 4171}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 2645.861, "y": 4101.035}},
+    {"id": "dock-street", "name": "Dock Street", "kind": "street-label-anchor", "pixel": {"x": 2034, "y": 5629}, "source_ref": null, "provenance": ["aidedd-dataW-street-marker"], "world_m": {"x": 1999.881, "y": 5534.578}}
   ],
   "control_points": [
     {"id": "north-gate", "name": "North Gate", "kind": "gate", "pixel": {"x": 2156, "y": 559}, "world_m": {"x": 2119.835, "y": 549.623}, "source_ref": "N78"},

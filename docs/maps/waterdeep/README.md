@@ -55,8 +55,8 @@ optional in a fresh checkout.
   and the City of the Dead east of Castle Ward.
 - The dataset contains 768 active marker entries, 8 ward zones, and 2 duplicate names plus
   2 shared coordinate pairs. **768 entries are not 768 unique places.**
-- Twenty control points from gates, ward centroids, and landmarks fall inside the image and
-  were cross-checked visually on the source raster at the recorded pixels.
+- Twenty control points from gates, ward centroids, and landmarks fall inside the image. All
+  twenty are enumerated with their visual cross-check result in [`calibration.md`](calibration.md).
 - The straight-line North Gate to South Gate distance implied by the source scale is about
   3.36 miles. This is a derived distance, not independent scale validation or the city's extent.
 
@@ -79,13 +79,15 @@ optional in a fresh checkout.
 | Verifiable control-point overlay | `overlay.svg` + 20 points in JSON + verifier bounds/transform checks |
 | Justified or explicitly unknown scale | AideDD dataset constant and comment: 310 px per 1000 ft; explicitly not independently georeferenced |
 | Small initial place selection with provenance | 10 entries in `initial_places`, each with source ref (when present) and provenance tags |
+| Verifiable main-street anchors | 7 `street-label-anchor` entries in `main_streets`, each with an id and provenance enforced by the verifier |
 | No fictional city labelled Waterdeep | This package is reference/calibration only; no procedural geometry is generated |
 | Data design coordinated with D04 | Transform is marked `proposed_pending_D04`; runtime contract is not frozen here |
 
 ## Independent review
 
 A separate read-only review of the uncommitted diff checked the source data, checksums, and
-overlay. It found one P2: New Olamn was assigned to Sea Ward while `(712, 2701)` lies outside
-that ward's reduced bounding box and its AideDD reference (`C72`) matches Castle Ward. The
-assignment and the calibration table were corrected, and the verifier now rejects a known
-ward name whose box does not contain the place. No other findings were raised.
+overlay. It found one P2: New Olamn was assigned to Sea Ward although `(712, 2701)` lies outside
+that ward's reduced bounding box and the AideDD reference places it under the Castle Ward hint
+used by this package. The assignment and the calibration table were corrected, and the verifier
+checks ward membership as a consistency invariant. The boxes and the hint stay calibration aids,
+not boundaries. No other findings were raised.

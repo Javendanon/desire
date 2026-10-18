@@ -99,17 +99,37 @@ AideDD source reference when the marker entry has one.
    inside the named ward. Crops were generated locally with `ffmpeg` and were not committed
    because they reproduce the copyrighted artwork.
 
-The visual checks confirmed, among others:
+All twenty control points were checked with the crop-and-cross method. The table records what
+landed under the cross.
 
-- The cross for Castle Waterdeep lands inside the castle courtyard.
-- The Yawning Portal cross lands on the building at the Rainrun Street / Cook Street area.
-- The Blackstaff Tower cross lands on the tower near Swords Street.
-- Piergeiron's Palace lands inside the palace compound.
-- The Market cross lands in the open market square.
-- Harborwatch Tower lands on the coastal tower.
-- The City of the Dead cross lands inside the walled cemetery.
-- Field Ward, Sea Ward, North Ward, Trades Ward, Dock Ward, and Southern Ward centroids land
-  inside their labeled areas.
+| # | ID | Result of the visual cross-check |
+| --- | --- | --- |
+| 1 | `north-gate` | Cross lands on the North Gate gatehouse on the northern wall. |
+| 2 | `troll-gate` | Cross lands on the Troll Gate on the western wall. |
+| 3 | `west-gate` | Cross lands on the West Gate gatehouse on the western wall. |
+| 4 | `field-ward-center` | Cross lands inside Field Ward. |
+| 5 | `sea-ward-center` | Cross lands inside Sea Ward. |
+| 6 | `north-ward-center` | Cross lands inside North Ward. |
+| 7 | `blackstaff-tower` | Cross lands on the tower near Swords Street. |
+| 8 | `new-olamn` | Cross lands on the Cliffride building the dataset calls "New Olamn's academy of music and other arts" (`C72`). |
+| 9 | `city-of-the-dead-center` | Cross lands inside the walled cemetery. |
+| 10 | `castle-waterdeep` | Cross lands inside the castle courtyard. |
+| 11 | `piergeirons-palace` | Cross lands inside the palace compound. |
+| 12 | `the-market` | Cross lands in the open market square. |
+| 13 | `the-yawning-portal` | Cross lands on the building at the Rainrun Street / Cook Street area. |
+| 14 | `trades-ward-center` | Cross lands inside Trades Ward. |
+| 15 | `river-gate` | Cross lands on the River Gate on the eastern wall. |
+| 16 | `harborwatch-tower` | Cross lands on the coastal tower. |
+| 17 | `dock-ward-center` | Cross lands inside Dock Ward. |
+| 18 | `southern-ward-center` | Cross lands inside Southern Ward. |
+| 19 | `south-gate` | Cross lands on the South Gate gatehouse. |
+| 20 | `deepwater-beacon` | Cross lands on the small beacon structure at the southern tip. |
+
+Streets are a different case. The AideDD dataset stores one marker per street, so
+`main_streets` holds **label anchors**, not polylines. Each entry carries the
+`street-label-anchor` kind and the `aidedd-dataW-street-marker` provenance; the verifier
+rejects a street without provenance. Do not read a road shape into these points. The source
+provides no street geometry.
 
 The overlay artifact makes the same check repeatable in a browser:
 
@@ -123,6 +143,14 @@ open docs/maps/waterdeep/overlay.svg
 Only bounding boxes and centroids are stored. The original AideDD zone paths are not copied.
 Boxes are axis-aligned and therefore over-cover irregular ward shapes; they are calibration
 aids, not legal boundaries.
+
+A place gets a `ward` value from two hints, neither of which is authoritative: the reduced
+bounding box that contains its pixel, and the letter prefix AideDD uses in its `ref` codes
+(`C` = Castle Ward, `N` = North Ward, `D` = Dock Ward, `T` = Trades Ward, `S` = Southern
+Ward, `H` = harbor/coast). The prefix convention is the dataset author's; AideDD does not
+document it, and the over-covering boxes match several wards at once, so the convention was
+observed rather than proven. The verifier checks the box as a consistency invariant, not as a
+boundary claim.
 
 | Ward | Centroid px | Bounding box px |
 | --- | --- | --- |

@@ -2,10 +2,10 @@
 
 Access date: **2026-10-18 UTC**. All requests were plain unauthenticated `GET` requests over
 HTTPS. No credentials were used, no client block was bypassed, and no proxy or spoofed user
-agent was introduced. The earlier note in [`docs/waterdeep-atlas.md`](../../waterdeep-atlas.md)
-recorded that Chrome returned a client-side block when opening the data resource; a direct
-request to the same public URL now returned HTTP 200. The observation is recorded here rather
-than treated as a permanent block.
+agent was introduced. The note in [`docs/waterdeep-atlas.md`](../../waterdeep-atlas.md) records
+both observations: navigating from Chrome to the data resource returned a client-side block
+that was not bypassed, and a later direct request to the same public URL returned HTTP 200.
+The block is recorded as a past observation rather than a permanent condition.
 
 ## Primary sources
 
@@ -37,6 +37,7 @@ node docs/maps/waterdeep/verify-waterdeep-reference.mjs --image /tmp/waterdeep.j
 | Eight named wards and their extents | `zones[]` paths, reduced to bounding boxes and centroids | Geometry confirmed from the source; boundary accuracy not audited |
 | 768 marker entries | `groupe[]` filtered to non-`GROUP`, non-zero rows | Confirmed count; not a count of unique places |
 | Place names and pixels | `groupe[]` entries for the selected places | Confirmed against the source data and visually cross-checked |
+| Street label anchors | `groupe[]` entries with `txt1:"<p>Street</p>"` | Confirmed against the source data; label points only, not a street graph |
 | Place lore | Not used | Deliberately not copied |
 
 ## What the sources do not provide
@@ -53,9 +54,10 @@ node docs/maps/waterdeep/verify-waterdeep-reference.mjs --image /tmp/waterdeep.j
 
 The map artwork is by **Jason Engle**. The raster is copyrighted and is not committed to this
 repository. `overlay.svg` embeds only the public URL; the verifier can check a locally
-downloaded copy but does not distribute it. The AideDD marker names, coordinates, and ref
-codes are recorded only for the selected calibration set. AideDD lore text is not copied into
-the JSON, the overlay, or the docs.
+downloaded copy but does not distribute it. AideDD marker names, coordinates, and ref codes
+are recorded only for the selected calibration set and for the duplicate/deduplication
+examples named in `source_snapshot.derived`. AideDD lore text is not copied into the JSON,
+the overlay, or the docs.
 
 ## Reuse limits
 
