@@ -27,6 +27,22 @@ async function assertHpEverywhere(page, hp) {
   await page.click('.rail [data-view="encounter"]');
 }
 
+export async function checkInitiativeFocus(page) {
+  await page.click('.rail [data-view="encounter"]');
+  for (const id of ['aubrey', 'sera', 'celeste']) {
+    const selector = `[data-participant="${id}"]`;
+    await activateWithKeyboard(page, selector);
+    assert.equal(await page.evaluate('document.activeElement.dataset.participant'), id);
+    assert.equal(await page.read(selector, 'dataset.active'), 'true');
+    assert.equal(await page.evaluate('document.activeElement.matches(":focus-visible")'), true);
+    assert.notEqual(
+      await page.evaluate('getComputedStyle(document.activeElement).outlineStyle'), 'none',
+    );
+  }
+  await page.press('Tab');
+  assert.equal(await page.evaluate('document.activeElement.dataset.participant'), 'thug');
+}
+
 export async function checkLiveHp(page) {
   await page.click('.rail [data-view="encounter"]');
   await page.click('[data-action="reset-encounter"]');
