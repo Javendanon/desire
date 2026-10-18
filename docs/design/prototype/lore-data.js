@@ -82,7 +82,7 @@ export const loreEntries = [
     source: ORIGINAL,
   },
   {
-    id: 'griffin-crash',
+    id: 'broken-crane',
     title: 'La grúa rota',
     kind: 'event',
     district: 'Puerto',

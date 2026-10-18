@@ -40,7 +40,7 @@ title, the encounter place line and the log in one step.
 | `?` | Open the shortcut help. |
 | `1` to `4` | Inicio, Atlas, Mesa, Grupo. |
 | `ArrowDown`, `ArrowUp` | Move focus through search results. |
-| `Enter` | Activate the focused result, marker or control. |
+| `Enter` | In the query field, open the first matching result; otherwise activate the focused result, marker or control. |
 
 Shortcuts are ignored while focus is in a text field, so typing `?` inside the search input never
 opens the help dialog. The prototype exposes no keyboard pan or drag for the map beyond the

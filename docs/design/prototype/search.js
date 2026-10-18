@@ -52,6 +52,16 @@ function scheduleSearch(context) {
   }, DEBOUNCE_MS);
 }
 
+// Enter before the debounce resolves the query at once, then activates the first match.
+function activateFirstResult(context) {
+  if (context.requestState === 'loading') {
+    clearTimeout(context.timer);
+    context.requestState = 'idle';
+    renderSearch(context);
+  }
+  context.options.results.querySelector('.result')?.click();
+}
+
 function openSearch(context) {
   context.query = '';
   context.requestState = 'idle';
@@ -74,10 +84,12 @@ function moveResultFocus(results, event) {
 
 function bindSearch(options, handlers) {
   const { dialog, input, results } = options;
+  const form = dialog.querySelector('form');
   const onKeydown = (event) => moveResultFocus(results, event);
   input.addEventListener('input', handlers.schedule);
   input.addEventListener('keydown', onKeydown);
   results.addEventListener('keydown', onKeydown);
+  form?.addEventListener('submit', handlers.onSubmit);
   dialog.addEventListener('close', handlers.onClose);
 }
 
@@ -85,6 +97,11 @@ export function createSearch(options) {
   const context = { options, query: '', requestState: 'idle', timer: 0 };
   bindSearch(options, {
     schedule: () => scheduleSearch(context),
+    // Enter in the query field activates the first result instead of dismissing the dialog.
+    onSubmit: (event) => {
+      event.preventDefault();
+      activateFirstResult(context);
+    },
     onClose: () => {
       clearTimeout(context.timer);
       context.requestState = 'idle';

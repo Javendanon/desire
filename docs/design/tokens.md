@@ -26,7 +26,7 @@ transparent accent strokes so the map never introduces a new hue.
 ### Measured contrast
 
 Ratios use the WCAG 2.1 relative luminance formula. `tokens.test.js` recomputes them from
-`styles.css` and fails below 4.5, so a future token edit cannot silently break the floor.
+`tokens.css` and fails below 4.5, so a future token edit cannot silently break the floor.
 
 | Pair | Ratio | WCAG |
 | --- | --- | --- |
@@ -57,8 +57,9 @@ makes no network request.
 | `--text-3xl` | 30px | Page heading on desktop. |
 
 Sizes snap to the Tailwind scale steps; tracking and line height stay inside the matched step.
-CSS lives in four files (tokens 129, layout 174, components 327, overlays 299 lines) so no file
-crosses the F6 400 line ceiling.
+CSS lives in four files (tokens 129, layout 173, components 326, overlays 298 lines) and the
+controller is split into `app.js` entry wiring, `table-state.js` state and selectors, `views.js`
+rendering and `controls.js` actions, so no file crosses the F6 400 line ceiling.
 
 ## Spacing
 

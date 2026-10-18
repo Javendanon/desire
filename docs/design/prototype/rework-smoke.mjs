@@ -8,6 +8,14 @@ const WCAG_AA = 4.5;
 const LUMINANCE_WEIGHTS = [0.2126, 0.7152, 0.0722];
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function typeQuery(page, text) {
+  await page.evaluate(`(() => {
+    const input = $('#lore-input');
+    input.value = ${JSON.stringify(text)};
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+}
+
 async function activateWithKeyboard(page, selector) {
   for (let step = 0; step < TAB_LIMIT; step += 1) {
     const focused = await page.evaluate(
@@ -94,12 +102,29 @@ export async function checkScenarioLoreJump(page) {
 
 export async function checkSearchEnterSelectsResult(page) {
   await page.click('[data-action="open-search"]');
-  await page.type('pozo');
+  await typeQuery(page, 'no-matching-entry');
   await wait(SEARCH_SETTLE_MS);
-  assert.equal(await page.read('#search-dialog', 'open'), true, 'typing keeps the dialog open');
+  assert.equal(await page.count('.result'), 0);
   await page.press('Enter');
-  assert.equal(await page.read('#search-dialog', 'open'), false, 'Enter selects without closing');
-  assert.equal(await page.read('#side-panel-title'), 'Portal Bostezante', 'Enter opens the first result');
+  assert.equal(await page.read('#search-dialog', 'open'), true, 'Enter keeps an empty search open');
+  await typeQuery(page, 'pozo');
+  await page.press('Enter');
+  assert.equal(
+    await page.read('#side-panel-title'),
+    'Portal Bostezante',
+    'Enter resolves a pending debounce and opens the first result',
+  );
+  await page.click('[data-action="close-panel"]');
+  await page.click('[data-action="open-search"]');
+  await typeQuery(page, 'pozo');
+  await wait(SEARCH_SETTLE_MS);
+  await page.press('Enter');
+  assert.equal(
+    await page.read('#side-panel-title'),
+    'Portal Bostezante',
+    'Enter opens the first settled result',
+  );
+  assert.equal(await page.read('#search-dialog', 'open'), false, 'dialog closes after selection');
   await page.click('[data-action="close-panel"]');
 }
 
@@ -132,11 +157,7 @@ export async function checkSearchDismissal(page, input = 'click') {
   for (const requestState of ['idle', 'empty', 'loading', 'error']) {
     await page[input]('[data-action="open-search"]');
     if (requestState === 'empty') {
-      await page.evaluate(`(() => {
-        const input = $('#lore-input');
-        input.value = 'no-matching-entry';
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      })()`);
+      await typeQuery(page, 'no-matching-entry');
       await wait(SEARCH_SETTLE_MS);
       assert.equal(await page.count('.result'), 0);
     } else {

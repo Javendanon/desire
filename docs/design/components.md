@@ -19,7 +19,7 @@ a full 1px border, and a radius that follows the nested formula.
 | Turn row | `.turn` | Initiative number, name, HP bar, condition, active state. |
 | HP bar | `.hp-bar` | Accent above 30 percent, danger at or below. |
 | Party card | `.party-card` | Sheet summary and the button that opens the side panel. |
-| Log list | `.log-list` | Newest first, `aria-live="polite"` on the container. |
+| Log list | `.log-list` | Newest first; visual only, combat feedback is announced through the toast. |
 | Button | `.button` | Primary, quiet, icon and toggle variants. |
 | Tag, stat grid, toast, skeleton, state note | `components.css`, `overlays.css` | Small shared pieces. |
 
@@ -31,7 +31,7 @@ a full 1px border, and a radius that follows the nested formula.
 | Loading | Lore search | Three skeletons shaped like result rows plus the status text `Buscando en el lore…`. The map and the HUD stay interactive. |
 | Error | Lore search | Inline note, danger border and a `Reintentar` button. No alert dialog. |
 | Active | Turn row, marker, rail item, scenario chip | Accent background or border and `aria-current` or `data-active`. |
-| Fallen | Turn row | Reduced opacity at 0 HP plus the `Caída` condition text, still reachable by keyboard. `conditionAfter` sets it when HP reaches 0 and clears it when the participant is healed. |
+| Fallen | Turn row | Dashed border and the `Caída` condition text at 0 HP; text stays fully opaque and the row remains reachable by keyboard. `conditionAfter` sets it when HP reaches 0 and clears it when the participant is healed. |
 | Hover and active | Every button | Surface shift on hover, `scale(0.98)` on press. |
 | Focus | Every control | Visible accent ring. |
 

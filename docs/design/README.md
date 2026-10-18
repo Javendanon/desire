@@ -15,7 +15,8 @@ API, domain or data contract.
 | `accessibility.md` | Keyboard, focus, contrast, reduced motion and known limits. |
 | `art-provenance.md` | Origin of every visual asset and text used by the prototype. |
 | `advisor-response.md` | Independent review findings and how each one was resolved. |
-| `rework-verification.md` | Six review fixes, RED/GREEN evidence, metrics and coverage limits. |
+| `rework-verification.md` | First rework round: six review fixes, RED/GREEN evidence, metrics and coverage limits. |
+| `rework-2-verification.md` | Second rework round: seven review fixes, controller split, RED/GREEN evidence and metrics. |
 | `prototype/` | Runnable mockup, desktop and mobile, in plain HTML, CSS and ES modules. |
 
 ## Run the prototype
@@ -40,7 +41,7 @@ Port 5173 belongs to another worktree in this session; the prototype uses its ow
 ## Verification
 
 ```sh
-node --test docs/design/prototype/*.test.js   # 17 checks: table state, markup, token contrast
+node --test docs/design/prototype/*.test.js   # 18 checks: table state, markup, lore links, tokens
 node docs/design/prototype/smoke.mjs          # headless Chrome end to end, needs the page served
 ```
 
@@ -51,12 +52,14 @@ selection, event-lore scenario jumps, rendered fallen-text contrast, search canc
 request state on desktop and mobile touch, and reduced motion.
 
 It also checks six map markers, five initiative rows, the immediate
-next turn and damage responses, the lore search result plus the empty and error states, arrow-key
-movement inside the results, that digits do not switch views while typing, real view visibility via
-`checkVisibility()`, the side panel, the scenario jump, and the mobile rail and map height. It uses
-the Chrome already installed on the machine and the DevTools protocol, so it adds no dependency.
-CSS is split into `tokens.css`, `layout.css`, `components.css` and `overlays.css`; no file crosses
-the 400 line ceiling.
+next turn and damage responses, the lore search result plus the empty and error states, Enter in
+the query field selecting a result, arrow-key movement inside the results, that digits do not
+switch views while typing, real view visibility via `checkVisibility()`, the side panel, both
+event-lore scenario jumps, and the mobile rail and map height. It uses the Chrome already
+installed on the machine and the DevTools protocol, so it adds no dependency. CSS is split into
+`tokens.css`, `layout.css`, `components.css` and `overlays.css`; the controller is split into
+`app.js` wiring, `table-state.js` selectors, `views.js` rendering and `controls.js` actions. No
+file crosses the 400 line floor.
 
 ## Scope boundaries
 
