@@ -86,13 +86,13 @@ export function findById(items, id) {
 }
 
 /**
- * Scenario that points at a lore entry, by place or by marker.
+ * Prefer the scenario's own lore entry, then related places or markers.
  * @param {Scenario[]} scenarios
  * @param {string} entryId
  * @returns {Scenario | undefined}
  */
 export function scenarioForEntry(scenarios, entryId) {
-  return scenarios.find(
+  return findById(scenarios, entryId) ?? scenarios.find(
     (scenario) => scenario.placeId === entryId || scenario.markerId === entryId,
   );
 }
