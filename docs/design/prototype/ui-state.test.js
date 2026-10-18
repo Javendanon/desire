@@ -89,6 +89,17 @@ test('lookup helpers find entries and their scenario', () => {
   assert.equal(scenarioForEntry(scenarios, 'bostezante'), undefined);
 });
 
+test('scenario lore resolves by its own id before a shared place match', () => {
+  const scenarios = [
+    { id: 'other-scene', placeId: 'well-whispers', markerId: 'shared-marker' },
+    { id: 'well-whispers', placeId: 'shared-place', markerId: 'shared-marker' },
+  ];
+  assert.equal(scenarioForEntry(scenarios, 'well-whispers'), scenarios[1]);
+  assert.equal(scenarioForEntry(scenarios, 'shared-place'), scenarios[1]);
+  assert.equal(scenarioForEntry(scenarios, 'shared-marker'), scenarios[0]);
+  assert.equal(scenarioForEntry(scenarios, 'missing'), undefined);
+});
+
 test('initiative advances, wraps and skips fallen participants', () => {
   const party = [
     { id: 'a', hp: 8 },
