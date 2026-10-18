@@ -15,6 +15,7 @@ API, domain or data contract.
 | `accessibility.md` | Keyboard, focus, contrast, reduced motion and known limits. |
 | `art-provenance.md` | Origin of every visual asset and text used by the prototype. |
 | `advisor-response.md` | Independent review findings and how each one was resolved. |
+| `rework-verification.md` | Six review fixes, RED/GREEN evidence, metrics and coverage limits. |
 | `prototype/` | Runnable mockup, desktop and mobile, in plain HTML, CSS and ES modules. |
 
 ## Run the prototype
@@ -39,11 +40,17 @@ Port 5173 belongs to another worktree in this session; the prototype uses its ow
 ## Verification
 
 ```sh
-node --test docs/design/prototype/*.test.js   # 16 checks: table state, markup, token contrast
+node --test docs/design/prototype/*.test.js   # 17 checks: table state, markup, token contrast
 node docs/design/prototype/smoke.mjs          # headless Chrome end to end, needs the page served
 ```
 
-`smoke.mjs` drives the real DOM: it checks six map markers, five initiative rows, the immediate
+`smoke.mjs` checks visibility and hit targets before sending real pointer input; it rejects
+hidden combat controls and navigates to the encounter before operating them. Review regressions
+in `rework-smoke.mjs` cover live HP in all summaries and open sheets, keyboard focus after row
+selection, event-lore scenario jumps, rendered fallen-text contrast, search cancellation in every
+request state on desktop and mobile touch, and reduced motion.
+
+It also checks six map markers, five initiative rows, the immediate
 next turn and damage responses, the lore search result plus the empty and error states, arrow-key
 movement inside the results, that digits do not switch views while typing, real view visibility via
 `checkVisibility()`, the side panel, the scenario jump, and the mobile rail and map height. It uses

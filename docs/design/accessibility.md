@@ -5,7 +5,10 @@
 - A `Saltar al contenido` skip link is the first focusable element and moves to `#main`.
 - Landmarks: `<header>` HUD, `<nav>` rail, `<main>`, `<nav>` scenario bar, `<aside>` side panel.
 - The search and help overlays are native `<dialog>` elements shown with `showModal()`, so the
-  browser provides focus containment, Escape to close and focus restoration.
+  browser provides focus containment, Escape to close and focus restoration. Search also has a
+  visible native submit button to cancel in every request state, including on touch screens.
+- Initiative rendering restores the selected row's focus; Tab/Enter selection preserves the
+  focus-visible outline and the next Tab continues through initiative order.
 - The side panel is deliberately **non modal** (`aria-modal="false"`): opening a sheet or a lore
   entry keeps the map in the tab order. `openPanel` remembers the trigger and returns focus to it
   on close; the panel title is the accessible name.
@@ -21,12 +24,13 @@
 ## Contrast
 
 The shipped token pairs measure between 7.62 and 15.23 under the WCAG 2.1 formula, all above the
-4.5 floor and most above 7. `tokens.test.js` recomputes each documented pair from `styles.css` and
+4.5 floor and most above 7. `tokens.test.js` recomputes each documented pair from `tokens.css` and
 fails if a ratio drops below 4.5. The full table lives in `tokens.md`.
 
 Colour is never the only signal: the active turn also carries a border and a heavier surface, a
-fallen participant carries reduced opacity plus the `Caída` condition text (set by
-`conditionAfter`), and low health changes both the bar colour and the numeric HP text.
+fallen participant carries a dashed border plus condition text. Text remains fully opaque;
+`checkFallenContrast` in `rework-smoke.mjs` checks computed colors and ancestor opacity in both
+active and inactive fallen rows. Low health changes both the bar colour and the numeric HP text.
 
 ## Reduced motion
 

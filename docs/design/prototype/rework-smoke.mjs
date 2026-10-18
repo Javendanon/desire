@@ -94,15 +94,15 @@ async function assertSearchState(page, requestState) {
 export async function checkGroupSheetReturnFocus(page) {
   await page.click('.rail [data-view="characters"]');
   const opener = '[data-action="open-sheet"][data-member="aubrey"]';
-  await activateWithKeyboard(page, opener);
   for (const action of ['damage', 'heal', 'reset-encounter']) {
+    await activateWithKeyboard(page, opener);
     await page.click('.rail [data-view="encounter"]');
     await activateWithKeyboard(page, `[data-action="${action}"]`);
     await page.click('.rail [data-view="characters"]');
+    await activateWithKeyboard(page, '[data-action="close-panel"]');
+    assert.equal(await page.evaluate('document.activeElement.dataset.member'), 'aubrey');
+    assert.equal(await page.evaluate('document.activeElement.matches(":focus-visible")'), true);
   }
-  await activateWithKeyboard(page, '[data-action="close-panel"]');
-  assert.equal(await page.evaluate('document.activeElement.dataset.member'), 'aubrey');
-  assert.equal(await page.evaluate('document.activeElement.matches(":focus-visible")'), true);
 }
 
 export async function checkSearchDismissal(page, input = 'click') {
@@ -122,6 +122,7 @@ export async function checkSearchDismissal(page, input = 'click') {
     await assertSearchState(page, requestState);
     const close = '#search-dialog button[type="submit"]';
     assert.equal(await page.has(close), true, `visible cancel control in ${requestState}`);
+    assert.equal(await page.read(close, 'lang'), 'en', 'new label declares its language');
     await page[input](close);
     assert.equal(await page.read('#search-dialog', 'open'), false);
     assert.equal(await page.evaluate('document.activeElement.dataset.action'), 'open-search');

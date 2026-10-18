@@ -1,5 +1,8 @@
 # Independent review response
 
+The original implementation review is preserved below. For the six requested rework fixes and
+fresh independent re-reviews, see [rework verification](rework-verification.md).
+
 An independent reviewer agent (Claude CLI, read-only, no shared context with the author) reviewed
 the D03 files against `docs/reglas-de-codigo.md`. This is the disposition of every finding. The
 review ran before the fixes below; each entry cites the current file and line as evidence.
