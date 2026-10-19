@@ -37,22 +37,25 @@ class Flags(unittest.TestCase):
         self.assert_flags(diff_of("src/map.ts", added=[f"  // {TS_IGNORE}"]), "suppression added")
 
     def test_added_rust_allow(self):
-        self.assert_flags(diff_of("crates/core/src/lib.rs", added=[RUST_ALLOW]), "suppression added")
+        diff = diff_of("crates/core/src/lib.rs", added=[RUST_ALLOW])
+        self.assert_flags(diff, "suppression added")
 
     def test_skipped_test(self):
         self.assert_flags(diff_of("tests/health.test.ts", added=["it" + ".skip('parses', () => {"]),
                           "test disabled")
 
     def test_ignored_rust_test(self):
-        self.assert_flags(diff_of("crates/core/tests/protocol.rs", added=[RUST_IGNORE]), "test disabled")
+        diff = diff_of("crates/core/tests/protocol.rs", added=[RUST_IGNORE])
+        self.assert_flags(diff, "test disabled")
 
     def test_deleted_test_file(self):
         self.assert_flags(diff_of("tests/health.test.ts", removed=["test('x', ...)"], deleted=True),
                           "test file deleted")
 
     def test_loosened_floor(self):
-        self.assert_flags(diff_of("tools/quality/quality/config.py", removed=["MIN_SCORE = 77"],
-                                  added=["MIN_SCORE = 70"]), "threshold loosened: MIN_SCORE 77 -> 70")
+        diff = diff_of("tools/quality/quality/config.py", removed=["MIN_SCORE = 77"],
+                       added=["MIN_SCORE = 70"])
+        self.assert_flags(diff, "threshold loosened: MIN_SCORE 77 -> 70")
 
     def test_loosened_ceiling(self):
         self.assert_flags(diff_of("tools/quality/config.json", removed=['  "max_lines": 40,'],
@@ -67,7 +70,8 @@ class Clean(unittest.TestCase):
         self.assertEqual(tamper_check.findings(diff), [])
 
     def test_tightened_threshold_is_not_flagged(self):
-        diff = diff_of("tools/quality/config.py", removed=["MIN_SCORE = 77"], added=["MIN_SCORE = 87"])
+        diff = diff_of("tools/quality/config.py", removed=["MIN_SCORE = 77"],
+                       added=["MIN_SCORE = 87"])
         self.assertEqual(tamper_check.findings(diff), [])
 
     def test_pragmas_in_markdown_are_not_code(self):
