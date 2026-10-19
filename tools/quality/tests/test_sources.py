@@ -40,6 +40,30 @@ class F16CompressedTest(unittest.TestCase):
     def test_for_with_semicolons_is_not_compressed(self):
         self.assertFalse(sources.is_compressed_line("for (let i = 0; i < 3; i++) {", "src/x.ts"))
 
+    def test_exactly_two_statements_are_compressed(self):
+        for line in ("a = 1; b = 2;", "a = 1; b = 2", "let x = read(); use(x);"):
+            with self.subTest(line=line):
+                self.assertTrue(sources.is_compressed_line(line, "src/x.ts"))
+
+    def test_semicolons_that_do_not_separate_statements(self):
+        for line in ("let buf = [0u8; 32];", 'const s = "a;b";', "return a; }",
+                     "x = 1; // note; more", "f(a, b);"):
+            with self.subTest(line=line):
+                self.assertFalse(sources.is_compressed_line(line, "src/x.rs"))
+
+
+class StatementLinesTest(unittest.TestCase):
+    def test_python_docstrings_are_prose_not_statements(self):
+        lines = ('"""Module.', "", "Text based; not an AST.", '"""',
+                 'X = """a; b"""', "a = 1; b = 2")
+        numbers = [number for number, _ in sources.statement_lines(source("a.py", *lines))]
+        self.assertEqual(numbers, [6])
+
+    def test_other_languages_keep_every_line(self):
+        lines = ("*ptr = 1; *other = 2;", "let a = 1;")
+        numbers = [number for number, _ in sources.statement_lines(source("a.rs", *lines))]
+        self.assertEqual(numbers, [1, 2])
+
 
 class F11SilentErrorsTest(unittest.TestCase):
     def test_detects_discarded_result_in_rust(self):
@@ -57,6 +81,24 @@ class F11SilentErrorsTest(unittest.TestCase):
 
     def test_does_not_flag_catch_with_body(self):
         self.assertEqual(len(sources.silent_errors(source("a.ts", "} catch (e) { warn(e); }"))), 0)
+
+    def test_detects_multiline_empty_catch_on_the_catch_line(self):
+        found = sources.silent_errors(source("a.ts", "try {", "  f();", "} catch (error) {", "}"))
+        self.assertEqual(found, [(3, "empty catch")])
+
+    def test_detects_multiline_except_pass_on_the_except_line(self):
+        found = sources.silent_errors(source("a.py", "try:", "    f()", "except:", "    pass"))
+        self.assertEqual(found, [(3, "except without handling")])
+
+    def test_detects_typed_except_pass(self):
+        typed = source("a.py", "try:", "    f()", "except ValueError:", "    pass")
+        found = sources.silent_errors(typed)
+        self.assertEqual(len(found), 1)
+
+    def test_does_not_flag_multiline_handlers_with_a_body(self):
+        ts = source("a.ts", "} catch (error) {", "  report(error);", "}")
+        py = source("a.py", "except ValueError as error:", "    log(error)", "    pass")
+        self.assertEqual(sources.silent_errors(ts) + sources.silent_errors(py), [])
 
 
 class SvelteExtractionTest(unittest.TestCase):

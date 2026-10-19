@@ -6,7 +6,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from . import config
-from .sources import SourceFile, is_compressed_line, long_lines, silent_errors
+from .sources import (
+    SourceFile,
+    is_compressed_line,
+    long_lines,
+    silent_errors,
+    statement_lines,
+)
 
 BLOCKS = "block"
 WARNS = "warn"
@@ -179,7 +185,7 @@ def _f16_long_lines(source: SourceFile) -> list[Finding]:
 
 def _f16_compressed(source: SourceFile) -> list[Finding]:
     findings = []
-    for number, line in enumerate(source.lines, start=1):
+    for number, line in statement_lines(source):
         if is_compressed_line(line, source.path):
             detail = "multiple statements on one line"
             findings.append(_source_finding("F16", f"{source.path}:{number}", detail))

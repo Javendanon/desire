@@ -80,6 +80,6 @@ test('loadEngine reports the imported version', async () => {
 
 test('loadEngine propagates the import failure', async () => {
   await assert.rejects(() => loadEngine(async () => {
-    throw new Error('sin red');
+    throw new Error('offline');
   }));
 });

@@ -68,10 +68,10 @@ def run(root: Path, query: Query) -> Any:
     try:
         process = subprocess.run(parts, cwd=root, capture_output=True, text=True)
     except FileNotFoundError as error:
-        raise KmError("km no está instalado en PATH") from error
+        raise KmError("km is not installed on PATH") from error
     if process.returncode != 0:
         detail = process.stderr.strip()
-        raise KmError(f"km {query.command} falló ({process.returncode}): {detail}")
+        raise KmError(f"km {query.command} failed ({process.returncode}): {detail}")
     return json.loads(process.stdout)
 
 

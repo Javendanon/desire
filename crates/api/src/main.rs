@@ -25,9 +25,15 @@ fn shutdown_error_message(error: &std::io::Error) -> String {
     format!("Could not listen for the shutdown signal: {error}")
 }
 
-async fn wait_for_shutdown() {
-    if let Err(error) = tokio::signal::ctrl_c().await {
-        eprintln!("{}", shutdown_error_message(&error));
+/// Waits for the shutdown signal. A signal that cannot be listened for is reported, never
+/// ignored: the server then shuts down instead of running without a way to stop it cleanly.
+async fn wait_for_shutdown<S, R>(signal: S, report: R)
+where
+    S: std::future::Future<Output = std::io::Result<()>>,
+    R: FnOnce(String),
+{
+    if let Err(error) = signal.await {
+        report(shutdown_error_message(&error));
     }
 }
 
@@ -44,7 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new().route("/api/health", get(health));
     println!("Desire API: http://{address}");
     axum::serve(listener, app)
-        .with_graceful_shutdown(wait_for_shutdown())
+        .with_graceful_shutdown(wait_for_shutdown(tokio::signal::ctrl_c(), |message| {
+            eprintln!("{message}")
+        }))
         .await?;
     Ok(())
 }
@@ -62,9 +70,19 @@ mod tests {
         assert_eq!(response.protocol_version, desire_core::PROTOCOL_VERSION);
     }
 
-    #[test]
-    fn shutdown_preserves_cause() {
-        let error = std::io::Error::other("no signal available");
-        assert!(shutdown_error_message(&error).contains("no signal available"));
+    #[tokio::test]
+    async fn shutdown_reports_a_signal_error_with_its_cause() {
+        let mut reported = Vec::new();
+        let failing = async { Err(std::io::Error::other("no signal available")) };
+        wait_for_shutdown(failing, |message| reported.push(message)).await;
+        assert_eq!(reported.len(), 1);
+        assert!(reported[0].contains("no signal available"));
+    }
+
+    #[tokio::test]
+    async fn shutdown_reports_nothing_on_a_clean_signal() {
+        let mut reported = Vec::new();
+        wait_for_shutdown(async { Ok(()) }, |message| reported.push(message)).await;
+        assert!(reported.is_empty());
     }
 }

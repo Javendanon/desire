@@ -15,10 +15,10 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from quality import config, evaluate, km, sources  # noqa: E402
-from quality.evaluate import Finding  # noqa: E402
+# Run as a script (`python3 tools/quality/gate.py`): Python puts this directory on sys.path,
+# so the `quality` package imports without any path manipulation.
+from quality import config, evaluate, km, sources
+from quality.evaluate import Finding
 
 EXIT_OK = 0
 EXIT_FLOOR = 2
