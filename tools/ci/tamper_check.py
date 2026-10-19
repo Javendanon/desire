@@ -26,7 +26,8 @@ from pathlib import PurePosixPath
 
 AT, HASH, DOT = "@", "#", "."
 SUPPRESSIONS = (
-    AT + "ts-" + "ignore", AT + "ts-" + "expect-error", "eslint-" + "disable", "tslint:" + "disable",
+    AT + "ts-" + "ignore", AT + "ts-" + "expect-error",
+    "eslint-" + "disable", "tslint:" + "disable",
     HASH + " no" + "qa", HASH + " type: " + "ignore", HASH + "[al" + "low(", HASH + "![al" + "low(",
     HASH + " pragma: no " + "cover", "svelte-" + "ignore",
 )
@@ -42,7 +43,10 @@ ARGC_BASE_ONLY = 2
 ARGC_BASE_AND_HEAD = 3
 TEST_DIRS = ("test", "tests", "__tests__", "spec", "holdout")
 TEST_NAME_MARKERS = (".test.", ".spec.", "_test.")
-THRESHOLD = re.compile(r"^\s*['\"]?([A-Za-z_][A-Za-z0-9_\-]*)['\"]?\s*[:=]\s*(-?\d+(?:\.\d+)?)\s*,?\s*$")
+THRESHOLD = re.compile(
+    r"^\s*['\"]?([A-Za-z_][A-Za-z0-9_\-]*)['\"]?"   # key, optionally quoted
+    r"\s*[:=]\s*(-?\d+(?:\.\d+)?)\s*,?\s*$"        # = or :, then a number
+)
 LOWER_IS_LOOSER = ("min", "floor", "threshold", "score", "coverage")
 HIGHER_IS_LOOSER = ("max", "limit", "ceiling", "budget", "timeout")
 
@@ -96,12 +100,13 @@ def _contains(line: str, pattern: str) -> bool:
 def _pattern_findings(diff: FileDiff) -> list[str]:
     findings = []
     for line in diff.added:
+        preview = line.strip()[:PREVIEW_CHARS]
         for pattern in SUPPRESSIONS:
             if _contains(line, pattern):
-                findings.append(f"{diff.path}: suppression added ({pattern}): {line.strip()[:PREVIEW_CHARS]}")
+                findings.append(f"{diff.path}: suppression added ({pattern}): {preview}")
         for pattern in SKIPS:
             if _contains(line, pattern):
-                findings.append(f"{diff.path}: test disabled or focused ({pattern}): {line.strip()[:PREVIEW_CHARS]}")
+                findings.append(f"{diff.path}: test disabled or focused ({pattern}): {preview}")
     return findings
 
 
@@ -126,7 +131,8 @@ def _loosened(key: str, before: float, after: float) -> bool:
 def _threshold_findings(diff: FileDiff) -> list[str]:
     before, after = _thresholds(diff.removed), _thresholds(diff.added)
     return [f"{diff.path}: threshold loosened: {key} {before[key]:g} -> {after[key]:g}"
-            for key in sorted(before.keys() & after.keys()) if _loosened(key, before[key], after[key])]
+            for key in sorted(before.keys() & after.keys())
+            if _loosened(key, before[key], after[key])]
 
 
 def findings(diff: str) -> list[str]:
