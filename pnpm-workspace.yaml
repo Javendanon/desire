@@ -1,0 +1,4 @@
+# pnpm 12 records the pinned package manager as a leading env document inside
+# pnpm-lock.yaml. Ignoring pm-on-fail keeps the lockfile a single document while
+# Corepack still enforces packageManager from package.json.
+pmOnFail: ignore
