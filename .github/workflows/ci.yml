@@ -35,8 +35,13 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
+      # Needs the corepack bundled with Node >= 24 (`.nvmrc`): the one in Node 22.17 (0.33) cannot
+      # start pnpm 12 — it looks for bin/pnpm.cjs and pnpm 12 ships bin/pnpm.mjs.
       - name: Enable corepack (pnpm version comes from package.json packageManager)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack --version
+          corepack pnpm --version
       - name: Install dependencies from the lockfile only
         run: corepack pnpm install --frozen-lockfile
       - name: Type and Svelte checks

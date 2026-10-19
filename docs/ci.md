@@ -11,7 +11,7 @@ name. Renaming a job is a policy change.
 
 | Job | What it runs | Toolchain |
 | --- | --- | --- |
-| `frontend-check` | `corepack pnpm install --frozen-lockfile`, `corepack pnpm check` | Node from `.nvmrc`, pnpm from `packageManager` |
+| `frontend-check` | `corepack pnpm install --frozen-lockfile`, `corepack pnpm check` | Node from `.nvmrc` (its bundled corepack), pnpm from `packageManager` |
 | `rust-fmt` | `cargo fmt --all --check` | `rust-toolchain.toml` |
 | `rust-clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` | `rust-toolchain.toml` |
 | `rust-test` | `cargo test --workspace --locked` | `rust-toolchain.toml` |
@@ -33,6 +33,8 @@ name. Renaming a job is a policy change.
   `kimun` is pinned to 0.26.0, the version the D02 measurements were taken with; upgrading it is a
   deliberate change because scores move between versions.
 - Third-party actions are pinned to a commit SHA, with the tag in a comment.
+- pnpm 12 needs the corepack bundled with Node 24 (0.35): the one in Node 22.17 (0.33) expects
+  `bin/pnpm.cjs` and fails with `MODULE_NOT_FOUND`. If `.nvmrc` ever drops below 24, pin corepack.
 
 ## Anti-tamper check
 
