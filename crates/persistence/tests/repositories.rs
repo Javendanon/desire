@@ -1,7 +1,7 @@
 //! Real PostgreSQL checks; the harness creates a new database per test.
 mod support;
 
-use desire_core::contracts::{Campaign, RulesEdition};
+use desire_core::contracts::{campaign::Campaign, common::RulesEdition};
 use desire_persistence::{CampaignRepository, migrations};
 
 #[test]
@@ -19,7 +19,14 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
     CampaignRepository::create(&mut db, &campaign).unwrap();
     migrations::apply(&mut db).unwrap();
     migrations::apply(&mut db).unwrap();
-    assert_eq!(CampaignRepository::get(&mut db, &campaign.id).unwrap(), Some(campaign));
-    assert_eq!(db.query_one("SELECT count(*) FROM persistence_migrations", &[])
-        .unwrap().get::<_, i64>(0), 4);
+    assert_eq!(
+        CampaignRepository::get(&mut db, &campaign.id).unwrap(),
+        Some(campaign)
+    );
+    assert_eq!(
+        db.query_one("SELECT count(*) FROM persistence_migrations", &[])
+            .unwrap()
+            .get::<_, i64>(0),
+        4
+    );
 }
