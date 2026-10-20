@@ -96,6 +96,7 @@ fn seed_places(tx: &mut Transaction<'_>, places: &[Place]) -> Result<(), Error> 
             .remove("anchors");
         seed_row(tx, "places", data)?;
         seed_anchors(tx, place)?;
+        verify_anchor_count(tx, place)?;
     }
     Ok(())
 }
@@ -135,6 +136,26 @@ fn seed_anchors(tx: &mut Transaction<'_>, place: &Place) -> Result<(), Error> {
                 ),
             ));
         }
+    }
+    Ok(())
+}
+
+fn verify_anchor_count(tx: &mut Transaction<'_>, place: &Place) -> Result<(), Error> {
+    let count: i64 = tx
+        .query_one(
+            "SELECT count(*) FROM catalog.place_anchors WHERE place_id = $1::text::uuid",
+            &[&place.id],
+        )
+        .context(format!("compare anchor count for place {}", place.id))?
+        .get(0);
+    if count as usize != place.anchors.len() {
+        return Err(Error::new(
+            ErrorKind::SeedMismatch,
+            format!(
+                "anchor set for place {} differs from installed content",
+                place.id
+            ),
+        ));
     }
     Ok(())
 }
