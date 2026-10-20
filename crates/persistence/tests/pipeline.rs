@@ -4,6 +4,11 @@
 //! that calls `cargo test --workspace` directly is red for the whole workspace. These checks keep
 //! CI, the merge-policy gate and the pnpm scripts pointed at `test-postgres.sh` instead of
 //! re-learning that the hard way.
+//!
+//! This is a tripwire against the accidental reverts that caused the original blocker, not a
+//! workflow policy engine: a step guarded by `if:` or wrapped in a shell construct the parser
+//! does not understand can still slip through. Deliberate edits to the workflow and the policy
+//! are `merge-policy.json` `never_paths` and get an owner review anyway.
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;

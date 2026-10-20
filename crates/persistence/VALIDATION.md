@@ -221,6 +221,14 @@ parser tests cover the `|| true` and `echo` forms. Also taken: `merge-policy.jso
 now one field per line (the array was 115–153 columns wide), and the README describes the
 wiring as part of this change instead of as a future PR.
 
+Round 7 (`75f3f0b`) confirmed both reported CI findings fixed and raised three minor items.
+Taken: `test-postgres.sh` registers its `EXIT` trap right after the cluster directory exists
+and tolerates a failed `pg_ctl stop`, so a failed `initdb` leaves no cluster behind
+(reproduced: a failing `initdb` exits 1 and `.local/d08` stays empty). Documented instead of
+fixed: the guard is a tripwire against accidental reverts, not a workflow policy engine, so a
+step guarded by `if:` can still slip through — such edits are `never_paths` and need an owner
+review. PostgreSQL 17 stays open for the same reason as above.
+
 Left open by decision: the `frontend-check` and `quality-gate` gate `cmd` approximations
 (policy owner's call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility
 (needs a runner or image this worktree cannot create).
