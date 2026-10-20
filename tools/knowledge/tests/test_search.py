@@ -45,9 +45,13 @@ class SharedSearchFixtureTests(unittest.TestCase):
             with self.subTest(fixture=fixture.name):
                 self.assertEqual({entry["id"] for entry in found}, set(fixture.expected_ids))
 
-    def test_fixture_covering_independent_token_order_is_present(self):
-        names = {fixture.name for fixture in shared_fixtures()}
-        self.assertIn("tokens_match_independently_of_order", names)
+    def test_token_order_fixture_stays_discriminating(self):
+        fixture = next(
+            item for item in shared_fixtures() if item.name == "tokens_match_independently_of_order"
+        )
+        every_id = {entry["id"] for entry in search.find("")}
+        self.assertEqual(len(fixture.query.split()), 2)
+        self.assertTrue(set(fixture.expected_ids) < every_id)
 
     def test_fixtures_cover_every_filter_dimension(self):
         used = set()

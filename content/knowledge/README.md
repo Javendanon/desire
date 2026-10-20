@@ -18,11 +18,11 @@ documentation stay English.
 ## Search semantics
 
 `search-fixtures.json` is the normative artifact for search behaviour, not
-`tools/knowledge/search.py`. Each case is a `query`, a required `filters` object that
-may be empty but only accepts the `kind`, `rules_edition`, `language` and
-`translation_status` keys, and the `expected_ids` it must return, evaluated against
-`compendium.json` (`knowledge_entries` joined with `catalog[id]`). The `semantics`
-block in the file states the rules: normalized text is case-folded and stripped of
+`tools/knowledge/search.py`. It carries `schema_version: 1` and each case is a
+`query`, a required `filters` object that may be empty but only accepts the `kind`,
+`rules_edition`, `language` and `translation_status` keys, and the `expected_ids` it
+must return, evaluated against `compendium.json` (`knowledge_entries` joined with
+`catalog[id]`). The `semantics` block in the file states the rules: normalized text is case-folded and stripped of
 combining marks, every query token must appear, the haystack is title + body + slug +
 kind + reference targets, and results are compared as a set of entry ids. `kind`,
 `rules_edition` and `translation_status` values are validated against the model

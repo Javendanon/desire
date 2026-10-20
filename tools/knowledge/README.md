@@ -22,7 +22,8 @@ contract rules.
 The normative search semantics — accent and case normalization, all-token matching,
 the `kind`, `rules_edition`, `language` and `translation_status` filters and the
 2014/2024 split — live in `content/knowledge/search-fixtures.json` as shared
-query → expected-ids cases. D09 (Rust) and D15 (TypeScript) implement against that
+query → expected-ids cases under `schema_version: 1`; a consumer must reject any other
+version. D09 (Rust) and D15 (TypeScript) implement against that
 file. `search.py` is a stand-in so the Python tests and `--verify-fixtures` can prove
 the committed compendium still satisfies those fixtures; it must not be treated as
 the source of truth, and changing it is not how you change search behaviour. Edit the

@@ -197,6 +197,15 @@
       ]
     },
     {
+      "name": "kind_word_is_searchable",
+      "query": "condition",
+      "filters": {},
+      "expected_ids": [
+        "895aa639-5a48-58f8-9ab8-9d0e83391086",
+        "af775fbc-c3e7-5d34-ae2b-fa70759156f5"
+      ]
+    },
+    {
       "name": "title_only_word_is_searchable",
       "query": "derribado",
       "filters": {},
