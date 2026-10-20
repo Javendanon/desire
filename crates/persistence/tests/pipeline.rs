@@ -2,10 +2,13 @@
 //!
 //! The integration tests in this crate fail closed without an isolated cluster, so any pipeline
 //! that calls `cargo test --workspace` directly is red for the whole workspace. These checks keep
-//! CI and the pnpm scripts pointed at `test-postgres.sh` instead of re-learning that the hard way.
+//! CI, the merge-policy gate and the pnpm scripts pointed at `test-postgres.sh` instead of
+//! re-learning that the hard way.
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
+
+const HARNESS: &str = "bash crates/persistence/test-postgres.sh";
 
 fn repository_file(name: &str) -> String {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -15,49 +18,91 @@ fn repository_file(name: &str) -> String {
         .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()))
 }
 
-fn scripts() -> Value {
-    let manifest: Value = serde_json::from_str(&repository_file("package.json"))
-        .expect("package.json must be valid JSON");
-    manifest["scripts"].clone()
+fn json(name: &str) -> Value {
+    serde_json::from_str(&repository_file(name))
+        .unwrap_or_else(|error| panic!("{name} must be valid JSON: {error}"))
+}
+
+/// The `run` steps of one CI job, so a comment or a neighbouring job cannot satisfy a check.
+fn job(workflow: &str, name: &str) -> String {
+    let start = workflow
+        .lines()
+        .position(|line| line == format!("  {name}:"))
+        .unwrap_or_else(|| panic!("ci.yml has no `{name}` job"));
+    let steps: Vec<&str> = workflow
+        .lines()
+        .skip(start + 1)
+        .take_while(|line| !is_job_header(line))
+        .collect();
+    steps.join("\n")
+}
+
+fn is_job_header(line: &str) -> bool {
+    line.starts_with("  ") && !line.starts_with("   ") && line.ends_with(':')
 }
 
 #[test]
-fn ci_installs_postgres_and_runs_the_harness() {
+fn rust_tests_run_through_the_postgres_harness() {
     let workflow = repository_file(".github/workflows/ci.yml");
-    let path_step = workflow
+    let steps = job(&workflow, "rust-test");
+    let binaries = steps
         .find("GITHUB_PATH")
-        .expect("ci.yml must put the PostgreSQL binaries on PATH before the tests run");
-    let harness = workflow
-        .find("bash crates/persistence/test-postgres.sh")
-        .expect("ci.yml must run the PostgreSQL harness, not bare cargo test");
+        .expect("the rust-test job must put the PostgreSQL binaries on PATH");
+    let harness = steps
+        .find(HARNESS)
+        .expect("the rust-test job must run the PostgreSQL harness, not bare cargo test");
     assert!(
-        path_step < harness,
-        "ci.yml puts PostgreSQL on PATH after the harness step"
+        binaries < harness,
+        "PostgreSQL is on PATH after the harness runs"
     );
     assert!(
-        !workflow.contains("cargo test --workspace"),
-        "ci.yml runs cargo test without DESIRE_TEST_SOCKET; it fails closed by design"
+        !steps.contains("cargo test --workspace"),
+        "the rust-test job runs cargo test without DESIRE_TEST_SOCKET; it fails closed"
+    );
+}
+
+#[test]
+fn merge_policy_rust_gate_runs_the_harness() {
+    let policy = json("merge-policy.json");
+    let gate = policy["gates"]
+        .as_array()
+        .expect("merge-policy.json must list gates")
+        .iter()
+        .find(|gate| gate["name"] == "rust-test")
+        .expect("merge-policy.json must keep the `rust-test` gate name the CI job uses");
+    assert_eq!(
+        gate["cmd"], HARNESS,
+        "the local gate runs the same command as the CI job of the same name"
     );
 }
 
 #[test]
 fn ci_runs_every_existing_suite() {
     let workflow = repository_file(".github/workflows/ci.yml");
-    for command in [
-        "corepack pnpm run test:frontend",
-        "corepack pnpm run check:tests",
-        "python3 tools/contracts/generate.py --check",
-        "python3 -m unittest discover -s tools/contracts/tests",
+    for (name, command) in [
+        ("frontend-check", "corepack pnpm run test:frontend"),
+        ("frontend-check", "corepack pnpm run check:tests"),
+        (
+            "quality-gate",
+            "python3 tools/contracts/generate.py --check",
+        ),
+        (
+            "quality-gate",
+            "python3 -m unittest discover -s tools/contracts/tests",
+        ),
     ] {
-        assert!(workflow.contains(command), "ci.yml never runs `{command}`");
+        assert!(
+            job(&workflow, name).contains(command),
+            "the {name} job never runs `{command}`"
+        );
     }
 }
 
 #[test]
 fn package_scripts_route_rust_tests_through_the_harness() {
-    let scripts = scripts();
+    let scripts = json("package.json")["scripts"].clone();
     assert_eq!(
-        scripts["test:rust"], "bash crates/persistence/test-postgres.sh",
+        scripts["test:rust"], HARNESS,
         "pnpm test:rust must fail closed through the harness, like CI"
     );
     assert!(
