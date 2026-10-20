@@ -2,62 +2,34 @@
 
 ## Keyboard and focus
 
-- A `Saltar al contenido` skip link is the first focusable element and moves to `#main`.
-- Landmarks: `<header>` HUD, `<nav>` rail, `<main>`, `<nav>` scenario bar, `<aside>` side panel.
-- The search and help overlays are native `<dialog>` elements shown with `showModal()`, so the
-  browser provides focus containment, Escape to close and focus restoration. Search also has a
-  visible native submit button to cancel in every request state, including on touch screens.
-- Initiative rendering restores the selected row's focus; Tab/Enter selection preserves the
-  focus-visible outline and the next Tab continues through initiative order.
-- The side panel is deliberately **non modal** (`aria-modal="false"`): opening a sheet or a lore
-  entry keeps the map in the tab order. `openPanel` remembers the trigger and returns focus to it
-  on close; the panel title is the accessible name.
-- Every control uses a real `<button>`, including map markers and initiative rows, so Enter and
-  Space work without custom key handling.
-- Search results are buttons in a list. `ArrowDown` and `ArrowUp` are handled on the results
-  container as well as the input, so focus moves from the input into the list and keeps moving
-  between results.
-- `aria-current` marks the active rail item, marker and scenario chip. Toggles expose
-  `aria-pressed`. The toast uses `role="status"` to announce the last combat action; the scene
-  log is visual only, so it is not re-read on every render.
+- Every control is a real `<button>`; the focus ring is a 2 px lantern outline (`base.css`).
+- Tab order follows the screen: header, zoom rail, narrative and choices, initiative, actions.
+- Choices are numbered, so keyboard shortcuts can map to them later without changing labels.
+- Unavailable actions stay in the tab order with `aria-disabled`; activating them does nothing.
 
-## Contrast
+## Screen readers
 
-The shipped token pairs measure between 7.62 and 15.23 under the WCAG 2.1 formula, all above the
-4.5 floor and most above 7. `tokens.test.js` recomputes each documented pair from `tokens.css` and
-fails if a ratio drops below 4.5. The full table lives in `tokens.md`.
+- The narrative panel and place caption are `aria-live="polite"`.
+- Initiative medals speak name, side, initiative, HP and "su turno"; selection is `aria-pressed`.
+- The selected sheet's HP bar is a `role="meter"` with min, max and value.
+- The 3D canvas (D11) carries a text label describing the scene and its controls.
 
-Colour is never the only signal: the active turn also carries a border and a heavier surface, a
-fallen participant carries a dashed border plus condition text. Text remains fully opaque;
-`checkFallenContrast` in `rework-smoke.mjs` checks computed colors and ancestor opacity in both
-active and inactive fallen rows. Low health changes both the bar colour and the numeric HP text.
+## Colour and shape
 
-## Reduced motion
+- Contrast is measured in `tokens.md`; every text pair on panels is above 4.5:1.
+- Allies and enemies differ by more than colour: enemies carry a diamond mark on the medal and
+  the word "enemigo"/"Hostil" in labels; miniatures have different base rims and silhouettes.
+- Check results are also written ("Éxito", "Fallo"), not only coloured.
 
-`prefers-reduced-motion: reduce` removes every animation and transition through one global rule.
-The side panel stops sliding and appears instantly; the map zoom applies without an animated
-transition. No control depends on motion to become usable, and no scroll driven effect is used,
-so nothing is lost when the preference is active.
+## Motion
 
-## Zoom and text
-
-Text uses relative units and the shell is a grid, so browser zoom does not clip panels. On a 390px
-viewport the rail becomes a bottom tab bar, the HUD hides the weather stat, the side panel spans
-94vw and the map keeps a 320px minimum height. That mobile behaviour is asserted in `smoke.mjs`
-through the computed flex direction of the rail.
+See `motion.md`. Reduced motion removes the flight, camera easing and ambience.
 
 ## Known limits
 
-- No automated axe or screen reader pass was run. The checks above are source review plus the
-  headless DOM smoke test; a manual audit belongs with the cards that integrate the real screens.
-- The map is one `role="img"` with an `aria-label` plus accessible marker buttons. It is a
-  prototype map, not a navigable coordinate grid; keyboard panning is out of scope.
-- The search results list is an accessible button list, not a full ARIA listbox with roving
-  tabindex. It satisfies the keyboard flow without the extra machinery; revisit if the result set
-  grows beyond about twenty entries.
-- Focus order follows DOM order, which matches the visual order in the shell. The side panel is
-  appended after the scenario bar, so a keyboard user reaches it after the main region.
-- The number keys that switch views are ignored while focus is in a text field. The smoke test
-  asserts this by firing `2` inside the search input and checking that the view does not change.
-- The CSS is split into four files so no stylesheet exceeds the F6 400 line ceiling. The contrast
-  test reads `tokens.css` and requires each colour token to be declared exactly once.
+- Text over the live 3D scene cannot have a fixed contrast ratio; it relies on framing and a text
+  shadow, and every such text also exists in a panel or label.
+- The design page has not been tested with a screen reader yet; that belongs with the app
+  integration (D15).
+- Touch: pinch-to-zoom and drag-to-rotate are D11's input layer; the zoom rail is the always
+  available fallback.

@@ -1,71 +1,59 @@
-# Desire · visual experience design (card D03)
+# Desire · visual direction "Farol en la niebla"
 
-Isolated UI/UX proposal for the Desire campaign table, first city Waterdeep. This directory owns
-the design tokens, the component and navigation contracts, the state catalogue, the accessibility
-notes and an isolated prototype. It does **not** replace `src/App.svelte` and does not change any
-API, domain or data contract.
+Card D03. The table should feel like a game without being one: the city as a 3D diorama you
+zoom into (For the King), lit and textured like Baldur's Gate 3, narrated like Disco Elysium.
+The owner chose this direction after reviewing the earlier prototype; it replaces it entirely.
+
+## Principles
+
+1. **The world first.** The interface floats over the 3D scene and never replaces it. Panels are
+   small, anchored to edges, and leave the scene readable.
+2. **Three distances.** City, district and scene are camera positions, reached with the same
+   zoom gesture (wheel, pinch or the zoom rail). Moving between them is a camera move, never a
+   page change.
+3. **A narrated voice.** Story text reads like a novel: who speaks, the skill check and its
+   result, numbered choices. Never a wiki infobox.
+4. **One lantern.** One warm accent (Farol) marks the turn, the primary action and the current
+   level. Everything else is fog and ink.
+5. **Tabletop miniatures.** Characters are painted miniatures on bevelled bases, on a hex board.
+   They are lifted and set down when they move, and tip over when they fall.
 
 ## Deliverables
 
-| File | Contents |
+| Path | Contents |
 | --- | --- |
-| `tokens.md` | Colour, type, spacing and radius tokens with measured contrast. |
-| `components.md` | Component inventory, states (empty, loading, error) and the HUD plus map rules. |
-| `navigation.md` | View map, Spanish labels, scenario jump and keyboard shortcuts. |
-| `accessibility.md` | Keyboard, focus, contrast, reduced motion and known limits. |
-| `art-provenance.md` | Origin of every visual asset and text used by the prototype. |
-| `advisor-response.md` | Independent review findings and how each one was resolved. |
-| `rework-verification.md` | First rework round: six review fixes, RED/GREEN evidence, metrics and coverage limits. |
-| `rework-2-verification.md` | Second rework round: seven review fixes, controller split, RED/GREEN evidence and metrics. |
-| `prototype/` | Runnable mockup, desktop and mobile, in plain HTML, CSS and ES modules. |
+| `src/lib/design/tokens.css` | Colour, type, space, shape and motion tokens. |
+| `src/lib/design/fonts.css`, `public/fonts/` | Self-hosted fonts with their OFL licences. |
+| `src/lib/design/base.css` | Page basics: background, focus ring, reduced motion. |
+| `src/lib/ui/` | Svelte components and their pure view models (`table-view.ts`). |
+| `src/design/`, `design.html` | Isolated design page that composes the components. |
+| `docs/design/*.md` | This document, tokens, components, motion, accessibility, provenance. |
 
-## Run the prototype
+The 3D scene itself (engine, camera, miniatures, the cinematic intro) belongs to D11. The design
+page shows a flat placeholder where the scene goes.
 
-The prototype has no build step and no runtime dependency. Serve it from the repository root so the
-relative brand asset resolves:
+## Run it
 
 ```sh
-python3 -m http.server 4174        # from the repository root
-# http://127.0.0.1:4174/docs/design/prototype/index.html
+corepack pnpm install --frozen-lockfile
+corepack pnpm vite --port 5199 --strictPort --host 127.0.0.1
+# http://127.0.0.1:5199/design.html
 ```
 
-With the installed Vite toolchain the same page is available without touching the app entry:
+`design.html` is a second Vite entry used only in development; `vite build` still builds the app
+from `index.html`, and `src/App.svelte` is unchanged.
 
-```sh
-pnpm vite --port 5199 --strictPort --host 127.0.0.1
-# http://127.0.0.1:5199/docs/design/prototype/index.html
-```
+## What this direction never does
 
-Port 5173 belongs to another worktree in this session; the prototype uses its own port on purpose.
+- Lime on black, Geist and rounded cards by default: the generic AI-dashboard look.
+- Wiki pages: dense text blocks, infobox tables, breadcrumbs.
+- Medieval clichés: Cinzel, blackletter, burnt-parchment textures.
+- Decorative gradients, frosted glass, emoji.
+- A view that hides the world: panels always leave the scene visible.
+- Telling allies from enemies by colour alone.
 
-## Verification
+## Exploration
 
-```sh
-node --test docs/design/prototype/*.test.js   # 18 checks: table state, markup, lore links, tokens
-node docs/design/prototype/smoke.mjs          # headless Chrome end to end, needs the page served
-```
-
-`smoke.mjs` checks visibility and hit targets before sending real pointer input; it rejects
-hidden combat controls and navigates to the encounter before operating them. Review regressions
-in `rework-smoke.mjs` cover live HP in all summaries and open sheets, keyboard focus after row
-selection, event-lore scenario jumps, rendered fallen-text contrast, search cancellation in every
-request state on desktop and mobile touch, and reduced motion.
-
-It also checks six map markers, five initiative rows, the immediate
-next turn and damage responses, the lore search result plus the empty and error states, Enter in
-the query field selecting a result, arrow-key movement inside the results, that digits do not
-switch views while typing, real view visibility via `checkVisibility()`, the side panel, both
-event-lore scenario jumps, and the mobile rail and map height. It uses the Chrome already
-installed on the machine and the DevTools protocol, so it adds no dependency. CSS is split into
-`tokens.css`, `layout.css`, `components.css` and `overlays.css`; the controller is split into
-`app.js` wiring, `table-state.js` selectors, `views.js` rendering and `controls.js` actions. No
-file crosses the 400 line floor.
-
-## Scope boundaries
-
-- Marketing sections from the vendored `landing-page-design` skill are intentionally dropped:
-  headline plus CTA funnels, tagline reveal, FAQ and risk reversal do not belong at a game table.
-- The visual rules that survive are the type scale, spacing table, radius formula, flat
-  backgrounds, state coverage, focus rings and physical easing. See `components.md`.
-- This card does not wire the prototype into the application shell, routing, persistence or the
-  Rust API. Integration belongs to the cards that own those contracts.
+The direction was explored as an interactive mockup in a design canvas before this card: a
+three.js diorama with the same tokens, intro flight, zoom levels and miniatures. The engine in
+the app is PlayCanvas (owner's decision); D11 ports the scene to it.

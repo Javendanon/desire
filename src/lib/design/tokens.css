@@ -1,0 +1,69 @@
+/* Desire design tokens: "Farol en la niebla" (lantern in the fog).
+   The world is the interface. Panels float over the 3D scene and never replace it.
+   One warm accent (Farol), everything else is fog and ink. See docs/design/tokens.md. */
+
+:root {
+  /* Ground and surfaces */
+  --color-ink: #0b151c;
+  --color-hull: #0f1d26;
+  --color-hull-glass: rgba(12, 23, 30, 0.94);
+  --color-control: rgba(11, 21, 28, 0.88);
+  --color-fog: #2c3e49;
+  --color-fog-strong: #3a4c57;
+  --color-rule: #23343e;
+  --color-sea: #12303f;
+  --color-dusk: #2e2b33;
+
+  /* Text */
+  --color-parchment: #efe3c8;
+  --color-mist: #c9cfc8;
+  --color-ash: #a7b2b4;
+
+  /* Meaning */
+  --color-lantern: #e0aa4f;
+  --color-lantern-hover: #f3c97a;
+  --color-lantern-shadow: #3a2e17;
+  --color-verdigris: #7fb39b;
+  --color-ember: #ea7360;
+
+  /* Type */
+  --font-display: 'IM Fell English', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'Alegreya Sans', 'Avenir Next', system-ui, sans-serif;
+  --font-label: 'Alegreya Sans SC', 'Alegreya Sans', system-ui, sans-serif;
+
+  --text-label: 0.875rem;
+  --text-ui-sm: 0.9375rem;
+  --text-ui: 1.0625rem;
+  --text-body: 1.1875rem;
+  --text-voice: 1.3125rem;
+  --text-name: 1.625rem;
+  --text-heading: 2.25rem;
+  --text-place: 2.875rem;
+  --text-title: clamp(4rem, 11vw, 9.25rem);
+
+  --tracking-label: 0.12em;
+  --tracking-kicker: 0.3em;
+
+  /* Space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 28px;
+  --space-7: 40px;
+
+  /* Shape: sharp, printed corners rather than app-like pills */
+  --radius: 3px;
+  --control-height: 44px;
+
+  /* Motion */
+  --ease-settle: cubic-bezier(0.2, 0.7, 0, 1);
+  --ease-sweep: cubic-bezier(0.6, 0, 0.2, 1);
+  --duration-quick: 200ms;
+  --duration-panel: 500ms;
+  --duration-title: 2400ms;
+
+  /* Legibility over a moving 3D scene */
+  --shadow-text: 0 2px 18px rgba(0, 0, 0, 0.8);
+}

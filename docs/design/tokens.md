@@ -1,80 +1,63 @@
 # Tokens
 
-Single source of truth: `prototype/tokens.css` for colour, type, spacing and radius. `layout.css`,
-`components.css` and `overlays.css` only consume those custom properties. `tokens.test.js` reads
-`tokens.css`, requires each colour token exactly once, and recomputes the pair ratios below.
+Single source of truth: `src/lib/design/tokens.css`. Components only consume its custom
+properties; a colour or size that is not a token does not belong in a component.
 
 ## Colour
 
 | Token | Value | Role |
 | --- | --- | --- |
-| `--color-bg` | `#131209` | Application background, the darkest surface. |
-| `--color-panel` | `#1f1f1f` | HUD, rail, panels, dialogs. |
-| `--color-raised` | `#272727` | Inputs, active rows, hover surfaces. |
-| `--color-line` | `#313131` | Full borders and dividers. |
-| `--color-text` | `#e7eacb` | Primary text and the brand mark ink. |
-| `--color-muted` | `#a9b3a9` | Secondary text, metadata, hints. |
-| `--color-accent` | `#d4df9b` | Primary action, focus ring, current marker. |
-| `--color-accent-deep` | `#294c3b` | Selected navigation and tags. |
-| `--color-danger` | `#f2b0a8` | Low health, error text and borders. |
-| `--color-warn` | `#e8c98a` | Reserved for warnings; not used by this prototype. |
+| `--color-ink` | `#0b151c` | Page ground, night sky. |
+| `--color-hull` | `#0f1d26` | Solid panel surface. |
+| `--color-hull-glass` | `rgba(12,23,30,.94)` | Panels over the scene (barely translucent, not frosted). |
+| `--color-control` | `rgba(11,21,28,.88)` | Secondary buttons over the scene. |
+| `--color-fog` / `--color-fog-strong` | `#2c3e49` / `#3a4c57` | Borders. |
+| `--color-rule` | `#23343e` | Dividers, empty HP track. |
+| `--color-sea` | `#12303f` | Water in the 3D scene. |
+| `--color-dusk` | `#2e2b33` | Dusk sky and fog colour in the scene. |
+| `--color-parchment` | `#efe3c8` | Primary text. |
+| `--color-mist` | `#c9cfc8` | Body text over panels, captions. |
+| `--color-ash` | `#a7b2b4` | Secondary text, metadata, narrator label. |
+| `--color-lantern` | `#e0aa4f` | The one accent: current turn, primary action, current level, voices. |
+| `--color-verdigris` | `#7fb39b` | Ally HP, successful check. |
+| `--color-ember` | `#ea7360` | Enemy HP and mark, failed check. |
 
-Backgrounds stay inside the vendored skill palette (`#131209`, `#181818`, `#1f1f1f`, `#272727`,
-`#313131`). The map reuses the same palette: sea `#181818`, land `#272727`, wards and walls as
-transparent accent strokes so the map never introduces a new hue.
+### Measured contrast (WCAG 2.1 relative luminance)
 
-### Measured contrast
+| Pair | Ratio |
+| --- | --- |
+| parchment on ink | 14.5 |
+| parchment on hull | 13.5 |
+| parchment on control | 14.0 |
+| mist on hull | 10.8 |
+| ash on hull | 7.9 |
+| lantern on hull | 8.2 |
+| ink on lantern (primary button) | 8.8 |
+| verdigris on hull | 7.2 |
+| ember on hull | 5.8 |
+| parchment / mist / lantern on dusk | 10.9 / 8.8 / 6.6 |
 
-Ratios use the WCAG 2.1 relative luminance formula. `tokens.test.js` recomputes them from
-`tokens.css` and fails below 4.5, so a future token edit cannot silently break the floor.
-
-| Pair | Ratio | WCAG |
-| --- | --- | --- |
-| text on bg | 15.23 | AAA |
-| muted on bg | 8.68 | AAA |
-| text on panel | 13.37 | AAA |
-| muted on panel | 7.62 | AAA |
-| accent on panel | 11.64 | AAA |
-| bg on accent | 13.26 | AAA |
-| text on accent-deep | 7.77 | AAA |
-| danger on panel | 9.07 | AAA |
-| warn on panel | 10.32 | AAA |
+Text drawn directly over the moving 3D scene (place captions, initiative names) also carries
+`--shadow-text`. The scene behind it changes, so its contrast cannot be guaranteed by a single
+ratio; captions are placed where the camera framing keeps sky or fog behind them, and every
+caption also exists in a panel or an accessible label.
 
 ## Type
 
-One typeface. No italics, no weight above 600. The stack prefers Geist then Manrope when they are
-installed, and falls back to Avenir Next and the system UI so the prototype ships no font file and
-makes no network request.
-
-| Token | Size | Use |
+| Token | Font | Use |
 | --- | --- | --- |
-| `--text-xs` | 12px | Eyebrows, tags, metadata, keyboard hints. |
-| `--text-sm` | 14px | Buttons, list rows, HUD stats, log lines. |
-| `--text-base` | 16px | Body copy and inputs. |
-| `--text-lg` | 18px | Lede paragraph, stat values. |
-| `--text-xl` | 20px | Panel and section headings. |
-| `--text-2xl` | 24px | Page heading on mobile. |
-| `--text-3xl` | 30px | Page heading on desktop. |
+| `--font-display` | IM Fell English (regular, italic) | Titles, place names, narration. Italic only for voices. |
+| `--font-ui` | Alegreya Sans (400, 500, 700) | Body copy, choices, stats. |
+| `--font-label` | Alegreya Sans SC (500, 700) | Small-caps labels, buttons, kickers. |
 
-Sizes snap to the Tailwind scale steps; tracking and line height stay inside the matched step.
-CSS lives in four files (tokens 129, layout 173, components 326, overlays 298 lines) and the
-controller is split into `app.js` entry wiring, `table-state.js` state and selectors, `views.js`
-rendering and `controls.js` actions, so no file crosses the F6 400 line ceiling.
+Sizes: `--text-label` 14, `--text-ui-sm` 15, `--text-ui` 17, `--text-body` 19, `--text-voice` 21,
+`--text-name` 26, `--text-heading` 36, `--text-place` 46 px, and `--text-title` (64–148 px,
+fluid). Labels are tracked (`--tracking-label` .12em, `--tracking-kicker` .3em).
 
-## Spacing
+## Space, shape, motion
 
-Only the vendored table is used, as custom properties: `--space-25` 2px, `--space-50` 4px,
-`--space-75` 8px, `--space-100` 12px, `--space-200` 16px, `--space-300` 24px, `--space-400` 32px,
-`--space-500` 40px, `--space-600` 48px. Buttons use 8px vertical and 12px horizontal padding.
-
-## Radius
-
-`--radius-sm` 4px, `--radius-md` 8px, `--radius-lg` 12px, `--radius-xl` 16px, `--radius-full`
-9999px. Nested shapes follow `inner = outer - gap`; the marker button inside the map frame uses
-the full radius because the result stays above 2px.
-
-## Motion
-
-`--ease-fluid: cubic-bezier(0.32, 0.72, 0, 1)`. Hover and selection transitions run between 200ms
-and 400ms. No element appears statically after a view switch that would delay input; the only
-entrance animation is the side panel, and `prefers-reduced-motion` removes it.
+- Space: 4, 8, 12, 16, 24, 28 and 40 px (`--space-1` … `--space-7`).
+- Shape: `--radius` 3 px everywhere. Sharp, printed corners instead of app-like pills.
+- Controls are at least `--control-height` 44 px tall.
+- Motion: `--ease-settle` for things arriving, `--ease-sweep` for the letterbox and camera-like
+  sweeps; 200 ms for hover, 500 ms for panel values, 2.4 s for the title. See `motion.md`.
