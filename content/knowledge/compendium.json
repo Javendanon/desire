@@ -42,7 +42,7 @@
     },
     "3c3a4001-6f68-5a76-861b-e9ac6538b541": {
       "edition_verification": {
-        "citation": "SRD 5.2, Spell Descriptions: Grease (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
+        "citation": "SRD 5.2, Spell Descriptions: Grease, p. 137 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
         "status": "verified"
       },
       "kind": "spell",
@@ -68,7 +68,7 @@
     },
     "83a05738-27b3-5a79-a6f9-12488126d206": {
       "edition_verification": {
-        "citation": "SRD 5.2, Spell Descriptions: Fireball (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
+        "citation": "SRD 5.2, Spell Descriptions: Fireball, p. 131 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
         "status": "verified"
       },
       "kind": "spell",
