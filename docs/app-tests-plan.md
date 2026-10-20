@@ -18,7 +18,7 @@ Scripts (`package.json`):
 | --- | --- |
 | `pnpm test:frontend` | `tests/*.test.ts`: the visible tests, top level only |
 | `pnpm test:holdout` | `tests/holdout/*.test.ts`: CI only, see below |
-| `pnpm test:rust` | `cargo test --workspace` |
+| `pnpm test:rust` | `bash crates/persistence/test-postgres.sh`: disposable PostgreSQL cluster + `cargo test --workspace` |
 | `pnpm test` | frontend + rust (not holdout) |
 
 `test:frontend` used the glob `tests/**/*.test.ts`, which would also pick up the holdout. It is now

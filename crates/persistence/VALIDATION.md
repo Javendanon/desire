@@ -94,13 +94,16 @@ No new service, frontend dependency, domain abstraction, or API/auth implementat
 Only root Cargo workspace membership and the generated lockfile cross D08 scope;
 D01/integrator review remains required, with no approval claimed.
 
-**CI integration blocker:** `.github/workflows/ci.yml:79` still runs plain
-`cargo test --workspace --locked` without the isolated PostgreSQL harness. Reproduced
-that command without `DESIRE_TEST_SOCKET`: exit 101 with explicit setup errors.
-The complete suite passes through the harness, but the current CI test job will
-not pass until its owner supplies PostgreSQL binaries and invokes the harness.
-No tests were silently disabled and no out-of-scope workflow edits were made.
-See the D24/integrator handoff in `README.md`; remote CI was not executed.
+**CI integration (reviewer blocker, now wired):** the `rust-test` job used to run plain
+`cargo test --workspace --locked`, which is exit 101 without `DESIRE_TEST_SOCKET` for every
+integration test in this crate. It now puts the runner's PostgreSQL binaries on `PATH` and
+invokes `bash crates/persistence/test-postgres.sh`; `package.json` `test:rust` and `test`
+route through the same harness, `frontend-check` runs `test:frontend` and `check:tests`, and
+`quality-gate` runs the contract generator drift check and the contract `unittest` suite.
+`tests/pipeline.rs` fails if any of that wiring regresses. No tests were disabled or skipped.
+`.github/workflows/ci.yml` and `package.json` are `merge-policy.json` `never_paths`, so the
+change is `T2-never`: the CI owner and D01/integrator must review and own those two files.
+Remote CI was not executed from this worktree.
 
 Repository calls assume an authorized server caller; deployment privileges and
 identity checks are D09/D10 integration obligations. Further CRUD and immutable
@@ -146,3 +149,32 @@ Local raw evidence is under `.local/d08/` (gitignored): baseline/final test logs
 RED logs, gate JSON/logs, focused metrics, frontend/tooling results, and reviewer
 reports. Reproduce with the commands above instead of treating these scores as
 frozen invariants.
+
+## Rework round: pipeline findings
+
+Card rework addressed the two review findings and the three suspicions.
+
+| Finding | Change | Evidence |
+| --- | --- | --- |
+| BLOCKER `ci.yml:79` bare `cargo test --workspace` | `rust-test` adds the runner's PostgreSQL `bin` directory to `GITHUB_PATH` (newest installed major, printed) and runs the harness; `package.json` `test:rust` = `bash crates/persistence/test-postgres.sh` | `tests/pipeline.rs` (RED before the edit: 3 failed; green after) |
+| MEDIUM `ci.yml:48` suites never run | `frontend-check` runs `test:frontend` + `check:tests`; `quality-gate` runs `tools/contracts/generate.py --check` + contract `unittest` discover. Existing jobs extended, no job renamed (merge-policy contract) | `tests/pipeline.rs::ci_runs_every_existing_suite` |
+| Suspicion: PID-based database names never dropped | `tests/support/mod.rs` names databases with PID + monotonic timestamp + counter, so a recycled PID cannot collide | `tests/support/mod.rs:20-33`; 19 DB tests pass |
+| Suspicion: harness seeded a schema with `psql -f`, never recording `public.persistence_migrations` | `test-postgres.sh` now only starts/stops the cluster; `tests/sql_constraints.rs` installs the schema with `migrations::apply` and runs `schema.sql` + `constraints.sql` on it. The from-zero path under test is the production runner | sabotage run (expected SQLSTATE changed to `99999`) failed the harness with exit 101; restored file passes |
+| Suspicion: PG 14 here vs PG 17 in `compose.yaml` | Not closed. Local evidence is PostgreSQL 14.19 on macOS; CI runs the runner image's newest installed major. No PG 17 run, container, or volume was created | see the boundary list above |
+
+Executed after the rework, same toolchain and gate configuration:
+
+- `bash crates/persistence/test-postgres.sh`: exit 0, **39** Rust tests passed (14 test
+  binaries/doc-test targets), including the 2 new `sql_constraints` tests carrying the
+  25 SQL rejection assertions and the 3 new `pipeline` tests. No test ignored or skipped.
+- `cargo fmt --all --check` and
+  `cargo clippy --workspace --all-targets --locked -- -D warnings`: exit 0.
+- `corepack pnpm run test:frontend` (41 passed), `corepack pnpm run check:tests`,
+  `python3 tools/contracts/generate.py --check`, contract `unittest` suite (29 passed).
+- `python3 tools/quality/gate.py --json .local/d08/rework.json`: exit 0 for floor checks.
+- Focused `km score`/`smells`/`cycom`/`cogcom`/`dups` on `crates/persistence`: unchanged
+  thresholds, no suppression added.
+
+`pnpm test:rust` now requires PostgreSQL server binaries on `PATH`, which is a public
+behaviour change of an existing script; `README.md` and `docs/app-tests-plan.md` record it.
+CI wiring, the PG 17 gap, and deployment-role behaviour remain unverified from here.

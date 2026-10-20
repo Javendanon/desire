@@ -102,6 +102,10 @@ docker compose exec -T db pg_isready -U umbra -d umbra
 pnpm db:stop                        # keeps the named volume and its data
 ```
 
+`pnpm test:rust` bootstraps its own disposable, socket-only PostgreSQL cluster, so it needs
+`initdb` and `pg_ctl` on `PATH`; it never uses the Compose database. See
+[crates/persistence/README.md](crates/persistence/README.md).
+
 In two separate terminals:
 
 ```sh

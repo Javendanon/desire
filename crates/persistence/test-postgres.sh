@@ -18,13 +18,8 @@ pg_ctl -D "$cluster/data" -l "$cluster/server.log" \
 trap cleanup EXIT
 export PGHOST="$cluster" PGUSER=desire_test PGDATABASE=postgres
 export DESIRE_TEST_SOCKET="$cluster"
-for migration in migrations/[0-9]*.sql; do
-    if [[ -f "$migration" ]]; then
-        psql -X -v ON_ERROR_STOP=1 -1 -f "$migration" > /dev/null
-    fi
-done
-psql -X -v ON_ERROR_STOP=1 -f crates/persistence/tests/schema.sql
-psql -X -v ON_ERROR_STOP=1 -f crates/persistence/tests/constraints.sql
 if [[ -f crates/persistence/Cargo.toml ]]; then
+    # The Rust tests install the schema through the production migration runner and run the SQL
+    # constraint files against it, so the harness never seeds a second, divergent schema.
     cargo test --workspace --locked
 fi

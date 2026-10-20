@@ -74,7 +74,8 @@ port was touched for this task. Database lifecycle is not an application side ef
 
 ## Reproduce the checks
 
-Prerequisites: Cargo/Rust 1.97.1 and PostgreSQL binaries (`initdb`, `pg_ctl`, `psql`).
+Prerequisites: Cargo/Rust 1.97.1 and the PostgreSQL server binaries (`initdb`,
+`pg_ctl`). `psql` is only needed for manual inspection; the automated checks do not use it.
 
 ```sh
 bash crates/persistence/test-postgres.sh
@@ -92,13 +93,24 @@ km dups crates/persistence
 The harness initializes a fresh cluster under this worktree's `.local/d08/`, disables
 TCP listening, clears inherited libpq environment settings, and uses a private Unix
 socket. The environment regression wrapper supplies hostile routing settings and
-must still pass. Each Rust integration test creates a
-separate database in that cluster. It runs SQL constraint tests and the entire Rust
-workspace suite, then stops/removes only its own cluster, also on failure. A direct
-`cargo test --workspace` without `DESIRE_TEST_SOCKET` fails with instructions rather
-than skipping database checks or falling back to an existing database. Never point
-that variable at another service. Trust authentication and disabled fsync are for
-this disposable, socket-only test cluster, not deployment settings.
+must still pass. Each Rust integration test creates a separate database in that
+cluster (names include the PID, a timestamp and a per-process counter, so a recycled
+PID cannot collide). The harness then runs the entire Rust workspace suite and
+stops/removes only its own cluster, also on failure.
+
+The harness no longer seeds a schema of its own: `tests/sql_constraints.rs` installs
+the schema with `migrations::apply` and executes `tests/schema.sql` and
+`tests/constraints.sql` against that database, so the "from zero" path exercised by
+CI is the production migration runner and the SQL rejection assertions run inside it.
+A direct `cargo test --workspace` without `DESIRE_TEST_SOCKET` fails with instructions
+rather than skipping database checks or falling back to an existing database. Never
+point that variable at another service. Trust authentication and disabled fsync are
+for this disposable, socket-only test cluster, not deployment settings.
+
+`tests/pipeline.rs` guards the pipeline contract: it fails if CI or `package.json`
+go back to a bare `cargo test --workspace` or stop running the frontend, test
+type-check and contract suites. It reads tracked repository files, so a sparse
+checkout must include `.github/` and `package.json`.
 
 ## Manifest handoff to D01
 
@@ -110,10 +122,15 @@ no external coordination or approval is claimed.
 
 ## CI handoff to D24/integrator
 
-The existing `.github/workflows/ci.yml` `rust-test` job invokes plain
-`cargo test --workspace --locked` without PostgreSQL setup. That command now fails
-closed with setup instructions; it does not skip database tests. Before merge,
-the CI owner must provide PostgreSQL binaries on PATH and replace that invocation
-with `bash crates/persistence/test-postgres.sh` (optionally also the hostile-env
-wrapper). This is a known CI integration blocker, not a passing CI claim. The
-workflow is outside D08's allowed scope and was not changed without coordination.
+The PR that follows this change wires the harness instead of leaving the blocker for
+the merge queue: the `rust-test` job puts the runner's PostgreSQL binaries on `PATH`
+and runs `bash crates/persistence/test-postgres.sh`; `frontend-check` also runs
+`pnpm test:frontend` and `pnpm check:tests`, and `quality-gate` runs
+`python3 tools/contracts/generate.py --check` plus the contract `unittest` suite.
+`package.json` `test:rust` (and therefore `pnpm test`) points at the same harness.
+
+`.github/workflows/ci.yml` and `package.json` are `never_paths` in
+`merge-policy.json`, so this is `T2-never`: the CI owner and the D01/integrator must
+review and own the workflow and script edits, and the job names stay the merge-policy
+contract. The workflow was not executed remotely from this worktree; the wiring is
+verified locally by `tests/pipeline.rs` and by running the harness the job now runs.
