@@ -16,7 +16,7 @@ import {
   hexesWithin,
   nearestIndex,
 } from '../src/lib/engine/math/hex.ts';
-import { closestSphere, hitHorizontalPlane } from '../src/lib/engine/math/ray.ts';
+import { closestSphere, hitHorizontalPlane, hitSphere } from '../src/lib/engine/math/ray.ts';
 import { createRandom } from '../src/lib/engine/math/rng.ts';
 
 const rig = (x: number, radius: number, polar = 1, azimuth = 0): Rig => ({
@@ -100,6 +100,15 @@ test('a ray from above hits the ground plane, a ray pointing up does not', () =>
   assert.deepEqual(hitHorizontalPlane(down, 2), { x: 0, y: 2, z: 0 });
   const up = { origin: { x: 0, y: 10, z: 0 }, direction: { x: 0, y: 1, z: 0 } };
   assert.equal(hitHorizontalPlane(up, 2), null);
+});
+
+test('a ray inside a pick sphere hits its positive exit', () => {
+  const center = { x: 0, y: 0, z: 0 };
+  const ray = { origin: { x: 0, y: 0, z: 45 }, direction: { x: 0, y: 0, z: -1 } };
+  assert.equal(hitSphere(ray, center, 60), 105);
+  assert.equal(closestSphere(ray, [{ id: 'focused', center, radius: 60 }]), 'focused');
+  assert.equal(hitSphere({ ...ray, origin: { x: 0, y: 0, z: -70 } }, center, 60), null);
+  assert.equal(hitSphere({ ...ray, origin: center }, center, 60), 60);
 });
 
 test('the closest sphere along the ray wins', () => {
