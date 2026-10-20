@@ -40,6 +40,14 @@ class CanonGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "url: string"):
             loader.load_entries(self.content)
 
+    def test_load_entries_rejects_non_boolean_synthetic_flag(self):
+        path = self.content / "sources.json"
+        document = support.read(path)
+        document["sources"][0]["synthetic"] = "yes"
+        support.save(path, document)
+        with self.assertRaisesRegex(ValueError, "synthetic: boolean"):
+            loader.load_entries(self.content)
+
     def test_load_entries_rejects_unknown_translation_status(self):
         def change(entry):
             entry["translation_status"] = "unknown"

@@ -94,14 +94,15 @@ class ImporterTests(unittest.TestCase):
         entries = loader.load_entries()
         entry = entries[0]
         source = Source(
-            id="synthetic-source",
+            id="demo-lore-source",
             name=entry.provenance.source,
             rules_edition=entry.rules_edition,
-            license="synthetic",
+            license=entry.license,
             license_url="",
             url="",
+            synthetic=True,
         )
-        broken = replace(entry, source_id=source.id, license=source.license)
+        broken = replace(entry, source_id=source.id)
         with self.assertRaisesRegex(ValueError, "synthetic source cannot be canon"):
             loader.check_sources([broken], {source.id: source})
 

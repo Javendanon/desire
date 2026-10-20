@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "description": "Normative, language-neutral search semantics for the local compendium. Every consumer (D09 Rust, D15 TypeScript) must reproduce these results; tools/knowledge/search.py only verifies them and is not the reference implementation.",
+  "semantics": {
+    "normalization": "Casefold the value, decompose it with NFKD and drop combining marks, so accents and letter case never affect a match.",
+    "query": "Normalize the query, split it on whitespace and require every token to appear in the entry.",
+    "haystack": "Normalize the entry title, body, slug, kind and reference targets and join them into one searchable text.",
+    "filters": "A fixture filter is optional; when present it must equal the entry field of the same name (kind, rules_edition, language, translation_status).",
+    "results": "Compare the returned entry ids as a set; ordering is presentation only."
+  },
+  "fixtures": [
+    {
+      "name": "accented_query_matches_ignoring_accents",
+      "query": "Acción",
+      "filters": {
+        "kind": "spell"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "2881dc0c-cef8-5177-a18a-2866c58a549b",
+        "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "unaccented_query_matches_accented_body",
+      "query": "ACCION",
+      "filters": {
+        "kind": "spell"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "2881dc0c-cef8-5177-a18a-2866c58a549b",
+        "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "uppercase_query_ignores_case",
+      "query": "FUEGO",
+      "filters": {
+        "kind": "spell"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "multi_token_query_requires_every_token",
+      "query": "bola grasa",
+      "filters": {
+        "kind": "condition"
+      },
+      "expected_ids": []
+    },
+    {
+      "name": "kind_filter_returns_classes",
+      "query": "",
+      "filters": {
+        "kind": "class",
+        "language": "es"
+      },
+      "expected_ids": [
+        "948e47bd-a97b-5577-ba4c-93cf0a405dcf",
+        "c4effe1d-c5ee-567e-bccf-3bc068f76c30"
+      ]
+    },
+    {
+      "name": "kind_filter_returns_conditions",
+      "query": "",
+      "filters": {
+        "kind": "condition"
+      },
+      "expected_ids": [
+        "895aa639-5a48-58f8-9ab8-9d0e83391086",
+        "af775fbc-c3e7-5d34-ae2b-fa70759156f5"
+      ]
+    },
+    {
+      "name": "language_filter_returns_spanish_entries",
+      "query": "",
+      "filters": {
+        "kind": "spell",
+        "language": "es"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "2881dc0c-cef8-5177-a18a-2866c58a549b",
+        "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "edition_filter_separates_2014",
+      "query": "fuego",
+      "filters": {
+        "kind": "spell",
+        "rules_edition": "dnd_2014"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190"
+      ]
+    },
+    {
+      "name": "edition_filter_separates_2024",
+      "query": "fuego",
+      "filters": {
+        "kind": "spell",
+        "rules_edition": "dnd_2024"
+      },
+      "expected_ids": [
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "edition_filter_keeps_slugs_distinct",
+      "query": "prone",
+      "filters": {
+        "rules_edition": "dnd_2024"
+      },
+      "expected_ids": [
+        "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+        "af775fbc-c3e7-5d34-ae2b-fa70759156f5"
+      ]
+    },
+    {
+      "name": "reference_target_is_searchable",
+      "query": "wizard",
+      "filters": {
+        "rules_edition": "dnd_2014"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "2881dc0c-cef8-5177-a18a-2866c58a549b",
+        "c4effe1d-c5ee-567e-bccf-3bc068f76c30"
+      ]
+    },
+    {
+      "name": "status_filter_returns_translated",
+      "query": "",
+      "filters": {
+        "kind": "spell",
+        "translation_status": "translated"
+      },
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "2881dc0c-cef8-5177-a18a-2866c58a549b",
+        "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "status_filter_reviewed_matches_nothing",
+      "query": "",
+      "filters": {
+        "translation_status": "reviewed"
+      },
+      "expected_ids": []
+    },
+    {
+      "name": "english_slug_is_searchable",
+      "query": "fireball",
+      "filters": {},
+      "expected_ids": [
+        "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+        "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "spanish_title_is_searchable",
+      "query": "mago",
+      "filters": {
+        "rules_edition": "dnd_2024"
+      },
+      "expected_ids": [
+        "948e47bd-a97b-5577-ba4c-93cf0a405dcf"
+      ]
+    },
+    {
+      "name": "campaign_lore_stays_out_of_canon",
+      "query": "puerto",
+      "filters": {},
+      "expected_ids": []
+    }
+  ]
+}
