@@ -76,6 +76,28 @@ fn seed_detects_removed_anchors_without_deleting_installed_content() {
 }
 
 #[test]
+fn duplicate_anchors_cannot_mask_removal_of_an_installed_anchor() {
+    let mut db = support::database();
+    migrations::apply(&mut db).unwrap();
+    let mut seed = support::catalog();
+    let mut second_map = seed.map_versions[0].clone();
+    second_map.id = support::id(7);
+    second_map.map_id = support::id(70);
+    seed.map_versions.push(second_map);
+    let anchor = PlaceAnchor { map_version_id: support::id(6),
+        position: Position { x_m: 1.0, y_m: 0.0, z_m: 2.0 },
+        provenance: seed.worlds[0].provenance.clone() };
+    seed.places[0].anchors = vec![anchor.clone()];
+    CatalogRepository::seed(&mut db, &seed).unwrap();
+    let replacement = PlaceAnchor { map_version_id: support::id(7), ..anchor };
+    seed.places[0].anchors = vec![replacement.clone(), replacement];
+    assert_eq!(CatalogRepository::seed(&mut db, &seed).unwrap_err().kind, ErrorKind::SeedMismatch);
+    let rows = db.query("SELECT map_version_id::text FROM catalog.place_anchors", &[]).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].get::<_, String>(0), support::id(6));
+}
+
+#[test]
 fn seed_is_idempotent_and_conflicting_content_rolls_back() {
     let mut db = support::database();
     migrations::apply(&mut db).unwrap();
