@@ -45,12 +45,7 @@ function grid(): Grid {
 
 export function buildWater(device: pc.GraphicsDevice): Water {
   const { positions, uvs, indices } = grid();
-  const mesh = new pc.Mesh(device);
-  mesh.setPositions(positions);
-  mesh.setNormals(pc.calculateNormals(positions, indices));
-  mesh.setUvs(0, uvs);
-  mesh.setIndices(indices);
-  mesh.update(pc.PRIMITIVE_TRIANGLES);
+  const mesh = flatMesh(device, { positions: Array.from(positions), uvs, indices });
   const sea = material({ color: '#173847', gloss: 0.78, metalness: 0.25 });
   const entity = new pc.Entity('sea');
   entity.addComponent('render', {
