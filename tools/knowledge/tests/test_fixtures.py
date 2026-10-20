@@ -95,7 +95,8 @@ class FixtureFileTests(unittest.TestCase):
         self.assert_rejected(payload, "unknown filter")
 
     def test_non_object_filters_is_rejected(self):
-        self.assert_rejected(document([{**VALID_FIXTURE, "filters": []}]), "filters: expected object")
+        payload = document([{**VALID_FIXTURE, "filters": []}])
+        self.assert_rejected(payload, "filters: expected object")
 
     def test_non_string_filter_value_is_rejected(self):
         payload = document([{**VALID_FIXTURE, "filters": {"kind": 5}}])
