@@ -44,6 +44,8 @@ export interface RouteMessage {
 
 export const ROUTING_WORKER_PROTOCOL_VERSION = 1;
 const U32_MAX = 0xffff_ffff;
+/** Mirrors the Rust core allocation/transfer bound; checked before any input copy. */
+export const MAX_GRID_CELLS = 1_048_576;
 
 function isU32(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= U32_MAX;
@@ -71,7 +73,9 @@ export function isGrid(value: unknown): value is RoutingGrid {
   return (
     isPositiveU32(value.width) &&
     isPositiveU32(value.height) &&
-    value.costs instanceof Uint32Array
+    value.width * value.height <= MAX_GRID_CELLS &&
+    value.costs instanceof Uint32Array &&
+    value.costs.length === value.width * value.height
   );
 }
 

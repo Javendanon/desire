@@ -7,6 +7,7 @@ import {
   isPoint,
   isPositiveU32,
   isRouteResponse,
+  MAX_GRID_CELLS,
   type RouteEndpoints,
   type RouteIdentity,
   type RouteResponse,
@@ -40,11 +41,10 @@ export function spawnRoutingWorker(): WorkerLike {
 
 function assertGrid(grid: RoutingGrid): void {
   if (!isGrid(grid)) {
-    throw new TypeError('routing grid must expose width, height and Uint32Array costs');
-  }
-  const { width, height, costs } = grid;
-  if (width <= 0 || height <= 0 || costs.length !== width * height) {
-    throw new TypeError(`routing grid ${width}x${height} does not match ${costs.length} costs`);
+    throw new TypeError(
+      `routing grid requires positive u32 dimensions, matching Uint32Array costs, ` +
+      `and at most ${MAX_GRID_CELLS} cells`,
+    );
   }
 }
 
