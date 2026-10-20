@@ -24,6 +24,23 @@ export async function checkClosePicking(send, evaluate) {
     });
   }
   assert.equal((await evaluate(state)).selected, 'castle-waterdeep');
+  // Selection must follow the pointer: a click off the marker keeps the other selection.
+  await evaluate("window.__waterdeep.viewer.selectPlace('the-market')");
+  const away = await evaluate(`(() => {
+    const viewer = window.__waterdeep.viewer;
+    const marker = viewer.project({ x: 1751.125, z: 4166.911 }, 0);
+    const cast = viewer.project({ x: 1751.125 + 18, z: 4166.911 }, 0);
+    const map = document.getElementById('map');
+    return { x: Math.round(cast.x), y: Math.round(marker.y), width: map.clientWidth };
+  })()`);
+  assert.ok(away.x > 0 && away.x < away.width - 1, `away click x ${away.x} off canvas`);
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await send('Input.dispatchMouseEvent', {
+      type, x: away.x, y: away.y, button: 'left', clickCount: 1,
+    });
+  }
+  assert.equal((await evaluate(state)).selected, 'the-market',
+    'a click away from the focused marker must not select it');
   await evaluate('window.__waterdeep.viewer.reset()');
   await settle();
   return true;

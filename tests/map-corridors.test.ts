@@ -36,6 +36,54 @@ test('Market corridors follow independent raster checkpoints within 12 pixels', 
   assert.ok(pointInPolygon(WATERDEEP_MARKET, at(1548, 2719)));
 });
 
+test('the citywide axis pilot follows independent raster checkpoints within 30 pixels', () => {
+  const checkpoints = [
+    ['the-high-road-north', 2073, 1050],
+    ['the-high-road-north', 2077, 1520],
+    ['the-high-road-north', 2088, 2120],
+    ['julthoon-street', 800, 2325],
+    ['julthoon-street', 1600, 2328],
+    ['julthoon-street', 2040, 2315],
+    ['waterdeep-way', 1700, 4067],
+    ['waterdeep-way', 2000, 4063],
+    ['waterdeep-way', 2200, 4055],
+    ['the-way-of-the-dragon', 2522, 5080],
+    ['the-way-of-the-dragon', 2570, 5480],
+    ['the-way-of-the-dragon', 2596, 5680],
+    ['dock-street', 2150, 5538],
+    ['dock-street', 2070, 5606],
+    ['dock-street', 2030, 5635],
+    ['the-beaconmarch', 2880, 3000],
+    ['the-beaconmarch', 2918, 3300],
+    ['the-beaconmarch', 2905, 3550],
+  ] as const;
+  // These axes are a coarse citywide pilot, not survey traces: one grid cell of the annotated
+  // raster crop is 50 px, so 30 px keeps the check honest without claiming metrology.
+  for (const [id, x, z] of checkpoints) {
+    const road = WATERDEEP_ROADS.find((entry) => entry.id === id);
+    assert.ok(road, id);
+    assert.ok(distanceToPath(road.points, at(x, z)) <= 30 * scale, `${id} at ${x}, ${z}`);
+  }
+});
+
+test('each ward has at least one traced axis in the scene', () => {
+  const wardPixels: Record<string, [number, number]> = {
+    'dock-ward': [2050, 5620],
+    'north-ward': [2080, 1800],
+    'sea-ward': [1200, 2330],
+    'southern-ward': [2550, 5300],
+    'trades-ward': [1900, 4065],
+    'field-ward': [2130, 700],
+    'city-of-the-dead': [2920, 3300],
+    'castle-ward': [1500, 2585],
+  };
+  for (const [ward, [x, z]] of Object.entries(wardPixels)) {
+    const near = WATERDEEP_ROADS.some((road) =>
+      distanceToPath(road.points, at(x, z)) <= road.widthM);
+    assert.ok(near, `${ward} has no traced axis at ${x}, ${z}`);
+  }
+});
+
 test('roof footprints leave the traced corridors and Market square unobstructed', () => {
   const closedMarket = [...WATERDEEP_MARKET, WATERDEEP_MARKET[0]];
   for (const building of allWaterdeepBuildings()) {
