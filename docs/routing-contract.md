@@ -1,9 +1,9 @@
 # Routing worker contract v1 · D12
 
-Status: implemented in `crates/core/routing`, `crates/wasm` and
-`src/lib/routing`; browser/Wasm execution is **not verified** in this
-environment because the `wasm32-unknown-unknown` target and `wasm-pack` are
-missing. D14 may integrate the contract below after those tools run.
+Status: implemented in `crates/core/src/routing`, `crates/wasm` and
+`src/lib/routing`. The production worker and generated Wasm glue pass the
+isolated browser checks. See [D12 verification](reports/d12.md) for commands,
+measurements and limits. Application travel controls remain D14-owned.
 
 ## Purpose and boundary
 
@@ -23,14 +23,19 @@ busy GPU is not fixed by this worker.
 - `costs`: flat row-major `Uint32Array` with exactly `width * height` entries.
 - `0xFFFF_FFFF` (`BLOCKED_CELL`) marks an obstacle and is not traversable.
 - Every other value, including `0`, is a non-negative traversal cost.
-- x grows east/right; y grows south/down. Coordinates are cell indices.
+- x grows east/right and y grows south/down. Coordinates are unsigned `u32`
+  cell indices. Out-of-grid coordinates produce an explicit bounds error.
+  Values outside `0..0xFFFF_FFFF` never enter Wasm.
 - Route cost is the sum of destination cell costs. The start cell is not
   charged; a route from a cell to itself costs `0`.
 - A total cost above `u32` is an explicit `CostOverflow` error, not a wrap.
 
-The worker copies the caller buffer before transfer, so the caller keeps using
-its own `Uint32Array`. Validation happens in the worker and returns an outcome;
-it does not throw for a bad grid.
+The client validates the dimensions, buffer length and cell limit **before**
+`slice()` or worker creation. Invalid inputs throw a contextual `TypeError`.
+The worker repeats validation before Wasm loading or `RoutingGrid` construction.
+Direct invalid messages return an error when their identity is recoverable.
+Valid requests copy the caller buffer before transfer, so the caller keeps its
+own `Uint32Array`.
 
 ## Identity, revision and stale results
 
@@ -39,7 +44,7 @@ TypeScript wire shape:
 ```ts
 interface RoutingRequest {
   requestId: number; // positive u32 assigned by RoutingWorkerClient
-  revision: number;  // map version revision from D04, positive
+  revision: number;  // map version revision from D04, positive u32
   grid: { width: number; height: number; costs: Uint32Array };
   start: { x: number; y: number };
   goal: { x: number; y: number };
@@ -55,7 +60,9 @@ interface RouteResponse {
 }
 ```
 
-- `requestId` is monotonic per `RoutingWorkerClient` instance.
+- `requestId` is monotonic per `RoutingWorkerClient` instance, within positive
+  `u32`. Identity values outside `1..0xFFFF_FFFF` throw a `RangeError` before
+  transfer. After ID exhaustion, create a new client. IDs never wrap.
 - `revision` is the map revision that produced the cost buffer.
 - A response is current only when both `requestId` and `revision` match the
   latest request. Everything else is discarded without calling the result
@@ -77,7 +84,8 @@ For one request:
 3. `wasm-bindgen` copies the typed array into Wasm memory for the search.
 4. The path is copied back out as a `Uint32Array` and converted to a plain
    number array for `postMessage`.
-5. The Wasm `RoutingGrid` is freed immediately after the search.
+5. The worker frees `RouteOutcome` in `finally` after response extraction,
+   including error outcomes. It also frees the grid, span, identity and points.
 
 No Wasm view is retained in JavaScript, so later Wasm memory growth cannot
 invalidate a `Uint32Array`. Transfer sizes are bounded by the grid limit and
@@ -135,24 +143,26 @@ policy. For each routing request D14 must:
 D14 must not infer that a successful route authorizes movement. It must still
 validate the command against session state on the server.
 
-## Measurement status
+## Browser verification
 
-Measured in this environment:
+Run `pnpm build:wasm`, then `node tools/routing/browser-check.mjs` with
+`playwright-core` available. `PLAYWRIGHT_MODULE` selects a local module path.
+`CHROME_PATH` selects a Chromium executable. The harness builds a separate Vite
+entry under `outputs/`, then tests the bundled production worker in a browser.
+No application renderer or camera code changes.
 
-| Measurement | Value | Scope |
-| --- | --- | --- |
-| Native core compute | 0.05–0.22 ms across five 20-run samples | Release build, 256×256 open grid; search only |
-| Input transfer | 262,144 bytes | Same grid, 4 bytes per cell |
-| Output transfer | 4,088 bytes | 511 path points, 8 bytes per point |
-| Route cost parity | Rust 7 = TypeScript 7 | Shared 6×4 fixture with a blocked cell and a zero-cost cell |
+The checks compare end-to-end worker latency against the existing TypeScript
+reference on the same 64×64 input. They measure Wasm initialization, worker
+startup, main-thread copy, transfer latency and worker computation separately.
+The probe records signed cross-context timings. Near-zero transfer values can
+be negative because browser clocks round independently (about 0.2 ms uncertainty).
+
+The harness also verifies explicit invalid-input errors, outcome cleanup,
+stable memory during reuse, cancellation and a trusted click plus animation
+frames during a pending maximum-size search. The report records the results.
+These checks do not establish performance for D14's final application UI or GPU.
+The TS reference uses quadratic Dijkstra while Rust uses A*. No general Wasm
+speedup is claimed from this comparison.
 
 There is no watchdog timeout: a worker that dies without an `error` event leaves
 the request pending. Add one when that failure is observed in a browser.
-
-Not measured: Wasm load time, browser worker startup, postMessage latency, UI
-frame time or GPU behaviour. Those need `wasm-pack` and a browser run. The
-0.05–0.22 ms range is search time only; worker startup, the two cost copies and the
-Wasm instance setup are outside it and may dominate a single short route. No
-speedup is claimed; only algorithmic cost parity with the independent
-TypeScript reference was verified. The worker entry itself was not executed
-because the generated Wasm module is absent.

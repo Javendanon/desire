@@ -35,9 +35,12 @@ function route(request: RoutingRequest): RouteResponse {
   const start = new wasm.GridPoint(request.start.x, request.start.y);
   const goal = new wasm.GridPoint(request.goal.x, request.goal.y);
   const span = new wasm.RouteSpan(start, goal);
+  let outcome: wasm.RouteOutcome | undefined;
   try {
-    return outcomeResponse(identityOf(request), grid.plan(identity, span));
+    outcome = grid.plan(identity, span);
+    return outcomeResponse(identityOf(request), outcome);
   } finally {
+    outcome?.free();
     span.free();
     start.free();
     goal.free();

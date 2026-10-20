@@ -72,14 +72,11 @@ export class RoutingWorkerClient {
   request(revision: number, grid: RoutingGrid, endpoints: RouteEndpoints): number {
     assertGrid(grid);
     assertEndpoints(endpoints);
-    if (!isPositiveU32(revision)) {
-      throw new TypeError(`routing revision must be a positive u32, got ${revision}`);
-    }
-    if (!isPositiveU32(this.nextRequestId)) {
-      throw new RangeError('routing request IDs exhausted; create a new client');
+    const requestId = this.nextRequestId;
+    if (!isPositiveU32(revision) || !isPositiveU32(requestId)) {
+      throw new RangeError(`routing identity must fit positive u32: ${requestId}/${revision}`);
     }
     if (this.current !== null) this.cancel();
-    const requestId = this.nextRequestId;
     this.nextRequestId += 1;
     const worker = this.ensureWorker();
     this.current = { requestId, revision };

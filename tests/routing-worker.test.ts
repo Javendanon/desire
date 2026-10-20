@@ -240,11 +240,19 @@ test('rejects values that would narrow or wrap at the Wasm u32 boundary', () => 
   for (const value of invalid) {
     assert.throws(() => client.request(1, GRID, { ...ENDPOINTS, start: { x: value, y: 0 } }));
     assert.throws(() => client.request(value, GRID, ENDPOINTS));
+    assert.throws(() => client.request(1, { ...GRID, width: value }, ENDPOINTS));
     const request = { requestId: 1, revision: 1, grid: GRID, ...ENDPOINTS };
-    assert.equal(isRouteMessage({ kind: 'route', request: { ...request, revision: value } }), false);
-    assert.equal(isRouteMessage({ kind: 'route', request: { ...request, requestId: value } }), false);
+    assert.equal(isRouteMessage({
+      kind: 'route', request: { ...request, revision: value },
+    }), false);
+    assert.equal(isRouteMessage({
+      kind: 'route', request: { ...request, requestId: value },
+    }), false);
     assert.equal(isRouteMessage({
       kind: 'route', request: { ...request, goal: { x: 0, y: value } },
+    }), false);
+    assert.equal(isRouteMessage({
+      kind: 'route', request: { ...request, grid: { ...GRID, height: value } },
     }), false);
   }
   assert.throws(() => client.request(0, GRID, ENDPOINTS));
