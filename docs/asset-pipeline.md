@@ -47,13 +47,15 @@ The manifest reuses D04's vocabulary so a D05-derived calibration needs no trans
   `meters_per_pixel`, `rotation_radians`, and a `provenance` with `source`, `attribution`
   and `evidence` (`verified` | `interpretation` | `synthetic`).
 - The transform is D04's: `x` grows east, `z` grows south, and `y` is **never** derived
-  from the raster. Rotation is applied around the pixel origin.
+  from the raster. The ground rectangle covers the illustration under the same transform, so a
+  non-zero pixel origin shifts both anchors and ground together.
 - Places carry a pixel anchor and a footprint in meters. Positions become `plan_m` values in
   meters, rounded to millimetres only in the report.
 
 Validation is strict on purpose. A manifest is rejected when: the schema or label is missing,
 the illustration has no license, the calibration is absent or non-positive, `places`,
-`materials` or `waypoints` are not arrays, `ground.material` is missing, there is no
+`materials`, `textures` or `waypoints` are not arrays, a section entry is not an object,
+`ground.material` is missing, there is no
 `scale_check` reference distance, a place id repeats, a footprint exceeds 200 m, a place
 pixel falls outside the illustration frame, the spawn or a waypoint falls outside the
 calibrated ground, there is no waypoint, no place declares a height, a place references an
@@ -77,7 +79,7 @@ The pipeline is built so that an interpretation cannot silently become a measure
 | `synthetic` | `rationale` | Invented sample or placeholder data |
 | `null` (absent) | — | Unknown. No solid geometry is emitted |
 
-Rules enforced in code, not in prose:
+Rules enforced in `src/heights.js`, not in prose:
 
 - An unknown height is never replaced by a default, an average, or a guess. The place is
   recorded in `unknown_places`, excluded from render and collision geometry, and counted in
@@ -108,10 +110,14 @@ not show (heights, interiors, hidden alleys) stay unknown by construction.
   4-neighbour flood fill from the spawn. A waypoint counts as reachable when a reached cell
   centre lies within 1.5 m. Blocking is conservative: a cell is blocked when a collision quad
   overlaps it, so the check can only under-report reachability, never over-report it. The
-  sample reaches 47 624 of 49 152 ground cells (96.9%) and all three waypoints.
+  sample reaches 47 624 of 49 152 ground cells (96.9%, free cells are 47 624) and all three
+  waypoints.
 - **Coverage**: the check recomputes, from the artifact's collision quads, that every solid
   footprint lies inside some collision quad. A collision mesh that covers one building out of
   eight fails the build.
+- **Accessors**: the artifact check requires every vertex attribute to be an integer count
+  equal to POSITION and of the expected type (`VEC3` for position, normal and color), and the
+  index accessor to be `SCALAR` with a count divisible by three.
 
 The artifact is glTF 2.0 binary with an embedded buffer and no images, so a consumer needs no
 second download. Materials carry PBR factors; the declared texture is referenced by id in
@@ -214,6 +220,11 @@ rejection, not a stub.
   `checkJs` target belongs to the gate work in D02.
 - `reachable_ratio` divides reached cells by all ground cells, not by free cells; blocked cells
   are reported separately as `blocked_cells`.
+- A failing build renames a previous artifact of the same id to `scene-<id>.glb.stale` instead of
+  deleting it, so a consumer globbing `*.glb` cannot silently load the old scene. Staging files
+  are cleaned at the start of the next build, so a killed build leaves at most one `.pending`.
+- The accessor check verifies counts and types but not that every buffer view stays inside the
+  binary chunk; the reader's tests cover alignment and bounds for the shapes this writer emits.
 - LOD1 does not reduce triangles yet. It is a draw-call LOD, measured as such.
 - Footprints are axis-aligned boxes. Arbitrary silhouettes need an authored mesh path (Blender
   or `gltf-transform`) that this sample did not justify.

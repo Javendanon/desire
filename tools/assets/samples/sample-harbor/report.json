@@ -36,7 +36,7 @@
     {
       "id": "artifact.accessors",
       "pass": true,
-      "detail": "attribute counts match POSITION"
+      "detail": "attribute layout matches POSITION"
     },
     {
       "id": "artifact.embedded",
@@ -113,6 +113,8 @@
     "cell_m": 1,
     "columns": 256,
     "rows": 192,
+    "origin_x_m": 0,
+    "origin_z_m": 0,
     "total_cells": 49152,
     "free_cells": 47624,
     "blocked_cells": 1528,

@@ -12,6 +12,10 @@ export function readManifest(manifestPath) {
   } catch (cause) {
     return { manifest: null, errors: [`${manifestPath}: invalid JSON (${cause.message})`] };
   }
-  const { errors } = validateManifest(manifest);
-  return { manifest, errors };
+  try {
+    const { errors } = validateManifest(manifest);
+    return { manifest, errors };
+  } catch (cause) {
+    return { manifest, errors: [`${manifestPath}: validation failed (${cause.message})`] };
+  }
 }

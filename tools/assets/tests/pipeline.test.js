@@ -41,6 +41,22 @@ test('the report records scale, fidelity, collision, textures and navigation', a
   assert.deepEqual(report.unknown_places.sort(), ['chandlers-row', 'tide-stairs']);
 });
 
+test('a failing rebuild quarantines the previous artifact', async () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
+  const first = await buildAsset({ manifestPath: sampleManifestPath(), outDir });
+  assert.equal(first.artifactPath !== null, true);
+  const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
+  manifest.scale_checks[0].expected_m = 300;
+  const brokenPath = path.join(outDir, 'broken.json');
+  fs.writeFileSync(brokenPath, JSON.stringify(manifest));
+  const second = await buildAsset({ manifestPath: brokenPath, outDir });
+  assert.equal(second.report.pass, false);
+  const names = fs.readdirSync(outDir);
+  assert.deepEqual(names.filter((name) => name.endsWith('.glb')), []);
+  assert.ok(names.some((name) => name.endsWith('.glb.stale')), names.join(', '));
+  assert.equal(second.report.artifact.stale_path !== undefined, true);
+});
+
 test('the artifact and its report are written next to each other', async () => {
   const { artifactPath, reportPath, bytes } = await build();
   assert.ok(fs.existsSync(artifactPath));

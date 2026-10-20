@@ -17,6 +17,21 @@ export function pixelToPlan(calibration, pixel) {
   };
 }
 
+/** Plan rectangle covering the whole illustration, following the D04 transform. */
+export function planGround(illustration, calibration) {
+  const topLeft = pixelToPlan(calibration, { u: 0, v: 0 });
+  const bottomRight = pixelToPlan(calibration, {
+    u: illustration.width_px,
+    v: illustration.height_px,
+  });
+  return {
+    origin_x_m: topLeft.x_m,
+    origin_z_m: topLeft.z_m,
+    width_m: bottomRight.x_m - topLeft.x_m,
+    height_m: bottomRight.z_m - topLeft.z_m,
+  };
+}
+
 /** Straight-line plan distance between two meter anchors. */
 export function planDistance(from, to) {
   return Math.hypot(to.x_m - from.x_m, to.z_m - from.z_m);

@@ -29,9 +29,10 @@ km dups tools/assets --exclude-ext json
 ```
 
 Exit code is `0` only when every acceptance check passes, `2` otherwise. The report is written
-even when the build fails, so the failure is auditable. A failing build leaves no `.glb` next
-to the report: the artifact is staged as `scene-<id>.glb.pending` and only renamed into place
-when every check passes.
+even when the build fails, so the failure is auditable. The artifact is staged as
+`scene-<id>.glb.pending` and only renamed into place when every check passes. If a previous
+artifact with the same id exists, a failing rebuild renames it to `scene-<id>.glb.stale` so no
+consumer can load it by accident.
 
 ## Layout
 
@@ -39,7 +40,9 @@ when every check passes.
 | --- | --- |
 | `asset-pipeline.js` | CLI: `--manifest`, optional `--out` |
 | `src/io.js` | Reads and validates the manifest |
-| `src/manifest.js` | Pure manifest validation (schema, provenance, heights, textures) |
+| `src/manifest.js` | Pure manifest validation: schema, sections, provenance, textures |
+| `src/heights.js` | Height policy: evidence, rationale, bounds |
+| `src/values.js` | Shared scalar predicates |
 | `src/calibration.js` | D04 pixel-to-meter transform and scale checks |
 | `src/scene.js` | Metric scene: solids, unknown places, fidelity tally |
 | `src/geometry.js` | Flat-shaded boxes and ground quad |
@@ -55,7 +58,8 @@ when every check passes.
 ## Adding an asset
 
 1. Copy `samples/sample-harbor/asset.json` and edit `id`, `label`, illustration provenance,
-   `calibration` and place anchors. Calibration fields match D04's `Calibration`.
+   `calibration` and place anchors. Calibration fields match D04's `Calibration`; a non-zero
+   `origin_px_*` shifts the ground with the anchors, while `rotation_radians` must stay 0.
 2. Declare a `height_m` **only** from a source you can cite. Use `verified` with a
    `source_ref`, `interpretation`/`synthetic` with a `rationale`, or `null` to leave the
    height unknown. Unknown places stay out of the solid geometry and are listed in the report.

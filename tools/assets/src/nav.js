@@ -5,10 +5,10 @@ export const ARRIVAL_RADIUS_M = 1.5;
 const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const PER_MILLE = 1000;
 
-const cellColumn = (x, cell) => Math.floor(x / cell);
-const cellRow = (z, cell) => Math.floor(z / cell);
-const cellCenterX = (column, cell) => (column + 0.5) * cell;
-const cellCenterZ = (row, cell) => (row + 0.5) * cell;
+const cellColumn = (x, cell, origin) => Math.floor((x - origin) / cell);
+const cellRow = (z, cell, origin) => Math.floor((z - origin) / cell);
+const cellCenterX = (column, cell, origin) => origin + (column + 0.5) * cell;
+const cellCenterZ = (row, cell, origin) => origin + (row + 0.5) * cell;
 
 function clamp(value, limit) {
   return Math.min(Math.max(value, 0), limit - 1);
@@ -18,15 +18,19 @@ function gridOf(ground, cell) {
   return {
     columns: Math.ceil(ground.width_m / cell),
     rows: Math.ceil(ground.height_m / cell),
+    origin_x_m: ground.origin_x_m,
+    origin_z_m: ground.origin_z_m,
   };
 }
 
 function markBlocker(spec) {
   const { blocked, grid, blocker, cell } = spec;
-  const firstColumn = clamp(cellColumn(blocker.min_x, cell), grid.columns);
-  const lastColumn = clamp(cellColumn(blocker.max_x, cell), grid.columns);
-  const firstRow = clamp(cellRow(blocker.min_z, cell), grid.rows);
-  const lastRow = clamp(cellRow(blocker.max_z, cell), grid.rows);
+  const originX = grid.origin_x_m;
+  const originZ = grid.origin_z_m;
+  const firstColumn = clamp(cellColumn(blocker.min_x, cell, originX), grid.columns);
+  const lastColumn = clamp(cellColumn(blocker.max_x, cell, originX), grid.columns);
+  const firstRow = clamp(cellRow(blocker.min_z, cell, originZ), grid.rows);
+  const lastRow = clamp(cellRow(blocker.max_z, cell, originZ), grid.rows);
   for (let row = firstRow; row <= lastRow; row += 1) {
     for (let column = firstColumn; column <= lastColumn; column += 1) {
       blocked[row * grid.columns + column] = 1;
@@ -75,8 +79,8 @@ function nearestReached(spec) {
   for (let row = 0; row < grid.rows; row += 1) {
     for (let column = 0; column < grid.columns; column += 1) {
       if (reached[row * grid.columns + column] === 0) continue;
-      const dx = cellCenterX(column, cell) - point.x_m;
-      const dz = cellCenterZ(row, cell) - point.z_m;
+      const dx = cellCenterX(column, cell, grid.origin_x_m) - point.x_m;
+      const dz = cellCenterZ(row, cell, grid.origin_z_m) - point.z_m;
       if (Math.hypot(dx, dz) <= ARRIVAL_RADIUS_M) return true;
     }
   }
@@ -96,8 +100,8 @@ function waypointResults(spec) {
 }
 
 function spawnIndex(spawn, grid, cell) {
-  const column = clamp(cellColumn(spawn.x_m, cell), grid.columns);
-  const row = clamp(cellRow(spawn.z_m, cell), grid.rows);
+  const column = clamp(cellColumn(spawn.x_m, cell, grid.origin_x_m), grid.columns);
+  const row = clamp(cellRow(spawn.z_m, cell, grid.origin_z_m), grid.rows);
   return row * grid.columns + column;
 }
 
@@ -111,6 +115,8 @@ function summarize(spec) {
     cell_m: cell,
     columns: grid.columns,
     rows: grid.rows,
+    origin_x_m: grid.origin_x_m,
+    origin_z_m: grid.origin_z_m,
     total_cells: total,
     free_cells: total - blockedCount,
     blocked_cells: blockedCount,

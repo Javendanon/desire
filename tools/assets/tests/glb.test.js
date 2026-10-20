@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { uncoveredSolids } from '../src/check.js';
+import { accessorFinding, uncoveredSolids } from '../src/check.js';
 import { encodeGlb } from '../src/glb.js';
 import { collisionBlockers, parseGlb } from '../src/gltf-read.js';
 import { readManifest } from '../src/io.js';
@@ -55,13 +55,45 @@ test('coverage fails when a solid loses its collision box', () => {
   const { manifest, gltf } = build();
   const blockers = collisionBlockers(gltf);
   const scene = buildScene(manifest);
-  const [first, ...rest] = scene.solids;
+  const first = scene.solids[0];
   const kept = blockers.filter((blocker) => {
     return blocker.min_x > first.center.x_m + first.width_m / 2
       || blocker.max_x < first.center.x_m - first.width_m / 2;
   });
   assert.deepEqual(uncoveredSolids(kept, scene.solids), [first.id]);
-  assert.equal(rest.length, scene.solids.length - 1);
+});
+
+test('an attribute with the wrong component type fails the accessor check', () => {
+  const accessors = [
+    { type: 'VEC3', count: 4 },
+    { type: 'VEC4', count: 4 },
+    { type: 'SCALAR', count: 6 },
+  ];
+  const gltf = {
+    json: {
+      accessors,
+      meshes: [{ primitives: [{ attributes: { POSITION: 0, COLOR_0: 1 }, indices: 2 }] }],
+    },
+  };
+  const result = accessorFinding(gltf);
+  assert.equal(result.pass, false);
+  assert.match(result.detail, /COLOR_0 type VEC4/);
+});
+
+test('non-scalar indices fail the accessor check', () => {
+  const accessors = [
+    { type: 'VEC3', count: 4 },
+    { type: 'VEC3', count: 6 },
+  ];
+  const gltf = {
+    json: {
+      accessors,
+      meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+    },
+  };
+  const result = accessorFinding(gltf);
+  assert.equal(result.pass, false);
+  assert.match(result.detail, /indices type VEC3/);
 });
 
 test('every vertex attribute count is an integer and matches POSITION', () => {

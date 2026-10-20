@@ -85,6 +85,34 @@ test('an impossible height is rejected instead of becoming a tower', () => {
   assert.match(errorsOf(manifest).join('\n'), /height_m/);
 });
 
+test('a manifest without a textures section is rejected', () => {
+  const manifest = base();
+  delete manifest.textures;
+  assert.match(errorsOf(manifest).join('\n'), /textures must be an array/);
+});
+
+test('an anchor outside a shifted calibrated ground is rejected', () => {
+  const manifest = base();
+  manifest.calibration.origin_px_x = 2000;
+  manifest.calibration.origin_px_y = 2000;
+  const errors = errorsOf(manifest).join('\n');
+  assert.match(errors, /spawn: outside the calibrated ground/);
+});
+
+test('malformed entries are reported instead of thrown', () => {
+  const manifest = base();
+  manifest.places = [null];
+  manifest.materials = [null];
+  manifest.textures = [null];
+  manifest.scale_checks = [null];
+  manifest.materials.push({ id: 'bad-color', base_color: 'abcd' });
+  const errors = errorsOf(manifest).join('\n');
+  assert.match(errors, /place: every entry must be an object/);
+  assert.match(errors, /material: every entry must be an object/);
+  assert.match(errors, /texture: every entry must be an object/);
+  assert.match(errors, /scale_check: every entry must be an object/);
+});
+
 test('an uncompressed texture is rejected', () => {
   const manifest = base();
   manifest.textures[0].mime = 'image/png';
@@ -112,6 +140,15 @@ test('the sample texture passes the magic-byte and budget check', async () => {
   const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
   assert.equal(texture.id, 'paving-webp');
   assert.equal(texture.pass, true, texture.detail);
+});
+
+test('a texture over its byte budget fails the check', async () => {
+  const { checkTextures } = await import('../src/textures.js');
+  const { manifest } = readManifest(sampleManifestPath());
+  manifest.textures[0].max_bytes = 10;
+  const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
+  assert.equal(texture.pass, false);
+  assert.equal(texture.bytes, 52);
 });
 
 test('a renamed file does not pass as compressed', async () => {

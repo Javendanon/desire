@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { evaluateScaleChecks, pixelToPlan } from '../src/calibration.js';
+import { evaluateScaleChecks, pixelToPlan, planGround } from '../src/calibration.js';
 
 const calibration = (overrides = {}) => ({
   origin_px_x: 0,
@@ -25,6 +25,17 @@ test('a quarter turn maps image down into negative x', () => {
   const plan = pixelToPlan(calibration({ rotation_radians: Math.PI / 2 }), { u: 0, v: 400 });
   assert.ok(Math.abs(plan.x_m + 100) < 1e-9, `x_m ${plan.x_m}`);
   assert.ok(Math.abs(plan.z_m) < 1e-9, `z_m ${plan.z_m}`);
+});
+
+test('a calibration origin shifts the ground rectangle, not just its corner', () => {
+  const illustration = { width_px: 1024, height_px: 768 };
+  const ground = planGround(illustration, calibration({ origin_px_x: 256, origin_px_y: 192 }));
+  assert.deepEqual(ground, {
+    origin_x_m: -64,
+    origin_z_m: -48,
+    width_m: 256,
+    height_m: 192,
+  });
 });
 
 test('a scale check within tolerance passes and reports the measured distance', () => {

@@ -98,9 +98,11 @@ export function buildBox(solid, color) {
 /** Ground quad spanning the calibrated illustration frame, x east and z south. */
 export function buildGround(ground, color) {
   const mesh = emptyMesh();
-  const width = ground.width_m;
-  const depth = ground.height_m;
-  const quad = [[0, 0, 0], [0, 0, depth], [width, 0, depth], [width, 0, 0]];
+  const west = ground.origin_x_m;
+  const north = ground.origin_z_m;
+  const east = west + ground.width_m;
+  const south = north + ground.height_m;
+  const quad = [[west, 0, north], [west, 0, south], [east, 0, south], [east, 0, north]];
   addQuad(mesh, quad, { normal: UP, color: rgb(color) });
   return mesh;
 }

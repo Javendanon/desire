@@ -1,19 +1,16 @@
 /** Validation of the offline asset scene manifest; pure, no file or network access. */
+import { planGround } from './calibration.js';
+import { EVIDENCE, validateHeight } from './heights.js';
+import { filled, finite, positive } from './values.js';
 
 export const SCHEMA = 'desire.asset-scene/1';
-export const EVIDENCE = new Set(['verified', 'interpretation', 'synthetic']);
 export const COMPRESSED_MIME = new Set(['image/webp', 'image/ktx2']);
 export const MAX_FOOTPRINT_M = 200;
-export const MAX_HEIGHT_M = 400;
 export const MAX_TEXTURE_BYTES = 262144;
 const BASE_COLOR_CHANNELS = 4;
 const COLOR_RANGE = { min: 0, max: 1 };
 const REMOTE_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 const SUPPORTED_ROTATION_RAD = 0;
-
-const finite = (value) => typeof value === 'number' && Number.isFinite(value);
-const positive = (value) => finite(value) && value > 0;
-const filled = (value) => typeof value === 'string' && value.trim().length > 0;
 
 function validateProvenance(provenance, where, errors) {
   if (provenance === null || typeof provenance !== 'object') {
@@ -28,12 +25,10 @@ function validateProvenance(provenance, where, errors) {
 }
 
 function validateSections(manifest, errors) {
-  for (const key of ['places', 'materials', 'waypoints']) {
+  for (const key of ['places', 'materials', 'textures', 'waypoints']) {
     if (!Array.isArray(manifest[key])) errors.push(`${key} must be an array`);
   }
-  if (manifest.textures !== undefined && !Array.isArray(manifest.textures)) {
-    errors.push('textures must be an array');
-  }
+  if (!Array.isArray(manifest.textures)) errors.push('textures must be an array');
   if (!filled(manifest.ground?.material)) errors.push('ground: material is required');
 }
 
@@ -81,6 +76,10 @@ function validateScalePoint(point, where, errors) {
 }
 
 function validateScaleCheck(check, errors) {
+  if (check === null || typeof check !== 'object') {
+    errors.push('scale_check: every entry must be an object');
+    return;
+  }
   validateScalePoint(check.from_px ?? {}, `scale_check ${check.id} from_px`, errors);
   validateScalePoint(check.to_px ?? {}, `scale_check ${check.id} to_px`, errors);
   if (!positive(check.expected_m)) {
@@ -94,32 +93,6 @@ function validateScaleChecks(checks, errors) {
     return;
   }
   for (const check of checks) validateScaleCheck(check, errors);
-}
-
-function validateHeightPresence(place, errors) {
-  if (place.height_m !== null && place.height_m !== undefined) return true;
-  if (place.height_evidence) errors.push(`place ${place.id}: height_evidence without height_m`);
-  return false;
-}
-
-function validateHeightEvidence(place, errors) {
-  const where = `place ${place.id}`;
-  if (!positive(place.height_m) || place.height_m > MAX_HEIGHT_M) {
-    errors.push(`${where}: height_m must be 0 < h <= ${MAX_HEIGHT_M}`);
-  }
-  if (!EVIDENCE.has(place.height_evidence)) {
-    errors.push(`${where}: height_evidence must be explicit`);
-    return;
-  }
-  if (place.height_evidence === 'verified' && !filled(place.source_ref)) {
-    errors.push(`${where}: verified height needs a source_ref`);
-  } else if (place.height_evidence !== 'verified' && !filled(place.rationale)) {
-    errors.push(`${where}: ${place.height_evidence} height needs a rationale`);
-  }
-}
-
-function validateHeight(place, errors) {
-  if (validateHeightPresence(place, errors)) validateHeightEvidence(place, errors);
 }
 
 function validateFootprint(place, errors) {
@@ -155,6 +128,10 @@ function validatePixel(place, frame, errors) {
 
 function validatePlace(place, context) {
   const { materialIds, frame, seen, errors } = context;
+  if (place === null || typeof place !== 'object') {
+    errors.push('place: every entry must be an object');
+    return;
+  }
   if (!filled(place.id)) {
     errors.push('place: id is required');
     return;
@@ -170,8 +147,8 @@ function validatePlace(place, context) {
 
 function validateColor(material, errors) {
   const color = material.base_color ?? [];
-  const shaped = color.length === BASE_COLOR_CHANNELS;
-  const inRange = color.every((channel) => {
+  const shaped = Array.isArray(color) && color.length === BASE_COLOR_CHANNELS;
+  const inRange = shaped && color.every((channel) => {
     return finite(channel) && channel >= COLOR_RANGE.min && channel <= COLOR_RANGE.max;
   });
   if (!shaped || !inRange) {
@@ -181,6 +158,10 @@ function validateColor(material, errors) {
 }
 
 function validateMaterial(material, textureIds, errors) {
+  if (material === null || typeof material !== 'object') {
+    errors.push('material: every entry must be an object');
+    return;
+  }
   if (!filled(material.id)) errors.push('material: id is required');
   validateColor(material, errors);
   if (material.texture !== undefined && !textureIds.has(material.texture)) {
@@ -191,6 +172,10 @@ function validateMaterial(material, textureIds, errors) {
 function validateMaterials(materials, textureIds, errors) {
   const ids = new Set();
   for (const material of materials ?? []) {
+    if (material === null || typeof material !== 'object') {
+      validateMaterial(material, textureIds, errors);
+      continue;
+    }
     if (ids.has(material.id)) errors.push(`duplicate material id ${material.id}`);
     ids.add(material.id);
     validateMaterial(material, textureIds, errors);
@@ -199,6 +184,10 @@ function validateMaterials(materials, textureIds, errors) {
 }
 
 function validateTexture(texture, errors) {
+  if (texture === null || typeof texture !== 'object') {
+    errors.push('texture: every entry must be an object');
+    return;
+  }
   const where = `texture ${texture.id}`;
   if (!COMPRESSED_MIME.has(texture.mime)) {
     errors.push(`${where}: ${texture.mime} is not compressed; use image/webp or image/ktx2`);
@@ -216,6 +205,10 @@ function validateTexture(texture, errors) {
 function validateTextures(textures, errors) {
   const ids = new Set();
   for (const texture of textures ?? []) {
+    if (texture === null || typeof texture !== 'object') {
+      validateTexture(texture, errors);
+      continue;
+    }
     if (!filled(texture.id)) errors.push('texture: id is required');
     if (ids.has(texture.id)) errors.push(`duplicate texture id ${texture.id}`);
     ids.add(texture.id);
@@ -232,9 +225,10 @@ function groundExtent(manifest) {
   const { illustration, calibration } = manifest;
   const width = illustration?.width_px;
   const height = illustration?.height_px;
-  const scale = calibration?.meters_per_pixel;
-  if (!(positive(width) && positive(height) && positive(scale))) return null;
-  return { width_m: width * scale, height_m: height * scale };
+  if (!(positive(width) && positive(height) && positive(calibration?.meters_per_pixel))) {
+    return null;
+  }
+  return planGround(illustration, calibration);
 }
 
 function validateAnchor(spec) {
@@ -245,7 +239,9 @@ function validateAnchor(spec) {
     return;
   }
   if (extent === null) return;
-  const outside = x < 0 || z < 0 || x > extent.width_m || z > extent.height_m;
+  const east = extent.origin_x_m + extent.width_m;
+  const south = extent.origin_z_m + extent.height_m;
+  const outside = x < extent.origin_x_m || z < extent.origin_z_m || x > east || z > south;
   if (outside) errors.push(`${where}: outside the calibrated ground`);
 }
 
@@ -276,7 +272,8 @@ export function validateManifest(manifest) {
     errors.push(`ground: unknown material ${manifest.ground.material}`);
   }
   const places = Array.isArray(manifest.places) ? manifest.places : [];
-  if (places.length > 0 && !places.some((place) => typeof place.height_m === 'number')) {
+  const hasHeight = places.some((place) => typeof place?.height_m === 'number');
+  if (places.length > 0 && !hasHeight) {
     errors.push('places: at least one declared height is required to build geometry');
   }
   const frame = manifest.illustration ?? {};

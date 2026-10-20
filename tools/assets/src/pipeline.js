@@ -11,6 +11,7 @@ import { checkTextures } from './textures.js';
 
 const REPORT_NAME = 'report.json';
 const PENDING_SUFFIX = '.pending';
+const STALE_SUFFIX = '.stale';
 
 function writeJson(file, value) {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
@@ -27,9 +28,18 @@ function invalidReport(manifest, errors) {
   return failureReport(manifest?.id, checks);
 }
 
+function quarantine(artifactPath) {
+  if (!fs.existsSync(artifactPath)) return null;
+  const stalePath = `${artifactPath}${STALE_SUFFIX}`;
+  fs.rmSync(stalePath, { force: true });
+  fs.renameSync(artifactPath, stalePath);
+  return stalePath;
+}
+
 function stage(spec) {
   const { manifest, scene, artifactPath, sourceDir } = spec;
   const pendingPath = `${artifactPath}${PENDING_SUFFIX}`;
+  fs.rmSync(pendingPath, { force: true });
   fs.writeFileSync(pendingPath, encodeGlb(scene, manifest));
   const gltf = parseGlb(fs.readFileSync(pendingPath));
   const textures = checkTextures(manifest, sourceDir);
@@ -40,8 +50,13 @@ function stage(spec) {
 function finishArtifact(spec) {
   const { pendingPath, report } = spec;
   report.artifact.written = report.pass;
-  if (report.pass) fs.renameSync(pendingPath, report.artifact.path);
-  else fs.rmSync(pendingPath, { force: true });
+  if (report.pass) {
+    fs.renameSync(pendingPath, report.artifact.path);
+    return report;
+  }
+  fs.rmSync(pendingPath, { force: true });
+  const stale = quarantine(report.artifact.path);
+  if (stale) report.artifact.stale_path = stale;
   return report;
 }
 
@@ -55,7 +70,10 @@ function buildArtifact(spec) {
     return finishArtifact({ pendingPath: staged.pendingPath, report });
   } catch (cause) {
     fs.rmSync(pendingPath, { force: true });
-    return failureReport(scene.id, [], cause.message);
+    const stale = quarantine(artifactPath);
+    const report = failureReport(scene.id, [], cause.message);
+    if (stale) report.stale_path = stale;
+    return report;
   }
 }
 

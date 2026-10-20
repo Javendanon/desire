@@ -6,6 +6,7 @@ import { navigate } from './nav.js';
 const LOD_PREFIX = 'render/lod0/';
 const VERTICES_PER_TRIANGLE = 3;
 const COVERAGE_TOLERANCE_M = 0.01;
+const ATTRIBUTE_TYPES = { POSITION: 'VEC3', NORMAL: 'VEC3', COLOR_0: 'VEC3' };
 
 const finding = (id, pass, detail) => ({ id, pass, detail });
 
@@ -86,21 +87,32 @@ function attributeProblem(accessors, attributes, position) {
     const accessor = accessors[index];
     const whole = Number.isInteger(accessor.count) && accessor.count > 0;
     if (!whole || accessor.count !== position.count) return `${name} count ${accessor.count}`;
+    if (accessor.type !== ATTRIBUTE_TYPES[name]) return `${name} type ${accessor.type}`;
   }
   return null;
 }
 
-function accessorFinding(gltf) {
+function indicesProblem(accessors, primitive) {
+  if (primitive.indices === undefined) return null;
+  const indices = accessors[primitive.indices];
+  if (indices.type !== 'SCALAR') return `indices type ${indices.type}`;
+  if (indices.count % VERTICES_PER_TRIANGLE !== 0) return `indices count ${indices.count}`;
+  return null;
+}
+
+/** Structural check of the written accessors; exported so tests can feed broken input. */
+export function accessorFinding(gltf) {
   const broken = [];
   for (const mesh of gltf.json.meshes) {
     for (const primitive of mesh.primitives) {
       const position = gltf.json.accessors[primitive.attributes.POSITION];
-      const problem = attributeProblem(gltf.json.accessors, primitive.attributes, position);
+      const problem = attributeProblem(gltf.json.accessors, primitive.attributes, position)
+        ?? indicesProblem(gltf.json.accessors, primitive);
       if (problem) broken.push(problem);
     }
   }
   return finding('artifact.accessors', broken.length === 0,
-    broken.join(', ') || 'attribute counts match POSITION');
+    broken.join(', ') || 'attribute layout matches POSITION');
 }
 
 function lodFinding(collision, scene) {

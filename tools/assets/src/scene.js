@@ -1,5 +1,5 @@
 /** Turns a validated manifest into a metric scene: solids, unknown places and fidelity. */
-import { pixelToPlan } from './calibration.js';
+import { pixelToPlan, planGround } from './calibration.js';
 
 const hasHeight = (place) => typeof place.height_m === 'number';
 
@@ -29,12 +29,7 @@ function tally(solids, unknown) {
   return fidelity;
 }
 
-function groundOf(illustration, calibration) {
-  return {
-    width_m: illustration.width_px * calibration.meters_per_pixel,
-    height_m: illustration.height_px * calibration.meters_per_pixel,
-  };
-}
+
 
 /** Builds the metric scene. Heights come only from declared data, never from a default. */
 export function buildScene(manifest) {
@@ -45,7 +40,7 @@ export function buildScene(manifest) {
   return {
     id: manifest.id,
     label: manifest.label,
-    ground: { ...groundOf(illustration, calibration), material: manifest.ground.material },
+    ground: { ...planGround(illustration, calibration), material: manifest.ground.material },
     solids,
     unknown,
     spawn: { x_m: manifest.spawn.x_m, z_m: manifest.spawn.z_m },
