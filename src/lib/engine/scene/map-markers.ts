@@ -21,12 +21,24 @@ interface MarkerRecord {
   group: MarkerGroup;
 }
 
-const PLACE_PICK_RADIUS = 60;
 const PLACE_CONE_Y = 26;
+// The pick sphere is a fraction of the drawn marker, never a fixed blob: at the closest orbit the
+// camera sits inside a 60 m sphere and every click would select the focused place.
+const PLACE_PICK_CENTER_Y = 14;
+const PLACE_PICK_RADIUS = 16;
+export const PLACE_PICK_MIN_RADIUS = 8;
 const SCALE_MIN = 0.5;
 const SCALE_MAX = 3.5;
 const SCALE_PER_RADIUS = 1 / 1400;
 const SELECTED_BOOST = 1.5;
+
+/** Pick sphere radius for a marker scale. Grows with the marker so the overview stays clickable. */
+export function placePickRadius(scale: number): number {
+  if (!(scale > 0)) {
+    throw new Error(`placePickRadius: scale must be positive, got ${scale}`);
+  }
+  return Math.max(PLACE_PICK_MIN_RADIUS, PLACE_PICK_RADIUS * scale);
+}
 
 function markerMaterial(color: string, emissive: number): pc.StandardMaterial {
   const material = new pc.StandardMaterial();
@@ -55,8 +67,8 @@ export class MapMarkers {
     ];
     this.targets = map.places.map((place) => ({
       id: place.id,
-      center: { x: place.at.x, y: PLACE_CONE_Y, z: place.at.z },
-      radius: PLACE_PICK_RADIUS,
+      center: { x: place.at.x, y: PLACE_PICK_CENTER_Y, z: place.at.z },
+      radius: placePickRadius(1),
     }));
     this.build();
   }
@@ -117,9 +129,10 @@ export class MapMarkers {
       const scale = chosen ? base * SELECTED_BOOST : base;
       record.entity.setLocalScale(scale, scale, scale);
     }
+    const pickRadius = placePickRadius(base);
     for (const target of this.targets) {
-      target.center.y = PLACE_CONE_Y * base;
-      target.radius = PLACE_PICK_RADIUS * Math.max(1, base);
+      target.center.y = PLACE_PICK_CENTER_Y * base;
+      target.radius = pickRadius;
     }
   }
 

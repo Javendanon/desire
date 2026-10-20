@@ -16,6 +16,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "pnpm run test:frontend && pnpm run test:rust",
     "test:frontend": "node --test \"tests/*.test.ts\"",
+    "test:browser": "node tools/ci/browser-smoke.mjs",
     "test:holdout": "node --test \"tests/holdout/*.test.ts\"",
     "test:rust": "cargo test --workspace",
     "test:quality": "python3 -m unittest discover -s tools/quality/tests -p 'test_*.py'",

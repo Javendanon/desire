@@ -1,5 +1,6 @@
-// Small Market pilot: visual traces from the checksum-verified D05 raster, not label anchors.
-// Pixel checkpoints and comparison procedure: docs/reports/d13-street-comparison.md.
+// Raster-traced axes: the precise Market approach pilot, then one coarse axis per ward so the
+// whole-city view keeps recognisable streets instead of a free block grid. Pixel checkpoints,
+// tolerances and the residual scope are in docs/reports/d13-street-comparison.md.
 import type { Point2 } from '../../../src/lib/engine/math/hex.ts';
 import { distanceToPath } from '../../../src/lib/engine/plan/corridors.ts';
 import type { MapRoad } from '../../../src/lib/engine/plan/map-definition.ts';
@@ -27,6 +28,34 @@ export const WATERDEEP_ROAD_TRACES = [
   {
     id: 'the-high-road', widthPx: 42,
     pixels: [[2080, 2450], [2080, 2600], [2080, 2700], [2085, 2830], [2095, 3000]],
+  },
+  // From the North Gate south to the Market approach above; ends are pilot cut lines.
+  {
+    id: 'the-high-road-north', widthPx: 44,
+    pixels: [[2160, 560], [2125, 700], [2085, 850], [2075, 1100],
+      [2077, 1500], [2081, 1900], [2083, 2250], [2080, 2450]],
+  },
+  {
+    id: 'julthoon-street', widthPx: 36,
+    pixels: [[640, 2330], [1000, 2328], [1400, 2325], [1800, 2320], [2060, 2315]],
+  },
+  {
+    id: 'waterdeep-way', widthPx: 38,
+    pixels: [[1680, 4070], [1900, 4068], [2100, 4060], [2260, 4050]],
+  },
+  {
+    id: 'the-way-of-the-dragon', widthPx: 40,
+    pixels: [[2494, 4880], [2522, 5080], [2549, 5280], [2570, 5480],
+      [2596, 5680], [2615, 5780]],
+  },
+  {
+    id: 'dock-street', widthPx: 28,
+    pixels: [[2150, 5538], [2110, 5573], [2070, 5606], [2030, 5635]],
+  },
+  {
+    id: 'the-beaconmarch', widthPx: 22,
+    pixels: [[2815, 2948], [2880, 3000], [2980, 3095], [2940, 3250],
+      [2915, 3350], [2905, 3550]],
   },
 ] as const;
 
