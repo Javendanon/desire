@@ -2,7 +2,63 @@
 mod support;
 
 use desire_core::contracts::{campaign::Campaign, common::RulesEdition};
-use desire_persistence::{CampaignRepository, migrations};
+use desire_persistence::{CampaignRename, CampaignRepository, ErrorKind, migrations};
+
+#[test]
+fn every_migration_prefix_upgrades_to_current() {
+    for version in 0..=4 {
+        let mut db = support::database();
+        migrations::apply_through(&mut db, version).unwrap();
+        migrations::apply(&mut db).unwrap();
+        assert_eq!(
+            db.query_one("SELECT count(*) FROM persistence_migrations", &[])
+                .unwrap()
+                .get::<_, i64>(0),
+            4
+        );
+    }
+}
+
+#[test]
+fn invalid_history_and_downgrades_are_rejected() {
+    let mut db = support::database();
+    migrations::apply(&mut db).unwrap();
+    assert_eq!(
+        migrations::apply_through(&mut db, 3).unwrap_err().kind,
+        ErrorKind::InvalidMigration
+    );
+    db.execute(
+        "UPDATE persistence_migrations SET sql = 'tampered' WHERE version = 1",
+        &[],
+    )
+    .unwrap();
+    assert_eq!(
+        migrations::apply(&mut db).unwrap_err().kind,
+        ErrorKind::InvalidMigration
+    );
+    assert_eq!(
+        migrations::apply_through(&mut db, 5).unwrap_err().kind,
+        ErrorKind::InvalidMigration
+    );
+}
+
+#[test]
+fn failed_upgrade_rolls_back_schema_and_history() {
+    let mut db = support::database();
+    db.batch_execute("CREATE SCHEMA campaign").unwrap();
+    let error = migrations::apply(&mut db).unwrap_err();
+    assert!(error.context.contains("0002"));
+    assert!(
+        db.query_one("SELECT to_regnamespace('catalog') IS NULL", &[])
+            .unwrap()
+            .get::<_, bool>(0)
+    );
+    assert!(
+        db.query_one("SELECT to_regclass('persistence_migrations') IS NULL", &[])
+            .unwrap()
+            .get::<_, bool>(0)
+    );
+}
 
 #[test]
 fn migrations_upgrade_without_replacing_saved_campaigns() {
@@ -22,7 +78,26 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
     migrations::apply(&mut db).unwrap();
     assert_eq!(
         CampaignRepository::get(&mut db, &campaign.id).unwrap(),
-        Some(campaign)
+        Some(campaign.clone())
+    );
+    let rename = CampaignRename {
+        campaign_id: &campaign.id,
+        expected_revision: 1,
+        name: "Renamed",
+    };
+    CampaignRepository::rename(&mut db, &rename).unwrap();
+    assert_eq!(
+        CampaignRepository::rename(&mut db, &rename)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Conflict
+    );
+    assert_eq!(
+        CampaignRepository::get(&mut db, &campaign.id)
+            .unwrap()
+            .unwrap()
+            .revision,
+        2
     );
     assert_eq!(
         db.query_one("SELECT count(*) FROM persistence_migrations", &[])
