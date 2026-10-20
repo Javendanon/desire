@@ -9,9 +9,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from tools.knowledge import campaign, importer, loader  # noqa: E402
-from tools.knowledge.tests import support  # noqa: E402
-from tools.knowledge.tests.support import EntryTarget, mutate_entry  # noqa: E402
+from tools.knowledge import campaign, importer, loader
+from tools.knowledge.tests import support
+from tools.knowledge.tests.support import EntryTarget, mutate_entry
 
 SPELL_2014 = EntryTarget("spells.json", "fireball", "dnd_2014")
 SPELL_2024 = EntryTarget("spells.json", "fireball", "dnd_2024")
@@ -244,6 +244,20 @@ class CampaignPipelineTests(unittest.TestCase):
 
 
 class ImporterPipelineTests(unittest.TestCase):
+    def test_sync_rejects_synthetic_canon_provenance_without_overwriting_compendium(self):
+        def change(entry):
+            entry["provenance"]["evidence"] = "synthetic"
+
+        for target in (SPELL_2014, SPELL_2024):
+            with self.subTest(edition=target.edition), tempfile.TemporaryDirectory() as directory:
+                content = support.copy_content(Path(directory))
+                path = content / "compendium.json"
+                original = path.read_bytes()
+                mutate_entry(content, target, change)
+                with self.assertRaisesRegex(ValueError, "synthetic provenance cannot be canon"):
+                    importer.sync(content)
+                self.assertEqual(path.read_bytes(), original)
+
     def test_render_compendium_wires_d04_validation(self):
         entries = loader.load_entries()
         with mock.patch(
