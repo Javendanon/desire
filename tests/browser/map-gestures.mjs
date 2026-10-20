@@ -1,7 +1,7 @@
 // Real DevTools input events exercise browser gesture arbitration, not synthetic PointerEvents.
 import assert from 'node:assert/strict';
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 1600));
+const settle = () => new Promise((resolve) => setTimeout(resolve, 2600));
 const state = 'window.__waterdeep.viewer.stats()';
 
 export async function checkClosePicking(send, evaluate) {
