@@ -1,4 +1,10 @@
-"""Search and filter the local Spanish compendium without network access."""
+"""Search and filter the local Spanish compendium without network access.
+
+This module is a verification CLI over the shared fixtures, not the reference
+implementation of search. The normative semantics live in
+``content/knowledge/search-fixtures.json``; D09 (Rust) and D15 (TypeScript)
+implement from that file and ``--verify-fixtures`` checks it here.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +15,7 @@ from pathlib import Path
 import sys
 import unicodedata
 
+from .fixtures import SearchFixture, load_fixtures
 from .loader import read_json
 from .model import CONTENT_DIR, KINDS, LANGUAGES, RULES_EDITIONS, TRANSLATION_STATUSES
 
@@ -21,6 +28,16 @@ class SearchFilters:
     edition: str | None = None
     language: str | None = None
     status: str | None = None
+
+    @classmethod
+    def from_record(cls, record: dict) -> "SearchFilters":
+        """Map the shared fixture field names to the CLI filter names."""
+        return cls(
+            kind=record.get("kind"),
+            edition=record.get("rules_edition"),
+            language=record.get("language"),
+            status=record.get("translation_status"),
+        )
 
 
 def normalize(value: str) -> str:
@@ -127,6 +144,29 @@ def find(
     return sorted(found, key=lambda item: (item["rules_edition"], item["kind"], item["title"]))
 
 
+def check_fixture(fixture: SearchFixture, content_dir: Path = CONTENT_DIR) -> str | None:
+    """Return a drift message, or None when the shared fixture still holds."""
+    filters = SearchFilters.from_record(fixture.filters)
+    found = {entry["id"] for entry in find(fixture.query, filters, content_dir)}
+    if found == set(fixture.expected_ids):
+        return None
+    return f"{fixture.name}: expected {sorted(fixture.expected_ids)}, got {sorted(found)}"
+
+
+def verify_fixtures(content_dir: Path = CONTENT_DIR) -> int:
+    """Run every shared fixture through this matcher; non-zero on drift."""
+    fixtures = load_fixtures(content_dir)
+    failures = []
+    for fixture in fixtures:
+        failure = check_fixture(fixture, content_dir)
+        if failure is not None:
+            failures.append(failure)
+    for failure in failures:
+        print(f"mismatch: {failure}", file=sys.stderr)
+    print(f"{len(fixtures)} fixtures, {len(failures)} mismatches")
+    return int(bool(failures))
+
+
 def print_results(results: list[dict]) -> None:
     for entry in results:
         fields = (
@@ -138,7 +178,7 @@ def print_results(results: list[dict]) -> None:
         print(f"{fields[0]:<8}  {fields[1]:<9}  {fields[2]:<16}  [{fields[3]}]")
 
 
-def main(argv: list[str] | None = None) -> int:
+def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--query", default="", help="Spanish text or English slug")
     parser.add_argument("--kind", choices=KINDS)
@@ -147,9 +187,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--status", choices=TRANSLATION_STATUSES)
     parser.add_argument("--content", type=Path, default=CONTENT_DIR)
     parser.add_argument("--json", action="store_true")
-    args = parser.parse_args(argv)
-    filters = SearchFilters(args.kind, args.edition, args.language, args.status)
+    parser.add_argument(
+        "--verify-fixtures", action="store_true", help="check the shared search fixtures"
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     try:
+        if args.verify_fixtures:
+            return verify_fixtures(args.content)
+        filters = SearchFilters(args.kind, args.edition, args.language, args.status)
         results = find(args.query, filters, args.content)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)

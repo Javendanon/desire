@@ -52,6 +52,13 @@ def optional_text(raw: dict, field: str, location: str) -> str:
     return value
 
 
+def flag(raw: dict, field: str, location: str) -> bool:
+    """Read an optional boolean; a truthy string is not accepted as a boolean."""
+    value = raw.get(field, False)
+    require(type(value) is bool, f"{location}.{field}: boolean")
+    return value
+
+
 def choice(value: object, allowed: tuple, location: str) -> str:
     require(isinstance(value, str) and bool(value.strip()), f"{location}: non-empty string")
     require(value in allowed, f"{location}: expected one of {allowed}")
@@ -142,6 +149,7 @@ def parse_source(raw: object, location: str) -> Source:
         license=text(raw, "license", location),
         license_url=optional_text(raw, "license_url", location),
         url=optional_text(raw, "url", location),
+        synthetic=flag(raw, "synthetic", location),
     )
 
 
@@ -200,9 +208,7 @@ def check_sources(entries: list[Entry], sources: dict[str, Source]) -> None:
             source.name == entry.provenance.source,
             f"{entry.key}: provenance source mismatch",
         )
-        require(
-            source.license != SYNTHETIC_EVIDENCE, f"{entry.key}: synthetic source cannot be canon"
-        )
+        require(not source.synthetic, f"{entry.key}: synthetic source cannot be canon")
         require(
             entry.provenance.evidence != SYNTHETIC_EVIDENCE,
             f"{entry.key}: synthetic provenance cannot be canon",

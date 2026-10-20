@@ -92,6 +92,15 @@
       ]
     },
     {
+      "name": "language_filter_rejects_unsupported_language",
+      "query": "",
+      "filters": {
+        "kind": "spell",
+        "language": "en"
+      },
+      "expected_ids": []
+    },
+    {
       "name": "edition_filter_separates_2014",
       "query": "fuego",
       "filters": {

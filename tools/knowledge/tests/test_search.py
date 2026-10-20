@@ -4,8 +4,9 @@ The normative search semantics live in ``content/knowledge/search-fixtures.json`
 so that D09 (Rust) and D15 (TypeScript) consume the same expectations.
 """
 
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 from dataclasses import replace
+import io
 import json
 from pathlib import Path
 import sys
@@ -61,7 +62,8 @@ class SharedSearchFixtureTests(unittest.TestCase):
         self.assertIn("reviewed", statuses)
 
     def test_verify_fixtures_reports_no_mismatch(self):
-        self.assertEqual(search.verify_fixtures(), 0)
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(search.verify_fixtures(), 0)
 
     def test_verify_fixtures_detects_a_drifted_expectation(self):
         drifted = replace(FIXTURES[0], expected_ids=())

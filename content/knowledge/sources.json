@@ -6,7 +6,8 @@
       "rules_edition": "dnd_2014",
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
-      "url": "https://www.dndbeyond.com/srd"
+      "url": "https://www.dndbeyond.com/srd",
+      "synthetic": false
     },
     {
       "id": "srd-5.2",
@@ -14,7 +15,8 @@
       "rules_edition": "dnd_2024",
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
-      "url": "https://www.dndbeyond.com/srd"
+      "url": "https://www.dndbeyond.com/srd",
+      "synthetic": false
     }
   ]
 }

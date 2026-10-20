@@ -56,7 +56,7 @@ class Provenance:
 
 @dataclass(frozen=True)
 class Source:
-    """A reusable source registered with an explicit license."""
+    """A registered source; ``synthetic`` marks demo provenance that is never canon."""
 
     id: str
     name: str
@@ -64,6 +64,7 @@ class Source:
     license: str
     license_url: str
     url: str
+    synthetic: bool = False
 
 
 @dataclass(frozen=True)
