@@ -1,8 +1,7 @@
 //! Every test uses its own database in the socket-only disposable cluster.
 use postgres::{Client, Config, NoTls};
 use std::sync::atomic::{AtomicUsize, Ordering};
-
-static NEXT_DATABASE: AtomicUsize = AtomicUsize::new(0);
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn connect(name: &str) -> Client {
     let socket = std::env::var("DESIRE_TEST_SOCKET")
@@ -17,15 +16,23 @@ pub fn connect(name: &str) -> Client {
 
 pub fn database() -> Client {
     let mut admin = connect("postgres");
-    let name = format!(
-        "d08_{}_{}",
-        std::process::id(),
-        NEXT_DATABASE.fetch_add(1, Ordering::Relaxed)
-    );
+    let name = database_name();
     admin
         .batch_execute(&format!("CREATE DATABASE {name}"))
         .unwrap();
     connect(&name)
+}
+
+/// Unique per call and per process, so a recycled PID cannot collide with a database the
+/// disposable cluster already holds. Database names cannot be parameterized.
+fn database_name() -> String {
+    static NEXT_DATABASE: AtomicUsize = AtomicUsize::new(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock is before 1970")
+        .as_nanos();
+    let sequence = NEXT_DATABASE.fetch_add(1, Ordering::Relaxed);
+    format!("d08_{}_{nanos}_{sequence}", std::process::id())
 }
 
 pub fn catalog() -> desire_persistence::CatalogSeed {
