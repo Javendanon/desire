@@ -8,6 +8,7 @@ fn seed_detects_removed_anchors_without_deleting_installed_content() {
     let mut db = support::database();
     migrations::apply(&mut db).unwrap();
     let mut seed = support::catalog();
+    let provenance = seed.places[0].provenance.clone();
     seed.places[0].anchors.push(PlaceAnchor {
         map_version_id: support::id(6),
         position: Position {
@@ -15,7 +16,7 @@ fn seed_detects_removed_anchors_without_deleting_installed_content() {
             y_m: 0.0,
             z_m: 2.0,
         },
-        provenance: seed.places[0].provenance.clone(),
+        provenance,
     });
     CatalogRepository::seed(&mut db, &seed).unwrap();
     CatalogRepository::seed(&mut db, &seed).unwrap();
