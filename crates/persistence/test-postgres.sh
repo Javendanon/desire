@@ -22,5 +22,5 @@ done
 psql -X -v ON_ERROR_STOP=1 -f crates/persistence/tests/schema.sql
 psql -X -v ON_ERROR_STOP=1 -f crates/persistence/tests/constraints.sql
 if [[ -f crates/persistence/Cargo.toml ]]; then
-    cargo test -p desire-persistence --locked
+    cargo test --workspace --locked
 fi

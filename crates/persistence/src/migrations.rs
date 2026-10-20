@@ -29,8 +29,10 @@ pub fn apply_through(client: &mut Client, target: usize) -> Result<(), Error> {
         .context("lock migration history")?;
     tx.batch_execute(concat!(
         "CREATE TABLE IF NOT EXISTS persistence_migrations (",
-        "version bigint PRIMARY KEY, sql text NOT NULL, installed_at timestamptz NOT NULL DEFAULT now())"
-    )).context("initialize migration history")?;
+        "version bigint PRIMARY KEY, sql text NOT NULL, ",
+        "installed_at timestamptz NOT NULL DEFAULT now())"
+    ))
+    .context("initialize migration history")?;
     let installed = verify_history(&mut tx, target)?;
     for (index, sql) in MIGRATIONS.iter().enumerate().take(target).skip(installed) {
         let version = (index + 1) as i64;

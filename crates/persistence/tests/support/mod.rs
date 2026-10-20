@@ -4,15 +4,19 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static NEXT_DATABASE: AtomicUsize = AtomicUsize::new(0);
 
-pub fn database() -> Client {
+pub fn connect(name: &str) -> Client {
     let socket = std::env::var("DESIRE_TEST_SOCKET")
         .expect("run bash crates/persistence/test-postgres.sh; no external database is allowed");
-    let mut config = Config::new();
-    config
+    Config::new()
         .host_path(socket)
         .user("desire_test")
-        .dbname("postgres");
-    let mut admin = config.connect(NoTls).unwrap();
+        .dbname(name)
+        .connect(NoTls)
+        .unwrap()
+}
+
+pub fn database() -> Client {
+    let mut admin = connect("postgres");
     let name = format!(
         "d08_{}_{}",
         std::process::id(),
@@ -21,7 +25,7 @@ pub fn database() -> Client {
     admin
         .batch_execute(&format!("CREATE DATABASE {name}"))
         .unwrap();
-    config.dbname(&name).connect(NoTls).unwrap()
+    connect(&name)
 }
 
 pub fn catalog() -> desire_persistence::CatalogSeed {
