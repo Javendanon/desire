@@ -8,7 +8,8 @@ import type { MapBuilding, SectorContent } from '../../../src/lib/engine/plan/ma
 import { sectorCount, sectorIndexAt } from '../../../src/lib/engine/plan/sectors.ts';
 import { WATERDEEP_BOUNDS, WATERDEEP_GRID } from './bounds.ts';
 import { waterdeepIsLand } from './coast.ts';
-import { WATERDEEP_REFERENCE, type ReferencePlace, type ReferenceStreet } from './reference.ts';
+import { WATERDEEP_REFERENCE, type ReferencePlace } from './reference.ts';
+import { waterdeepRoadClear } from './streets.ts';
 import { WATERDEEP_ZONES, type WaterdeepZone } from './zones.ts';
 
 export interface WaterdeepBuilding extends MapBuilding {
@@ -19,7 +20,6 @@ export interface WaterdeepBuilding extends MapBuilding {
 const LOT_STEP_M = 26;
 const LOT_JITTER_M = 8;
 const PLACE_CLEARANCE_M = 26;
-const STREET_CLEARANCE_M = 14;
 const MIN_HEIGHT_M = 1.2;
 const ROOF_TINTS = 5;
 const ROTATION_STEPS = 8;
@@ -33,14 +33,7 @@ function placeClearance(place: ReferencePlace): Clearance {
   return { at: { x: place.plan_m.x_m, z: place.plan_m.z_m }, radiusM: PLACE_CLEARANCE_M };
 }
 
-function streetClearance(street: ReferenceStreet): Clearance {
-  return { at: { x: street.plan_m.x_m, z: street.plan_m.z_m }, radiusM: STREET_CLEARANCE_M };
-}
-
-const CLEARANCES: readonly Clearance[] = [
-  ...WATERDEEP_REFERENCE.initial_places.map(placeClearance),
-  ...WATERDEEP_REFERENCE.main_streets.map(streetClearance),
-];
+const CLEARANCES: readonly Clearance[] = WATERDEEP_REFERENCE.initial_places.map(placeClearance);
 
 function cellSeed(zone: string, column: number, row: number): number {
   let hash = 2166136261;
@@ -109,7 +102,9 @@ function lotAt(zone: WaterdeepZone, column: number, row: number): WaterdeepBuild
   at.z += between(random, -LOT_JITTER_M, LOT_JITTER_M);
   if (!onMap(at) || !waterdeepIsLand(at) || !isClear(at)) return null;
   if (ownerZone(at)?.id !== zone.id || random() > zone.density) return null;
-  return buildingAt(zone, at, random);
+  const building = buildingAt(zone, at, random);
+  const roofRadius = Math.hypot(building.width * 1.15, building.depth * 1.08) / 2;
+  return waterdeepRoadClear(at, roofRadius) ? building : null;
 }
 
 function zoneBuildings(zone: WaterdeepZone): WaterdeepBuilding[] {

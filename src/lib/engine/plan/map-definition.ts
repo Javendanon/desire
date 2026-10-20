@@ -21,6 +21,13 @@ export interface MapBuilding {
   stone: boolean;
 }
 
+/** A traced visual corridor, not a routable graph or a D04 domain contract. */
+export interface MapRoad {
+  id: string;
+  widthM: number;
+  points: readonly Point2[];
+}
+
 export interface SectorContent {
   buildings: readonly MapBuilding[];
 }
@@ -54,6 +61,8 @@ export interface MapDefinition {
   places: readonly MapPlace[];
   controlPoints: readonly MapMarker[];
   streets: readonly MapMarker[];
+  /** Optional scene-only corridors; older map packages need not supply them. */
+  roads?: readonly MapRoad[];
   /** True where the map has land, including its own water bodies. */
   isLand(point: Point2): boolean;
   /** Land runs along one z row, used to build the ground mesh with no gaps. */

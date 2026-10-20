@@ -21,6 +21,7 @@ import {
   gableMatrix,
   groundMesh,
   groupByTone,
+  roadMesh,
   wallsMatrix,
   type Batch,
 } from './sector-geometry.ts';
@@ -76,6 +77,7 @@ export class SectorCity {
   private readonly roofs: pc.StandardMaterial[];
   private readonly groundMaterial: pc.StandardMaterial;
   private readonly waterMaterial: pc.StandardMaterial;
+  private readonly roadMaterial = material({ color: '#b3a287', twoSided: true });
   private readonly records = new Map<number, SectorRecord>();
   private farCount = 0;
   private farBatches = 0;
@@ -105,6 +107,7 @@ export class SectorCity {
     this.groundMaterial = material({ map: this.textures.turf, color: GROUND_COLOR });
     this.waterMaterial = material({ color: '#173847', gloss: 0.78, metalness: 0.25 });
     this.root.addChild(this.buildGround());
+    if (map.roads?.length) this.root.addChild(this.buildRoads());
     this.root.addChild(this.buildFarShell());
     this.root.addChild(this.buildWater());
     app.root.addChild(this.root);
@@ -114,6 +117,17 @@ export class SectorCity {
     const entity = new pc.Entity('ground');
     entity.addComponent('render', {
       meshInstances: [new pc.MeshInstance(this.ground, this.groundMaterial)],
+      receiveShadows: true,
+    });
+    return entity;
+  }
+
+  private buildRoads(): pc.Entity {
+    const entity = new pc.Entity('road-corridors');
+    entity.addComponent('render', {
+      meshInstances: [new pc.MeshInstance(roadMesh(this.app.graphicsDevice, this.map),
+        this.roadMaterial)],
+      castShadows: false,
       receiveShadows: true,
     });
     return entity;
@@ -217,7 +231,7 @@ export class SectorCity {
       farInstances: this.farCount,
       // Each detailed building allocates a wall matrix and a roof matrix.
       matrixBytes: residentBytes(this.records.size, detailedBuildings * 2 + this.farCount),
-      drawCalls: 2 + this.farBatches + detailedBatches,
+      drawCalls: 2 + (this.map.roads?.length ? 1 : 0) + this.farBatches + detailedBatches,
     };
   }
 
@@ -250,6 +264,7 @@ export class SectorCity {
     for (const roof of this.roofs) roof.destroy();
     this.groundMaterial.destroy();
     this.waterMaterial.destroy();
+    this.roadMaterial.destroy();
     destroyTextures(this.textures);
   }
 }

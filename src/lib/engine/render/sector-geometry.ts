@@ -5,6 +5,7 @@ import * as pc from 'playcanvas';
 
 import type { MapBuilding, MapDefinition } from '../plan/map-definition.ts';
 import { sectorCount } from '../plan/sectors.ts';
+import { corridorQuads } from '../plan/corridors.ts';
 import { flatMesh, trs, type Triple } from './kit.ts';
 
 export interface Batch {
@@ -85,6 +86,24 @@ export function groupByTone(map: MapDefinition, toneCount: number): Map<number, 
     }
   }
   return new Map([...groups].sort((left, right) => left[0] - right[0]));
+}
+
+/** Always-resident road surface; shared edges do not depend on sector load order. */
+export function roadMesh(device: pc.GraphicsDevice, map: MapDefinition): pc.Mesh {
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  for (const road of map.roads ?? []) {
+    for (const quad of corridorQuads(road)) {
+      const base = positions.length / 3;
+      for (const point of quad) {
+        positions.push(point.x, 0.08, point.z);
+        uvs.push(point.x / UV_METRES, point.z / UV_METRES);
+      }
+      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
+  return flatMesh(device, { positions, uvs, indices });
 }
 
 /** Land mesh made of z strips, so the ground has no holes over the whole map frame. */
