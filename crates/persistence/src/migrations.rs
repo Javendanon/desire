@@ -34,6 +34,12 @@ pub fn apply_through(client: &mut Client, target: usize) -> Result<(), Error> {
     ))
     .context("initialize migration history")?;
     let installed = verify_history(&mut tx, target)?;
+    install_pending(&mut tx, installed, target)?;
+    tx.commit().context("commit migration transaction")
+}
+
+/// Install an ordered pending prefix in O(number of pending migrations).
+fn install_pending(tx: &mut Transaction<'_>, installed: usize, target: usize) -> Result<(), Error> {
     for (index, sql) in MIGRATIONS.iter().enumerate().take(target).skip(installed) {
         let version = (index + 1) as i64;
         tx.batch_execute(sql)
@@ -44,7 +50,7 @@ pub fn apply_through(client: &mut Client, target: usize) -> Result<(), Error> {
         )
         .context(format!("record migration {version:04}"))?;
     }
-    tx.commit().context("commit migration transaction")
+    Ok(())
 }
 
 /// Verify an ordered prefix in O(number of installed migrations).

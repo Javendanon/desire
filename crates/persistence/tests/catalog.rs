@@ -84,15 +84,32 @@ fn duplicate_anchors_cannot_mask_removal_of_an_installed_anchor() {
     second_map.id = support::id(7);
     second_map.map_id = support::id(70);
     seed.map_versions.push(second_map);
-    let anchor = PlaceAnchor { map_version_id: support::id(6),
-        position: Position { x_m: 1.0, y_m: 0.0, z_m: 2.0 },
-        provenance: seed.worlds[0].provenance.clone() };
+    let anchor = PlaceAnchor {
+        map_version_id: support::id(6),
+        position: Position {
+            x_m: 1.0,
+            y_m: 0.0,
+            z_m: 2.0,
+        },
+        provenance: seed.worlds[0].provenance.clone(),
+    };
     seed.places[0].anchors = vec![anchor.clone()];
     CatalogRepository::seed(&mut db, &seed).unwrap();
-    let replacement = PlaceAnchor { map_version_id: support::id(7), ..anchor };
+    let replacement = PlaceAnchor {
+        map_version_id: support::id(7),
+        ..anchor
+    };
     seed.places[0].anchors = vec![replacement.clone(), replacement];
-    assert_eq!(CatalogRepository::seed(&mut db, &seed).unwrap_err().kind, ErrorKind::SeedMismatch);
-    let rows = db.query("SELECT map_version_id::text FROM catalog.place_anchors", &[]).unwrap();
+    assert_eq!(
+        CatalogRepository::seed(&mut db, &seed).unwrap_err().kind,
+        ErrorKind::SeedMismatch
+    );
+    let rows = db
+        .query(
+            "SELECT map_version_id::text FROM catalog.place_anchors",
+            &[],
+        )
+        .unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].get::<_, String>(0), support::id(6));
 }

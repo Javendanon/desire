@@ -4,6 +4,7 @@ use desire_core::contracts::catalog::*;
 use postgres::{Client, Transaction};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashSet;
 
 #[derive(Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -103,39 +104,53 @@ fn seed_places(tx: &mut Transaction<'_>, places: &[Place]) -> Result<(), Error> 
 
 /// Each anchor is inserted or compared once, O(anchors).
 fn seed_anchors(tx: &mut Transaction<'_>, place: &Place) -> Result<(), Error> {
+    let mut versions = HashSet::new();
     for anchor in &place.anchors {
-        let data = json!({"place_id": place.id, "city_id": place.city_id,
-            "map_version_id": anchor.map_version_id, "x_m": anchor.position.x_m,
-            "y_m": anchor.position.y_m, "z_m": anchor.position.z_m,
-            "provenance": anchor.provenance});
-        tx.execute(
-            concat!(
-                "INSERT INTO catalog.place_anchors SELECT * FROM ",
-                "jsonb_populate_record(NULL::catalog.place_anchors, $1) ON CONFLICT DO NOTHING"
-            ),
-            &[&data],
-        )
-        .context(format!("seed anchors for place {}", place.id))?;
-        let matches: bool = tx
-            .query_one(
-                concat!(
-                    "SELECT to_jsonb(a) = $1 FROM catalog.place_anchors a ",
-                    "WHERE place_id = ($1->>'place_id')::uuid ",
-                    "AND map_version_id = ($1->>'map_version_id')::uuid"
-                ),
-                &[&data],
-            )
-            .context("compare place anchor")?
-            .get(0);
-        if !matches {
+        if !versions.insert(&anchor.map_version_id) {
             return Err(Error::new(
                 ErrorKind::SeedMismatch,
                 format!(
-                    "anchor for place {} differs from installed content",
-                    place.id
+                    "duplicate anchor {} for place {}",
+                    anchor.map_version_id, place.id
                 ),
             ));
         }
+        seed_anchor(tx, place, anchor)?;
+    }
+    Ok(())
+}
+
+fn seed_anchor(tx: &mut Transaction<'_>, place: &Place, anchor: &PlaceAnchor) -> Result<(), Error> {
+    let data = json!({"place_id": place.id, "city_id": place.city_id,
+            "map_version_id": anchor.map_version_id, "x_m": anchor.position.x_m,
+            "y_m": anchor.position.y_m, "z_m": anchor.position.z_m,
+            "provenance": anchor.provenance});
+    tx.execute(
+        concat!(
+            "INSERT INTO catalog.place_anchors SELECT * FROM ",
+            "jsonb_populate_record(NULL::catalog.place_anchors, $1) ON CONFLICT DO NOTHING"
+        ),
+        &[&data],
+    )
+    .context(format!("seed anchors for place {}", place.id))?;
+    verify_anchor(tx, &data, &place.id)
+}
+
+fn verify_anchor(tx: &mut Transaction<'_>, data: &Value, place_id: &str) -> Result<(), Error> {
+    let query = concat!(
+        "SELECT to_jsonb(a) = $1 FROM catalog.place_anchors a ",
+        "WHERE place_id = ($1->>'place_id')::uuid ",
+        "AND map_version_id = ($1->>'map_version_id')::uuid"
+    );
+    let matches: bool = tx
+        .query_one(query, &[data])
+        .context(format!("compare anchor for place {place_id}"))?
+        .get(0);
+    if !matches {
+        return Err(Error::new(
+            ErrorKind::SeedMismatch,
+            format!("anchor for place {place_id} differs from installed content"),
+        ));
     }
     Ok(())
 }

@@ -150,10 +150,7 @@ fn update_scene(tx: &mut impl GenericClient, scene: &Scene, expected: u32) -> Re
                 &i64::from(expected),
             ],
         )
-        .context(format!(
-            "update scene {} in campaign {}",
-            scene.id, scene.campaign_id
-        ))?;
+        .context(format!("update scene {}", scene.id))?;
     if affected == 0 {
         return Err(Error::new(
             ErrorKind::Conflict,

@@ -1,6 +1,6 @@
 //! Two campaigns share a catalog but never mutable records or private projections.
 mod support;
-use desire_core::contracts::{campaign::*, common::*, transport::SceneChanged};
+use desire_core::contracts::{campaign::*, common::*};
 use desire_persistence::{
     CampaignRepository, CatalogRepository, NotesRepository, SceneRepository, SceneWrite,
     SecretRepository, SecretSubject, migrations,
@@ -42,11 +42,27 @@ fn write() -> SceneWrite {
     }
 }
 
-#[test]
-fn scene_writes_and_events_are_atomic_idempotent_and_scoped() {
-    let mut db = setup();
+fn saved_scene(db: &mut postgres::Client, write: &SceneWrite) -> Scene {
+    SceneRepository::get(db, &write.scene.campaign_id, &write.scene.id)
+        .unwrap()
+        .unwrap()
+}
+
+fn revised_write() -> SceneWrite {
     let mut write = write();
-    let first: SceneChanged = SceneRepository::save_and_enqueue(&mut db, &write).unwrap();
+    write.key = support::id(201);
+    write.event_id = support::id(101);
+    write.expected_revision = Some(1);
+    write.scene.revision = 2;
+    write.scene.name = "Second revision".into();
+    write
+}
+
+#[test]
+fn scene_creation_is_idempotent_and_scoped() {
+    let mut db = setup();
+    let write = write();
+    let first = SceneRepository::save_and_enqueue(&mut db, &write).unwrap();
     assert_eq!(first.revision, 1);
     assert_eq!(
         SceneRepository::save_and_enqueue(&mut db, &write).unwrap(),
@@ -57,39 +73,57 @@ fn scene_writes_and_events_are_atomic_idempotent_and_scoped() {
             .unwrap()
             .is_none()
     );
-    write.key = support::id(201);
-    write.expected_revision = Some(1);
-    write.scene.revision = 2;
-    write.scene.name = "Must roll back on duplicate event ID".into();
-    assert!(SceneRepository::save_and_enqueue(&mut db, &write).is_err());
-    let saved = SceneRepository::get(&mut db, &write.scene.campaign_id, &write.scene.id)
-        .unwrap()
-        .unwrap();
-    assert_eq!(saved.revision, 1);
+}
+
+#[test]
+fn failed_event_rolls_back_scene_and_stream_updates() {
+    let mut db = setup();
+    SceneRepository::save_and_enqueue(&mut db, &write()).unwrap();
+    let mut update = revised_write();
+    update.event_id = write().event_id;
+    assert!(SceneRepository::save_and_enqueue(&mut db, &update).is_err());
+    assert_eq!(saved_scene(&mut db, &update), write().scene);
     assert_eq!(
         db.query_one("SELECT revision FROM campaign.streams", &[])
             .unwrap()
             .get::<_, i64>(0),
         1
     );
-    write.event_id = support::id(101);
+}
+
+#[test]
+fn scene_updates_require_the_previous_revision() {
+    let mut db = setup();
+    SceneRepository::save_and_enqueue(&mut db, &write()).unwrap();
+    let mut update = revised_write();
     assert_eq!(
-        SceneRepository::save_and_enqueue(&mut db, &write)
+        SceneRepository::save_and_enqueue(&mut db, &update)
             .unwrap()
             .revision,
         2
     );
-    assert!(
-        SceneRepository::save_and_enqueue(
-            &mut db,
-            &SceneWrite {
-                key: support::id(202),
-                event_id: support::id(102),
-                ..write
-            }
-        )
-        .is_err()
-    );
+    update.key = support::id(202);
+    update.event_id = support::id(102);
+    assert!(SceneRepository::save_and_enqueue(&mut db, &update).is_err());
+    assert_eq!(saved_scene(&mut db, &update).revision, 2);
+}
+
+fn concurrent_event(
+    db: postgres::Client,
+    index: u64,
+    barrier: std::sync::Arc<std::sync::Barrier>,
+) -> std::thread::JoinHandle<u32> {
+    std::thread::spawn(move || {
+        let mut db = db;
+        let mut write = write();
+        write.scene.id = support::id(30 + index);
+        write.event_id = support::id(100 + index);
+        write.key = support::id(200 + index);
+        barrier.wait();
+        SceneRepository::save_and_enqueue(&mut db, &write)
+            .unwrap()
+            .revision
+    })
 }
 
 #[test]
@@ -101,20 +135,7 @@ fn concurrent_writers_allocate_distinct_stream_revisions() {
         .get(0);
     let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
     let handles: Vec<_> = (0..2)
-        .map(|index| {
-            let mut connection = support::connect(&name);
-            let barrier = barrier.clone();
-            std::thread::spawn(move || {
-                let mut write = write();
-                write.scene.id = support::id(30 + index);
-                write.event_id = support::id(100 + index);
-                write.key = support::id(200 + index);
-                barrier.wait();
-                SceneRepository::save_and_enqueue(&mut connection, &write)
-                    .unwrap()
-                    .revision
-            })
-        })
+        .map(|index| concurrent_event(support::connect(&name), index, barrier.clone()))
         .collect();
     let mut revisions: Vec<_> = handles
         .into_iter()
@@ -134,12 +155,9 @@ fn reused_idempotency_key_rejects_a_different_request() {
     assert_eq!(error.kind, desire_persistence::ErrorKind::Conflict);
 }
 
-#[test]
-fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
-    let mut db = setup();
-    SceneRepository::save_and_enqueue(&mut db, &write()).unwrap();
+fn create_notes(db: &mut postgres::Client) {
     NotesRepository::create_session(
-        &mut db,
+        db,
         &Session {
             id: support::id(70),
             campaign_id: support::id(10),
@@ -150,7 +168,7 @@ fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
     .unwrap();
     for (id, visibility) in [(71, Visibility::Players), (72, Visibility::Dm)] {
         NotesRepository::create_journal(
-            &mut db,
+            db,
             &JournalEntry {
                 id: support::id(id),
                 campaign_id: support::id(10),
@@ -162,21 +180,12 @@ fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
         )
         .unwrap();
     }
-    SecretRepository::create(
-        &mut db,
-        &DmSecret {
-            id: support::id(80),
-            campaign_id: support::id(10),
-            subject_id: support::id(30),
-            body: "Never in a player projection".into(),
-            revision: 1,
-        },
-        SecretSubject::Scene,
-    )
-    .unwrap();
+}
+
+fn create_knowledge(db: &mut postgres::Client) {
     for (id, visibility) in [(73, Visibility::Players), (74, Visibility::Dm)] {
         NotesRepository::create_knowledge(
-            &mut db,
+            db,
             &CampaignKnowledge {
                 id: support::id(id),
                 campaign_id: support::id(10),
@@ -189,17 +198,29 @@ fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
         )
         .unwrap();
     }
-    assert_eq!(
-        NotesRepository::player_knowledge(&mut db, &support::id(10))
-            .unwrap()
-            .len(),
-        1
-    );
-    assert!(
-        NotesRepository::player_knowledge(&mut db, &support::id(11))
-            .unwrap()
-            .is_empty()
-    );
+}
+
+fn create_secret(db: &mut postgres::Client) {
+    SceneRepository::save_and_enqueue(db, &write()).unwrap();
+    SecretRepository::create(
+        db,
+        &DmSecret {
+            id: support::id(80),
+            campaign_id: support::id(10),
+            subject_id: support::id(30),
+            body: "Never in a player projection".into(),
+            revision: 1,
+        },
+        SecretSubject::Scene,
+    )
+    .unwrap();
+}
+
+#[test]
+fn player_journal_excludes_dm_notes_secrets_and_other_campaigns() {
+    let mut db = setup();
+    create_secret(&mut db);
+    create_notes(&mut db);
     assert_eq!(
         NotesRepository::player_journal(&mut db, &support::id(10))
             .unwrap()
@@ -211,6 +232,30 @@ fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
             .unwrap()
             .is_empty()
     );
+}
+
+#[test]
+fn player_knowledge_excludes_dm_notes_secrets_and_other_campaigns() {
+    let mut db = setup();
+    create_secret(&mut db);
+    create_knowledge(&mut db);
+    assert_eq!(
+        NotesRepository::player_knowledge(&mut db, &support::id(10))
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        NotesRepository::player_knowledge(&mut db, &support::id(11))
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn secret_reads_require_the_owning_campaign() {
+    let mut db = setup();
+    create_secret(&mut db);
     assert!(
         SecretRepository::get(&mut db, &support::id(11), &support::id(80))
             .unwrap()
