@@ -53,6 +53,7 @@ Los objetos rechazan campos desconocidos también mediante `deny_unknown_fields`
 | World / Era | Mundo y periodo nombrado, sin imponer calendario de una ambientación. |
 | City | Pertenece a una época. Waterdeep solo aparece en el paquete de contenido. |
 | District / Place | Barrio de una ciudad; lugar puede carecer de barrio. Si lo tiene, ambos deben pertenecer a la misma ciudad. |
+| PlaceAnchor | Posición de un lugar en una versión de mapa calibrada de su misma ciudad, en el sistema de mundo de esa versión (`y_m` es elevación). Un lugar puede tener cero o varias anclas; sin ancla no tiene posición. Lleva su propia procedencia. |
 | MapVersion | `map_id` estable agrupa versiones; `id` identifica una versión inmutable. Ciudad nullable permite cavernas, interiores u otros mapas. |
 | Chunk | Pertenece a una versión de mapa; origen en metros, tamaño positivo, URI del asset. Validar URI permitida antes de descargar (D18). |
 | KnowledgeEntry | Contenido base con idioma, procedencia y edición de reglas; nunca notas privadas de campaña. |
@@ -161,8 +162,8 @@ unicidad de Membership ni propietario como miembro DM; son restricciones de D08.
 
 ## Plan de migraciones (D08)
 
-1. `0001_catalog`: worlds, eras, cities, districts, places, maps, map_versions, chunks,
-   knowledge_entries. UUID PK, UNIQUE(map_id, revision), FKs, CHECK edición/revisión,
+1. `0001_catalog`: worlds, eras, cities, districts, places, place_anchors, maps,
+   map_versions, chunks, knowledge_entries. UUID PK, UNIQUE(map_id, revision), FKs, CHECK edición/revisión,
    escala positiva y valores finitos. Contenido inicial se importa de forma idempotente
    por ID estable y revisión; diferencias se reportan, no se pisan silenciosamente.
 2. `0002_campaign`: campañas y miembros (puente a identidad D10), escenas, personajes,
