@@ -2,10 +2,11 @@
   "schema_version": 1,
   "description": "Normative, language-neutral search semantics for the local compendium. Every consumer (D09 Rust, D15 TypeScript) must reproduce these results; tools/knowledge/search.py only verifies them and is not the reference implementation.",
   "semantics": {
-    "normalization": "Casefold the value, decompose it with NFKD and drop combining marks, so accents and letter case never affect a match.",
-    "query": "Normalize the query, split it on whitespace and require every token to appear in the entry.",
+    "document": "Evaluate the fixtures against content/knowledge/compendium.json: each knowledge_entries record joined with catalog[id], which holds slug, kind, translation_status and the reference targets.",
+    "normalization": "Lowercase the value with Unicode case folding, decompose it with NFKD and drop combining marks, so accents and letter case never affect a match. The current corpus is Spanish, so these cases do not pin locale-specific folding such as ß or İ.",
+    "query": "Normalize the query, split it on whitespace and require every token to appear, in any order.",
     "haystack": "Normalize the entry title, body, slug, kind and reference targets and join them into one searchable text.",
-    "filters": "A fixture filter is optional; when present it must equal the entry field of the same name (kind, rules_edition, language, translation_status).",
+    "filters": "`filters` is required but may be empty; each key inside it is optional. A key that is present must equal the field of the same name on the entry, or on its catalog record when the document section above says so. kind, rules_edition and translation_status are closed vocabularies; language is an open tag that may match no entry yet.",
     "results": "Compare the returned entry ids as a set; ordering is presentation only."
   },
   "fixtures": [
@@ -44,6 +45,15 @@
       "expected_ids": [
         "140fec29-95f8-5b36-8ed5-f58d6f40e190",
         "83a05738-27b3-5a79-a6f9-12488126d206"
+      ]
+    },
+    {
+      "name": "tokens_match_independently_of_order",
+      "query": "grasa bola",
+      "filters": {},
+      "expected_ids": [
+        "948e47bd-a97b-5577-ba4c-93cf0a405dcf",
+        "c4effe1d-c5ee-567e-bccf-3bc068f76c30"
       ]
     },
     {
@@ -184,6 +194,15 @@
       },
       "expected_ids": [
         "948e47bd-a97b-5577-ba4c-93cf0a405dcf"
+      ]
+    },
+    {
+      "name": "title_only_word_is_searchable",
+      "query": "derribado",
+      "filters": {},
+      "expected_ids": [
+        "895aa639-5a48-58f8-9ab8-9d0e83391086",
+        "af775fbc-c3e7-5d34-ae2b-fa70759156f5"
       ]
     },
     {

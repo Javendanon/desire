@@ -244,6 +244,26 @@ class CampaignPipelineTests(unittest.TestCase):
 
 
 class ImporterPipelineTests(unittest.TestCase):
+    def test_sync_rejects_a_source_flagged_synthetic_in_the_registry(self):
+        def change(source):
+            source["synthetic"] = True
+
+        with tempfile.TemporaryDirectory() as directory:
+            content = support.copy_content(Path(directory))
+            path = content / "sources.json"
+            document = support.read(path)
+            change(document["sources"][0])
+            support.save(path, document)
+            canonical = content / "compendium.json"
+            original = canonical.read_bytes()
+            with self.assertRaisesRegex(ValueError, "synthetic source cannot be canon"):
+                loader.load_entries(content)
+            with self.assertRaisesRegex(ValueError, "synthetic source cannot be canon"):
+                importer.sync(content)
+            with mock.patch("sys.stdout"), mock.patch("sys.stderr"):
+                self.assertEqual(importer.main(["--content", str(content)]), 1)
+            self.assertEqual(canonical.read_bytes(), original)
+
     def test_sync_rejects_synthetic_canon_provenance_without_overwriting_compendium(self):
         def change(entry):
             entry["provenance"]["evidence"] = "synthetic"

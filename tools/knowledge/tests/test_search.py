@@ -4,11 +4,12 @@ The normative search semantics live in ``content/knowledge/search-fixtures.json`
 so that D09 (Rust) and D15 (TypeScript) consume the same expectations.
 """
 
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import replace
 import io
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -17,10 +18,13 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from tools.knowledge import fixtures, importer, loader, search
-from tools.knowledge.model import RULES_EDITIONS
+from tools.knowledge.model import CONTENT_DIR, RULES_EDITIONS
 from tools.knowledge.search import SearchFilters
 
-FIXTURES = fixtures.load_fixtures()
+
+def shared_fixtures():
+    """Read the shared artifact per test instead of at import time."""
+    return fixtures.load_fixtures()
 
 
 @contextmanager
@@ -35,27 +39,32 @@ class SharedSearchFixtureTests(unittest.TestCase):
     """Every shared fixture must hold against the committed compendium."""
 
     def test_every_shared_fixture_holds(self):
-        for fixture in FIXTURES:
+        for fixture in shared_fixtures():
             filters = SearchFilters.from_record(fixture.filters)
             found = search.find(fixture.query, filters)
             with self.subTest(fixture=fixture.name):
                 self.assertEqual({entry["id"] for entry in found}, set(fixture.expected_ids))
 
+    def test_fixture_covering_independent_token_order_is_present(self):
+        names = {fixture.name for fixture in shared_fixtures()}
+        self.assertIn("tokens_match_independently_of_order", names)
+
     def test_fixtures_cover_every_filter_dimension(self):
         used = set()
-        for fixture in FIXTURES:
+        for fixture in shared_fixtures():
             used.update(fixture.filters)
         self.assertEqual(used, set(fixtures.FILTER_FIELDS))
 
     def test_fixtures_cover_both_editions_and_a_non_translated_status(self):
+        fixtures_used = shared_fixtures()
         editions = {
             fixture.filters["rules_edition"]
-            for fixture in FIXTURES
+            for fixture in fixtures_used
             if "rules_edition" in fixture.filters
         }
         statuses = {
             fixture.filters["translation_status"]
-            for fixture in FIXTURES
+            for fixture in fixtures_used
             if "translation_status" in fixture.filters
         }
         self.assertEqual(editions, set(RULES_EDITIONS))
@@ -66,11 +75,22 @@ class SharedSearchFixtureTests(unittest.TestCase):
             self.assertEqual(search.verify_fixtures(), 0)
 
     def test_verify_fixtures_detects_a_drifted_expectation(self):
-        drifted = replace(FIXTURES[0], expected_ids=())
+        drifted = replace(shared_fixtures()[0], expected_ids=())
         message = search.check_fixture(drifted)
         self.assertIsNotNone(message)
         self.assertIn(drifted.name, message)
         self.assertIn("expected", message)
+
+    def test_verify_fixtures_exit_code_and_cli_follow_the_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            content = shutil.copytree(CONTENT_DIR, Path(directory) / "knowledge")
+            path = content / fixtures.FIXTURE_FILE
+            document = json.loads(path.read_text(encoding="utf-8"))
+            document["fixtures"][0]["expected_ids"] = []
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                self.assertEqual(search.verify_fixtures(content), 1)
+                self.assertEqual(search.main(["--verify-fixtures", "--content", str(content)]), 1)
 
 
 class CompendiumShapeTests(unittest.TestCase):

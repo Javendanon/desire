@@ -17,11 +17,13 @@ VALID_FIXTURE = {
     "filters": {"kind": "spell"},
     "expected_ids": ["140fec29-95f8-5b36-8ed5-f58d6f40e190"],
 }
+SEMANTICS = {key: "documented rule" for key in fixtures.SEMANTIC_KEYS}
 
 
 def document(fixtures_list=None) -> dict:
     return {
         "schema_version": fixtures.SCHEMA_VERSION,
+        "semantics": dict(SEMANTICS),
         "fixtures": [VALID_FIXTURE] if fixtures_list is None else fixtures_list,
     }
 
@@ -56,6 +58,34 @@ class FixtureFileTests(unittest.TestCase):
     def test_schema_version_must_match(self):
         payload = {**document(), "schema_version": 2}
         self.assert_rejected(payload, "schema_version")
+
+    def test_schema_version_must_be_an_integer(self):
+        payload = {**document(), "schema_version": True}
+        self.assert_rejected(payload, "schema_version")
+
+    def test_unknown_kind_value_is_rejected(self):
+        payload = document([{**VALID_FIXTURE, "filters": {"kind": "spelll"}}])
+        self.assert_rejected(payload, "filters.kind: expected one of")
+
+    def test_unknown_translation_status_value_is_rejected(self):
+        payload = document([{**VALID_FIXTURE, "filters": {"translation_status": "translatedd"}}])
+        self.assert_rejected(payload, "filters.translation_status: expected one of")
+
+    def test_language_values_stay_open(self):
+        self.write(document([{**VALID_FIXTURE, "filters": {"language": "en"}}]))
+        self.assertEqual(fixtures.load_fixtures(self.content)[0].filters, {"language": "en"})
+
+    def test_missing_name_is_rejected(self):
+        payload = {key: value for key, value in VALID_FIXTURE.items() if key != "name"}
+        self.assert_rejected(document([payload]), "name: non-empty string")
+
+    def test_semantics_block_is_required(self):
+        payload = {key: value for key, value in document().items() if key != "semantics"}
+        self.assert_rejected(payload, "semantics: expected object")
+
+    def test_missing_semantic_key_is_rejected(self):
+        semantics = {key: value for key, value in SEMANTICS.items() if key != "haystack"}
+        self.assert_rejected({**document(), "semantics": semantics}, "semantics.haystack")
 
     def test_empty_fixture_list_is_rejected(self):
         self.assert_rejected(document([]), "non-empty array")

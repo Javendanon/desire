@@ -28,6 +28,10 @@ the committed compendium still satisfies those fixtures; it must not be treated 
 the source of truth, and changing it is not how you change search behaviour. Edit the
 fixtures first, then make every consumer — including `search.py` — pass them.
 
+The fixture `language` filter is an open tag, so a fixture may target a language the
+seed does not have yet (`en`); the `--language` CLI flag still accepts only the seed
+languages. Use `--verify-fixtures` to reproduce every case in the artifact.
+
 ## Invariants enforced by tests
 
 - Importing twice writes the same bytes; `--check` fails on a stale artifact.
@@ -36,8 +40,10 @@ fixtures first, then make every consumer — including `search.py` — pass them
 - Unknown sources, license mismatches, sources flagged `synthetic: true` and dangling
   references fail.
 - Every shared search fixture holds; the fixture set covers all four filter dimensions,
-  both rules editions and a status that matches nothing.
-- The fixture file itself is validated: known filter names, UUID expectations, no
+  both rules editions, a status that matches nothing, a title-only word and a
+  multi-token query whose tokens appear in reverse order.
+- The fixture file itself is validated: a required `semantics` block with all six
+  keys, known filter names, closed-vocabulary filter values, UUID expectations, no
   duplicate fixture or expected id and no empty fixture list.
 - Campaign demo lore and DM secrets stay outside canon and keep explicit visibility.
 - Import and search run with the network socket disabled.
