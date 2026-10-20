@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { navigate } from '../src/nav.js';
+import { navigate } from '../src/nav.ts';
 
 const ground = { origin_x_m: 0, origin_z_m: 0, width_m: 100, height_m: 100 };
 const spawn = { x_m: 5, z_m: 5 };

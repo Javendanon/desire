@@ -4,8 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { readManifest } from '../src/io.js';
-import { validateManifest } from '../src/manifest.js';
+import { readManifest } from '../src/io.ts';
+import { validateManifest } from '../src/manifest.ts';
+import { checkTextures } from '../src/textures.ts';
 import { sampleManifestPath } from './helpers.js';
 
 const base = () => readManifest(sampleManifestPath()).manifest;
@@ -134,16 +135,30 @@ test('duplicate place ids and impossible footprints are rejected', () => {
   assert.match(errors, /footprint_m/);
 });
 
-test('the sample texture passes the magic-byte and budget check', async () => {
-  const { checkTextures } = await import('../src/textures.js');
+test('the sample texture passes the magic-byte and budget check', () => {
   const { manifest } = readManifest(sampleManifestPath());
   const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
   assert.equal(texture.id, 'paving-webp');
   assert.equal(texture.pass, true, texture.detail);
 });
 
-test('a texture over its byte budget fails the check', async () => {
-  const { checkTextures } = await import('../src/textures.js');
+test('texture resolution metadata must match the compressed image', () => {
+  const manifest = base();
+  manifest.textures[0].width_px = 32;
+  const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
+  assert.equal(texture.pass, false);
+  assert.match(texture.detail, /resolution mismatch/);
+});
+
+test('unsafe or oversized asset identities are rejected', () => {
+  for (const id of ['../victim', 'x/../../victim', 'x\\\\victim', '', 'a'.repeat(65)]) {
+    const manifest = base();
+    manifest.id = id;
+    assert.match(errorsOf(manifest).join('\n'), /filename-safe/);
+  }
+});
+
+test('a texture over its byte budget fails the check', () => {
   const { manifest } = readManifest(sampleManifestPath());
   manifest.textures[0].max_bytes = 10;
   const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
@@ -151,8 +166,7 @@ test('a texture over its byte budget fails the check', async () => {
   assert.equal(texture.bytes, 52);
 });
 
-test('a renamed file does not pass as compressed', async () => {
-  const { checkTextures } = await import('../src/textures.js');
+test('a renamed file does not pass as compressed', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-texture-'));
   fs.writeFileSync(path.join(dir, 'fake.webp'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
   const textures = [{ id: 'fake', path: 'fake.webp', mime: 'image/webp', max_bytes: 1024 }];

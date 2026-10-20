@@ -1,17 +1,24 @@
 /** Conservative walkability check over the scene ground; conservative means over-blocking. */
 
+import type { Anchor, Blocker, Ground, Plan } from './types.ts';
+
+type Grid = ReturnType<typeof gridOf>;
+type Walk = { blocked: Uint8Array; grid: Grid; reached: Uint8Array };
+type Navigation = { ground: Ground; blockers: Blocker[]; spawn: Plan;
+  waypoints: Anchor[]; cell_m?: number };
+
 export const DEFAULT_CELL_M = 1;
 const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const PER_MILLE = 1000;
 
-const cellColumn = (x, cell, origin) => Math.floor((x - origin) / cell);
-const cellRow = (z, cell, origin) => Math.floor((z - origin) / cell);
+const cellColumn = (x: number, cell: number, origin: number) => Math.floor((x - origin) / cell);
+const cellRow = (z: number, cell: number, origin: number) => Math.floor((z - origin) / cell);
 
-function clamp(value, limit) {
+function clamp(value: number, limit: number) {
   return Math.min(Math.max(value, 0), limit - 1);
 }
 
-function gridOf(ground, cell) {
+function gridOf(ground: Ground, cell: number) {
   return {
     columns: Math.ceil(ground.width_m / cell),
     rows: Math.ceil(ground.height_m / cell),
@@ -20,7 +27,9 @@ function gridOf(ground, cell) {
   };
 }
 
-function markBlocker(spec) {
+function markBlocker(spec: {
+  blocked: Uint8Array; grid: Grid; blocker: Blocker; cell: number;
+}) {
   const { blocked, grid, blocker, cell } = spec;
   const originX = grid.origin_x_m;
   const originZ = grid.origin_z_m;
@@ -35,13 +44,13 @@ function markBlocker(spec) {
   }
 }
 
-function markBlocked(blockers, grid, cell) {
+function markBlocked(blockers: Blocker[], grid: Grid, cell: number) {
   const blocked = new Uint8Array(grid.columns * grid.rows);
   for (const blocker of blockers) markBlocker({ blocked, grid, blocker, cell });
   return blocked;
 }
 
-function nextCell(spec) {
+function nextCell(spec: Walk & { from: number; step: number[] }) {
   const { blocked, grid, reached, from, step } = spec;
   const column = (from % grid.columns) + step[0];
   const row = Math.floor(from / grid.columns) + step[1];
@@ -51,7 +60,7 @@ function nextCell(spec) {
   return next;
 }
 
-function spread(spec) {
+function spread(spec: Walk & { queue: number[] }) {
   const { blocked, grid, queue, reached } = spec;
   for (let head = 0; head < queue.length; head += 1) {
     for (const step of NEIGHBOURS) {
@@ -64,14 +73,16 @@ function spread(spec) {
   return reached;
 }
 
-function flood({ blocked, grid, start }) {
+type FloodSpec = Omit<Walk, 'reached'> & { start: number };
+
+function flood({ blocked, grid, start }: FloodSpec) {
   const reached = new Uint8Array(grid.columns * grid.rows);
   if (blocked[start] === 1) return reached;
   reached[start] = 1;
   return spread({ blocked, grid, queue: [start], reached });
 }
 
-function waypointReached(spec) {
+function waypointReached(spec: Pick<Walk, 'reached' | 'grid'> & { point: Plan; cell: number }) {
   const { reached, point, grid, cell } = spec;
   const column = cellColumn(point.x_m, cell, grid.origin_x_m);
   const row = cellRow(point.z_m, cell, grid.origin_z_m);
@@ -79,7 +90,9 @@ function waypointReached(spec) {
   return reached[row * grid.columns + column] === 1;
 }
 
-function waypointResults(spec) {
+type WaypointSpec = Pick<Walk, 'reached' | 'grid'> & { waypoints: Anchor[]; cell: number };
+
+function waypointResults(spec: WaypointSpec) {
   return spec.waypoints.map((waypoint) => ({
     id: waypoint.id,
     reachable: waypointReached({
@@ -91,13 +104,13 @@ function waypointResults(spec) {
   }));
 }
 
-function spawnIndex(spawn, grid, cell) {
+function spawnIndex(spawn: Plan, grid: Grid, cell: number) {
   const column = clamp(cellColumn(spawn.x_m, cell, grid.origin_x_m), grid.columns);
   const row = clamp(cellRow(spawn.z_m, cell, grid.origin_z_m), grid.rows);
   return row * grid.columns + column;
 }
 
-function summarize(spec) {
+function summarize(spec: Walk & { start: number; spawn: Plan; cell: number; waypoints: Anchor[] }) {
   const { grid, blocked, reached, start, spawn, cell, waypoints } = spec;
   const total = grid.columns * grid.rows;
   const blockedCount = blocked.reduce((sum, value) => sum + value, 0);
@@ -121,7 +134,7 @@ function summarize(spec) {
 }
 
 /** Walks the free cells from the spawn and reports whether each waypoint is reachable. */
-export function navigate(spec) {
+export function navigate(spec: Navigation) {
   const { ground, blockers, spawn, waypoints, cell_m = DEFAULT_CELL_M } = spec;
   if (!(ground.width_m > 0 && ground.height_m > 0)) {
     throw new Error('ground must have a positive size');

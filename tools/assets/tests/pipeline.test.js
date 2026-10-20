@@ -4,8 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { parseGlb } from '../src/gltf-read.js';
-import { buildAsset } from '../src/pipeline.js';
+import { outputPath } from '../src/output.ts';
+import { parseGlb } from '../src/gltf-read.ts';
+import { buildAsset } from '../src/pipeline.ts';
 import { sampleManifestPath } from './helpers.js';
 
 const build = async () => {
@@ -94,6 +95,21 @@ test('traversal identities never overwrite or quarantine outside files', () => {
   assert.equal(result.artifactPath, null);
   assert.equal(fs.readFileSync(victim, 'utf8'), 'keep this artifact');
   assert.equal(fs.existsSync(`${victim}.stale`), false);
+});
+
+test('output containment rejects traversal and symlinks, including staging and quarantine', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-output-'));
+  const outDir = path.join(root, 'out');
+  fs.mkdirSync(outDir);
+  const victim = path.join(root, 'victim');
+  fs.writeFileSync(victim, 'unchanged');
+  assert.throws(() => outputPath(outDir, '../victim'), /escapes directory/);
+  for (const suffix of ['.glb', '.glb.pending', '.glb.stale', '.json']) {
+    const name = `scene-test${suffix}`;
+    fs.symlinkSync(victim, path.join(outDir, name));
+    assert.throws(() => outputPath(outDir, name), /symlink/);
+  }
+  assert.equal(fs.readFileSync(victim, 'utf8'), 'unchanged');
 });
 
 test('invalid-manifest rebuilds quarantine the previous valid artifact', () => {

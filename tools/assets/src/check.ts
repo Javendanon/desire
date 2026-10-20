@@ -1,20 +1,35 @@
 /** Acceptance checks over the artifact: scale, fidelity, collision, textures, navigation. */
-import { evaluateScaleChecks } from './calibration.js';
-import { collisionBlockers } from './gltf-read.js';
-import { navigate } from './nav.js';
+import { evaluateScaleChecks } from './calibration.ts';
+import { collisionBlockers } from './gltf-read.ts';
+import { navigate } from './nav.ts';
+import type { Blocker, Finding, Manifest, Solid } from './types.ts';
+import type { Accessor, Gltf, GltfJson, Primitive } from './gltf-types.ts';
+import type { Scene } from './scene.ts';
+import type { TextureCheck } from './textures.ts';
+
+export type Artifact = {
+  path: string; bytes: number; generator: string; written: boolean; stale_path?: string;
+};
+type ReportSpec = { manifest: Manifest; scene: Scene; gltf: Gltf; textures: TextureCheck[];
+  bytes: number; artifactPath: string };
+type Context = ReturnType<typeof buildContext>;
+type Collision = ReturnType<typeof collisionState>;
+export type BuildReport = ReturnType<typeof buildReport>;
 
 const LOD_PREFIX = 'render/lod0/';
 const VERTICES_PER_TRIANGLE = 3;
 const COVERAGE_TOLERANCE_M = 0.01;
-const ATTRIBUTE_TYPES = { POSITION: 'VEC3', NORMAL: 'VEC3', COLOR_0: 'VEC3', TEXCOORD_0: 'VEC2' };
+const ATTRIBUTE_TYPES: Record<string, string> = {
+  POSITION: 'VEC3', NORMAL: 'VEC3', COLOR_0: 'VEC3', TEXCOORD_0: 'VEC2',
+};
 
-const finding = (id, pass, detail) => ({ id, pass, detail });
+const finding = (id: string, pass: boolean, detail: string): Finding => ({ id, pass, detail });
 
-function nodesByName(json) {
+function nodesByName(json: GltfJson) {
   return new Map(json.nodes.map((node) => [node.name, node]));
 }
 
-function collisionState(gltf, scene) {
+function collisionState(gltf: Gltf) {
   const json = gltf.json;
   const nodes = nodesByName(json);
   const collision = nodes.get('collision');
@@ -32,14 +47,14 @@ function collisionState(gltf, scene) {
   };
 }
 
-function triangleCount(json, meshIndex) {
+function triangleCount(json: GltfJson, meshIndex: number) {
   return json.meshes[meshIndex].primitives.reduce((sum, primitive) => {
     const accessor = json.accessors[primitive.indices];
     return sum + accessor.count / VERTICES_PER_TRIANGLE;
   }, 0);
 }
 
-function lodState(gltf) {
+function lodState(gltf: Gltf) {
   const lod0 = gltf.json.nodes.filter((node) => node.name.startsWith(LOD_PREFIX));
   const lod1 = gltf.json.nodes.find((node) => node.name === 'render/lod1');
   return {
@@ -50,7 +65,7 @@ function lodState(gltf) {
   };
 }
 
-function blockerContains(blocker, solid) {
+function blockerContains(blocker: Blocker, solid: Solid) {
   const halfWidth = solid.width_m / 2;
   const halfDepth = solid.depth_m / 2;
   const west = solid.center.x_m - halfWidth + COVERAGE_TOLERANCE_M;
@@ -62,14 +77,14 @@ function blockerContains(blocker, solid) {
 }
 
 /** Solids whose footprint is not inside any collision quad. Exported for tests. */
-export function uncoveredSolids(blockers, solids) {
+export function uncoveredSolids(blockers: Blocker[], solids: Solid[]): string[] {
   const missing = solids.filter((solid) => {
     return !blockers.some((blocker) => blockerContains(blocker, solid));
   });
   return missing.map((solid) => solid.id);
 }
 
-function collisionFindings(collision, scene) {
+function collisionFindings(collision: Collision, scene: Scene) {
   const missing = uncoveredSolids(collision.blockers, scene.solids);
   const covered = missing.length === 0 && collision.blockers.length > 0;
   const detail = missing.length > 0
@@ -82,7 +97,9 @@ function collisionFindings(collision, scene) {
   ];
 }
 
-function attributeProblem(accessors, attributes, position) {
+function attributeProblem(
+  accessors: Accessor[], attributes: Record<string, number>, position: Accessor
+) {
   for (const [name, index] of Object.entries(attributes)) {
     const accessor = accessors[index];
     const whole = Number.isInteger(accessor.count) && accessor.count > 0;
@@ -92,7 +109,7 @@ function attributeProblem(accessors, attributes, position) {
   return null;
 }
 
-function indicesProblem(accessors, primitive) {
+function indicesProblem(accessors: Accessor[], primitive: Primitive) {
   if (primitive.indices === undefined) return null;
   const indices = accessors[primitive.indices];
   if (indices.type !== 'SCALAR') return `indices type ${indices.type}`;
@@ -101,8 +118,8 @@ function indicesProblem(accessors, primitive) {
 }
 
 /** Structural check of the written accessors; exported so tests can feed broken input. */
-export function accessorFinding(gltf) {
-  const broken = [];
+export function accessorFinding(gltf: Gltf): Finding {
+  const broken: string[] = [];
   for (const mesh of gltf.json.meshes) {
     for (const primitive of mesh.primitives) {
       const position = gltf.json.accessors[primitive.attributes.POSITION];
@@ -115,12 +132,20 @@ export function accessorFinding(gltf) {
     broken.join(', ') || 'attribute layout matches POSITION');
 }
 
-function lodFinding(collision, scene) {
+function lodFinding(collision: Collision, scene: Scene) {
   return finding('lod.levels', collision.lod1 && collision.lod0_nodes === scene.solids.length,
     `lod0 ${collision.lod0_nodes}/${scene.solids.length}, lod1 ${collision.lod1}`);
 }
 
-function artifactFindings(gltf, scene) {
+function renderSelectionFinding(json: GltfJson, scene: Scene) {
+  const selected = json.scenes[json.scene]?.nodes ?? [];
+  const names = selected.map((index) => json.nodes[index].name);
+  const expected = ['render/ground', ...scene.solids.map((solid) => `render/lod0/${solid.id}`)];
+  const pass = names.length === expected.length && expected.every((name) => names.includes(name));
+  return finding('render.default_scene', pass, 'default scene contains only ground and LOD0');
+}
+
+function artifactFindings(gltf: Gltf, scene: Scene) {
   const json = gltf.json;
   const extras = json.asset.extras?.desire ?? {};
   const externalBuffers = (json.buffers ?? []).filter((buffer) => buffer.uri !== undefined);
@@ -128,6 +153,7 @@ function artifactFindings(gltf, scene) {
   const expected = scene.unknown.map((place) => place.id);
   return [
     accessorFinding(gltf),
+    renderSelectionFinding(json, scene),
     finding('artifact.embedded', externalBuffers.length === 0
       && (json.images ?? []).every((image) => image.uri === undefined
         && Number.isInteger(image.bufferView)), 'geometry and compressed images are embedded'),
@@ -139,7 +165,7 @@ function artifactFindings(gltf, scene) {
   ];
 }
 
-function fidelityFinding(scene, placeCount) {
+function fidelityFinding(scene: Scene, placeCount: number) {
   const counted = Object.values(scene.fidelity).reduce((sum, value) => sum + value, 0);
   const tally = scene.fidelity;
   return finding('fidelity.tally', counted === placeCount,
@@ -147,13 +173,13 @@ function fidelityFinding(scene, placeCount) {
     + `synthetic ${tally.synthetic}, unknown ${tally.unknown}`);
 }
 
-function textureFinding(textures) {
+function textureFinding(textures: TextureCheck[]) {
   const detail = textures.map((texture) => `${texture.id}: ${texture.detail}`).join('; ');
   return finding('textures.compressed', textures.every((texture) => texture.pass),
     detail || 'none declared');
 }
 
-function acceptanceChecks(context) {
+function acceptanceChecks(context: Context) {
   const { manifest, scene, gltf, textures, collision, scaleChecks, navigation } = context;
   return [
     finding('scale.checks', scaleChecks.length > 0 && scaleChecks.every((entry) => entry.pass),
@@ -168,10 +194,10 @@ function acceptanceChecks(context) {
   ];
 }
 
-function buildContext(spec) {
+function buildContext(spec: ReportSpec) {
   const { manifest, scene, gltf, textures } = spec;
   const scaleChecks = evaluateScaleChecks(manifest.calibration, manifest.scale_checks);
-  const collision = collisionState(gltf, scene);
+  const collision = collisionState(gltf);
   const navigation = navigate({
     ground: scene.ground,
     blockers: collision.blockers,
@@ -181,7 +207,7 @@ function buildContext(spec) {
   return { manifest, scene, gltf, textures, scaleChecks, collision, navigation };
 }
 
-function reportSections(context) {
+function reportSections(context: Context) {
   const { manifest, scene, gltf, textures, scaleChecks, collision, navigation } = context;
   return {
     scale: {
@@ -203,7 +229,7 @@ function reportSections(context) {
 }
 
 /** Builds the acceptance report; `pass` is true only when every check passes. */
-export function buildReport(spec) {
+export function buildReport(spec: ReportSpec) {
   const { manifest, artifactPath, bytes } = spec;
   const context = buildContext(spec);
   const checks = acceptanceChecks(context);
@@ -218,7 +244,7 @@ export function buildReport(spec) {
       bytes,
       generator: context.gltf.json.asset.generator,
       written: false,
-    },
+    } as Artifact,
     provenance: manifest.illustration.provenance,
     network_allowed: false,
   };

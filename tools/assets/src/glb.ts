@@ -1,5 +1,16 @@
 /** Writes glTF 2.0 binary: render LODs plus a separate, unshaded collision mesh. */
-import { buildBox, buildGround, mergeMeshes } from './geometry.js';
+import { buildBox, buildGround, mergeMeshes } from './geometry.ts';
+import type { Manifest, Mesh } from './types.ts';
+import type { Scene } from './scene.ts';
+import type {
+  Accessor, Builder, GltfJson, GltfMaterial, GltfMesh, GltfNode, Primitive,
+} from './gltf-types.ts';
+
+type MeshSpec = { builder: Builder; scene: Scene; manifest: Manifest;
+  materialById: Map<string, number> };
+type Writer = ReturnType<typeof createNodeWriter>;
+type NodeOptions = { material?: number; extras?: Record<string, unknown> };
+type NumericArray = Float32Array | Uint32Array;
 
 const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
@@ -9,20 +20,20 @@ const FLOAT = 5126;
 const UINT32 = 5125;
 const ARRAY_BUFFER = 34962;
 const ELEMENT_ARRAY_BUFFER = 34963;
-const ITEM_TYPES = { 1: 'SCALAR', 2: 'VEC2', 3: 'VEC3' };
+const ITEM_TYPES: Record<number, string> = { 1: 'SCALAR', 2: 'VEC2', 3: 'VEC3' };
 const SCALAR_SIZE = 1;
 const VEC3_SIZE = 3;
 const GLB_HEADER_BYTES = 12;
 const CHUNK_HEADER_BYTES = 8;
 const WHITE = [1, 1, 1, 1];
 
-const align4 = (value) => (value + 3) & ~3;
+const align4 = (value: number) => (value + 3) & ~3;
 
-function createBuilder() {
+function createBuilder(): Builder {
   return { bufferViews: [], accessors: [], chunks: [], bytes: 0 };
 }
 
-function writeBufferView(builder, values, target) {
+function writeBufferView(builder: Builder, values: NumericArray | Buffer, target?: number) {
   const source = Buffer.from(values.buffer, values.byteOffset, values.byteLength);
   builder.bufferViews.push({
     buffer: 0,
@@ -35,7 +46,7 @@ function writeBufferView(builder, values, target) {
   return builder.bufferViews.length - 1;
 }
 
-function boundsOf(values, itemSize) {
+function boundsOf(values: NumericArray, itemSize: number) {
   const min = Array.from({ length: itemSize }, () => Number.POSITIVE_INFINITY);
   const max = Array.from({ length: itemSize }, () => Number.NEGATIVE_INFINITY);
   for (let index = 0; index < values.length; index += 1) {
@@ -46,10 +57,12 @@ function boundsOf(values, itemSize) {
   return { min, max };
 }
 
-function pushAccessor(builder, values, spec) {
+function pushAccessor(builder: Builder, values: NumericArray, spec: {
+  itemSize: number; componentType: number; target: number; withBounds?: boolean;
+}) {
   const { itemSize, componentType, target, withBounds = false } = spec;
   const view = writeBufferView(builder, values, target);
-  const accessor = {
+  const accessor: Accessor = {
     bufferView: view,
     componentType,
     count: values.length / itemSize,
@@ -60,7 +73,7 @@ function pushAccessor(builder, values, spec) {
   return builder.accessors.length - 1;
 }
 
-function pushVector(builder, values, withBounds) {
+function pushVector(builder: Builder, values: Float32Array, withBounds: boolean) {
   return pushAccessor(builder, values, {
     itemSize: VEC3_SIZE,
     componentType: FLOAT,
@@ -69,7 +82,7 @@ function pushVector(builder, values, withBounds) {
   });
 }
 
-function pushIndices(builder, values) {
+function pushIndices(builder: Builder, values: Uint32Array) {
   return pushAccessor(builder, values, {
     itemSize: SCALAR_SIZE,
     componentType: UINT32,
@@ -77,7 +90,7 @@ function pushIndices(builder, values) {
   });
 }
 
-function addPrimitive(builder, mesh, material) {
+function addPrimitive(builder: Builder, mesh: Mesh, material?: number): Primitive {
   const attributes = {
     POSITION: pushVector(builder, new Float32Array(mesh.positions), true),
     NORMAL: pushVector(builder, new Float32Array(mesh.normals), false),
@@ -87,14 +100,14 @@ function addPrimitive(builder, mesh, material) {
     }),
   };
   const indices = pushIndices(builder, new Uint32Array(mesh.indices));
-  const primitive = { attributes, indices };
+  const primitive: Primitive = { attributes, indices };
   if (material !== undefined) primitive.material = material;
   return primitive;
 }
 
-function buildMaterials(manifest) {
+function buildMaterials(manifest: Manifest): GltfMaterial[] {
   const materials = manifest.materials.map((material) => {
-    const entry = {
+    const entry: GltfMaterial = {
       name: material.id,
       pbrMetallicRoughness: {
         baseColorFactor: material.base_color,
@@ -112,7 +125,7 @@ function buildMaterials(manifest) {
   return materials;
 }
 
-function assetExtras(scene, manifest) {
+function assetExtras(scene: Scene, manifest: Manifest) {
   return {
     id: scene.id,
     label: scene.label,
@@ -131,20 +144,20 @@ function assetExtras(scene, manifest) {
   };
 }
 
-function createNodeWriter(spec) {
+function createNodeWriter(spec: Pick<MeshSpec, 'builder'>) {
   const { builder } = spec;
-  const meshes = [];
-  const nodes = [];
-  const pushNode = (name, mesh, options = {}) => {
+  const meshes: GltfMesh[] = [];
+  const nodes: GltfNode[] = [];
+  const pushNode = (name: string, mesh: Mesh, options: NodeOptions = {}) => {
     meshes.push({ name, primitives: [addPrimitive(builder, mesh, options.material)] });
-    const node = { name, mesh: meshes.length - 1 };
+    const node: GltfNode = { name, mesh: meshes.length - 1 };
     if (options.extras) node.extras = options.extras;
     nodes.push(node);
   };
   return { meshes, nodes, pushNode };
 }
 
-function addSolidNodes(spec) {
+function addSolidNodes(spec: Omit<MeshSpec, 'builder'> & Pick<Writer, 'pushNode'>) {
   const { pushNode, scene, manifest, materialById } = spec;
   for (const solid of scene.solids) {
     pushNode(`render/lod0/${solid.id}`, buildBox(solid, WHITE), {
@@ -160,7 +173,7 @@ function addSolidNodes(spec) {
   }
 }
 
-function addMergedNodes(spec) {
+function addMergedNodes(spec: Omit<MeshSpec, 'manifest'> & { writer: Writer }) {
   const { writer, builder, scene, materialById } = spec;
   const groups = Map.groupBy(scene.solids, (solid) => solid.material);
   const primitives = [...groups].map(([id, solids]) => {
@@ -173,7 +186,7 @@ function addMergedNodes(spec) {
   writer.pushNode('collision', mergeMeshes(collision), { extras: { role: 'collision' } });
 }
 
-function addMeshes(spec) {
+function addMeshes(spec: MeshSpec) {
   const { scene, manifest, materialById } = spec;
   const writer = createNodeWriter(spec);
   const { pushNode } = writer;
@@ -185,19 +198,19 @@ function addMeshes(spec) {
   return { meshes: writer.meshes, nodes: writer.nodes };
 }
 
-function u32(value) {
+function u32(value: number) {
   const bytes = Buffer.alloc(4);
   bytes.writeUInt32LE(value);
   return bytes;
 }
 
-function padTo(source, fill) {
+function padTo(source: Buffer, fill: number) {
   const padded = Buffer.alloc(align4(source.length), fill);
   source.copy(padded);
   return padded;
 }
 
-function packGlb(json, bin) {
+function packGlb(json: GltfJson, bin: Buffer) {
   const jsonBytes = Buffer.from(JSON.stringify(json), 'utf8');
   const jsonPadded = padTo(jsonBytes, 0x20);
   const binPadded = padTo(bin, 0);
@@ -209,7 +222,7 @@ function packGlb(json, bin) {
   return Buffer.concat([header, jsonChunk, binChunk]);
 }
 
-function sceneSelections(id, nodes) {
+function sceneSelections(id: string, nodes: GltfNode[]) {
   const indices = nodes.map((_, index) => index);
   return [
     { name: id, nodes: indices.filter((index) => nodes[index].name === 'render/ground'
@@ -220,7 +233,7 @@ function sceneSelections(id, nodes) {
   ];
 }
 
-function textureResources(builder, manifest, images) {
+function textureResources(builder: Builder, manifest: Manifest, images: Buffer[]) {
   if (images.length !== manifest.textures.length) throw new Error('texture buffers are required');
   if (images.length === 0) return {};
   const extensions = manifest.textures.map((texture) => texture.mime === 'image/webp'
@@ -228,7 +241,9 @@ function textureResources(builder, manifest, images) {
   return {
     extensionsUsed: [...new Set(extensions)],
     extensionsRequired: [...new Set(extensions)],
-    textures: extensions.map((extension, index) => ({ extensions: { [extension]: { source: index } } })),
+    textures: extensions.map((extension, index) => ({
+      extensions: { [extension]: { source: index } },
+    })),
     images: manifest.textures.map((texture, index) => ({
       name: texture.id,
       mimeType: texture.mime,
@@ -238,19 +253,19 @@ function textureResources(builder, manifest, images) {
   };
 }
 
+function binaryChunk(builder: Builder) {
+  return Buffer.concat(builder.chunks.map((chunk) => padTo(chunk, 0)));
+}
+
 /** Encodes geometry and compressed images; consumers must support the required extensions. */
-export function encodeGlb(scene, manifest, images = []) {
+export function encodeGlb(scene: Scene, manifest: Manifest, images: Buffer[] = []): Buffer {
   const builder = createBuilder();
   const materials = buildMaterials(manifest);
   const materialById = new Map(materials.map((material, index) => [material.name, index]));
   const { meshes, nodes } = addMeshes({ builder, scene, manifest, materialById });
   const resources = textureResources(builder, manifest, images);
-  const bin = Buffer.concat(builder.chunks.map((chunk) => {
-    const padded = Buffer.alloc(align4(chunk.length), 0);
-    chunk.copy(padded);
-    return padded;
-  }));
-  const json = {
+  const bin = binaryChunk(builder);
+  const json: GltfJson = {
     asset: {
       version: '2.0',
       generator: 'desire-asset-pipeline/1',

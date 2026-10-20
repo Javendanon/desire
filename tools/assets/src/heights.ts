@@ -1,10 +1,11 @@
 /** Height policy: evidence, rationale and bounds. An unknown height is never replaced. */
-import { filled, positive } from './values.js';
+import { filled, positive } from './values.ts';
+import type { Place } from './types.ts';
 
 export const EVIDENCE = new Set(['verified', 'interpretation', 'synthetic']);
 export const MAX_HEIGHT_M = 400;
 
-function validateHeightPresence(place, errors) {
+function validateHeightPresence(place: Place, errors: string[]) {
   if (place.height_m !== null && place.height_m !== undefined) return true;
   if (place.height_evidence) {
     errors.push(`place ${place.id}: height_evidence without height_m`);
@@ -12,12 +13,12 @@ function validateHeightPresence(place, errors) {
   return false;
 }
 
-function validateHeightEvidence(place, errors) {
+function validateHeightEvidence(place: Place, errors: string[]) {
   const where = `place ${place.id}`;
   if (!positive(place.height_m) || place.height_m > MAX_HEIGHT_M) {
     errors.push(`${where}: height_m must be 0 < h <= ${MAX_HEIGHT_M}`);
   }
-  if (!EVIDENCE.has(place.height_evidence)) {
+  if (!place.height_evidence || !EVIDENCE.has(place.height_evidence)) {
     errors.push(`${where}: height_evidence must be explicit`);
     return;
   }
@@ -29,6 +30,6 @@ function validateHeightEvidence(place, errors) {
 }
 
 /** Validates one declared height; unknown heights pass and stay unknown. */
-export function validateHeight(place, errors) {
+export function validateHeight(place: Place, errors: string[]) {
   if (validateHeightPresence(place, errors)) validateHeightEvidence(place, errors);
 }

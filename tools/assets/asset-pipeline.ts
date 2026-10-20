@@ -2,12 +2,14 @@
 /** CLI: build one illustration manifest into a .glb scene and its acceptance report. */
 import path from 'node:path';
 
-import { buildAsset } from './src/pipeline.js';
+import { buildAsset } from './src/pipeline.ts';
 
 const EXIT_FAIL = 2;
 
-function parseArgs(argv) {
-  const args = { manifestPath: null, outDir: null };
+function parseArgs(argv: string[]) {
+  const args: { manifestPath: string | null; outDir: string | null } = {
+    manifestPath: null, outDir: null,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
     if (flag === '--manifest') args.manifestPath = argv[index += 1] ?? null;
@@ -17,10 +19,10 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return 'usage: node tools/assets/asset-pipeline.js --manifest <asset.json> [--out <dir>]';
+  return 'usage: node tools/assets/asset-pipeline.ts --manifest <asset.json> [--out <dir>]';
 }
 
-function main(argv) {
+function main(argv: string[]) {
   const { manifestPath, outDir } = parseArgs(argv);
   if (!manifestPath) {
     console.error(usage());

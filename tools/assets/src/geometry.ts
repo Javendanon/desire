@@ -1,5 +1,7 @@
 /** Flat-shaded box and ground meshes for the export; pure geometry, no engine. */
 
+import type { Ground, Mesh, Solid } from './types.ts';
+
 const COORDS_PER_VERTEX = 3;
 const TOP_SHADE = 1;
 const SIDE_SHADE = 0.82;
@@ -41,11 +43,11 @@ const CUBE_FACES = [
   },
 ];
 
-function emptyMesh() {
+function emptyMesh(): Mesh {
   return { positions: [], normals: [], colors: [], uvs: [], indices: [] };
 }
 
-function addQuad(mesh, quad, look) {
+function addQuad(mesh: Mesh, quad: number[][], look: { normal: number[]; color: number[] }) {
   const base = mesh.positions.length / COORDS_PER_VERTEX;
   for (const point of quad) {
     mesh.positions.push(...point);
@@ -57,15 +59,15 @@ function addQuad(mesh, quad, look) {
 }
 
 /** Keeps only the RGB channels: COLOR_0 is declared as VEC3 in the artifact. */
-function rgb(color) {
+function rgb(color: number[]) {
   return color.slice(0, COLOR_CHANNELS);
 }
 
-function shaded(color, factor) {
+function shaded(color: number[], factor: number) {
   return [color[0] * factor, color[1] * factor, color[2] * factor];
 }
 
-function boxCorners(solid) {
+function boxCorners(solid: Solid): Record<string, number> {
   const halfWidth = solid.width_m / 2;
   const halfDepth = solid.depth_m / 2;
   return {
@@ -78,12 +80,12 @@ function boxCorners(solid) {
   };
 }
 
-function resolveCorners(corners, keys) {
+function resolveCorners(corners: Record<string, number>, keys: string[][]) {
   return keys.map(([x, y, z]) => [corners[x], corners[y], corners[z]]);
 }
 
 /** Extrudes one footprint into a flat-shaded box of the declared height. */
-export function buildBox(solid, color) {
+export function buildBox(solid: Solid, color: number[]): Mesh {
   const mesh = emptyMesh();
   const corners = boxCorners(solid);
   const baseColor = rgb(color);
@@ -97,7 +99,7 @@ export function buildBox(solid, color) {
 }
 
 /** Ground quad spanning the calibrated illustration frame, x east and z south. */
-export function buildGround(ground, color) {
+export function buildGround(ground: Ground, color: number[]): Mesh {
   const mesh = emptyMesh();
   const west = ground.origin_x_m;
   const north = ground.origin_z_m;
@@ -109,7 +111,7 @@ export function buildGround(ground, color) {
 }
 
 /** Concatenates meshes into one buffer, offsetting indices per part. */
-export function mergeMeshes(meshes) {
+export function mergeMeshes(meshes: Mesh[]): Mesh {
   const merged = emptyMesh();
   for (const mesh of meshes) {
     const offset = merged.positions.length / COORDS_PER_VERTEX;

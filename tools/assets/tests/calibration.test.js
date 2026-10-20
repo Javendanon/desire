@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { evaluateScaleChecks, pixelToPlan, planGround } from '../src/calibration.js';
+import { evaluateScaleChecks, pixelToPlan, planGround } from '../src/calibration.ts';
 
 const calibration = (overrides = {}) => ({
   origin_px_x: 0,

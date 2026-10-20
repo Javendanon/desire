@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readManifest } from '../src/io.js';
-import { buildScene } from '../src/scene.js';
+import { readManifest } from '../src/io.ts';
+import { buildScene } from '../src/scene.ts';
 import { sampleManifestPath } from './helpers.js';
 
 const scene = () => buildScene(readManifest(sampleManifestPath()).manifest);

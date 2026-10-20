@@ -1,12 +1,14 @@
 /** D04 calibration: pixel frame to world meters (x east, z south, y never inferred). */
 
+import type { Calibration, Illustration, Pixel, Plan, ScaleCheck } from './types.ts';
+
 export const DEFAULT_TOLERANCE_M = 1;
 export const MILLIMETERS = 1000;
 
-const roundMm = (value) => Math.round(value * MILLIMETERS) / MILLIMETERS;
+const roundMm = (value: number) => Math.round(value * MILLIMETERS) / MILLIMETERS;
 
 /** Applies the D04 transform to one pixel anchor. */
-export function pixelToPlan(calibration, pixel) {
+export function pixelToPlan(calibration: Calibration, pixel: Pixel): Plan {
   const scale = calibration.meters_per_pixel;
   const a = (pixel.u - calibration.origin_px_x) * scale;
   const b = (pixel.v - calibration.origin_px_y) * scale;
@@ -18,7 +20,7 @@ export function pixelToPlan(calibration, pixel) {
 }
 
 /** Plan rectangle covering the whole illustration, following the D04 transform. */
-export function planGround(illustration, calibration) {
+export function planGround(illustration: Illustration, calibration: Calibration) {
   const topLeft = pixelToPlan(calibration, { u: 0, v: 0 });
   const bottomRight = pixelToPlan(calibration, {
     u: illustration.width_px,
@@ -33,12 +35,12 @@ export function planGround(illustration, calibration) {
 }
 
 /** Straight-line plan distance between two meter anchors. */
-export function planDistance(from, to) {
+export function planDistance(from: Plan, to: Plan): number {
   return Math.hypot(to.x_m - from.x_m, to.z_m - from.z_m);
 }
 
 /** Compares each declared reference distance with the distance implied by the calibration. */
-export function evaluateScaleChecks(calibration, checks) {
+export function evaluateScaleChecks(calibration: Calibration, checks: ScaleCheck[]) {
   return checks.map((check) => {
     const computed = planDistance(
       pixelToPlan(calibration, check.from_px),

@@ -2,30 +2,34 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import type { Manifest, Texture } from './types.ts';
+
+export type TextureCheck = ReturnType<typeof inspect>;
+
 const HEADER_BYTES = 12;
 const WEBP_RIFF = { offset: 0, length: 4 };
 const WEBP_TAG = { offset: 8, length: 4 };
 const KTX2_TAG = { offset: 1, length: 6 };
 const KTX2_IDENTIFIER_BYTE = 0xab;
 
-function hasWebpMagic(header) {
+function hasWebpMagic(header: Buffer) {
   const riff = header.toString('ascii', WEBP_RIFF.offset, WEBP_RIFF.offset + WEBP_RIFF.length);
   const tag = header.toString('ascii', WEBP_TAG.offset, WEBP_TAG.offset + WEBP_TAG.length);
   return header.length >= HEADER_BYTES && riff === 'RIFF' && tag === 'WEBP';
 }
 
-function hasKtx2Magic(header) {
+function hasKtx2Magic(header: Buffer) {
   const tag = header.toString('ascii', KTX2_TAG.offset, KTX2_TAG.offset + KTX2_TAG.length);
   return header.length >= HEADER_BYTES && header[0] === KTX2_IDENTIFIER_BYTE && tag === 'KTX 20';
 }
 
-function magicMatches(mime, header) {
+function magicMatches(mime: string, header: Buffer) {
   if (mime === 'image/webp') return hasWebpMagic(header);
   if (mime === 'image/ktx2') return hasKtx2Magic(header);
   return false;
 }
 
-function resolution(mime, data) {
+function resolution(mime: string, data: Buffer) {
   if (mime === 'image/ktx2' && data.length >= 80) {
     return { width_px: data.readUInt32LE(20), height_px: data.readUInt32LE(24) };
   }
@@ -43,19 +47,10 @@ function resolution(mime, data) {
   return { width_px: 0, height_px: 0 };
 }
 
-function inspect(texture, baseDir) {
+function inspect(texture: Texture, baseDir: string) {
   const file = path.join(baseDir, texture.path);
-  if (!fs.existsSync(file)) {
-    return {
-      id: texture.id,
-      mime: texture.mime,
-      bytes: 0,
-      max_bytes: texture.max_bytes,
-      pass: false,
-      detail: `missing ${texture.path}`,
-    };
-  }
-  const data = fs.readFileSync(file);
+  const exists = fs.existsSync(file);
+  const data = exists ? fs.readFileSync(file) : Buffer.alloc(0);
   const bytes = data.length;
   const magic = magicMatches(texture.mime, data);
   const size = resolution(texture.mime, data);
@@ -67,12 +62,12 @@ function inspect(texture, baseDir) {
     max_bytes: texture.max_bytes,
     ...size,
     pass: magic && matches && bytes <= texture.max_bytes,
-    detail: !magic ? `bytes are not ${texture.mime}`
-      : `${texture.mime}, ${bytes} B, resolution ${matches ? 'matches' : 'mismatch'}`, 
+    detail: !exists ? `missing ${texture.path}` : !magic ? `bytes are not ${texture.mime}`
+      : `${texture.mime}, ${bytes} B, resolution ${matches ? 'matches' : 'mismatch'}`,
   };
 }
 
 /** Checks every declared texture against its magic bytes and byte budget. */
-export function checkTextures(manifest, baseDir) {
+export function checkTextures(manifest: Pick<Manifest, 'textures'>, baseDir: string) {
   return manifest.textures.map((texture) => inspect(texture, baseDir));
 }

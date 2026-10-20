@@ -1,9 +1,13 @@
 /** Turns a validated manifest into a metric scene: solids, unknown places and fidelity. */
-import { pixelToPlan, planGround } from './calibration.js';
+import { pixelToPlan, planGround } from './calibration.ts';
+import type { Calibration, Manifest, Place, Solid } from './types.ts';
 
-const hasHeight = (place) => typeof place.height_m === 'number';
+export type Scene = ReturnType<typeof buildScene>;
 
-function toSolid(place, calibration) {
+type SolidPlace = Place & { height_m: number; height_evidence: Solid['height_evidence'] };
+const hasHeight = (place: Place): place is SolidPlace => typeof place.height_m === 'number';
+
+function toSolid(place: SolidPlace, calibration: Calibration): Solid {
   const center = pixelToPlan(calibration, place.pixel);
   return {
     id: place.id,
@@ -18,12 +22,12 @@ function toSolid(place, calibration) {
   };
 }
 
-function toUnknown(place, calibration) {
+function toUnknown(place: Place, calibration: Calibration) {
   const center = pixelToPlan(calibration, place.pixel);
   return { id: place.id, name: place.name, center, material: place.material };
 }
 
-function tally(solids, unknown) {
+function tally(solids: Solid[], unknown: { length: number }) {
   const fidelity = { verified: 0, interpretation: 0, synthetic: 0, unknown: unknown.length };
   for (const solid of solids) fidelity[solid.height_evidence] += 1;
   return fidelity;
@@ -32,7 +36,7 @@ function tally(solids, unknown) {
 
 
 /** Builds the metric scene. Heights come only from declared data, never from a default. */
-export function buildScene(manifest) {
+export function buildScene(manifest: Manifest) {
   const { calibration, illustration } = manifest;
   const solids = manifest.places.filter(hasHeight).map((place) => toSolid(place, calibration));
   const unknown = manifest.places.filter((place) => !hasHeight(place))

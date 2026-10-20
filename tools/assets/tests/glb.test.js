@@ -3,11 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { accessorFinding, uncoveredSolids } from '../src/check.js';
-import { encodeGlb } from '../src/glb.js';
-import { collisionBlockers, parseGlb, readAccessor } from '../src/gltf-read.js';
-import { readManifest } from '../src/io.js';
-import { buildScene } from '../src/scene.js';
+import { accessorFinding, uncoveredSolids } from '../src/check.ts';
+import { encodeGlb } from '../src/glb.ts';
+import { collisionBlockers, parseGlb, readAccessor } from '../src/gltf-read.ts';
+import { readManifest } from '../src/io.ts';
+import { buildScene } from '../src/scene.ts';
 import { sampleManifestPath } from './helpers.js';
 
 const build = () => {

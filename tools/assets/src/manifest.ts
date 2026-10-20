@@ -1,7 +1,11 @@
 /** Validation of the offline asset scene manifest; pure, no file or network access. */
-import { planGround } from './calibration.js';
-import { EVIDENCE, validateHeight } from './heights.js';
-import { filled, finite, positive } from './values.js';
+import { planGround } from './calibration.ts';
+import { EVIDENCE, validateHeight } from './heights.ts';
+import { filled, finite, positive } from './values.ts';
+import type {
+  Calibration, Ground, Illustration, Manifest, Material, Pixel, Place, Plan,
+  Provenance, ScaleCheck, Texture,
+} from './types.ts';
 
 export const SCHEMA = 'desire.asset-scene/1';
 export const COMPRESSED_MIME = new Set(['image/webp', 'image/ktx2']);
@@ -12,9 +16,12 @@ const COLOR_RANGE = { min: 0, max: 1 };
 const REMOTE_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 const SUPPORTED_ROTATION_RAD = 0;
 
-export const safeAssetId = (id) => typeof id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(id);
+const ASSET_ID_MAX_LENGTH = 64;
+export const safeAssetId = (id: unknown): id is string =>
+  typeof id === 'string' && id.length <= ASSET_ID_MAX_LENGTH
+  && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(id);
 
-function validateProvenance(provenance, where, errors) {
+function validateProvenance(provenance: Provenance, where: string, errors: string[]) {
   if (provenance === null || typeof provenance !== 'object') {
     errors.push(`${where}: provenance is required`);
     return;
@@ -26,17 +33,18 @@ function validateProvenance(provenance, where, errors) {
   if (!filled(provenance.attribution)) errors.push(`${where}: provenance.attribution is required`);
 }
 
-function validateSections(manifest, errors) {
-  for (const key of ['places', 'materials', 'textures', 'waypoints']) {
+function validateSections(manifest: Manifest, errors: string[]) {
+  for (const key of ['places', 'materials', 'textures', 'waypoints'] as const) {
     if (!Array.isArray(manifest[key])) errors.push(`${key} must be an array`);
   }
-  if (!Array.isArray(manifest.textures)) errors.push('textures must be an array');
   if (!filled(manifest.ground?.material)) errors.push('ground: material is required');
 }
 
-function validateHeader(manifest, errors) {
+function validateHeader(manifest: Manifest, errors: string[]) {
   if (manifest.schema !== SCHEMA) errors.push(`schema must be ${SCHEMA}`);
-  if (!safeAssetId(manifest.id)) errors.push('id must be filename-safe (1-64 letters, digits, _ or -)');
+  if (!safeAssetId(manifest.id)) {
+    errors.push('id must be filename-safe (1-64 letters, digits, _ or -)');
+  }
   if (!filled(manifest.label)) errors.push('label is required');
   if (manifest.network_allowed === true) {
     errors.push('network_allowed: the pipeline is offline; remote material needs authorization');
@@ -44,7 +52,7 @@ function validateHeader(manifest, errors) {
   validateSections(manifest, errors);
 }
 
-function validateIllustration(illustration, errors) {
+function validateIllustration(illustration: Illustration, errors: string[]) {
   if (illustration === null || typeof illustration !== 'object') {
     errors.push('illustration is required');
     return;
@@ -56,7 +64,7 @@ function validateIllustration(illustration, errors) {
   validateProvenance(illustration.provenance, 'illustration', errors);
 }
 
-function validateCalibration(calibration, errors) {
+function validateCalibration(calibration: Calibration, errors: string[]) {
   if (calibration === null || typeof calibration !== 'object') {
     errors.push('calibration is required; scale cannot be guessed');
     return;
@@ -73,11 +81,11 @@ function validateCalibration(calibration, errors) {
   validateProvenance(calibration.provenance, 'calibration', errors);
 }
 
-function validateScalePoint(point, where, errors) {
+function validateScalePoint(point: Partial<Pixel>, where: string, errors: string[]) {
   if (!finite(point?.u) || !finite(point?.v)) errors.push(`${where}: needs finite u and v`);
 }
 
-function validateScaleCheck(check, errors) {
+function validateScaleCheck(check: ScaleCheck, errors: string[]) {
   if (check === null || typeof check !== 'object') {
     errors.push('scale_check: every entry must be an object');
     return;
@@ -89,7 +97,7 @@ function validateScaleCheck(check, errors) {
   }
 }
 
-function validateScaleChecks(checks, errors) {
+function validateScaleChecks(checks: ScaleCheck[], errors: string[]) {
   if (!Array.isArray(checks) || checks.length === 0) {
     errors.push('scale_checks: at least one measured reference distance is required');
     return;
@@ -97,7 +105,7 @@ function validateScaleChecks(checks, errors) {
   for (const check of checks) validateScaleCheck(check, errors);
 }
 
-function validateFootprint(place, errors) {
+function validateFootprint(place: Place, errors: string[]) {
   const { width_m: width, depth_m: depth } = place.footprint_m ?? {};
   if (!positive(width) || !positive(depth)) {
     errors.push(`place ${place.id}: footprint_m width_m and depth_m must be positive`);
@@ -109,7 +117,7 @@ function validateFootprint(place, errors) {
   }
 }
 
-function validatePlaceLinks(place, materialIds, errors) {
+function validatePlaceLinks(place: Place, materialIds: Set<string>, errors: string[]) {
   if (!materialIds.has(place.material)) {
     errors.push(`place ${place.id}: unknown material ${place.material}`);
   }
@@ -118,7 +126,7 @@ function validatePlaceLinks(place, materialIds, errors) {
   }
 }
 
-function validatePixel(place, frame, errors) {
+function validatePixel(place: Place, frame: Illustration, errors: string[]) {
   const { u, v } = place.pixel ?? {};
   if (!finite(u) || !finite(v)) {
     errors.push(`place ${place.id}: pixel needs finite u and v`);
@@ -128,7 +136,11 @@ function validatePixel(place, frame, errors) {
   if (outside) errors.push(`place ${place.id}: pixel outside the illustration frame`);
 }
 
-function validatePlace(place, context) {
+type PlaceContext = {
+  materialIds: Set<string>; frame: Illustration; seen: Set<string>; errors: string[];
+};
+
+function validatePlace(place: Place, context: PlaceContext) {
   const { materialIds, frame, seen, errors } = context;
   if (place === null || typeof place !== 'object') {
     errors.push('place: every entry must be an object');
@@ -147,7 +159,7 @@ function validatePlace(place, context) {
   validateHeight(place, errors);
 }
 
-function validateColor(material, errors) {
+function validateColor(material: Material, errors: string[]) {
   const color = material.base_color ?? [];
   const shaped = Array.isArray(color) && color.length === BASE_COLOR_CHANNELS;
   const inRange = shaped && color.every((channel) => {
@@ -159,7 +171,7 @@ function validateColor(material, errors) {
   }
 }
 
-function validateMaterial(material, textureIds, errors) {
+function validateMaterial(material: Material, textureIds: Set<string>, errors: string[]) {
   if (material === null || typeof material !== 'object') {
     errors.push('material: every entry must be an object');
     return;
@@ -171,8 +183,8 @@ function validateMaterial(material, textureIds, errors) {
   }
 }
 
-function validateMaterials(materials, textureIds, errors) {
-  const ids = new Set();
+function validateMaterials(materials: Material[], textureIds: Set<string>, errors: string[]) {
+  const ids = new Set<string>();
   for (const material of materials ?? []) {
     if (material === null || typeof material !== 'object') {
       validateMaterial(material, textureIds, errors);
@@ -185,7 +197,7 @@ function validateMaterials(materials, textureIds, errors) {
   return ids;
 }
 
-function validateTexture(texture, errors) {
+function validateTexture(texture: Texture, errors: string[]) {
   if (texture === null || typeof texture !== 'object') {
     errors.push('texture: every entry must be an object');
     return;
@@ -208,8 +220,8 @@ function validateTexture(texture, errors) {
   }
 }
 
-function validateTextures(textures, errors) {
-  const ids = new Set();
+function validateTextures(textures: Texture[], errors: string[]) {
+  const ids = new Set<string>();
   for (const texture of textures ?? []) {
     if (texture === null || typeof texture !== 'object') {
       validateTexture(texture, errors);
@@ -223,11 +235,11 @@ function validateTextures(textures, errors) {
   return ids;
 }
 
-function escapesAssetDir(value) {
+function escapesAssetDir(value: string) {
   return value.startsWith('/') || value.includes('..');
 }
 
-function groundExtent(manifest) {
+function groundExtent(manifest: Manifest) {
   const { illustration, calibration } = manifest;
   const width = illustration?.width_px;
   const height = illustration?.height_px;
@@ -237,7 +249,9 @@ function groundExtent(manifest) {
   return planGround(illustration, calibration);
 }
 
-function validateAnchor(spec) {
+function validateAnchor(spec: {
+  where: string; point: Plan; extent: Ground | null; errors: string[];
+}) {
   const { where, point, extent, errors } = spec;
   const { x_m: x, z_m: z } = point ?? {};
   if (!finite(x) || !finite(z)) {
@@ -251,7 +265,7 @@ function validateAnchor(spec) {
   if (outside) errors.push(`${where}: outside the calibrated ground`);
 }
 
-function validateAnchors(manifest, errors) {
+function validateAnchors(manifest: Manifest, errors: string[]) {
   const waypoints = Array.isArray(manifest.waypoints) ? manifest.waypoints : [];
   if (waypoints.length === 0) errors.push('waypoints: at least one navigation anchor is required');
   const extent = groundExtent(manifest);
@@ -262,11 +276,13 @@ function validateAnchors(manifest, errors) {
 }
 
 /** Returns every contract violation; an empty list means the manifest can build. */
-export function validateManifest(manifest) {
-  const errors = [];
-  if (manifest === null || typeof manifest !== 'object') {
+export function validateManifest(value: unknown): { errors: string[] } {
+  const errors: string[] = [];
+  if (value === null || typeof value !== 'object') {
     return { errors: ['manifest must be an object'] };
   }
+  // This cast permits defensive field checks; callers must reject any returned errors.
+  const manifest = value as Manifest;
   validateHeader(manifest, errors);
   validateIllustration(manifest.illustration, errors);
   validateCalibration(manifest.calibration, errors);
@@ -283,7 +299,7 @@ export function validateManifest(manifest) {
     errors.push('places: at least one declared height is required to build geometry');
   }
   const frame = manifest.illustration ?? {};
-  const context = { materialIds, frame, seen: new Set(), errors };
+  const context = { materialIds, frame, seen: new Set<string>(), errors };
   for (const place of places) validatePlace(place, context);
   return { errors };
 }
