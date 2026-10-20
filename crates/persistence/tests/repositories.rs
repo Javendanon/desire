@@ -20,6 +20,18 @@ fn every_migration_prefix_upgrades_to_current() {
 }
 
 #[test]
+fn migration_history_is_independent_of_connection_search_path() {
+    let mut db = support::database();
+    migrations::apply(&mut db).unwrap();
+    db.batch_execute("CREATE SCHEMA alternate; SET search_path = alternate, public").unwrap();
+    migrations::apply(&mut db).unwrap();
+    assert_eq!(db.query_one("SELECT count(*) FROM public.persistence_migrations", &[])
+        .unwrap().get::<_, i64>(0), 4);
+    assert!(db.query_one("SELECT to_regclass('alternate.persistence_migrations') IS NULL", &[])
+        .unwrap().get::<_, bool>(0));
+}
+
+#[test]
 fn invalid_history_and_downgrades_are_rejected() {
     let mut db = support::database();
     migrations::apply(&mut db).unwrap();
