@@ -143,6 +143,17 @@ fn rust_tests_run_through_the_postgres_harness() {
 }
 
 #[test]
+fn the_harness_runs_the_workspace_suite() {
+    let script = repository_file("crates/persistence/test-postgres.sh");
+    assert!(
+        script
+            .lines()
+            .any(|line| line.trim() == "cargo test --workspace --locked"),
+        "the harness must run the workspace suite unconditionally, or it exits 0 with no tests"
+    );
+}
+
+#[test]
 fn merge_policy_rust_gate_runs_the_harness() {
     let policy = json("merge-policy.json");
     let gate = policy["gates"]
