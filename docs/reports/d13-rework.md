@@ -257,3 +257,20 @@ Logs: `outputs/d13-rework-browser.log`, `outputs/d13-rework-gate.log`,
 - D05 street label anchors stay what they are: text-placement points, shown off by default. They are
   not reserved as plazas, because the raster text is offset from the asphalt; the asphalt itself is
   what the nine traced axes reserve.
+
+### Independent advisor (round 3) and dispositions
+
+One fresh read-only reviewer inspected `git diff 6809f50` and reran the unit suites, the gate
+score, the D05 verification and its own raster probes. It rated the geography pilot sufficient
+for the explicitly limited scope (independently reproduced 21/24 luminance checkpoints above +16
+and the Beaconmarch exception −2.8 to +9.3) and found no SRP, security or coupling problem, but
+requested changes:
+
+| Finding | Disposition |
+| --- | --- |
+| Must-fix: the browser gate accepted a Vite child that had exited whenever anything else answered on the port, so a stale server could produce exit 0 | `tools/ci/dev-server.mjs` now owns readiness and fails closed on `server.exitCode` before and after the first successful fetch. `tools/ci/dev-server.test.mjs` adds four unit checks (exited server + answering port, running server, never answering, unexpected fetch error) and `test:browser` runs them first. |
+| Should-fix: four checkpoints (three Dragon, one Dock) still equalled trace vertices, so their distance assertions were zero by construction, and the report claimed duplicates had been replaced | New checkpoints were read off the raster by maximising local luminance perpendicular to each segment (`2515,4948`, `2545,5209`, `2581,5611`, `2109,5573`, `2075,5604`; deltas +56 to +75). A new test rejects any checkpoint that matches a trace vertex. The report sentence now states seven replaced checkpoints. |
+| Should-fix: `checkClosePicking` reached 38 effective lines against the 25-line target | The click dispatch and the off-marker check are separate helpers; the helper is back under the target. |
+
+The advisor also noted the Julthoon Street axis stopped short of the High Road; the trace now ends
+on the junction at `2080,2314`.

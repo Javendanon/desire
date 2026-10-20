@@ -10,6 +10,40 @@ import { pointInPolygon } from '../src/lib/engine/plan/polygon.ts';
 const scale = WATERDEEP_REFERENCE.calibration.meters_per_pixel;
 const at = (x: number, z: number) => ({ x: x * scale, z: z * scale });
 
+// Checkpoints were read from the raster, never copied from the trace vertices.
+const MARKET_CHECKPOINTS = [
+  ['traders-way', 1510, 2585],
+  ['traders-way', 1940, 2585],
+  ['bazaar-street', 1690, 2895],
+  ['bazaar-street', 1990, 2780],
+  ['the-high-road', 2080, 2550],
+  ['the-high-road', 2090, 2910],
+] as const;
+
+// Coarse axes: one grid cell of the annotated raster crop is 50 px, so 30 px is the honest
+// allowance. Except the Beaconmarch road beside the wall, these land on pixels measurably
+// lighter than their surroundings (see docs/reports/d13-street-comparison.md).
+const COARSE_CHECKPOINTS = [
+  ['the-high-road-north', 2073, 1050],
+  ['the-high-road-north', 2077, 1520],
+  ['the-high-road-north', 2088, 2120],
+  ['julthoon-street', 800, 2325],
+  ['julthoon-street', 1600, 2328],
+  ['julthoon-street', 2040, 2315],
+  ['waterdeep-way', 1700, 4067],
+  ['waterdeep-way', 2000, 4063],
+  ['waterdeep-way', 2200, 4055],
+  ['the-way-of-the-dragon', 2515, 4948],
+  ['the-way-of-the-dragon', 2545, 5209],
+  ['the-way-of-the-dragon', 2581, 5611],
+  ['dock-street', 2109, 5573],
+  ['dock-street', 2075, 5604],
+  ['dock-street', 2050, 5630],
+  ['the-beaconmarch', 2900, 3010],
+  ['the-beaconmarch', 2983, 3083],
+  ['the-beaconmarch', 2922, 3480],
+] as const;
+
 test('path distance handles endpoints, corners and degenerate segments', () => {
   const path = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }];
   assert.equal(distanceToPath(path, { x: 5, z: 4 }), 4);
@@ -19,16 +53,8 @@ test('path distance handles endpoints, corners and degenerate segments', () => {
 });
 
 test('Market corridors follow independent raster checkpoints within 12 pixels', () => {
-  const checkpoints = [
-    ['traders-way', 1510, 2585],
-    ['traders-way', 1940, 2585],
-    ['bazaar-street', 1690, 2895],
-    ['bazaar-street', 1990, 2780],
-    ['the-high-road', 2080, 2550],
-    ['the-high-road', 2090, 2910],
-  ] as const;
   assert.equal(WATERDEEP_MAP.roads, WATERDEEP_ROADS);
-  for (const [id, x, z] of checkpoints) {
+  for (const [id, x, z] of MARKET_CHECKPOINTS) {
     const road = WATERDEEP_ROADS.find((entry) => entry.id === id);
     assert.ok(road, id);
     assert.ok(distanceToPath(road.points, at(x, z)) <= 12 * scale, `${id} at ${x}, ${z}`);
@@ -37,34 +63,17 @@ test('Market corridors follow independent raster checkpoints within 12 pixels', 
 });
 
 test('the citywide axis pilot follows independent raster checkpoints within 30 pixels', () => {
-  const checkpoints = [
-    ['the-high-road-north', 2073, 1050],
-    ['the-high-road-north', 2077, 1520],
-    ['the-high-road-north', 2088, 2120],
-    ['julthoon-street', 800, 2325],
-    ['julthoon-street', 1600, 2328],
-    ['julthoon-street', 2040, 2315],
-    ['waterdeep-way', 1700, 4067],
-    ['waterdeep-way', 2000, 4063],
-    ['waterdeep-way', 2200, 4055],
-    ['the-way-of-the-dragon', 2522, 5080],
-    ['the-way-of-the-dragon', 2570, 5480],
-    ['the-way-of-the-dragon', 2596, 5680],
-    ['dock-street', 2150, 5538],
-    ['dock-street', 2100, 5596],
-    ['dock-street', 2050, 5630],
-    ['the-beaconmarch', 2900, 3010],
-    ['the-beaconmarch', 2983, 3083],
-    ['the-beaconmarch', 2922, 3480],
-  ] as const;
-  // These axes are a coarse citywide pilot, not survey traces: one grid cell of the annotated
-  // raster crop is 50 px, so 30 px keeps the check honest without claiming metrology. The
-  // checkpoints were read from the raster and, except the Beaconmarch road beside the wall, land
-  // on pixels measurably lighter than their surroundings (see the comparison report).
-  for (const [id, x, z] of checkpoints) {
+  for (const [id, x, z] of COARSE_CHECKPOINTS) {
     const road = WATERDEEP_ROADS.find((entry) => entry.id === id);
     assert.ok(road, id);
     assert.ok(distanceToPath(road.points, at(x, z)) <= 30 * scale, `${id} at ${x}, ${z}`);
+  }
+  // A checkpoint that reuses a trace vertex asserts nothing: the distance is zero by construction.
+  const vertices = new Set(WATERDEEP_ROADS.flatMap((road) =>
+    road.points.map((point) => `${point.x.toFixed(3)},${point.z.toFixed(3)}`)));
+  for (const [id, x, z] of [...MARKET_CHECKPOINTS, ...COARSE_CHECKPOINTS]) {
+    const key = `${at(x, z).x.toFixed(3)},${at(x, z).z.toFixed(3)}`;
+    assert.equal(vertices.has(key), false, `${id} checkpoint ${x}, ${z} is a trace vertex`);
   }
 });
 

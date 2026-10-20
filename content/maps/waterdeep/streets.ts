@@ -37,7 +37,7 @@ export const WATERDEEP_ROAD_TRACES = [
   },
   {
     id: 'julthoon-street', widthPx: 36,
-    pixels: [[640, 2330], [1000, 2328], [1400, 2325], [1800, 2320], [2060, 2315]],
+    pixels: [[640, 2330], [1000, 2328], [1400, 2325], [1800, 2320], [2080, 2314]],
   },
   {
     id: 'waterdeep-way', widthPx: 38,

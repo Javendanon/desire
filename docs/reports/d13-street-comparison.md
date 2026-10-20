@@ -53,11 +53,12 @@ Independent centreline spot checks, selected from the raster rather than the ver
 Trader's Way `(1510,2585)`, `(1940,2585)`; Bazaar Street `(1690,2895)`, `(1990,2780)`;
 High Road `(2080,2550)`, `(2090,2910)`; High Road north `(2073,1050)`, `(2077,1520)`,
 `(2088,2120)`; Julthoon Street `(800,2325)`, `(1600,2328)`, `(2040,2315)`; Waterdeep Way
-`(1700,4067)`, `(2000,4063)`, `(2200,4055)`; Way of the Dragon `(2522,5080)`, `(2570,5480)`,
-`(2596,5680)`; Dock Street `(2150,5538)`, `(2100,5596)`, `(2050,5630)`; Beaconmarch
+`(1700,4067)`, `(2000,4063)`, `(2200,4055)`; Way of the Dragon `(2515,4948)`, `(2545,5209)`,
+`(2581,5611)`; Dock Street `(2109,5573)`, `(2075,5604)`, `(2050,5630)`; Beaconmarch
 `(2900,3010)`, `(2983,3083)`, `(2922,3480)`. The automated maximum distance allowance is
-**12 pixels** for the Market pilot and **30 pixels** for the coarse axes. Three earlier
-checkpoints duplicated trace vertices; they were replaced with raster-read points.
+**12 pixels** for the Market pilot and **30 pixels** for the coarse axes. Seven earlier
+checkpoints duplicated trace vertices; they were replaced with raster-read points and a test now
+rejects any checkpoint that equals a vertex.
 `tests/map-corridors.test.ts` checks these samples, one traced axis per ward, and roof-radius
 clearance for every lot. The Market polygon is also reserved, including roof overhangs.
 
