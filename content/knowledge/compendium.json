@@ -121,7 +121,7 @@
     },
     "af775fbc-c3e7-5d34-ae2b-fa70759156f5": {
       "edition_verification": {
-        "citation": "SRD 5.2, Conditions: Prone [Condition] (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
+        "citation": "SRD 5.2, Rules Glossary: Prone [Condition], p. 186 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
         "status": "verified"
       },
       "kind": "condition",
@@ -134,7 +134,7 @@
       ],
       "slug": "prone",
       "source_id": "srd-5.2",
-      "source_locator": "SRD 5.2, Conditions: Prone",
+      "source_locator": "SRD 5.2, Rules Glossary: Prone [Condition]",
       "translation_status": "translated"
     },
     "c4effe1d-c5ee-567e-bccf-3bc068f76c30": {
@@ -244,7 +244,7 @@
       "title": "Bola de fuego"
     },
     {
-      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa no inflamable cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa no inflamable cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil durante la duración. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
       "id": "3c3a4001-6f68-5a76-861b-e9ac6538b541",
       "language": "es",
       "provenance": {

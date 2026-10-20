@@ -37,7 +37,7 @@
       "translation_status": "translated",
       "source_id": "srd-5.2",
       "license": "CC-BY-4.0",
-      "source_locator": "SRD 5.2, Conditions: Prone",
+      "source_locator": "SRD 5.2, Rules Glossary: Prone [Condition]",
       "provenance": {
         "source": "Systems Reference Document 5.2",
         "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
@@ -45,7 +45,7 @@
       },
       "edition_verification": {
         "status": "verified",
-        "citation": "SRD 5.2, Conditions: Prone [Condition] (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)"
+        "citation": "SRD 5.2, Rules Glossary: Prone [Condition], p. 186 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)"
       },
       "references": [
         {

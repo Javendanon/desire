@@ -30,6 +30,7 @@ VERIFIED = VERIFICATION_STATUSES[0]
 
 UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,8 @@ class Source:
     license_url: str
     url: str
     synthetic: bool = False
+    document_url: str = ""
+    document_sha256: str = ""
 
 
 @dataclass(frozen=True)

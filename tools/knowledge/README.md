@@ -50,8 +50,9 @@ languages. Use `--verify-fixtures` to reproduce every case in the artifact.
   duplicate fixture or expected id and no empty fixture list.
 - Campaign demo lore and DM secrets stay outside canon and keep explicit visibility.
 - Every entry declares an edition verification state; missing, unknown or citation-less
-  `verified` records fail. The catalog sidecar projects the state, so consumers can
-  tell verified content from content pending review.
+  `verified` records fail, and a `verified` citation must contain the digest of the
+  entry's registered source document. The catalog sidecar projects the state, so
+  consumers can tell verified content from content pending review.
 - Import and search run with the network socket disabled.
 
 ## Commands

@@ -104,7 +104,7 @@
       "rules_edition": "dnd_2024",
       "language": "es",
       "title": "Grasa",
-      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa no inflamable cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa no inflamable cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil durante la duración. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
       "translation_status": "translated",
       "source_id": "srd-5.2",
       "license": "CC-BY-4.0",

@@ -32,9 +32,13 @@ class EditionVerificationTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_every_entry_declares_edition_verification(self):
-        for entry in loader.load_entries(self.content):
-            with self.subTest(entry=entry.key):
-                self.assertIn(entry.edition_verification.status, VERIFICATION_STATUSES)
+        for path in sorted((self.content / "canon").glob("*.json")):
+            for index, entry in enumerate(support.read(path)["entries"]):
+                with self.subTest(source=f"{path.name}[{index}]"):
+                    self.assertIn("edition_verification", entry)
+                    self.assertIn(
+                        entry["edition_verification"]["status"], VERIFICATION_STATUSES
+                    )
 
     def test_scope_entries_are_verified_against_a_citation(self):
         index = loader.build_index(loader.load_entries(self.content))
@@ -74,6 +78,23 @@ class EditionVerificationTests(unittest.TestCase):
 
         mutate_entry(self.content, GREASE_2024, change)
         with self.assertRaisesRegex(ValueError, "citation"):
+            loader.load_entries(self.content)
+
+    def test_verified_citation_must_name_the_registered_document(self):
+        def change(entry):
+            entry["edition_verification"]["citation"] = entry["source_locator"]
+
+        mutate_entry(self.content, FIREBALL_2024, change)
+        with self.assertRaisesRegex(ValueError, "does not name the registered document"):
+            loader.load_entries(self.content)
+
+    def test_verified_entry_needs_a_registered_document(self):
+        path = self.content / "sources.json"
+        document = support.read(path)
+        source = next(item for item in document["sources"] if item["id"] == "srd-5.2")
+        source.pop("document_sha256")
+        support.save(path, document)
+        with self.assertRaisesRegex(ValueError, "registered document hash"):
             loader.load_entries(self.content)
 
     def test_unknown_verification_status_is_rejected(self):

@@ -14,6 +14,7 @@ from .model import (
     PREVIOUS_EDITION,
     RELATIONS,
     RULES_EDITIONS,
+    SHA256_PATTERN,
     SLUG_PATTERN,
     SYNTHETIC_EVIDENCE,
     TRANSLATION_STATUSES,
@@ -168,7 +169,19 @@ def parse_source(raw: object, location: str) -> Source:
         license_url=optional_text(raw, "license_url", location),
         url=optional_text(raw, "url", location),
         synthetic=flag(raw, "synthetic", location),
+        document_url=optional_text(raw, "document_url", location),
+        document_sha256=document_digest(raw, location),
     )
+
+
+def document_digest(raw: dict, location: str) -> str:
+    """The retrieved document hash makes a verified citation repeatable."""
+    digest = optional_text(raw, "document_sha256", location)
+    require(
+        not digest or SHA256_PATTERN.fullmatch(digest) is not None,
+        f"{location}.document_sha256: 64 lowercase hex characters",
+    )
+    return digest
 
 
 def load_sources(content_dir: Path = CONTENT_DIR) -> dict[str, Source]:
@@ -196,7 +209,9 @@ def load_entries(content_dir: Path = CONTENT_DIR) -> list[Entry]:
         entries.extend(
             parse_entry(raw, kind, f"{path.name}[{index}]") for index, raw in enumerate(raw_entries)
         )
-    check_sources(entries, load_sources(content_dir))
+    sources = load_sources(content_dir)
+    check_sources(entries, sources)
+    check_verification(entries, sources)
     check_references(entries)
     return entries
 
@@ -230,6 +245,23 @@ def check_sources(entries: list[Entry], sources: dict[str, Source]) -> None:
         require(
             entry.provenance.evidence != SYNTHETIC_EVIDENCE,
             f"{entry.key}: synthetic provenance cannot be canon",
+        )
+
+
+def check_verification(entries: list[Entry], sources: dict[str, Source]) -> None:
+    """A verified entry must name the registered document and its digest."""
+    for entry in entries:
+        verification = entry.edition_verification
+        if verification.status != VERIFIED:
+            continue
+        source = sources[entry.source_id]
+        require(
+            source.document_sha256 != "",
+            f"{entry.key}: verified entry needs a registered document hash",
+        )
+        require(
+            source.document_sha256 in verification.citation,
+            f"{entry.key}: citation does not name the registered document",
         )
 
 
