@@ -253,6 +253,21 @@ test('rejects values that would narrow or wrap at the Wasm u32 boundary', () => 
   assert.equal(workers.length, 1, 'maximum u32 revision is valid');
 });
 
+test('rejects oversized grids before copying, transferring or allocating Wasm input', () => {
+  const { client, workers } = setup();
+  const costs = new Uint32Array(4096 * 4096);
+  costs.slice = () => { throw new Error('oversized grid must never be copied'); };
+  const grid = { width: 4096, height: 4096, costs };
+  assert.throws(() => client.request(1, grid, ENDPOINTS), /1048576/);
+  assert.equal(workers.length, 0);
+  assert.equal(isRouteMessage({
+    kind: 'route', request: { requestId: 1, revision: 1, grid, ...ENDPOINTS },
+  }), false, 'worker validation rejects oversize before constructing RoutingGrid');
+  const maximum = { width: 1024, height: 1024, costs: new Uint32Array(1024 * 1024) };
+  client.request(1, maximum, ENDPOINTS);
+  assert.equal(workers.length, 1, 'exact cell limit remains valid');
+});
+
 test('maps Wasm outcomes to explicit worker responses', () => {
   const identity = { requestId: 3, revision: 4 };
   const ok = {
