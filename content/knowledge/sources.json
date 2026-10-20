@@ -1,0 +1,20 @@
+{
+  "sources": [
+    {
+      "id": "srd-5.1",
+      "name": "Systems Reference Document 5.1",
+      "rules_edition": "dnd_2014",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "url": "https://www.dndbeyond.com/srd"
+    },
+    {
+      "id": "srd-5.2",
+      "name": "Systems Reference Document 5.2",
+      "rules_edition": "dnd_2024",
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "url": "https://www.dndbeyond.com/srd"
+    }
+  ]
+}
