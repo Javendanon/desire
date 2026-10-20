@@ -8,6 +8,7 @@ use desire_persistence::{CampaignRepository, migrations};
 fn migrations_upgrade_without_replacing_saved_campaigns() {
     let mut db = support::database();
     migrations::apply_through(&mut db, 2).unwrap();
+    desire_persistence::CatalogRepository::seed(&mut db, &support::catalog()).unwrap();
     let campaign = Campaign {
         id: support::id(1),
         owner_id: support::id(10),
