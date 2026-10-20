@@ -1,6 +1,7 @@
 /** Preflight local images, decode WebP offline, and validate the exact buffers exported. */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import type { Manifest, Texture } from './types.ts';
@@ -8,6 +9,10 @@ import { MAX_TEXTURE_BYTES, MAX_TEXTURE_PIXELS } from './surface-manifest.ts';
 
 export const MAX_TOTAL_TEXTURE_BYTES = 16 * 1024 * 1024;
 const DECODE_TIMEOUT_MS = 5000;
+const PNG = {
+  signature: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  widthOffset: 16, heightOffset: 20, headerBytes: 24,
+};
 const WEBP = {
   chunkStart: 12, chunkEnd: 16, lossyWidth: 26, lossyHeight: 28,
   losslessSignature: 20, losslessBits: 21, losslessHeader: 25,
@@ -19,6 +24,8 @@ export type TextureCheck = {
   id: string; mime: string; bytes: number; max_bytes: number; pass: boolean; detail: string;
   width_px: number; height_px: number;
 };
+type Raster = { width_px: number; height_px: number };
+type TextureFileSize = { width_px: number; height_px: number };
 
 function probeTexture(texture: Texture, baseDir: string): TextureFile {
   let bytes = 0;
@@ -32,14 +39,16 @@ function probeTexture(texture: Texture, baseDir: string): TextureFile {
     const stat = fs.statSync(file);
     bytes = stat.size;
     if (!stat.isFile()) throw new Error('texture must be a regular file');
-    if (bytes > texture.max_bytes || bytes > MAX_TEXTURE_BYTES) throw new Error('texture byte budget');
+    if (bytes > texture.max_bytes || bytes > MAX_TEXTURE_BYTES) {
+      throw new Error('texture byte budget');
+    }
     return { file, bytes };
   } catch (cause) {
     return { file: '', bytes, error: `texture ${texture.id}: ${String(cause)}` };
   }
 }
 
-function webpDimensions(data: Buffer) {
+function webpDimensions(data: Buffer): TextureFileSize {
   const chunk = data.toString('ascii', WEBP.chunkStart, WEBP.chunkEnd);
   if (chunk === 'VP8 ' && data.length >= WEBP.frameHeader) {
     return { width_px: data.readUInt16LE(WEBP.lossyWidth) & WEBP.dimensionMask,
@@ -58,7 +67,43 @@ function webpDimensions(data: Buffer) {
   return { width_px: 0, height_px: 0 };
 }
 
-function decodeProblem(texture: Texture, data: Buffer, size: ReturnType<typeof webpDimensions>) {
+function pngDimensions(file: string): Raster | null {
+  const header = Buffer.alloc(PNG.headerBytes);
+  const handle = fs.openSync(file, 'r');
+  try {
+    fs.readSync(handle, header, 0, PNG.headerBytes, 0);
+  } finally {
+    fs.closeSync(handle);
+  }
+  if (!header.subarray(0, PNG.signature.length).equals(PNG.signature)) return null;
+  return { width_px: header.readUInt32BE(PNG.widthOffset),
+    height_px: header.readUInt32BE(PNG.heightOffset) };
+}
+
+/**
+ * Decode stdin to a temporary PNG. A file target keeps large rasters away from the child
+ * stdout buffer, so a 4096x4096 texture cannot be mistaken for an unavailable decoder.
+ */
+function decodeRaster(data: Buffer): { raster?: Raster | null; problem?: string } {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-webp-'));
+  try {
+    const file = path.join(directory, 'decoded.png');
+    const decoded = spawnSync('dwebp', ['-quiet', '-o', file, '--', '-'], {
+      input: data, timeout: DECODE_TIMEOUT_MS,
+    });
+    if (decoded.error) {
+      return { problem: `dwebp decoder unavailable or failed: ${decoded.error.message}` };
+    }
+    if (decoded.status !== 0) {
+      return { problem: `invalid WebP payload: ${String(decoded.stderr).trim()}` };
+    }
+    return { raster: pngDimensions(file) };
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function declaredProblem(texture: Texture, data: Buffer, size: TextureFileSize) {
   const magic = data.toString('ascii', 0, 4) === 'RIFF'
     && data.toString('ascii', 8, 12) === 'WEBP';
   if (texture.mime !== 'image/webp' || !magic) return `bytes are not ${texture.mime}`;
@@ -67,12 +112,21 @@ function decodeProblem(texture: Texture, data: Buffer, size: ReturnType<typeof w
   }
   const pixels = size.width_px * size.height_px;
   if (!(pixels > 0 && pixels <= MAX_TEXTURE_PIXELS)) return 'texture pixel budget';
-  const decoded = spawnSync('dwebp', ['-quiet', '--', '-'], {
-    input: data, timeout: DECODE_TIMEOUT_MS, encoding: 'utf8',
-  });
-  if (decoded.error) return `dwebp decoder unavailable or failed: ${decoded.error.message}`;
-  if (decoded.status !== 0) return `invalid WebP payload: ${decoded.stderr.trim()}`;
   return null;
+}
+
+function rasterProblem(data: Buffer, size: TextureFileSize) {
+  const { raster, problem } = decodeRaster(data);
+  if (problem) return problem;
+  if (!raster) return 'decoded raster is not a PNG image';
+  if (raster.width_px !== size.width_px || raster.height_px !== size.height_px) {
+    return 'decoded raster does not match the declared resolution';
+  }
+  return null;
+}
+
+function decodeProblem(texture: Texture, data: Buffer, size: TextureFileSize) {
+  return declaredProblem(texture, data, size) ?? rasterProblem(data, size);
 }
 
 function inspect(texture: Texture, data: Buffer, file: TextureFile): TextureCheck {
@@ -81,7 +135,7 @@ function inspect(texture: Texture, data: Buffer, file: TextureFile): TextureChec
   return {
     id: texture.id, mime: texture.mime, bytes: file.bytes, max_bytes: texture.max_bytes,
     ...size, pass: error === null,
-    detail: error ?? `${texture.mime}, ${file.bytes} B, resolution matches; dwebp decoded`,
+    detail: error ?? `${texture.mime}, ${file.bytes} B, resolution matches; dwebp decoded PNG`,
   };
 }
 

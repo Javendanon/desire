@@ -39,9 +39,14 @@
       "detail": "attribute layout matches POSITION"
     },
     {
+      "id": "render.default_scene",
+      "pass": true,
+      "detail": "default scene contains only ground and LOD0"
+    },
+    {
       "id": "artifact.embedded",
       "pass": true,
-      "detail": "no external buffer or embedded image download"
+      "detail": "geometry and compressed images are embedded"
     },
     {
       "id": "artifact.provenance",
@@ -56,7 +61,7 @@
     {
       "id": "textures.compressed",
       "pass": true,
-      "detail": "paving-webp: image/webp, 52 B"
+      "detail": "paving-webp: image/webp, 52 B, resolution matches; dwebp decoded PNG"
     },
     {
       "id": "navigation.waypoints",
@@ -105,8 +110,10 @@
       "mime": "image/webp",
       "bytes": 52,
       "max_bytes": 262144,
+      "width_px": 16,
+      "height_px": 16,
       "pass": true,
-      "detail": "image/webp, 52 B"
+      "detail": "image/webp, 52 B, resolution matches; dwebp decoded PNG"
     }
   ],
   "navigation": {
@@ -142,8 +149,8 @@
     "pass": true
   },
   "artifact": {
-    "path": "tools/assets/samples/sample-harbor/scene-sample-harbor.glb",
-    "bytes": 30656,
+    "path": "scene-sample-harbor.glb",
+    "bytes": 38028,
     "generator": "desire-asset-pipeline/1",
     "written": true
   },

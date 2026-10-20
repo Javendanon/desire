@@ -1,7 +1,9 @@
 # Art and scene pipeline (D18)
 
 Status: **implemented as an offline build step**. Card `2409bc23-1cf7-4e2b-b285-7b9440bf411a`.
-Code: [`tools/assets/`](../tools/assets/README.md). Delivery evidence: [`reports/d18.md`](reports/d18.md).
+Code: [`tools/assets/`](../tools/assets/README.md).
+Current rework evidence: [`reports/d18-rework.md`](reports/d18-rework.md).
+Original delivery history: [`reports/d18.md`](reports/d18.md).
 
 This document describes how a fantasy illustration or map becomes a scene artifact, what is
 measured and what is interpreted, and which tools were rejected after a small-sample
@@ -35,7 +37,8 @@ scene-<id>.glb: render/ground, render/lod0/<place>, render/lod1, collision
 report.json: scale, fidelity, collision, LOD, textures, navigation, provenance
 ```
 
-Every stage is a pure function except `src/io.js`, `src/textures.js` and `src/pipeline.js`,
+Every stage is a pure function except `src/io.ts`, `src/textures.ts`, `src/output.ts` and
+`src/pipeline.ts`,
 which touch the filesystem. Nothing fetches, nothing renders, nothing infers geometry.
 Running the sample takes about 0.1 s.
 
@@ -52,7 +55,8 @@ The manifest reuses D04's vocabulary so a D05-derived calibration needs no trans
 - Places carry a pixel anchor and a footprint in meters. Positions become `plan_m` values in
   meters, rounded to millimetres only in the report.
 
-Validation is strict on purpose. A manifest is rejected when: the schema or label is missing,
+Validation is strict on purpose. A manifest is rejected when: the schema or label is missing, the asset ID is not filename-safe (1–64 ASCII letters,
+digits, `_` or `-`, starting with a letter or digit),
 the illustration has no license, the calibration is absent or non-positive, `places`,
 `materials`, `textures` or `waypoints` are not arrays, a section entry is not an object,
 `ground.material` is missing, there is no
@@ -79,7 +83,7 @@ The pipeline is built so that an interpretation cannot silently become a measure
 | `synthetic` | `rationale` | Invented sample or placeholder data |
 | `null` (absent) | — | Unknown. No solid geometry is emitted |
 
-Rules enforced in `src/heights.js`, not in prose:
+Rules enforced in `src/heights.ts`, not in prose:
 
 - An unknown height is never replaced by a default, an average, or a guess. The place is
   recorded in `unknown_places`, excluded from render and collision geometry, and counted in
@@ -100,16 +104,19 @@ not show (heights, interiors, hidden alleys) stay unknown by construction.
 - **Render LOD0**: one flat-shaded box per solid place, one node each, one material each.
   Per-place nodes keep picking and per-place highlighting possible.
 - **Render LOD1**: the same boxes merged into one mesh and one node. This reduces draw calls
-  (9 render nodes to 2 including the ground), not triangles: the report records
+  (9 draw calls to 4 including the ground, with one primitive per material), not triangles:
+  the report records
   `lod0_triangles` and `lod1_triangles` side by side, and the sample shows 80 and 80.
   Triangle decimation is deferred until a real authored mesh exists to measure.
-- **Collision**: a separate `collision` node, merged boxes, no material, no children. It is
-  never shaded and never parented under a render node. The acceptance check reads the artifact
-  to prove both properties.
+- **Scene selection**: the default glTF scene selects ground and LOD0 only. The auxiliary
+  `lod1` scene selects ground and the merged mesh; consumers switch scenes, not append them.
+- **Collision**: a separate `collision` node in the auxiliary `collision` scene only, never
+  selected by the default scene. It has no material or children. A material-less mesh is still
+  visible in glTF, so separation is enforced through scene selection, not missing shading.
 - **Navigation**: a 1 m grid over the ground, blockers taken from the collision quads, and a
-  4-neighbour flood fill from the spawn. A waypoint counts as reachable when a reached cell
-  centre lies within 1.5 m. Blocking is conservative: a cell is blocked when a collision quad
-  overlaps it, so the check can only under-report reachability, never over-report it. The
+  4-neighbour flood fill from the spawn. A waypoint counts as reachable only if its own free
+  cell belongs to the reached component. There is no proximity shortcut through walls.
+  Blocking is conservative: a cell is blocked when a collision quad overlaps it. The
   sample reaches 47 624 of 49 152 ground cells (96.9%, free cells are 47 624) and all three
   waypoints.
 - **Coverage**: the check recomputes, from the artifact's collision quads, that every solid
@@ -119,23 +126,32 @@ not show (heights, interiors, hidden alleys) stay unknown by construction.
   equal to POSITION and of the expected type (`VEC3` for position, normal and color), and the
   index accessor to be `SCALAR` with a count divisible by three.
 
-The artifact is glTF 2.0 binary with an embedded buffer and no images, so a consumer needs no
-second download. Materials carry PBR factors; the declared texture is referenced by id in
-`material.extras.desire.texture` and resolved by the runtime from the manifest.
+The artifact is glTF 2.0 binary with embedded geometry and compressed images, so a consumer
+needs no second download or source manifest. Materials have real `baseColorTexture` bindings;
+meshes carry normalized per-quad `TEXCOORD_0`. This mapping is placeholder interpretation,
+not reconstructed illustration detail. Vertex colors contain shading only; base color, alpha,
+metallic and roughness factors are applied once and preserved across both LODs.
 
 ## 6. Textures and materials
 
-- Only `image/webp` and `image/ktx2` are accepted. PNG and JPEG are rejected at validation,
-  before any build.
-- Checks read the magic bytes and the file size, so a renamed file cannot pass.
+- Only `image/webp` is currently accepted. KTX2 is rejected until a genuine BasisU
+  encoder/decoder fixture proves the `KHR_texture_basisu` contract; a KTX2 header alone is
+  not evidence of a usable compressed image. PNG and JPEG are rejected at validation.
+- Checks canonicalize source paths, preflight file sizes before reads, and decode the exact
+  exported buffers through installed `dwebp`. The decode target is a temporary PNG file, not the
+  child's stdout, so a 4096×4096 raster cannot collide with a pipe buffer limit; the decoded
+  PNG header must match the declared `width_px` / `height_px` before the temporary file is
+  removed. Declared dimensions must also match the WebP header. Resolution metadata travels in
+  report and image extras. Missing decoders, truncated images and symlink escapes fail before
+  GLB publication.
 - The sample ships a 52-byte WebP ground texture; a synthetic 16×16 pattern produced once with
   `cwebp`. The pipeline itself does not depend on `cwebp`.
-- WebP was chosen over KTX2 because it needs no encoder dependency and is accepted by browsers
-  today. KTX2 stays in the allowlist for the moment a GPU-format measurement justifies it; the
-  policy, not an implementation detail, is what the check enforces.
-- Images are **not** embedded into the GLB. glTF 2.0 core images are PNG or JPEG; embedding
-  WebP would require `EXT_texture_webp` and a fallback image. Keeping textures as sidecar
-  assets referenced from the manifest keeps the artifact conformant.
+- WebP uses the locally installed libwebp tools: `cwebp` for one-off sample authoring and
+  `dwebp` for build-time decode verification. No npm dependency was added. Decoding is offline
+  and mandatory; KTX2 support remains deferred instead of accepting arbitrary KTX2 containers.
+- Images are embedded buffer views with real `EXT_texture_webp` bindings. This extension is
+  listed in both `extensionsUsed` and `extensionsRequired`: consumers must support it because
+  there is no PNG/JPEG fallback. `--out` produces a portable GLB without source-side textures.
 
 ## 7. Tool evaluation (small sample, measured)
 
@@ -146,8 +162,8 @@ The card requires evaluating tools before choosing. The sample is one synthetic 
 | --- | --- | --- |
 | Blender headless + export scripts | `blender` is not installed on the development machine; adopting it adds a large external binary and a Python bridge | Not chosen now. Revisit when authored meshes must be decimated or animated |
 | `@gltf-transform` / Draco CLI | Needs an npm install and vendored versions; dependency ownership belongs to D01, and the sample needs no decimation, quantization or merging beyond one `Buffer.concat` | Not chosen now. Revisit when triangle budgets require compression |
-| `cwebp` | Present (`/opt/homebrew/bin/cwebp`); used once to generate the 52-byte sample texture | Used as a one-off authoring tool, not a build dependency |
-| Hand-written glTF 2.0 GLB writer | 0 dependencies, ~200 lines, deterministic, fully covered by tests; sample builds in 0.08 s into 30 KB | **Chosen** |
+| libwebp `cwebp` / `dwebp` | Both installed locally; `cwebp` generated the 52-byte sample and `dwebp` 1.6.0 verifies full decode | Author with `cwebp`; require `dwebp` during offline builds |
+| Hand-written glTF 2.0 GLB writer | No added npm dependency; deterministic export. The original sample measured 0.08 s / 30 KB; current rework measurements are in the report | **Chosen**, with local `dwebp` decode verification |
 | Splats (Gaussian) | No measured benefit, no collision representation, no streaming budget, and no way to derive metric scale from an illustration today | Rejected for now, see §8 |
 
 The small sample also produced the budgets this pipeline enforces: a 30 KB scene artifact, a
@@ -176,7 +192,7 @@ rejection, not a stub.
 - `network_allowed: true` is rejected. The pipeline has no network code, and texture URLs are
   rejected by validation. Nothing leaves the machine, so no private material is uploaded.
 - No paid service is used and no API key is required. The only external binary used during
-  authoring was the locally installed `cwebp`.
+  authoring was the locally installed `cwebp`; builds now require local `dwebp` for decoding.
 - The sample illustration is synthetic and generated for this repository: no third-party map
   artwork is redistributed.
 
@@ -197,7 +213,7 @@ rejection, not a stub.
 | Sample scene is navigable | `report.json` → `navigation`: spawn free, 3/3 waypoints reachable, 96.9% of free cells reached |
 | Collision is separate | GLB node `collision` with no material, no children; `collision.separate` and `collision.materialless` checks |
 | Scale is validated | `calibration` matches D04; `scale.checks` recomputes a 224 m reference distance from the pixel frame with 1 m tolerance |
-| Materials/textures are compressed | only WebP/KTX2 accepted plus magic-byte and byte-budget check; sample texture 52 B |
+| Materials/textures are compressed | decoded WebP only; containment, byte/pixel budgets, resolution and real glTF bindings; sample texture 52 B |
 | Provenance is recorded | `asset.extras.desire.provenance`, per-place provenance tags, report `provenance` and `unknown_places` |
 | Fidelity versus interpretation is marked | height evidence per solid, node extras, `fidelity.tally` and `unknown_places` |
 | Inference outside the interactive loop | build step only; no runtime code touched; no model called |
@@ -207,6 +223,11 @@ rejection, not a stub.
 
 ## 12. Limits and debt
 
+- Count/allocation limits are checked before expensive work: 1024 places, 256 materials,
+  64 textures, 1024 waypoints, 1,000,000 grid cells, 256 KiB per image, 16 MiB aggregate
+  compressed bytes, and 4096×4096 pixels per image. Larger scenes require measured chunking.
+- Ground boundaries are closed for spawn and waypoints; boundary points select the final
+  interior cell. Scale acceptance compares unrounded distances; rounding is presentation only.
 - The nav grid is conservative and axis-aligned: a rotated wall over-blocks. This can hide a
   reachable waypoint but never claim a blocked one. Upgrade path: rasterize triangles exactly.
 - Rotation is rejected, not implemented (see §3). Circular or north-rotated plans need the
@@ -214,18 +235,24 @@ rejection, not a stub.
 - Some checks are structural invariants rather than evidence: `artifact.embedded` can only fail
   if the writer starts emitting URIs or images, and `fidelity.tally` compares the tally against
   the same manifest it was built from. They guard against regressions, not against a bad input.
-- The public boundary is plain JavaScript objects with runtime validation. Nothing in the repo
-  type-checks `tools/assets` (`tsconfig.json` covers `src/**` only, `tsconfig.node.json` covers
-  `vite.config.ts`), so F13 is enforced by validation and tests, not by a type checker. A
-  `checkJs` target belongs to the gate work in D02.
+- Source and CLI are strict TypeScript, checked with `pnpm exec tsc -p tools/assets/tsconfig.json`.
+  The local configuration avoids changing D01's shared package manifests. Runtime validation
+  remains mandatory for untrusted JSON; JS tests deliberately exercise malformed input.
 - `reachable_ratio` divides reached cells by all ground cells, not by free cells; blocked cells
   are reported separately as `blocked_cells`.
-- A failing build renames a previous artifact of the same id to `scene-<id>.glb.stale` instead of
-  deleting it, so a consumer globbing `*.glb` cannot silently load the old scene. Staging files
+- A failing build, including manifest validation failure with a safe ID, renames a previous
+  artifact to `scene-<id>.glb.stale`, so a consumer globbing `*.glb` cannot load the old scene.
+  Output paths are flat, containment-checked and reject symlinks before mutation. Unsafe or
+  missing IDs cannot identify an old artifact for quarantine. Output is single-writer only. Staging files
   are cleaned at the start of the next build, so a killed build leaves at most one `.pending`.
 - The accessor check verifies counts and types but not that every buffer view stays inside the
   binary chunk; the reader's tests cover alignment and bounds for the shapes this writer emits.
 - LOD1 does not reduce triangles yet. It is a draw-call LOD, measured as such.
+- `report.json` records the artifact as a bare file name, never an absolute path, so the
+  committed sample report is machine-independent. A test rebuilds the sample in a temporary
+  directory and compares the whole report against the committed one; drift fails the suite.
+  Because the report is byte-identical across directories, a rebuilt artifact's size cannot
+  silently diverge from the committed evidence.
 - Footprints are axis-aligned boxes. Arbitrary silhouettes need an authored mesh path (Blender
   or `gltf-transform`) that this sample did not justify.
 - Heights and shapes are still authored by a person. The pipeline cannot recover what the

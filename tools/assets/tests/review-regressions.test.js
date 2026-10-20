@@ -10,7 +10,7 @@ import { validateManifest } from '../src/manifest.ts';
 import { navigate } from '../src/nav.ts';
 import { buildAsset } from '../src/pipeline.ts';
 import { checkTextures } from '../src/textures.ts';
-import { sampleManifestPath } from './helpers.js';
+import { fixturePath, sampleManifestPath, samplePath } from './helpers.js';
 
 const base = () => readManifest(sampleManifestPath()).manifest;
 
@@ -99,6 +99,29 @@ test('oversized textures are rejected before their contents are read', (context)
   const [result] = checkTextures(manifest, source);
   assert.equal(result.pass, false);
   assert.match(result.detail, /budget/);
+});
+
+test('a texture whose decoded raster exceeds one mebibyte still publishes', (context) => {
+  const { source, manifest, manifestPath } = fixture(context);
+  fs.copyFileSync(fixturePath('detail-640.webp'), path.join(source, 'detail.webp'));
+  manifest.textures[0] = { ...manifest.textures[0], path: 'detail.webp', width_px: 640,
+    height_px: 640 };
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  const [texture] = checkTextures(manifest, source);
+  assert.doesNotMatch(texture.detail, /unavailable/);
+  assert.equal(texture.pass, true);
+  assert.equal(buildAsset({ manifestPath }).report.pass, true);
+});
+
+test('the committed sample report is reproducible and repository-relative', (context) => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-sample-report-'));
+  context.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
+  const { report } = buildAsset({ manifestPath: sampleManifestPath(), outDir });
+  const committed = JSON.parse(fs.readFileSync(samplePath('report.json'), 'utf8'));
+  assert.deepEqual(report, committed);
+  assert.equal(committed.artifact.path, 'scene-sample-harbor.glb');
+  assert.equal(path.isAbsolute(committed.artifact.path), false);
+  assert.equal(fs.existsSync(path.join(outDir, committed.artifact.path)), true);
 });
 
 test('spawn and waypoint share closed ground boundary semantics', () => {

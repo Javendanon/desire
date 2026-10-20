@@ -1,4 +1,6 @@
 /** Acceptance checks over the artifact: scale, fidelity, collision, textures, navigation. */
+import path from 'node:path';
+
 import { evaluateScaleChecks } from './calibration.ts';
 import { collisionBlockers } from './gltf-read.ts';
 import { navigate } from './nav.ts';
@@ -24,6 +26,9 @@ const ATTRIBUTE_TYPES: Record<string, string> = {
 };
 
 const finding = (id: string, pass: boolean, detail: string): Finding => ({ id, pass, detail });
+
+/** Committed reports stay portable: only the file name is recorded, never a worktree path. */
+export const reportedArtifactName = (file: string) => path.basename(file);
 
 function nodesByName(json: GltfJson) {
   return new Map(json.nodes.map((node) => [node.name, node]));
@@ -241,7 +246,7 @@ export function buildReport(spec: ReportSpec) {
     checks,
     ...reportSections(context),
     artifact: {
-      path: artifactPath,
+      path: reportedArtifactName(artifactPath),
       bytes,
       generator: context.gltf.json.asset.generator,
       written: false,

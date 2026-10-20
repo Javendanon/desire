@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildReport } from './check.ts';
+import { buildReport, reportedArtifactName } from './check.ts';
 import { encodeGlb } from './glb.ts';
 import { parseGlb } from './gltf-read.ts';
 import { readManifest } from './io.ts';
@@ -64,16 +64,19 @@ function stage(spec: ArtifactSpec) {
   return { pendingPath, gltf, textures, bytes };
 }
 
-function finishArtifact(spec: { pendingPath: string; report: BuildReport }) {
-  const { pendingPath, report } = spec;
+function staleName(stale: string | null) {
+  return stale === null ? undefined : reportedArtifactName(stale);
+}
+
+function finishArtifact(spec: { pendingPath: string; report: BuildReport; artifactPath: string }) {
+  const { pendingPath, report, artifactPath } = spec;
   report.artifact.written = report.pass;
   if (report.pass) {
-    fs.renameSync(checkedPath(pendingPath), checkedPath(report.artifact.path));
+    fs.renameSync(checkedPath(pendingPath), checkedPath(artifactPath));
     return report;
   }
   fs.rmSync(pendingPath, { force: true });
-  const stale = quarantine(report.artifact.path);
-  if (stale) report.artifact.stale_path = stale;
+  report.artifact.stale_path = staleName(quarantine(artifactPath));
   return report;
 }
 
@@ -84,12 +87,11 @@ function buildArtifact(spec: ArtifactSpec): Report {
     const staged = stage({ manifest, scene, artifactPath, sourceDir });
     const report = buildReport({ manifest, scene, gltf: staged.gltf, textures: staged.textures,
       bytes: staged.bytes, artifactPath });
-    return finishArtifact({ pendingPath: staged.pendingPath, report });
+    return finishArtifact({ pendingPath: staged.pendingPath, report, artifactPath });
   } catch (cause) {
     fs.rmSync(pendingPath, { force: true });
-    const stale = quarantine(artifactPath);
     const report = failureReport(scene.id, [], String(cause));
-    if (stale) report.stale_path = stale;
+    report.stale_path = staleName(quarantine(artifactPath));
     return report;
   }
 }
@@ -98,8 +100,7 @@ function rejectManifest(manifest: Manifest | null, errors: string[], targetDir: 
   const report = invalidReport(manifest, errors);
   if (safeAssetId(manifest?.id)) {
     const artifact = outputPath(targetDir, `scene-${manifest.id}.glb`);
-    const stale = quarantine(artifact);
-    if (stale) report.stale_path = stale;
+    report.stale_path = staleName(quarantine(artifact));
   }
   return report;
 }

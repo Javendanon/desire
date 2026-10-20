@@ -15,3 +15,6 @@ export const sampleManifestPath = () => path.join(sampleDir(), 'asset.json');
 
 /** Resolve a path declared inside the sample manifest. */
 export const samplePath = (relative) => path.join(sampleDir(), relative);
+
+/** Resolve a committed test fixture that is not part of the sample asset. */
+export const fixturePath = (name) => path.join(toolsRoot, 'tests', 'fixtures', name);
