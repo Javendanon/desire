@@ -9,10 +9,23 @@ documentation stay English.
 
 | Path | Purpose |
 | --- | --- |
-| `sources.json` | Registered sources, rules edition and license. |
+| `sources.json` | Registered sources, rules edition, license and `synthetic` flag. |
 | `canon/` | Canonical entries: `spells.json`, `classes.json`, `conditions.json`. |
 | `campaign/demo-campaign.json` | Synthetic demo lore, never imported into canon. |
+| `search-fixtures.json` | Normative search/filter cases, shared with D09 (Rust) and D15 (TS). |
 | `compendium.json` | Generated deterministic import output; do not edit by hand. |
+
+## Search semantics
+
+`search-fixtures.json` is the normative artifact for search behaviour, not
+`tools/knowledge/search.py`. Each case is a `query`, optional `filters` over the
+`kind`, `rules_edition`, `language` and `translation_status` fields, and the
+`expected_ids` it must return. The `semantics` block in the file states the rules:
+normalized text is casefolded and stripped of combining marks, every query token must
+appear, the haystack is title + body + slug + kind + reference targets, and results are
+compared as a set of entry ids. D09 and D15 implement from this file; the Python
+module only re-runs the fixtures as a check (`--verify-fixtures`). Change the fixtures
+before changing any matcher.
 
 ## Content rules
 
@@ -20,9 +33,11 @@ documentation stay English.
 - Only the D&D System Reference Documents listed in `sources.json` are used. They are
   CC-BY-4.0. This is not a license for all D&D content, so a new source must register
   its own license before the importer accepts it.
-- Canon entries cannot use a synthetic source or synthetic provenance evidence, even
-  with a registered SRD source and matching license. A source edition and license must
-  match the entry.
+- Canon entries cannot use a source flagged `synthetic: true` in `sources.json`, nor
+  synthetic provenance evidence, even with a registered SRD source and matching license.
+  A source edition and license must match the entry. The guard is the explicit flag,
+  not a license spelling: a demo source declaring `CC-BY-4.0` is still rejected as
+  canon.
 - Bodies are short Spanish interpretive summaries, not verbatim SRD text. The
   `translation_status` field is explicit; the seed uses `translated`, not `reviewed`.
 - `dnd_2014` and `dnd_2024` are separate entries and can link with `previous_edition`.
@@ -44,6 +59,7 @@ tool validates the package but never writes its text into `compendium.json`.
 ```sh
 python3 -m tools.knowledge.importer          # rebuild compendium.json
 python3 -m tools.knowledge.importer --check  # fail when the generated file is stale
+python3 -m tools.knowledge.search --verify-fixtures
 python3 -m tools.knowledge.search --query fuego --kind spell --edition dnd_2024
 python3 -m unittest discover -s tools/knowledge/tests -p 'test_*.py'
 ```

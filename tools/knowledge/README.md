@@ -10,18 +10,46 @@ contract rules.
 | Module | Responsibility |
 | --- | --- |
 | `model.py` | Frozen entry/reference/provenance/source records and allowed values. |
-| `loader.py` | Canon JSON reading, identity, source/license and relation checks. |
+| `loader.py` | Canon JSON reading, identity, source/license/synthetic and relation checks. |
 | `campaign.py` | Synthetic campaign records, explicit visibility and D04 campaign validation. |
 | `contract.py` | D04 schema adapter for knowledge entries and campaign records. |
 | `importer.py` | Deterministic compendium rendering, idempotent sync and `--check`. |
-| `search.py` | Accent-insensitive Spanish text search with kind/edition/language/status filters. |
+| `fixtures.py` | Shape validation of the shared search fixtures that D09 and D15 consume. |
+| `search.py` | **Verification CLI only** — not the reference implementation of search. |
+
+## `search.py` is not the reference implementation
+
+The normative search semantics — accent and case normalization, all-token matching,
+the `kind`, `rules_edition`, `language` and `translation_status` filters and the
+2014/2024 split — live in `content/knowledge/search-fixtures.json` as shared
+query → expected-ids cases. D09 (Rust) and D15 (TypeScript) implement against that
+file. `search.py` is a stand-in so the Python tests and `--verify-fixtures` can prove
+the committed compendium still satisfies those fixtures; it must not be treated as
+the source of truth, and changing it is not how you change search behaviour. Edit the
+fixtures first, then make every consumer — including `search.py` — pass them.
 
 ## Invariants enforced by tests
 
 - Importing twice writes the same bytes; `--check` fails on a stale artifact.
 - Every generated entry passes the D04 schema projection.
 - Duplicate IDs and duplicate `(rules_edition, slug)` keys fail.
-- Unknown sources, license mismatches, synthetic canon sources and dangling references fail.
-- Spanish queries are case- and accent-insensitive; 2014 and 2024 entries remain distinct.
+- Unknown sources, license mismatches, sources flagged `synthetic: true` and dangling
+  references fail.
+- Every shared search fixture holds; the fixture set covers all four filter dimensions,
+  both rules editions and a status that matches nothing.
+- The fixture file itself is validated: known filter names, UUID expectations, no
+  duplicate fixture or expected id and no empty fixture list.
 - Campaign demo lore and DM secrets stay outside canon and keep explicit visibility.
 - Import and search run with the network socket disabled.
+
+## Commands
+
+```sh
+python3 -m tools.knowledge.importer                 # rebuild compendium.json
+python3 -m tools.knowledge.importer --check         # fail when the artifact is stale
+python3 -m tools.knowledge.search --verify-fixtures # check every shared fixture
+python3 -m tools.knowledge.search --query fuego --kind spell --edition dnd_2024
+python3 -m unittest discover -s tools/knowledge/tests -p 'test_*.py'
+```
+
+All commands read local files only. No command requires network access.
