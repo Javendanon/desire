@@ -194,6 +194,10 @@ function validateTexture(texture, errors) {
   if (!COMPRESSED_MIME.has(texture.mime)) {
     errors.push(`${where}: ${texture.mime} is not compressed; use image/webp or image/ktx2`);
   }
+  if (!Number.isInteger(texture.width_px) || !positive(texture.width_px)
+    || !Number.isInteger(texture.height_px) || !positive(texture.height_px)) {
+    errors.push(`${where}: width_px and height_px must be positive integer resolution`);
+  }
   if (!positive(texture.max_bytes) || texture.max_bytes > MAX_TEXTURE_BYTES) {
     errors.push(`${where}: max_bytes must be 0 < b <= ${MAX_TEXTURE_BYTES}`);
   }

@@ -25,6 +25,24 @@ function magicMatches(mime, header) {
   return false;
 }
 
+function resolution(mime, data) {
+  if (mime === 'image/ktx2' && data.length >= 80) {
+    return { width_px: data.readUInt32LE(20), height_px: data.readUInt32LE(24) };
+  }
+  const chunk = data.toString('ascii', 12, 16);
+  if (chunk === 'VP8 ' && data.length >= 30) {
+    return { width_px: data.readUInt16LE(26) & 0x3fff, height_px: data.readUInt16LE(28) & 0x3fff };
+  }
+  if (chunk === 'VP8L' && data.length >= 25 && data[20] === 0x2f) {
+    const bits = data.readUInt32LE(21);
+    return { width_px: (bits & 0x3fff) + 1, height_px: ((bits >>> 14) & 0x3fff) + 1 };
+  }
+  if (chunk === 'VP8X' && data.length >= 30) {
+    return { width_px: data.readUIntLE(24, 3) + 1, height_px: data.readUIntLE(27, 3) + 1 };
+  }
+  return { width_px: 0, height_px: 0 };
+}
+
 function inspect(texture, baseDir) {
   const file = path.join(baseDir, texture.path);
   if (!fs.existsSync(file)) {
@@ -37,16 +55,20 @@ function inspect(texture, baseDir) {
       detail: `missing ${texture.path}`,
     };
   }
-  const header = fs.readFileSync(file).subarray(0, HEADER_BYTES);
-  const bytes = fs.statSync(file).size;
-  const magic = magicMatches(texture.mime, header);
+  const data = fs.readFileSync(file);
+  const bytes = data.length;
+  const magic = magicMatches(texture.mime, data);
+  const size = resolution(texture.mime, data);
+  const matches = size.width_px === texture.width_px && size.height_px === texture.height_px;
   return {
     id: texture.id,
     mime: texture.mime,
     bytes,
     max_bytes: texture.max_bytes,
-    pass: magic && bytes <= texture.max_bytes,
-    detail: magic ? `${texture.mime}, ${bytes} B` : `bytes are not ${texture.mime}`,
+    ...size,
+    pass: magic && matches && bytes <= texture.max_bytes,
+    detail: !magic ? `bytes are not ${texture.mime}`
+      : `${texture.mime}, ${bytes} B, resolution ${matches ? 'matches' : 'mismatch'}`, 
   };
 }
 

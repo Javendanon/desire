@@ -47,7 +47,9 @@ function stage(spec) {
   const { manifest, scene, artifactPath, sourceDir } = spec;
   const pendingPath = checkedPath(`${artifactPath}${PENDING_SUFFIX}`);
   fs.rmSync(pendingPath, { force: true });
-  fs.writeFileSync(pendingPath, encodeGlb(scene, manifest));
+  const images = manifest.textures.map((texture) =>
+    fs.readFileSync(path.join(sourceDir, texture.path)));
+  fs.writeFileSync(pendingPath, encodeGlb(scene, manifest, images));
   const gltf = parseGlb(fs.readFileSync(pendingPath));
   const textures = checkTextures(manifest, sourceDir);
   const bytes = fs.statSync(pendingPath).size;

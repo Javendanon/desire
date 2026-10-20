@@ -74,6 +74,8 @@
       "id": "paving-webp",
       "path": "textures/paving.webp",
       "mime": "image/webp",
+      "width_px": 16,
+      "height_px": 16,
       "max_bytes": 262144
     }
   ],

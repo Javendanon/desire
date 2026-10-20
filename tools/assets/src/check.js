@@ -6,7 +6,7 @@ import { navigate } from './nav.js';
 const LOD_PREFIX = 'render/lod0/';
 const VERTICES_PER_TRIANGLE = 3;
 const COVERAGE_TOLERANCE_M = 0.01;
-const ATTRIBUTE_TYPES = { POSITION: 'VEC3', NORMAL: 'VEC3', COLOR_0: 'VEC3' };
+const ATTRIBUTE_TYPES = { POSITION: 'VEC3', NORMAL: 'VEC3', COLOR_0: 'VEC3', TEXCOORD_0: 'VEC2' };
 
 const finding = (id, pass, detail) => ({ id, pass, detail });
 
@@ -128,8 +128,9 @@ function artifactFindings(gltf, scene) {
   const expected = scene.unknown.map((place) => place.id);
   return [
     accessorFinding(gltf),
-    finding('artifact.embedded', externalBuffers.length === 0 && (json.images ?? []).length === 0,
-      'no external buffer or embedded image download'),
+    finding('artifact.embedded', externalBuffers.length === 0
+      && (json.images ?? []).every((image) => image.uri === undefined
+        && Number.isInteger(image.bufferView)), 'geometry and compressed images are embedded'),
     finding('artifact.provenance',
       Boolean(extras.provenance?.source) && extras.network_allowed === false,
       `source ${extras.provenance?.source ?? 'missing'}, network ${extras.network_allowed}`),

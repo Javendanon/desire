@@ -9,7 +9,7 @@ const FLOAT = 5126;
 const UINT32 = 5125;
 const ARRAY_BUFFER = 34962;
 const ELEMENT_ARRAY_BUFFER = 34963;
-const ITEM_TYPES = { 1: 'SCALAR', 3: 'VEC3' };
+const ITEM_TYPES = { 1: 'SCALAR', 2: 'VEC2', 3: 'VEC3' };
 const SCALAR_SIZE = 1;
 const VEC3_SIZE = 3;
 const GLB_HEADER_BYTES = 12;
@@ -82,6 +82,9 @@ function addPrimitive(builder, mesh, material) {
     POSITION: pushVector(builder, new Float32Array(mesh.positions), true),
     NORMAL: pushVector(builder, new Float32Array(mesh.normals), false),
     COLOR_0: pushVector(builder, new Float32Array(mesh.colors), false),
+    TEXCOORD_0: pushAccessor(builder, new Float32Array(mesh.uvs), {
+      itemSize: 2, componentType: FLOAT, target: ARRAY_BUFFER,
+    }),
   };
   const indices = pushIndices(builder, new Uint32Array(mesh.indices));
   const primitive = { attributes, indices };
@@ -99,7 +102,11 @@ function buildMaterials(manifest) {
         roughnessFactor: material.roughness,
       },
     };
-    if (material.texture) entry.extras = { desire: { texture: material.texture } };
+    if (material.texture) {
+      entry.pbrMetallicRoughness.baseColorTexture = {
+        index: manifest.textures.findIndex((texture) => texture.id === material.texture),
+      };
+    }
     return entry;
   });
   return materials;
@@ -117,7 +124,9 @@ function assetExtras(scene, manifest) {
     },
     fidelity: scene.fidelity,
     unknown_places: scene.unknown.map((place) => place.id),
-    textures: manifest.textures.map(({ id, mime, max_bytes }) => ({ id, mime, max_bytes })),
+    textures: manifest.textures.map(({ id, mime, max_bytes, width_px, height_px }) =>
+      ({ id, mime, max_bytes, width_px, height_px })),
+    license: manifest.illustration.license,
     network_allowed: false,
   };
 }
@@ -211,12 +220,31 @@ function sceneSelections(id, nodes) {
   ];
 }
 
-/** Encodes the metric scene as a single .glb buffer. */
-export function encodeGlb(scene, manifest) {
+function textureResources(builder, manifest, images) {
+  if (images.length !== manifest.textures.length) throw new Error('texture buffers are required');
+  if (images.length === 0) return {};
+  const extensions = manifest.textures.map((texture) => texture.mime === 'image/webp'
+    ? 'EXT_texture_webp' : 'KHR_texture_basisu');
+  return {
+    extensionsUsed: [...new Set(extensions)],
+    extensionsRequired: [...new Set(extensions)],
+    textures: extensions.map((extension, index) => ({ extensions: { [extension]: { source: index } } })),
+    images: manifest.textures.map((texture, index) => ({
+      name: texture.id,
+      mimeType: texture.mime,
+      bufferView: writeBufferView(builder, images[index], undefined),
+      extras: { width_px: texture.width_px, height_px: texture.height_px },
+    })),
+  };
+}
+
+/** Encodes geometry and compressed images; consumers must support the required extensions. */
+export function encodeGlb(scene, manifest, images = []) {
   const builder = createBuilder();
   const materials = buildMaterials(manifest);
   const materialById = new Map(materials.map((material, index) => [material.name, index]));
   const { meshes, nodes } = addMeshes({ builder, scene, manifest, materialById });
+  const resources = textureResources(builder, manifest, images);
   const bin = Buffer.concat(builder.chunks.map((chunk) => {
     const padded = Buffer.alloc(align4(chunk.length), 0);
     chunk.copy(padded);
@@ -236,6 +264,7 @@ export function encodeGlb(scene, manifest) {
     accessors: builder.accessors,
     bufferViews: builder.bufferViews,
     buffers: [{ byteLength: bin.length }],
+    ...resources,
   };
   return packGlb(json, bin);
 }

@@ -42,7 +42,7 @@ const CUBE_FACES = [
 ];
 
 function emptyMesh() {
-  return { positions: [], normals: [], colors: [], indices: [] };
+  return { positions: [], normals: [], colors: [], uvs: [], indices: [] };
 }
 
 function addQuad(mesh, quad, look) {
@@ -52,6 +52,7 @@ function addQuad(mesh, quad, look) {
     mesh.normals.push(...look.normal);
     mesh.colors.push(...look.color);
   }
+  mesh.uvs.push(0, 0, 0, 1, 1, 1, 1, 0);
   for (const offset of QUAD_TRIANGLES) mesh.indices.push(base + offset);
 }
 
@@ -115,6 +116,7 @@ export function mergeMeshes(meshes) {
     merged.positions.push(...mesh.positions);
     merged.normals.push(...mesh.normals);
     merged.colors.push(...mesh.colors);
+    merged.uvs.push(...mesh.uvs);
     for (const index of mesh.indices) merged.indices.push(index + offset);
   }
   return merged;
