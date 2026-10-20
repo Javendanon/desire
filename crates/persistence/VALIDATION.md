@@ -164,9 +164,10 @@ Card rework addressed the two review findings and the three suspicions.
 
 Executed after the rework, same toolchain and gate configuration:
 
-- `bash crates/persistence/test-postgres.sh`: exit 0, **42** Rust tests passed (15 test
-  binaries/doc-test targets), including the 2 new `sql_constraints` tests carrying the
-  25 SQL rejection assertions and the 6 new `pipeline` tests. No test ignored or skipped.
+- `bash crates/persistence/test-postgres.sh`: exit 0, **43** Rust tests passed (15 test
+  binaries/doc-test targets), including the 3 `sql_constraints` tests carrying the
+  25 SQL rejection assertions plus the migration-embedding guard, and the 6 `pipeline`
+  tests. No test ignored or skipped.
   The hostile-environment wrapper (`tests/test-environment.sh`) also exits 0.
 - `cargo fmt --all --check` and
   `cargo clippy --workspace --all-targets --locked -- -D warnings`: exit 0.
@@ -228,6 +229,17 @@ and tolerates a failed `pg_ctl stop`, so a failed `initdb` leaves no cluster beh
 fixed: the guard is a tripwire against accidental reverts, not a workflow policy engine, so a
 step guarded by `if:` can still slip through — such edits are `never_paths` and need an owner
 review. PostgreSQL 17 stays open for the same reason as above.
+
+Round 8 (`6337cb4`) reported the ROLLBACK-leak check as vacuous: the constraint fixture and
+the seed share the world name it asserted. The mechanism was already sound — the seed compares
+every row and fails with `SeedMismatch` — proven by deleting `ROLLBACK;` from
+`constraints.sql` and running the harness: exit 101, `SeedMismatch: catalog worlds
+"…0001" differs from installed content`; the file was restored. The assertion was still
+rewritten to a value that differs between the fixtures (city `Waterdeep` vs `City one`) so
+it distinguishes the two states on its own. Also taken: `every_migration_file_is_embedded_in_
+the_runner` compares `migrations/*.sql` with the installed history, closing the coverage the
+deleted `psql` loop used to give; reproduced RED by adding an unembedded
+`migrations/0005_guard_check.sql` (harness exit 101), then removed it.
 
 Left open by decision: the `frontend-check` and `quality-gate` gate `cmd` approximations
 (policy owner's call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility
