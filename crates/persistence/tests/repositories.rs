@@ -61,6 +61,32 @@ fn failed_upgrade_rolls_back_schema_and_history() {
 }
 
 #[test]
+fn database_errors_keep_context_and_sqlstate_without_row_contents() {
+    let mut db = support::database();
+    migrations::apply(&mut db).unwrap();
+    desire_persistence::CatalogRepository::seed(&mut db, &support::catalog()).unwrap();
+    let campaign = Campaign {
+        id: support::id(10),
+        owner_id: support::id(90),
+        city_id: None,
+        name: "Private campaign name must not appear in error logs".into(),
+        rules_edition: RulesEdition::Dnd2014,
+        revision: 0,
+    };
+    let error = CampaignRepository::create(&mut db, &campaign).unwrap_err();
+    assert_eq!(error.sqlstate.as_deref(), Some("23514"));
+    assert!(error.to_string().contains(&campaign.id));
+    assert!(!error.to_string().contains(&campaign.name));
+    assert!(!format!("{error:?}").contains(&campaign.name));
+    assert!(std::error::Error::source(&error).is_some());
+    assert!(
+        CampaignRepository::get(&mut db, &campaign.id)
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
 fn migrations_upgrade_without_replacing_saved_campaigns() {
     let mut db = support::database();
     migrations::apply_through(&mut db, 2).unwrap();

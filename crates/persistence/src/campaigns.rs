@@ -9,11 +9,16 @@ impl CampaignRepository {
     pub fn create(client: &mut Client, campaign: &Campaign) -> Result<(), Error> {
         let mut tx = client.transaction().context("begin campaign creation")?;
         let data = serde_json::to_value(campaign).context("encode campaign")?;
-        tx.execute(concat!(
-            "INSERT INTO campaign.campaigns (id, owner_id, city_id, name, rules_edition, revision) ",
-            "SELECT id, owner_id, city_id, name, rules_edition, revision ",
-            "FROM jsonb_populate_record(NULL::campaign.campaigns, $1)"
-        ), &[&data]).context(format!("create campaign {}", campaign.id))?;
+        tx.execute(
+            concat!(
+                "INSERT INTO campaign.campaigns ",
+                "(id, owner_id, city_id, name, rules_edition, revision) ",
+                "SELECT id, owner_id, city_id, name, rules_edition, revision ",
+                "FROM jsonb_populate_record(NULL::campaign.campaigns, $1)"
+            ),
+            &[&data],
+        )
+        .context(format!("create campaign {}", campaign.id))?;
         tx.execute(
             concat!(
                 "INSERT INTO campaign.memberships (campaign_id, user_id, role) ",

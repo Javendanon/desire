@@ -4,7 +4,7 @@ use desire_core::{
     PROTOCOL_VERSION,
     contracts::{campaign::Scene, transport::SceneChanged},
 };
-use postgres::{Client, Transaction};
+use postgres::{Client, GenericClient};
 use serde_json::{Value, json};
 
 pub struct SceneWrite {
@@ -45,20 +45,7 @@ impl SceneRepository {
         }
         save_scene(&mut tx, write)?;
         let event = enqueue(&mut tx, write)?;
-        tx.execute(
-            concat!(
-                "INSERT INTO campaign.idempotency_keys ",
-                "(campaign_id, key, event_id, request) ",
-                "VALUES ($1::text::uuid, $2::text::uuid, $3::text::uuid, $4)"
-            ),
-            &[
-                &write.scene.campaign_id,
-                &write.key,
-                &write.event_id,
-                &request,
-            ],
-        )
-        .context("record scene idempotency key")?;
+        record_key(&mut tx, write, &request)?;
         tx.commit().context(format!(
             "commit scene {} and event {}",
             write.scene.id, write.event_id
@@ -67,7 +54,29 @@ impl SceneRepository {
     }
 }
 
-fn lock_stream(tx: &mut Transaction<'_>, campaign: &str) -> Result<(), Error> {
+fn record_key(
+    tx: &mut impl GenericClient,
+    write: &SceneWrite,
+    request: &Value,
+) -> Result<(), Error> {
+    let query = concat!(
+        "INSERT INTO campaign.idempotency_keys (campaign_id, key, event_id, request) ",
+        "VALUES ($1::text::uuid, $2::text::uuid, $3::text::uuid, $4)"
+    );
+    tx.execute(
+        query,
+        &[
+            &write.scene.campaign_id,
+            &write.key,
+            &write.event_id,
+            request,
+        ],
+    )
+    .context("record scene idempotency key")?;
+    Ok(())
+}
+
+fn lock_stream(tx: &mut impl GenericClient, campaign: &str) -> Result<(), Error> {
     tx.execute(
         concat!(
             "INSERT INTO campaign.streams (campaign_id) VALUES ($1::text::uuid) ",
@@ -85,7 +94,7 @@ fn lock_stream(tx: &mut Transaction<'_>, campaign: &str) -> Result<(), Error> {
 }
 
 fn replay(
-    tx: &mut Transaction<'_>,
+    tx: &mut impl GenericClient,
     write: &SceneWrite,
     request: &Value,
 ) -> Result<Option<SceneChanged>, Error> {
@@ -104,7 +113,7 @@ fn replay(
     Ok(Some(event(write, row.get::<_, i64>(1) as u32)))
 }
 
-fn save_scene(tx: &mut Transaction<'_>, write: &SceneWrite) -> Result<(), Error> {
+fn save_scene(tx: &mut impl GenericClient, write: &SceneWrite) -> Result<(), Error> {
     let scene = &write.scene;
     let Some(expected) = write.expected_revision else {
         if scene.revision != 1 {
@@ -121,11 +130,30 @@ fn save_scene(tx: &mut Transaction<'_>, write: &SceneWrite) -> Result<(), Error>
             "scene revision must increment without overflow",
         ));
     }
-    let affected = tx.execute(concat!(
-        "UPDATE campaign.scenes SET name = $3, map_version_id = $4::text::uuid, revision = revision + 1 ",
-        "WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid AND revision = $5"),
-        &[&scene.campaign_id, &scene.id, &scene.name, &scene.map_version_id, &i64::from(expected)])
-        .context(format!("update scene {} in campaign {}", scene.id, scene.campaign_id))?;
+    update_scene(tx, scene, expected)
+}
+
+fn update_scene(tx: &mut impl GenericClient, scene: &Scene, expected: u32) -> Result<(), Error> {
+    let query = concat!(
+        "UPDATE campaign.scenes SET name = $3, map_version_id = $4::text::uuid, ",
+        "revision = revision + 1 WHERE campaign_id = $1::text::uuid ",
+        "AND id = $2::text::uuid AND revision = $5"
+    );
+    let affected = tx
+        .execute(
+            query,
+            &[
+                &scene.campaign_id,
+                &scene.id,
+                &scene.name,
+                &scene.map_version_id,
+                &i64::from(expected),
+            ],
+        )
+        .context(format!(
+            "update scene {} in campaign {}",
+            scene.id, scene.campaign_id
+        ))?;
     if affected == 0 {
         return Err(Error::new(
             ErrorKind::Conflict,
@@ -135,10 +163,15 @@ fn save_scene(tx: &mut Transaction<'_>, write: &SceneWrite) -> Result<(), Error>
     Ok(())
 }
 
-fn enqueue(tx: &mut Transaction<'_>, write: &SceneWrite) -> Result<SceneChanged, Error> {
-    let revision: i64 = tx.query_one(concat!(
-        "UPDATE campaign.streams SET revision = revision + 1 WHERE campaign_id = $1::text::uuid ",
-        "RETURNING revision"), &[&write.scene.campaign_id]).context("advance campaign stream")?.get(0);
+fn enqueue(tx: &mut impl GenericClient, write: &SceneWrite) -> Result<SceneChanged, Error> {
+    let query = concat!(
+        "UPDATE campaign.streams SET revision = revision + 1 ",
+        "WHERE campaign_id = $1::text::uuid RETURNING revision"
+    );
+    let revision: i64 = tx
+        .query_one(query, &[&write.scene.campaign_id])
+        .context("advance campaign stream")?
+        .get(0);
     tx.execute(
         concat!(
             "INSERT INTO campaign.outbox (event_id, campaign_id, stream_revision, kind, scene_id) ",

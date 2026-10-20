@@ -56,11 +56,8 @@ impl SecretRepository {
                     &i64::from(secret.revision),
                 ],
             )
-            .context(format!(
-                "create DM secret {} in campaign {}",
-                secret.id, secret.campaign_id
-            ))?;
-        Ok(())
+            .map(|_| ())
+            .context(format!("create DM secret {}", secret.id))
     }
 
     pub fn get(client: &mut Client, campaign: &str, id: &str) -> Result<Option<DmSecret>, Error> {

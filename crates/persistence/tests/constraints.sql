@@ -57,7 +57,8 @@ SELECT pg_temp.reject($q$UPDATE campaign.memberships SET role = 'player'
 SELECT pg_temp.reject($q$INSERT INTO campaign.characters VALUES
     (pg_temp.id(31), pg_temp.id(11), NULL, 'Wrong edition', 'dnd_2014', 1)$q$, '23503');
 SELECT pg_temp.reject($q$INSERT INTO campaign.characters VALUES
-    (pg_temp.id(31), pg_temp.id(10), pg_temp.id(91), 'Wrong controller', 'dnd_2014', 1)$q$, '23503');
+    (pg_temp.id(31), pg_temp.id(10), pg_temp.id(91),
+    'Wrong controller', 'dnd_2014', 1)$q$, '23503');
 SELECT pg_temp.reject($q$INSERT INTO campaign.conditions VALUES
     (pg_temp.id(41), pg_temp.id(10), pg_temp.id(30), pg_temp.id(40), 'dnd_2014', 1, 1)$q$, '23503');
 SELECT pg_temp.reject($q$INSERT INTO campaign.journal_entries VALUES
@@ -68,7 +69,8 @@ SELECT pg_temp.reject($q$INSERT INTO private.dm_secrets (id, campaign_id, body, 
     VALUES (pg_temp.id(70), pg_temp.id(10), 'Missing subject', 1)$q$, '23514');
 SELECT pg_temp.reject($q$INSERT INTO private.dm_secrets
     (id, campaign_id, scene_id, place_id, body, revision) VALUES
-    (pg_temp.id(70), pg_temp.id(10), pg_temp.id(20), pg_temp.id(6), 'Ambiguous subject', 1)$q$, '23514');
+    (pg_temp.id(70), pg_temp.id(10), pg_temp.id(20), pg_temp.id(6),
+    'Ambiguous subject', 1)$q$, '23514');
 SELECT pg_temp.reject($q$INSERT INTO catalog.places VALUES
     (pg_temp.id(9), pg_temp.id(4), pg_temp.id(5), 'Wrong district',
     '{"source":"test","attribution":"test","evidence":"synthetic"}')$q$, '23503');

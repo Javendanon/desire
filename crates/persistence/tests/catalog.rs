@@ -1,7 +1,49 @@
 //! Idempotent editorial imports must never silently replace existing content.
 mod support;
-use desire_core::contracts::{catalog::PlaceAnchor, common::Position};
+use desire_core::contracts::{
+    catalog::{Calibration, Chunk, District, PlaceAnchor},
+    common::Position,
+};
 use desire_persistence::{CatalogRepository, ErrorKind, migrations};
+
+#[test]
+fn seed_imports_calibration_chunks_and_districts() {
+    let mut db = support::database();
+    migrations::apply(&mut db).unwrap();
+    let mut seed = support::catalog();
+    seed.districts.push(District {
+        id: support::id(4),
+        city_id: support::id(3),
+        name: "District".into(),
+    });
+    seed.places[0].district_id = Some(support::id(4));
+    seed.map_versions[0].calibration = Some(Calibration {
+        origin_px_x: 0.0,
+        origin_px_y: 0.0,
+        meters_per_pixel: 2.0,
+        rotation_radians: 0.0,
+        provenance: seed.worlds[0].provenance.clone(),
+    });
+    seed.chunks.push(Chunk {
+        id: support::id(8),
+        map_version_id: support::id(6),
+        origin: Position {
+            x_m: 1.0,
+            y_m: 2.0,
+            z_m: 3.0,
+        },
+        size_m: 10.0,
+        asset_uri: "fixture://synthetic.glb".into(),
+    });
+    CatalogRepository::seed(&mut db, &seed).unwrap();
+    CatalogRepository::seed(&mut db, &seed).unwrap();
+    assert_eq!(
+        db.query_one("SELECT x_m::float8 FROM catalog.chunks", &[])
+            .unwrap()
+            .get::<_, f64>(0),
+        1.0
+    );
+}
 
 #[test]
 fn seed_detects_removed_anchors_without_deleting_installed_content() {

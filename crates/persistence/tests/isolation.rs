@@ -93,6 +93,48 @@ fn scene_writes_and_events_are_atomic_idempotent_and_scoped() {
 }
 
 #[test]
+fn concurrent_writers_allocate_distinct_stream_revisions() {
+    let mut db = setup();
+    let name: String = db
+        .query_one("SELECT current_database()", &[])
+        .unwrap()
+        .get(0);
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let handles: Vec<_> = (0..2)
+        .map(|index| {
+            let mut connection = support::connect(&name);
+            let barrier = barrier.clone();
+            std::thread::spawn(move || {
+                let mut write = write();
+                write.scene.id = support::id(30 + index);
+                write.event_id = support::id(100 + index);
+                write.key = support::id(200 + index);
+                barrier.wait();
+                SceneRepository::save_and_enqueue(&mut connection, &write)
+                    .unwrap()
+                    .revision
+            })
+        })
+        .collect();
+    let mut revisions: Vec<_> = handles
+        .into_iter()
+        .map(|handle| handle.join().unwrap())
+        .collect();
+    revisions.sort();
+    assert_eq!(revisions, vec![1, 2]);
+}
+
+#[test]
+fn reused_idempotency_key_rejects_a_different_request() {
+    let mut db = setup();
+    let mut write = write();
+    SceneRepository::save_and_enqueue(&mut db, &write).unwrap();
+    write.scene.name = "Different request".into();
+    let error = SceneRepository::save_and_enqueue(&mut db, &write).unwrap_err();
+    assert_eq!(error.kind, desire_persistence::ErrorKind::Conflict);
+}
+
+#[test]
 fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
     let mut db = setup();
     SceneRepository::save_and_enqueue(&mut db, &write()).unwrap();
@@ -132,6 +174,32 @@ fn player_notes_exclude_dm_notes_secrets_and_other_campaigns() {
         SecretSubject::Scene,
     )
     .unwrap();
+    for (id, visibility) in [(73, Visibility::Players), (74, Visibility::Dm)] {
+        NotesRepository::create_knowledge(
+            &mut db,
+            &CampaignKnowledge {
+                id: support::id(id),
+                campaign_id: support::id(10),
+                title: "Synthetic lore".into(),
+                body: "Original test lore".into(),
+                visibility,
+                revision: 1,
+                provenance: support::catalog().worlds[0].provenance.clone(),
+            },
+        )
+        .unwrap();
+    }
+    assert_eq!(
+        NotesRepository::player_knowledge(&mut db, &support::id(10))
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        NotesRepository::player_knowledge(&mut db, &support::id(11))
+            .unwrap()
+            .is_empty()
+    );
     assert_eq!(
         NotesRepository::player_journal(&mut db, &support::id(10))
             .unwrap()
