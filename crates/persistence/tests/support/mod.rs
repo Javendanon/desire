@@ -40,7 +40,8 @@ pub fn catalog() -> desire_persistence::CatalogSeed {
         "knowledge_entries": [{"id": id(50), "revision": 1, "rules_edition": "dnd_2014",
             "language": "en", "title": "Synthetic condition", "body": "Not official rules",
             "provenance": provenance}]
-    })).unwrap()
+    }))
+    .unwrap()
 }
 
 pub fn id(value: u64) -> String {
