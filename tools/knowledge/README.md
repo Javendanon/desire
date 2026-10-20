@@ -1,9 +1,9 @@
 # Knowledge import and search tooling
 
 The tooling projects canonical content into the D04 `KnowledgeEntry` DTO and keeps
-D07 metadata (`slug`, `kind`, `translation_status`, `license`, references) in a
-catalog sidecar. It reuses `tools/contracts/validate.py` instead of duplicating the
-contract rules.
+D07 metadata (`slug`, `kind`, `translation_status`, `license`, `edition_verification`,
+references) in a catalog sidecar. It reuses `tools/contracts/validate.py` instead of
+duplicating the contract rules.
 
 ## Modules
 

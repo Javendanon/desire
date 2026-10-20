@@ -9,7 +9,7 @@ documentation stay English.
 
 | Path | Purpose |
 | --- | --- |
-| `sources.json` | Registered sources, edition, license, `synthetic` flag, document URL and SHA-256. |
+| `sources.json` | Sources: edition, license, `synthetic` flag, document URL and SHA-256. |
 | `canon/` | Canonical entries: `spells.json`, `classes.json`, `conditions.json`. |
 | `campaign/demo-campaign.json` | Synthetic demo lore, never imported into canon. |
 | `search-fixtures.json` | Normative search/filter cases, shared with D09 (Rust) and D15 (TS). |
@@ -49,8 +49,9 @@ matcher.
   an unknown status, a `verified` entry without a citation and a `verified` citation
   that does not contain the SHA-256 of the entry's registered source document. A
   document is registered once in `sources.json` with `document_url` and
-  `document_sha256`; the check is repeated by fetching it, matching the digest and
-  finding the cited section. The delivery report lists the URL, digest and locators.
+  `document_sha256`; a reviewer repeats the check by fetching that document, matching
+  the digest and locating the cited section, because the importer runs offline and can
+  only enforce the digest. The delivery report lists the URL, digest and locators.
 - `dnd_2014` and `dnd_2024` are separate entries and can link with `previous_edition`.
 - References use `edition:slug` targets. The importer rejects dangling, duplicate,
   self or relation-incompatible links.

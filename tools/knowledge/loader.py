@@ -169,9 +169,18 @@ def parse_source(raw: object, location: str) -> Source:
         license_url=optional_text(raw, "license_url", location),
         url=optional_text(raw, "url", location),
         synthetic=flag(raw, "synthetic", location),
-        document_url=optional_text(raw, "document_url", location),
+        document_url=document_link(raw, location),
         document_sha256=document_digest(raw, location),
     )
+
+
+def document_link(raw: dict, location: str) -> str:
+    url = optional_text(raw, "document_url", location)
+    require(
+        not url or url.startswith(("http://", "https://")),
+        f"{location}.document_url: http(s) URL",
+    )
+    return url
 
 
 def document_digest(raw: dict, location: str) -> str:
@@ -256,8 +265,8 @@ def check_verification(entries: list[Entry], sources: dict[str, Source]) -> None
             continue
         source = sources[entry.source_id]
         require(
-            source.document_sha256 != "",
-            f"{entry.key}: verified entry needs a registered document hash",
+            source.document_url != "" and source.document_sha256 != "",
+            f"{entry.key}: verified entry needs a registered document",
         )
         require(
             source.document_sha256 in verification.citation,

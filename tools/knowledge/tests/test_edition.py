@@ -1,6 +1,7 @@
 """Edition verification: 2024 content must not be presented as verified unexamined."""
 
 from pathlib import Path
+import copy
 import sys
 import tempfile
 import unittest
@@ -77,7 +78,7 @@ class EditionVerificationTests(unittest.TestCase):
             entry["edition_verification"] = {"status": VERIFIED, "citation": ""}
 
         mutate_entry(self.content, GREASE_2024, change)
-        with self.assertRaisesRegex(ValueError, "citation"):
+        with self.assertRaisesRegex(ValueError, "verified entry needs a citation"):
             loader.load_entries(self.content)
 
     def test_verified_citation_must_name_the_registered_document(self):
@@ -88,14 +89,26 @@ class EditionVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not name the registered document"):
             loader.load_entries(self.content)
 
-    def test_verified_entry_needs_a_registered_document(self):
+    def test_document_url_must_be_http(self):
         path = self.content / "sources.json"
         document = support.read(path)
         source = next(item for item in document["sources"] if item["id"] == "srd-5.2")
-        source.pop("document_sha256")
+        source["document_url"] = "SRD 5.2, the book"
         support.save(path, document)
-        with self.assertRaisesRegex(ValueError, "registered document hash"):
+        with self.assertRaisesRegex(ValueError, "document_url: http\\(s\\) URL"):
             loader.load_entries(self.content)
+
+    def test_verified_entry_needs_a_registered_document(self):
+        path = self.content / "sources.json"
+        original = support.read(path)
+        for field in ("document_url", "document_sha256"):
+            document = copy.deepcopy(original)
+            source = next(item for item in document["sources"] if item["id"] == "srd-5.2")
+            source.pop(field)
+            support.save(path, document)
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError, "registered document"):
+                    loader.load_entries(self.content)
 
     def test_unknown_verification_status_is_rejected(self):
         def change(entry):
