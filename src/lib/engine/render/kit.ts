@@ -59,18 +59,30 @@ export function gableMesh(device: pc.GraphicsDevice): pc.Mesh {
     [0, 0, 1, 0, 0.5, 0.6],
   ];
   const positions = triangles.flat(2);
-  const indices = Array.from({ length: positions.length / 3 }, (_, i) => i);
-  const mesh = new pc.Mesh(device);
-  mesh.setPositions(positions);
-  mesh.setNormals(pc.calculateNormals(positions, indices));
-  mesh.setUvs(0, uvs.flat());
-  mesh.setIndices(indices);
-  mesh.update(pc.PRIMITIVE_TRIANGLES);
-  return mesh;
+  const indices = Array.from({ length: positions.length / 3 }, (_, index) => index);
+  return flatMesh(device, { positions, uvs: uvs.flat(), indices });
 }
 
 export function geometryMesh(device: pc.GraphicsDevice, geometry: pc.Geometry): pc.Mesh {
   return pc.Mesh.fromGeometry(device, geometry);
+}
+
+export interface MeshData {
+  positions: number[];
+  uvs: number[];
+  indices: number[];
+}
+
+/** A triangle mesh from flat positions, uvs and indices, with computed normals. */
+export function flatMesh(device: pc.GraphicsDevice, data: MeshData): pc.Mesh {
+  const { positions, uvs, indices } = data;
+  const mesh = new pc.Mesh(device);
+  mesh.setPositions(positions);
+  mesh.setNormals(pc.calculateNormals(positions, indices));
+  mesh.setUvs(0, uvs);
+  mesh.setIndices(indices);
+  mesh.update(pc.PRIMITIVE_TRIANGLES);
+  return mesh;
 }
 
 /**

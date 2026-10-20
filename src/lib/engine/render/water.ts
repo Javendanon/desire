@@ -3,7 +3,7 @@
 
 import * as pc from 'playcanvas';
 
-import { material } from './kit.ts';
+import { flatMesh, material } from './kit.ts';
 
 const SIZE = 320;
 const SEGMENTS = 64;
