@@ -158,15 +158,16 @@ Card rework addressed the two review findings and the three suspicions.
 | --- | --- | --- |
 | BLOCKER `ci.yml:79` bare `cargo test --workspace` | `rust-test` adds the runner's PostgreSQL `bin` directory to `GITHUB_PATH` (newest installed major, printed; fails closed if none) and runs the harness; `package.json` `test:rust` and the `merge-policy.json` `rust-test` gate `cmd` run the same harness | `tests/pipeline.rs` (RED before the edits: 3 failed; green after: 4 passed) |
 | MEDIUM `ci.yml:48` suites never run | `frontend-check` runs `test:frontend` + `check:tests`; `quality-gate` runs `tools/contracts/generate.py --check` + contract `unittest` discover. Existing jobs extended, no job renamed (merge-policy contract) | `tests/pipeline.rs::ci_runs_every_existing_suite` |
-| Suspicion: PID-based database names never dropped | `tests/support/mod.rs` names databases with PID + monotonic timestamp + counter, so a recycled PID cannot collide | `tests/support/mod.rs:20-33`; 19 DB tests pass |
+| Suspicion: PID-based database names never dropped | `tests/support/mod.rs` names databases with PID + wall-clock nanosecond stamp + counter, so a recycled PID cannot collide within one cluster | `tests/support/mod.rs:20-33`; 19 DB tests pass |
 | Suspicion: harness seeded a schema with `psql -f`, never recording `public.persistence_migrations` | `test-postgres.sh` now only starts/stops the cluster; `tests/sql_constraints.rs` installs the schema with `migrations::apply` and runs `schema.sql` + `constraints.sql` on it. The from-zero path under test is the production runner | sabotage run (expected SQLSTATE changed to `99999`) failed the harness with exit 101; restored file passes |
 | Suspicion: PG 14 here vs PG 17 in `compose.yaml` | Not closed. Local evidence is PostgreSQL 14.19 on macOS; CI runs the runner image's newest installed major. No PG 17 run, container, or volume was created | see the boundary list above |
 
 Executed after the rework, same toolchain and gate configuration:
 
-- `bash crates/persistence/test-postgres.sh`: exit 0, **39** Rust tests passed (14 test
+- `bash crates/persistence/test-postgres.sh`: exit 0, **41** Rust tests passed (15 test
   binaries/doc-test targets), including the 2 new `sql_constraints` tests carrying the
-  25 SQL rejection assertions and the 3 new `pipeline` tests. No test ignored or skipped.
+  25 SQL rejection assertions and the 5 new `pipeline` tests. No test ignored or skipped.
+  The hostile-environment wrapper (`tests/test-environment.sh`) also exits 0 with 41 passed.
 - `cargo fmt --all --check` and
   `cargo clippy --workspace --all-targets --locked -- -D warnings`: exit 0.
 - `corepack pnpm run test:frontend` (41 passed), `corepack pnpm run check:tests`,
