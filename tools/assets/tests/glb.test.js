@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { accessorFinding, uncoveredSolids } from '../src/check.js';
 import { encodeGlb } from '../src/glb.js';
-import { collisionBlockers, parseGlb } from '../src/gltf-read.js';
+import { collisionBlockers, parseGlb, readAccessor } from '../src/gltf-read.js';
 import { readManifest } from '../src/io.js';
 import { buildScene } from '../src/scene.js';
 import { sampleManifestPath } from './helpers.js';
@@ -21,6 +21,33 @@ test('the artifact is a glTF 2.0 binary with an embedded buffer', () => {
   assert.equal(gltf.json.buffers[0].uri, undefined, 'no external buffer download');
   assert.ok(gltf.bin.length > 0);
   assert.equal(gltf.json.images, undefined, 'textures travel beside the manifest');
+});
+
+test('the default scene renders only ground and LOD0; auxiliary scenes are explicit', () => {
+  const { gltf } = build();
+  const json = gltf.json;
+  const names = json.scenes[json.scene].nodes.map((index) => json.nodes[index].name);
+  assert.equal(names.length, 9);
+  assert.ok(names.every((name) => name === 'render/ground' || name.startsWith('render/lod0/')));
+  const collision = json.scenes.find((scene) => scene.name === 'collision');
+  assert.deepEqual(collision.nodes.map((index) => json.nodes[index].name), ['collision']);
+  const lod1 = json.scenes.find((scene) => scene.name === 'lod1');
+  assert.deepEqual(lod1.nodes.map((index) => json.nodes[index].name),
+    ['render/ground', 'render/lod1']);
+});
+
+test('LOD0 and LOD1 apply the same base color exactly once', () => {
+  const { manifest, gltf } = build();
+  for (const mesh of gltf.json.meshes.filter((mesh) => mesh.name.startsWith('render/'))) {
+    for (const primitive of mesh.primitives) {
+      const material = gltf.json.materials[primitive.material];
+      const input = manifest.materials.find((entry) => entry.id === material.name);
+      assert.ok(input, `LOD material ${material.name} preserves its source factors`);
+      assert.deepEqual(material.pbrMetallicRoughness.baseColorFactor, input.base_color);
+      const colors = readAccessor(gltf, primitive.attributes.COLOR_0);
+      assert.deepEqual([...colors.slice(0, 3)], [1, 1, 1], 'top color is not baked twice');
+    }
+  }
 });
 
 test('render, LOD and collision live in separate nodes', () => {
