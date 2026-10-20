@@ -67,6 +67,37 @@ test('the artifact and its report are written next to each other', async () => {
   assert.equal(written.pass, true);
 });
 
+test('traversal identities never overwrite or quarantine outside files', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-traversal-'));
+  const outDir = path.join(root, 'out');
+  fs.mkdirSync(path.join(outDir, 'scene-x'), { recursive: true });
+  const victim = path.join(root, 'victim.glb');
+  fs.writeFileSync(victim, 'keep this artifact');
+  const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
+  manifest.id = 'x/../../victim';
+  const manifestPath = path.join(root, 'asset.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  const result = buildAsset({ manifestPath, outDir });
+  assert.equal(result.report.pass, false);
+  assert.equal(result.artifactPath, null);
+  assert.equal(fs.readFileSync(victim, 'utf8'), 'keep this artifact');
+  assert.equal(fs.existsSync(`${victim}.stale`), false);
+});
+
+test('invalid-manifest rebuilds quarantine the previous valid artifact', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-invalid-'));
+  const first = buildAsset({ manifestPath: sampleManifestPath(), outDir });
+  assert.ok(first.artifactPath);
+  const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
+  delete manifest.calibration;
+  const manifestPath = path.join(outDir, 'invalid.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  const second = buildAsset({ manifestPath, outDir });
+  assert.equal(second.report.pass, false);
+  assert.equal(fs.existsSync(first.artifactPath), false);
+  assert.ok(fs.existsSync(`${first.artifactPath}.stale`));
+});
+
 test('a malformed manifest writes a failing report and leaves no artifact', async () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
   const brokenPath = path.join(outDir, 'broken.json');
