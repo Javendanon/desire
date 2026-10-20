@@ -53,6 +53,8 @@ test('--out produces a portable textured artifact without source sidecars', asyn
 
 test('a failing rebuild quarantines the previous artifact', async () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
+  fs.cpSync(path.join(path.dirname(sampleManifestPath()), 'textures'),
+    path.join(outDir, 'textures'), { recursive: true });
   const first = await buildAsset({ manifestPath: sampleManifestPath(), outDir });
   assert.equal(first.artifactPath !== null, true);
   const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
@@ -121,6 +123,8 @@ test('a malformed manifest writes a failing report and leaves no artifact', asyn
 
 test('a manifest with a broken scale check fails the build instead of shipping', async () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
+  fs.cpSync(path.join(path.dirname(sampleManifestPath()), 'textures'),
+    path.join(outDir, 'textures'), { recursive: true });
   const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
   manifest.scale_checks[0].expected_m = 300;
   const brokenPath = path.join(outDir, 'broken.json');
