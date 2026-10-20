@@ -199,3 +199,61 @@ missing `wasm32-unknown-unknown` standard libraries; the attempted installation 
 blocked because `rustup` is not installed in this shell. See `outputs/d13-wasm.log` and
 `outputs/d13-wasm-target.log`. Do not interpret the frontend or quality-gate success as a
 passing Wasm CI gate. No Docker service, external integration, board state or D04 contract changed.
+
+## Round 2 rework (second review: 3 findings)
+
+The second review accepted the five earlier corrections and raised three new medium findings.
+Base for this round: `6809f50`, continued from the WIP checkpoint `94b2d81` in the same worktree
+and branch after the previous run was killed.
+
+| Finding | Disposition |
+| --- | --- |
+| `content/maps/waterdeep/buildings.ts:107`: seven of eight wards still filled their box with a jittered grid and no street axis, so the whole-city view showed invented geography | Extended the same raster-trace + clearance pipeline to one coarse axis per ward: High Road north (Field/North), Julthoon Street (Sea), Waterdeep Way (Trades), Way of the Dragon (Southern), Dock Street (Dock) and the Beaconmarch (City of the Dead). Castle Ward is crossed by the Market pilot. Lots are reserved along all nine axes through `waterdeepRoadClear`, the same function the renderer feeds. `tests/map-corridors.test.ts` adds independent raster checkpoints, a 30 px coarse tolerance and a per-ward coverage assertion. The visual comparison, including the two-scope tolerance and the luminance probe, is in [d13-street-comparison.md](d13-street-comparison.md). |
+| `src/lib/engine/scene/map-markers.ts:122`: the pick radius was floored at the 60 m constant, so at close zoom every click selected the focused place | `placePickRadius(scale)` now scales with the marker and floors at 8 m (`PLACE_PICK_MIN_RADIUS`). The browser test clicks a quarter canvas width away from the projected marker and asserts the previous selection survives; that click fails with the 60 m sphere at the same zoom. |
+| `.github/workflows/ci.yml:56`: no required job ran `tests/browser/*.mjs`, so streaming, memory and gesture regressions stayed invisible | New `test:browser` script, `tools/ci/browser-smoke.mjs` (throwaway Vite + DevTools) wired into the required `frontend-check` job and the matching `merge-policy.json` gate, enforced by `tests/ci-policy.test.ts`. Job and gate names are unchanged; only their command lists and timeouts grew. |
+
+Two defects in the WIP checkpoint were found while running the new browser gate:
+
+1. `tools/ci/browser-smoke.mjs` spawned `corepack pnpm dev`. Killing pnpm left the Vite grandchild
+   alive holding the stdout pipe, so the CI step never exited after a successful run and would
+   only stop at the job timeout. It now spawns Vite directly, with a SIGTERM/SIGKILL stop, and the
+   step exits on its own (verified: `exit=0`).
+2. The first off-marker assertion projected a world offset, which fell outside the 1104 px canvas
+   at close zoom. The click point is now chosen in screen space (a quarter canvas width toward the
+   centre), so the assertion tests picking instead of viewport bounds.
+
+Corrections made to earlier evidence rather than hidden: three raster checkpoints duplicated trace
+vertices (a self-fulfilling assertion) and were replaced with raster-read points; the Beaconmarch
+checkpoint set now uses the road through the wall towers. The demo copy in `waterdeep.html` and the
+content README no longer claim that only the three Market corridors are traced.
+
+### Tests and gate for this round
+
+| Check | Before this round | After |
+| --- | --- | --- |
+| km gate, km 0.26.0 | A+ 94.85, 61 files / 5567 LOC | A+ 94.87, 61 files / 5603 LOC, 0 floor blocks, gate OK (partial) |
+| Frontend suite | 78 pass | 83 pass (`node --test "tests/*.test.ts"`) |
+| Browser scene gate | not wired into any gate | `pnpm test:browser` exit 0: sectors, memory budgets (graphics 67.4 MiB ≤ 192, CPU 123.6 MiB ≤ 192, combined 191.0 MiB ≤ 320), far shell, close picking, touch pan/pinch, reload |
+| Svelte and TS checks | pass | 0 errors / 0 warnings |
+| Test typecheck | pass | pass |
+| D05 reference verification | pass | 20 control points / 8 wards / 10 places PASS |
+| Rust, Wasm, Docker | unchanged | not touched; Wasm build still blocked as reported above |
+
+Logs: `outputs/d13-rework-browser.log`, `outputs/d13-rework-gate.log`,
+`outputs/d13-rework-reference.log` (local, ignored artifacts).
+
+### Remaining limits
+
+- One traced axis per ward is a readable pilot, not a street network: blocks between the axes keep
+  the interpreted 26 m lot grid and no routing graph exists. The full street inventory is a
+  follow-up card, as recorded in the comparison document.
+- The Beaconmarch axis is validated visually only; the luminance probe cannot separate a road that
+  runs beside the wall from the wall shadow (documented numbers in the comparison document).
+- The new browser gate is verified locally on macOS Chrome with SwiftShader. This session did not
+  execute CI; the Ubuntu runner path (`google-chrome` on PATH, WebGL2 via SwiftShader) is unverified
+  until the workflow runs.
+- The gate remains **partial**, not integral approval: Markdown/JSON/HTML/Svelte semantics, F7/F10/
+  F12-F14 manual rules and the Wasm build stay outside automated coverage.
+- D05 street label anchors stay what they are: text-placement points, shown off by default. They are
+  not reserved as plazas, because the raster text is offset from the asphalt; the asphalt itself is
+  what the nine traced axes reserve.

@@ -9,7 +9,7 @@ Two kinds of data live here, kept apart on purpose:
 | Kind | Source | Where |
 | --- | --- | --- |
 | Geography | D05 plan metres: coast control points, ward boxes and centroids, 20 control points, 10 places, 7 street label anchors | `reference.ts`, `bounds.ts`, `zones.ts`, `coast.ts`, `plan.ts` |
-| Street pilot | Raster-traced Market approaches and open-square interior, with interpreted widths | `streets.ts`, [comparison](../../../docs/reports/d13-street-comparison.md) |
+| Street pilot | Raster-traced Market approaches plus one coarse axis per ward, and the open-square interior, with interpreted widths | `streets.ts`, [comparison](../../../docs/reports/d13-street-comparison.md) |
 | Facades | D13 interpretation: lot grid, density, footprint, height, roof tone | `buildings.ts`, `zones.ts` profiles |
 
 Every building carries `heightSource: 'interpreted'`. D05 records no building heights, so no height
@@ -28,9 +28,10 @@ labelled visual reading, not a vector coastline.
 
 Ward boxes are calibration aids, not legal boundaries. Lots are assigned to the ward whose centre
 is nearest among the boxes that contain the point, so overlapping boxes do not double-build. Street
-anchors are points, not polylines: the scene never invents a street graph from them. Three Market
-approaches are traced separately from the raster and reserve their full width plus roof clearance.
-The Market square stays open. This is a small pilot, not a reconstructed full-city road network.
+anchors are points, not polylines: the scene never invents a street graph from them. Nine axes are
+traced from the raster and reserve their full width plus roof clearance: the precise Market
+approaches and one coarse axis per ward for the whole-city view. The Market square stays open.
+This is a pilot, not a reconstructed full-city road network.
 
 ## Places and the catalog
 
