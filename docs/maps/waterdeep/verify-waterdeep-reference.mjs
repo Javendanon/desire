@@ -1,16 +1,21 @@
 #!/usr/bin/env node
-// Contract: validates data/waterdeep-reference.json and, with --image, the source JPEG.
-// Zero runtime dependencies. Exits non-zero when any assertion fails.
+// Contract: validates data/waterdeep-reference.json; with --image, the source JPEG; with
+// --dataset, every derived claim against AideDD's dataW.js. Zero runtime dependencies.
+// Exits non-zero when any assertion fails.
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { checkAgainstDataset } from "./source-checks.mjs";
+import { parseDataset } from "./source-dataset.mjs";
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = join(HERE, "data", "waterdeep-reference.json");
 const FEET_TO_METERS = 0.3048;
 const NEAR = 0.01;
+const EVIDENCE = ["verified", "interpretation", "synthetic"];
 const EXPECTED = {
   width: 3560,
   height: 7256,
@@ -39,9 +44,14 @@ const within = (point, width, height) =>
 const insideBox = (point, box) =>
   point.x >= box.min_x && point.x <= box.max_x && point.y >= box.min_y && point.y <= box.max_y;
 
-function checkWorld(label, pixel, world, metersPerPixel) {
-  check(`${label} world_m.x`, nearly(world.x, pixel.x * metersPerPixel));
-  check(`${label} world_m.y`, nearly(world.y, pixel.y * metersPerPixel));
+/** D04 frame: image right is +x_m (east), image down is +z_m (south). */
+function checkPlan(label, pixel, plan, metersPerPixel) {
+  check(`${label} plan_m.x_m`, nearly(plan?.x_m, pixel.x * metersPerPixel));
+  check(`${label} plan_m.z_m`, nearly(plan?.z_m, pixel.y * metersPerPixel));
+}
+
+function checkProvenance(label, provenance) {
+  check(`${label} provenance`, Array.isArray(provenance) && provenance.length > 0);
 }
 
 function loadJson(path) {
@@ -63,10 +73,19 @@ function verifyScale(data) {
     "scale.pixels_per_meter",
     nearly(scale.pixels_per_meter, scale.pixels_per_1000_feet / (1000 * FEET_TO_METERS)),
   );
-  check(
-    "transform.meters_per_pixel matches scale",
-    nearly(data.transform?.meters_per_pixel, scale.meters_per_pixel),
-  );
+}
+
+/** The calibration block has the shape of D04's Calibration. */
+function verifyCalibration(data) {
+  const calibration = data.calibration ?? {};
+  check("calibration.origin", calibration.origin_px_x === 0 && calibration.origin_px_y === 0);
+  check("calibration.rotation_radians", calibration.rotation_radians === 0);
+  const scaleMatches = nearly(calibration.meters_per_pixel, data.scale.meters_per_pixel);
+  check("calibration.meters_per_pixel matches scale", scaleMatches);
+  const provenance = calibration.provenance ?? {};
+  check("calibration.provenance.evidence", EVIDENCE.includes(provenance.evidence));
+  check("calibration.provenance.source", Boolean(provenance.source));
+  check("calibration.provenance.attribution", Boolean(provenance.attribution));
 }
 
 function verifyControlPoints(data) {
@@ -81,7 +100,8 @@ function verifyControlPoints(data) {
     ids.add(point.id);
     const text = JSON.stringify(point.pixel);
     check(`control_point ${point.id} in bounds`, within(point.pixel, width, height), text);
-    checkWorld(`control_point ${point.id}`, point.pixel, point.world_m, metersPerPixel);
+    checkPlan(`control_point ${point.id}`, point.pixel, point.plan_m, metersPerPixel);
+    checkProvenance(`control_point ${point.id}`, point.provenance);
   }
 }
 
@@ -94,6 +114,9 @@ function verifyWards(data) {
     check(`ward ${ward.name} centroid in bbox`, insideBox(ward.centroid_pixel, box));
     const fits = box.min_x >= 0 && box.max_x <= width && box.min_y >= 0 && box.max_y <= height;
     check(`ward ${ward.name} bbox in image`, fits);
+    const { meters_per_pixel: metersPerPixel } = data.scale;
+    const label = `ward ${ward.name} centroid`;
+    checkPlan(label, ward.centroid_pixel, ward.centroid_plan_m, metersPerPixel);
   }
 }
 
@@ -112,12 +135,14 @@ function verifyPlaces(data) {
   const places = data.initial_places ?? [];
   const sizeOk = places.length >= EXPECTED.minPlaces && places.length <= EXPECTED.maxPlaces;
   check("initial_places.range", sizeOk, String(places.length));
+  const ids = new Set();
   for (const place of places) {
-    const provenance = Array.isArray(place.provenance) && place.provenance.length > 0;
-    check(`place ${place.id} provenance`, provenance);
+    check(`place ${place.id} duplicate id`, !ids.has(place.id));
+    ids.add(place.id);
+    checkProvenance(`place ${place.id}`, place.provenance);
     const text = JSON.stringify(place.pixel);
     check(`place ${place.id} in bounds`, within(place.pixel, width, height), text);
-    checkWorld(`place ${place.id}`, place.pixel, place.world_m, metersPerPixel);
+    checkPlan(`place ${place.id}`, place.pixel, place.plan_m, metersPerPixel);
     verifyWardMembership(place, boxes);
   }
 }
@@ -131,13 +156,12 @@ function verifyStreets(data) {
   for (const street of streets) {
     check(`street ${street.id} duplicate id`, !ids.has(street.id), String(street.id));
     ids.add(street.id);
-    const provenance = Array.isArray(street.provenance) && street.provenance.length > 0;
-    check(`street ${street.id} provenance`, provenance);
+    checkProvenance(`street ${street.id}`, street.provenance);
     checkEqual(`street ${street.id} kind`, street.kind, "street-label-anchor");
     check(`street ${street.id} source_ref key`, "source_ref" in street);
     const text = JSON.stringify(street.pixel);
     check(`street ${street.id} in bounds`, within(street.pixel, width, height), text);
-    checkWorld(`street ${street.id}`, street.pixel, street.world_m, metersPerPixel);
+    checkPlan(`street ${street.id}`, street.pixel, street.plan_m, metersPerPixel);
   }
 }
 
@@ -177,29 +201,43 @@ function verifyImageFile(path, data) {
   check("image.sha256", sha256 === expected.sha256, sha256);
 }
 
-function verifyImageArgument(data) {
-  const imageIndex = process.argv.indexOf("--image");
-  if (imageIndex < 0) return;
-  const imagePath = process.argv[imageIndex + 1];
-  if (imagePath) {
-    verifyImageFile(imagePath, data);
-  } else {
-    check("image argument", false, "--image needs a path");
-  }
+/** The path after `flag`, or null when the flag is absent. A flag without a path fails. */
+function optionPath(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index < 0) return null;
+  const path = process.argv[index + 1];
+  check(`${flag} argument`, Boolean(path) && !path.startsWith("--"), `${flag} needs a path`);
+  return path && !path.startsWith("--") ? path : null;
+}
+
+function verifyDatasetFile(path, data) {
+  const text = readFileSync(path, "utf8");
+  const expected = data.source_snapshot.dataset;
+  const sha256 = createHash("sha256").update(text).digest("hex");
+  check("dataset.sha256", sha256 === expected.sha256, sha256);
+  checkAgainstDataset(data, parseDataset(text), check);
+}
+
+function verifyOptionalSources(data) {
+  const imagePath = optionPath("--image");
+  if (imagePath) verifyImageFile(imagePath, data);
+  const datasetPath = optionPath("--dataset");
+  if (datasetPath) verifyDatasetFile(datasetPath, data);
 }
 
 function main() {
   const data = loadJson(DATA_PATH);
-  checkEqual("schema", data.schema, "desire.waterdeep.reference/1");
+  checkEqual("schema", data.schema, "desire.waterdeep.reference/2");
   checkEqual("image.width", data.image?.width, EXPECTED.width);
   checkEqual("image.height", data.image?.height, EXPECTED.height);
   verifyScale(data);
+  verifyCalibration(data);
   verifyControlPoints(data);
   verifyWards(data);
   verifyPlaces(data);
   verifyStreets(data);
   verifySnapshot(data);
-  verifyImageArgument(data);
+  verifyOptionalSources(data);
   if (failures.length > 0) {
     console.error(`FAIL (${failures.length})`);
     for (const failure of failures) console.error(`  - ${failure}`);

@@ -1,7 +1,7 @@
 # Calibration and provenance
 
 This document describes the pixel frame of the AideDD/Jason Engle Waterdeep plan, the
-proposed transform to plan meters, the control points used to check it, and the parts that
+calibration to D04 world meters, the control points used to check it, and the parts that
 remain interpretation. The machine-readable values are in
 [`data/waterdeep-reference.json`](data/waterdeep-reference.json).
 
@@ -37,18 +37,22 @@ Derived constants:
 | meters per pixel | 304.8 / 310 = 0.983225806451613 |
 | pixels per meter | 310 / 304.8 = 1.0170603674540681 |
 
-Proposed transform, pending the shared D04 coordinate contract:
+The JSON `calibration` block has the shape of D04's `Calibration`: origin `(0, 0)`, scale
+`s = 0.983225806451613` m/px and rotation `0`. Its provenance evidence is `interpretation`,
+because the scale is the source's own constant and was not measured independently.
+
+With D04's formula ([`docs/modelo-de-datos.md`](../../modelo-de-datos.md), "Coordenadas y
+calibración": X east, Y up, Z south) and `u0 = v0 = θ = 0`:
 
 ```text
-plan_x_m = pixel_x * 0.983225806451613
-plan_y_m = pixel_y * 0.983225806451613
-pixel_x   = plan_x_m / 0.983225806451613
-pixel_y   = plan_y_m / 0.983225806451613
+x_m = pixel_x * 0.983225806451613      pixel_x = x_m / 0.983225806451613
+z_m = pixel_y * 0.983225806451613      pixel_y = z_m / 0.983225806451613
+y_m = elevation, unknown in the source and never inferred from the raster
 ```
 
-`plan_y_m` increases south because the image y axis points down. The 3D host may map plan y
-to world `z` or `-z`; D04/D11 own that choice. Stored world values are rounded to 3 decimals
-(about 1 mm), which is bookkeeping precision, not survey accuracy.
+Points therefore carry `plan_m: {x_m, z_m}` and no `y_m`. A runtime `Position` gets its
+elevation from the scene (D13), not from this package. Stored values are rounded to 3
+decimals (about 1 mm), which is bookkeeping precision, not survey accuracy.
 
 ### Derived gate-to-gate distance
 
@@ -99,13 +103,18 @@ AideDD source reference when the marker entry has one.
    inside the named ward. Crops were generated locally with `ffmpeg` and were not committed
    because they reproduce the copyrighted artwork.
 
+The data side is repeatable with `--dataset`: the verifier parses a local copy of `dataW.js`
+as text and requires every named point to sit exactly on a marker with its name (or recorded
+`source_name`) and ref, every ward box and centroid to match the zone path, and every count
+in `source_snapshot.derived` to match the source.
+
 All twenty control points were checked with the crop-and-cross method. The table records what
 landed under the cross.
 
 | # | ID | Result of the visual cross-check |
 | --- | --- | --- |
 | 1 | `north-gate` | Cross lands on the North Gate gatehouse on the northern wall. |
-| 2 | `troll-gate` | Cross lands on the Troll Gate on the western wall. |
+| 2 | `troll-gate` | Cross lands on the Troll Gate at the northwest corner, on the northern wall. |
 | 3 | `west-gate` | Cross lands on the West Gate gatehouse on the western wall. |
 | 4 | `field-ward-center` | Cross lands inside Field Ward. |
 | 5 | `sea-ward-center` | Cross lands inside Sea Ward. |
@@ -141,6 +150,8 @@ open docs/maps/waterdeep/overlay.svg
 ## 4. Wards
 
 Only bounding boxes and centroids are stored. The original AideDD zone paths are not copied.
+The "centroid" is the mean of the path's vertices (curve control points included), not the
+area centroid; it is a stable label point inside the ward, not its center of mass.
 Boxes are axis-aligned and therefore over-cover irregular ward shapes; they are calibration
 aids, not legal boundaries.
 
@@ -185,7 +196,7 @@ the provenance tags used in the JSON.
 Provenance tags used in the JSON:
 
 - `aidedd-dataW-marker`: name, pixel, and optional ref come from the AideDD marker entry.
-- `aidedd-zone-centroid`: pixel is the centroid of the AideDD ward zone, not a marker entry.
+- `aidedd-zone-centroid`: pixel is the vertex mean of the AideDD ward zone, not a marker entry.
 - `visual-cross-check-2026-10-18`: the pixel was inspected on the downloaded raster with a
   centered red cross.
 
@@ -203,7 +214,7 @@ from AideDD is included in these entries.
 | Control-point pixels | Confirmed against the dataset and visually cross-checked |
 | Ward boxes and centroids | Derived from source paths; boundary accuracy not audited |
 | Coastline | Visual interpretation; not vectorized |
-| Plan-meter transform | Proposed; pending D04 |
+| Calibration to D04 meters | D04 shape; evidence `interpretation` (scale is source-asserted) |
 | 768 unique places | **False**. 768 entries, 2 duplicate names, 2 shared coordinate pairs |
 | Building heights or 3D detail | Not present in the source; future artistic interpretation |
 
@@ -224,8 +235,9 @@ from AideDD is included in these entries.
 5. **Coast and terrain.** The shoreline and cliffs are visual only. Any 3D terrain is an
    artistic interpretation and must be labeled as such.
 6. **Copyright.** The raster is not redistributed. Keep the URL, attribution, and checksums.
-7. **D04 contract.** This package proposes plan meters and stable local IDs, but D04 owns
-   IDs, units, DTOs, and events. Reconcile before turning the JSON into runtime content.
+7. **D04 contract.** The calibration and the `plan_m` coordinates follow D04's frame. Place
+   ids here are local; D13 imports them as `Place` records with a `PlaceAnchor` on the
+   Waterdeep map version, assigning contract ids and the elevation then.
 8. **D13 handoff.** Scene generation should consume the calibrated control points and the
    small place set first; it must not invent a full street graph or building inventory and
    label it Waterdeep.

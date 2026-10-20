@@ -24,7 +24,7 @@ curl -sS -L -o /tmp/waterdeep-atlas.html https://www.aidedd.org/atlas/es/waterde
 curl -sS -L -o /tmp/dataW.js 'https://www.aidedd.org/atlas/dataW.js?v=7'
 curl -sS -L -o /tmp/waterdeep.jpg https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg
 shasum -a 256 /tmp/waterdeep-atlas.html /tmp/dataW.js /tmp/waterdeep.jpg
-node docs/maps/waterdeep/verify-waterdeep-reference.mjs --image /tmp/waterdeep.jpg
+node docs/maps/waterdeep/verify-waterdeep-reference.mjs --image /tmp/waterdeep.jpg --dataset /tmp/dataW.js
 ```
 
 ## What each source supports
@@ -34,7 +34,7 @@ node docs/maps/waterdeep/verify-waterdeep-reference.mjs --image /tmp/waterdeep.j
 | Image frame is 3560 x 7256 | `imageW`, `imageH` in `dataW.js`; JPEG header | Confirmed |
 | Scale is 310 px per 1000 ft | `factorDist = 310` and the comment `310 px = 1000 ft` | Source-asserted; not independently georeferenced |
 | North is up | Visual: sea west, harbor south, City of the Dead east | Confirmed by inspection, not by a compass rose |
-| Eight named wards and their extents | `zones[]` paths, reduced to bounding boxes and centroids | Geometry confirmed from the source; boundary accuracy not audited |
+| Eight named wards and their extents | `zones[]` paths, reduced to bounding boxes and vertex means | Geometry confirmed from the source; boundary accuracy not audited |
 | 768 marker entries | `groupe[]` filtered to non-`GROUP`, non-zero rows | Confirmed count; not a count of unique places |
 | Place names and pixels | `groupe[]` entries for the selected places | Confirmed against the source data and visually cross-checked |
 | Street label anchors | `groupe[]` entries with `txt1:"<p>Street</p>"` | Confirmed against the source data; label points only, not a street graph |

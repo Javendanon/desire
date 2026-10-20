@@ -80,8 +80,18 @@ function render(data) {
 `;
 }
 
-const outIndex = process.argv.indexOf("--out");
-const outPath = outIndex >= 0 ? resolve(process.argv[outIndex + 1]) : DEFAULT_OUT;
+function outputPath() {
+  const index = process.argv.indexOf("--out");
+  if (index < 0) return DEFAULT_OUT;
+  const path = process.argv[index + 1];
+  if (!path || path.startsWith("--")) {
+    console.error("--out needs a path");
+    process.exit(2);
+  }
+  return resolve(path);
+}
+
+const outPath = outputPath();
 const data = JSON.parse(readFileSync(DATA_PATH, "utf8"));
 writeFileSync(outPath, render(data));
 console.log(`Wrote ${outPath}`);

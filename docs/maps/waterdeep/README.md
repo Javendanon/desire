@@ -1,7 +1,7 @@
 # Waterdeep reference package
 
 Status: **calibration reference, not runtime content**. This package records the map source,
-its pixel frame, a proposed pixel-to-meters transform, a small verified place selection, and
+its pixel frame, a calibration to D04 world meters, a small verified place selection, and
 the open questions. It does not generate a fictional city called Waterdeep, and it does not
 claim that every marker on the source map is a distinct canonical location.
 
@@ -13,7 +13,8 @@ claim that every marker on the source map is a distinct canonical location.
 | [`calibration.md`](calibration.md) | Frame, orientation, scale, transform formulas, control points, hidden assumptions, and doubts |
 | [`data/waterdeep-reference.json`](data/waterdeep-reference.json) | Machine-readable reference: image frame, scale, 20 control points, 8 ward boxes, 7 main streets, 10 initial places |
 | [`overlay.svg`](overlay.svg) | Generated overlay: source map by URL plus control points and ward bounding boxes |
-| [`verify-waterdeep-reference.mjs`](verify-waterdeep-reference.mjs) | Zero-dependency verifier for the JSON and, with `--image`, for the source JPEG |
+| [`verify-waterdeep-reference.mjs`](verify-waterdeep-reference.mjs) | Zero-dependency verifier for the JSON; `--image` checks the source JPEG and `--dataset` recomputes every derived claim from `dataW.js` |
+| [`source-dataset.mjs`](source-dataset.mjs), [`source-checks.mjs`](source-checks.mjs) | Text parser for `dataW.js` (never evaluated) and the comparison used by `--dataset`; tests in `source-checks.test.mjs` use a synthetic dataset |
 | [`render-waterdeep-overlay.mjs`](render-waterdeep-overlay.mjs) | Regenerates `overlay.svg` from the JSON |
 
 The JSON is deliberately small. It is not a dump of the AideDD database: marker names and
@@ -30,21 +31,22 @@ the public image URL, so it needs network access to display the map underneath t
 ## Quick verification
 
 ```sh
-node docs/maps/waterdeep/verify-waterdeep-reference.mjs
+pnpm run verify:waterdeep          # verifier tests + JSON consistency; also runs in CI
 node docs/maps/waterdeep/render-waterdeep-overlay.mjs
 open docs/maps/waterdeep/overlay.svg
 ```
 
-To verify the downloaded source image as well, pass a local copy of
-`waterdeep-3560-7256.jpg`:
+To check against the source itself, pass local copies of the raster and the dataset (see
+[`sources.md`](sources.md) for the download commands):
 
 ```sh
-node docs/maps/waterdeep/verify-waterdeep-reference.mjs --image /path/to/waterdeep-3560-7256.jpg
+node docs/maps/waterdeep/verify-waterdeep-reference.mjs \
+  --image /path/to/waterdeep-3560-7256.jpg --dataset /path/to/dataW.js
 ```
 
-That mode checks the byte size and SHA-256 against the recorded snapshot; the JSON check
-separately asserts the known 3560 x 7256 frame. The image is not shipped, so this check is
-optional in a fresh checkout.
+`--image` checks byte size and SHA-256. `--dataset` checks the SHA-256, then recomputes the
+frame, scale, marker counts, duplicates, ward boxes and centroids, and finds the marker under
+every named point. Neither file is shipped, so these checks run locally, not in CI.
 
 ## Confirmed by this pass
 
@@ -66,9 +68,9 @@ optional in a fresh checkout.
   centroids are kept; the boundary lines are not reproduced.
 - The shoreline is described from visual inspection and is not a vector coastline.
 - The marker database mixes periods and editions. It is not a single-era snapshot.
-- The transform to plan meters is a proposal. **D04 owns IDs, units, and shared DTOs**; D13
-  owns scene generation. This package must be reconciled with those contracts before it is
-  used as runtime data.
+- The scale, and so the calibration, is the source's own constant: its D04 provenance is
+  `interpretation`. Elevation is unknown and not stored. D13 owns scene generation and turns
+  these places into D04 `Place` records with a `PlaceAnchor`.
 - No building heights, terrain mesh, street graph, latitude/longitude, or official JSON API
   were found in the observed source.
 
@@ -76,12 +78,12 @@ optional in a fresh checkout.
 
 | Requirement | Evidence |
 | --- | --- |
-| Verifiable control-point overlay | `overlay.svg` + 20 points in JSON + verifier bounds/transform checks |
+| Verifiable control-point overlay | `overlay.svg` + 20 points in JSON + verifier bounds/plan checks + `--dataset` marker check |
 | Justified or explicitly unknown scale | AideDD dataset constant and comment: 310 px per 1000 ft; explicitly not independently georeferenced |
 | Small initial place selection with provenance | 10 entries in `initial_places`, each with source ref (when present) and provenance tags |
 | Verifiable main-street anchors | 7 `street-label-anchor` entries in `main_streets`, each with an id and provenance enforced by the verifier |
 | No fictional city labelled Waterdeep | This package is reference/calibration only; no procedural geometry is generated |
-| Data design coordinated with D04 | Transform is marked `proposed_pending_D04`; runtime contract is not frozen here |
+| Data design coordinated with D04 | `calibration` has D04's `Calibration` shape; points use D04's X east / Z south frame; D04 gained `PlaceAnchor` so places can carry these positions |
 
 ## Independent review
 
@@ -91,3 +93,7 @@ that ward's reduced bounding box and the AideDD reference places it under the Ca
 used by this package. The assignment and the calibration table were corrected, and the verifier
 checks ward membership as a consistency invariant. The boxes and the hint stay calibration aids,
 not boundaries. No other findings were raised.
+
+A second review (round 3, see [`docs/reports/d05.md`](../../reports/d05.md)) recomputed the
+dataset claims from the source, cropped the doubtful points and compared the package with the
+D04 contract merged meanwhile. Its findings are fixed in the same round.
