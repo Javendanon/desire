@@ -12,6 +12,8 @@ const COLOR_RANGE = { min: 0, max: 1 };
 const REMOTE_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 const SUPPORTED_ROTATION_RAD = 0;
 
+export const safeAssetId = (id) => typeof id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(id);
+
 function validateProvenance(provenance, where, errors) {
   if (provenance === null || typeof provenance !== 'object') {
     errors.push(`${where}: provenance is required`);
@@ -34,7 +36,7 @@ function validateSections(manifest, errors) {
 
 function validateHeader(manifest, errors) {
   if (manifest.schema !== SCHEMA) errors.push(`schema must be ${SCHEMA}`);
-  if (!filled(manifest.id)) errors.push('id is required');
+  if (!safeAssetId(manifest.id)) errors.push('id must be filename-safe (1-64 letters, digits, _ or -)');
   if (!filled(manifest.label)) errors.push('label is required');
   if (manifest.network_allowed === true) {
     errors.push('network_allowed: the pipeline is offline; remote material needs authorization');

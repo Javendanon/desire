@@ -6,6 +6,8 @@ import { buildReport } from './check.js';
 import { encodeGlb } from './glb.js';
 import { parseGlb } from './gltf-read.js';
 import { readManifest } from './io.js';
+import { safeAssetId } from './manifest.js';
+import { outputPath } from './output.js';
 import { buildScene } from './scene.js';
 import { checkTextures } from './textures.js';
 
@@ -13,8 +15,12 @@ const REPORT_NAME = 'report.json';
 const PENDING_SUFFIX = '.pending';
 const STALE_SUFFIX = '.stale';
 
+function checkedPath(file) {
+  return outputPath(path.dirname(file), path.basename(file));
+}
+
 function writeJson(file, value) {
-  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+  fs.writeFileSync(checkedPath(file), `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function failureReport(id, checks, error) {
@@ -29,8 +35,9 @@ function invalidReport(manifest, errors) {
 }
 
 function quarantine(artifactPath) {
+  checkedPath(artifactPath);
   if (!fs.existsSync(artifactPath)) return null;
-  const stalePath = `${artifactPath}${STALE_SUFFIX}`;
+  const stalePath = checkedPath(`${artifactPath}${STALE_SUFFIX}`);
   fs.rmSync(stalePath, { force: true });
   fs.renameSync(artifactPath, stalePath);
   return stalePath;
@@ -38,7 +45,7 @@ function quarantine(artifactPath) {
 
 function stage(spec) {
   const { manifest, scene, artifactPath, sourceDir } = spec;
-  const pendingPath = `${artifactPath}${PENDING_SUFFIX}`;
+  const pendingPath = checkedPath(`${artifactPath}${PENDING_SUFFIX}`);
   fs.rmSync(pendingPath, { force: true });
   fs.writeFileSync(pendingPath, encodeGlb(scene, manifest));
   const gltf = parseGlb(fs.readFileSync(pendingPath));
@@ -51,7 +58,7 @@ function finishArtifact(spec) {
   const { pendingPath, report } = spec;
   report.artifact.written = report.pass;
   if (report.pass) {
-    fs.renameSync(pendingPath, report.artifact.path);
+    fs.renameSync(checkedPath(pendingPath), checkedPath(report.artifact.path));
     return report;
   }
   fs.rmSync(pendingPath, { force: true });
@@ -62,7 +69,7 @@ function finishArtifact(spec) {
 
 function buildArtifact(spec) {
   const { manifest, scene, artifactPath, sourceDir } = spec;
-  const pendingPath = `${artifactPath}${PENDING_SUFFIX}`;
+  const pendingPath = checkedPath(`${artifactPath}${PENDING_SUFFIX}`);
   try {
     const staged = stage({ manifest, scene, artifactPath, sourceDir });
     const report = buildReport({ manifest, scene, gltf: staged.gltf, textures: staged.textures,
@@ -81,15 +88,20 @@ function buildArtifact(spec) {
 export function buildAsset({ manifestPath, outDir }) {
   const targetDir = outDir ?? path.dirname(manifestPath);
   fs.mkdirSync(targetDir, { recursive: true });
-  const reportPath = path.join(targetDir, REPORT_NAME);
+  const reportPath = outputPath(targetDir, REPORT_NAME);
   const { manifest, errors } = readManifest(manifestPath);
   if (errors.length > 0) {
     const report = invalidReport(manifest, errors);
+    if (safeAssetId(manifest?.id)) {
+      const artifact = outputPath(targetDir, `scene-${manifest.id}.glb`);
+      const stale = quarantine(artifact);
+      if (stale) report.stale_path = stale;
+    }
     writeJson(reportPath, report);
     return { report, artifactPath: null, reportPath, bytes: 0 };
   }
   const scene = buildScene(manifest);
-  const artifactPath = path.join(targetDir, `scene-${scene.id}.glb`);
+  const artifactPath = outputPath(targetDir, `scene-${scene.id}.glb`);
   const sourceDir = path.dirname(manifestPath);
   const report = buildArtifact({ manifest, scene, artifactPath, sourceDir });
   writeJson(reportPath, report);
