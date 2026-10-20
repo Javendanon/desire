@@ -46,6 +46,8 @@ jobs:
         run: corepack pnpm install --frozen-lockfile
       - name: Type and Svelte checks
         run: corepack pnpm check
+      - name: Frontend regression tests
+        run: corepack pnpm run test:frontend
       # The source raster and dataset are not in the repository, so CI checks the package's
       # internal consistency and the verifier's own tests; --image/--dataset run locally.
       - name: Waterdeep reference package
