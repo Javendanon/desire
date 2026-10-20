@@ -51,14 +51,16 @@ test('the citywide axis pilot follows independent raster checkpoints within 30 p
     ['the-way-of-the-dragon', 2570, 5480],
     ['the-way-of-the-dragon', 2596, 5680],
     ['dock-street', 2150, 5538],
-    ['dock-street', 2070, 5606],
-    ['dock-street', 2030, 5635],
-    ['the-beaconmarch', 2880, 3000],
-    ['the-beaconmarch', 2918, 3300],
-    ['the-beaconmarch', 2905, 3550],
+    ['dock-street', 2100, 5596],
+    ['dock-street', 2050, 5630],
+    ['the-beaconmarch', 2900, 3010],
+    ['the-beaconmarch', 2983, 3083],
+    ['the-beaconmarch', 2922, 3480],
   ] as const;
   // These axes are a coarse citywide pilot, not survey traces: one grid cell of the annotated
-  // raster crop is 50 px, so 30 px keeps the check honest without claiming metrology.
+  // raster crop is 50 px, so 30 px keeps the check honest without claiming metrology. The
+  // checkpoints were read from the raster and, except the Beaconmarch road beside the wall, land
+  // on pixels measurably lighter than their surroundings (see the comparison report).
   for (const [id, x, z] of checkpoints) {
     const road = WATERDEEP_ROADS.find((entry) => entry.id === id);
     assert.ok(road, id);

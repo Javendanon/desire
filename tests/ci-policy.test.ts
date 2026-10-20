@@ -17,7 +17,8 @@ test('frontend-check executes frontend tests and reference verification in both 
 });
 
 test('the browser scene regressions are reachable from the required frontend script', () => {
-  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const scripts = JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
   assert.ok(scripts['test:browser'], 'package.json has no test:browser script');
   const runner = readFileSync(
     new URL('../tools/ci/browser-smoke.mjs', import.meta.url), 'utf8');

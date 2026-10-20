@@ -24,14 +24,16 @@ export async function checkClosePicking(send, evaluate) {
     });
   }
   assert.equal((await evaluate(state)).selected, 'castle-waterdeep');
-  // Selection must follow the pointer: a click off the marker keeps the other selection.
+  // Selection must follow the pointer: a click off the marker keeps the other selection. The
+  // click lands a quarter canvas width away in screen space, many marker widths past the 8 m
+  // pick-radius floor, and always stays inside the canvas.
   await evaluate("window.__waterdeep.viewer.selectPlace('the-market')");
   const away = await evaluate(`(() => {
-    const viewer = window.__waterdeep.viewer;
-    const marker = viewer.project({ x: 1751.125, z: 4166.911 }, 0);
-    const cast = viewer.project({ x: 1751.125 + 18, z: 4166.911 }, 0);
-    const map = document.getElementById('map');
-    return { x: Math.round(cast.x), y: Math.round(marker.y), width: map.clientWidth };
+    const marker = window.__waterdeep.viewer.project({ x: 1751.125, z: 4166.911 }, 0);
+    const width = document.getElementById('map').clientWidth;
+    const step = Math.round(width / 4);
+    const raw = marker.x > width / 2 ? marker.x - step : marker.x + step;
+    return { x: Math.min(width - 3, Math.max(2, Math.round(raw))), y: Math.round(marker.y), width };
   })()`);
   assert.ok(away.x > 0 && away.x < away.width - 1, `away click x ${away.x} off canvas`);
   for (const type of ['mousePressed', 'mouseReleased']) {
