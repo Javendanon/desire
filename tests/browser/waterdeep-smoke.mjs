@@ -7,6 +7,7 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkClosePicking, checkTouchGestures } from './map-gestures.mjs';
+import { startMemoryAudit, sweepSectors } from './map-memory.mjs';
 
 const [base = 'http://127.0.0.1:5200', screenshot = '/tmp/waterdeep-sectors.png'] =
   process.argv.slice(2);
@@ -48,6 +49,7 @@ const pending = new Map();
 ws.addEventListener('message', (event) => {
   const message = JSON.parse(event.data);
   pending.get(message.id)?.(message);
+  pending.delete(message.id);
 });
 const send = (method, params = {}) =>
   new Promise((resolve) => {
@@ -74,6 +76,7 @@ async function waitForReady() {
   throw new Error('the Waterdeep scene did not become ready');
 }
 
+const memoryAudit = await startMemoryAudit(send, evaluate);
 try {
   await send('Emulation.setDeviceMetricsOverride', {
     width: 1440,
@@ -83,6 +86,7 @@ try {
   });
   await send('Page.navigate', { url: `${base}/waterdeep.html?backend=webgl2` });
   await waitForReady();
+  await memoryAudit.observe();
   await sleep(900);
 
   const first = await evaluate('window.__waterdeep.check()');
@@ -164,6 +168,9 @@ try {
   const pilotPath = screenshot.replace(/\.png$/, '-market.png');
   if (pilotShot.result?.data) writeFileSync(pilotPath, Buffer.from(pilotShot.result.data, 'base64'));
 
+  const sweep = await sweepSectors(send, evaluate);
+  const memory = await memoryAudit.finish();
+
   const moved =
     Math.hypot(panned.stats.focus.x - first.stats.focus.x, panned.stats.focus.z - first.stats.focus.z) >
     20;
@@ -201,6 +208,8 @@ try {
         pannedFocus: panned.stats.focus,
         radius: { before: panned.stats.radius, after: zoomed.stats.radius },
         streamed,
+        sweep,
+        memory,
         pickedByPointer,
         closePicking,
         touch,
@@ -217,6 +226,7 @@ try {
   console.error(JSON.stringify({ ok: false, error: String(error) }, null, 1));
   process.exitCode = 1;
 } finally {
+  memoryAudit.stop();
   ws.close();
   chrome.kill();
 }
