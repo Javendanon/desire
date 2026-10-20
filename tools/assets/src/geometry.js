@@ -4,6 +4,7 @@ const COORDS_PER_VERTEX = 3;
 const TOP_SHADE = 1;
 const SIDE_SHADE = 0.82;
 const QUAD_TRIANGLES = [0, 1, 2, 0, 2, 3];
+const COLOR_CHANNELS = 3;
 
 const UP = [0, 1, 0];
 const DOWN_IN_Z = [0, 0, -1];
@@ -54,6 +55,11 @@ function addQuad(mesh, quad, look) {
   for (const offset of QUAD_TRIANGLES) mesh.indices.push(base + offset);
 }
 
+/** Keeps only the RGB channels: COLOR_0 is declared as VEC3 in the artifact. */
+function rgb(color) {
+  return color.slice(0, COLOR_CHANNELS);
+}
+
 function shaded(color, factor) {
   return [color[0] * factor, color[1] * factor, color[2] * factor];
 }
@@ -79,10 +85,11 @@ function resolveCorners(corners, keys) {
 export function buildBox(solid, color) {
   const mesh = emptyMesh();
   const corners = boxCorners(solid);
+  const baseColor = rgb(color);
   for (const face of CUBE_FACES) {
     addQuad(mesh, resolveCorners(corners, face.corners), {
       normal: face.normal,
-      color: shaded(color, face.shade),
+      color: shaded(baseColor, face.shade),
     });
   }
   return mesh;
@@ -94,7 +101,7 @@ export function buildGround(ground, color) {
   const width = ground.width_m;
   const depth = ground.height_m;
   const quad = [[0, 0, 0], [0, 0, depth], [width, 0, depth], [width, 0, 0]];
-  addQuad(mesh, quad, { normal: UP, color });
+  addQuad(mesh, quad, { normal: UP, color: rgb(color) });
   return mesh;
 }
 

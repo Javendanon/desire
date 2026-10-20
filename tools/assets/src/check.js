@@ -5,6 +5,7 @@ import { navigate } from './nav.js';
 
 const LOD_PREFIX = 'render/lod0/';
 const VERTICES_PER_TRIANGLE = 3;
+const COVERAGE_TOLERANCE_M = 0.01;
 
 const finding = (id, pass, detail) => ({ id, pass, detail });
 
@@ -26,7 +27,6 @@ function collisionState(gltf, scene) {
     materialless,
     blockers: collisionBlockers(gltf),
     lod0_nodes: lod0.length,
-    expected_solids: scene.solids.length,
     lod1: Boolean(lod1),
   };
 }
@@ -49,13 +49,58 @@ function lodState(gltf) {
   };
 }
 
-function collisionFindings(collision) {
+function blockerContains(blocker, solid) {
+  const halfWidth = solid.width_m / 2;
+  const halfDepth = solid.depth_m / 2;
+  const west = solid.center.x_m - halfWidth + COVERAGE_TOLERANCE_M;
+  const east = solid.center.x_m + halfWidth - COVERAGE_TOLERANCE_M;
+  const north = solid.center.z_m - halfDepth + COVERAGE_TOLERANCE_M;
+  const south = solid.center.z_m + halfDepth - COVERAGE_TOLERANCE_M;
+  return blocker.min_x <= west && blocker.max_x >= east
+    && blocker.min_z <= north && blocker.max_z >= south;
+}
+
+/** Solids whose footprint is not inside any collision quad. Exported for tests. */
+export function uncoveredSolids(blockers, solids) {
+  const missing = solids.filter((solid) => {
+    return !blockers.some((blocker) => blockerContains(blocker, solid));
+  });
+  return missing.map((solid) => solid.id);
+}
+
+function collisionFindings(collision, scene) {
+  const missing = uncoveredSolids(collision.blockers, scene.solids);
+  const covered = missing.length === 0 && collision.blockers.length > 0;
+  const detail = missing.length > 0
+    ? `uncovered ${missing.join(', ')}`
+    : `${scene.solids.length} solid footprints covered`;
   return [
     finding('collision.separate', collision.separate, 'collision node apart from render LODs'),
     finding('collision.materialless', collision.materialless, 'collision has no material'),
-    finding('collision.covers_solids', collision.blockers.length > 0,
-      `${collision.blockers.length} collision quads`),
+    finding('collision.covers_solids', covered, detail),
   ];
+}
+
+function attributeProblem(accessors, attributes, position) {
+  for (const [name, index] of Object.entries(attributes)) {
+    const accessor = accessors[index];
+    const whole = Number.isInteger(accessor.count) && accessor.count > 0;
+    if (!whole || accessor.count !== position.count) return `${name} count ${accessor.count}`;
+  }
+  return null;
+}
+
+function accessorFinding(gltf) {
+  const broken = [];
+  for (const mesh of gltf.json.meshes) {
+    for (const primitive of mesh.primitives) {
+      const position = gltf.json.accessors[primitive.attributes.POSITION];
+      const problem = attributeProblem(gltf.json.accessors, primitive.attributes, position);
+      if (problem) broken.push(problem);
+    }
+  }
+  return finding('artifact.accessors', broken.length === 0,
+    broken.join(', ') || 'attribute counts match POSITION');
 }
 
 function lodFinding(collision, scene) {
@@ -70,6 +115,7 @@ function artifactFindings(gltf, scene) {
   const listed = extras.unknown_places ?? [];
   const expected = scene.unknown.map((place) => place.id);
   return [
+    accessorFinding(gltf),
     finding('artifact.embedded', externalBuffers.length === 0 && (json.images ?? []).length === 0,
       'no external buffer or embedded image download'),
     finding('artifact.provenance',
@@ -100,7 +146,7 @@ function acceptanceChecks(context) {
     finding('scale.checks', scaleChecks.length > 0 && scaleChecks.every((entry) => entry.pass),
       `${scaleChecks.length} reference distances`),
     fidelityFinding(scene, manifest.places.length),
-    ...collisionFindings(collision),
+    ...collisionFindings(collision, scene),
     lodFinding(collision, scene),
     ...artifactFindings(gltf, scene),
     textureFinding(textures),
@@ -154,7 +200,12 @@ export function buildReport(spec) {
     pass: checks.every((entry) => entry.pass),
     checks,
     ...reportSections(context),
-    artifact: { path: artifactPath, bytes, generator: context.gltf.json.asset.generator },
+    artifact: {
+      path: artifactPath,
+      bytes,
+      generator: context.gltf.json.asset.generator,
+      written: false,
+    },
     provenance: manifest.illustration.provenance,
     network_allowed: false,
   };

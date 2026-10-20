@@ -14,6 +14,7 @@ function toSolid(place, calibration) {
     height_m: place.height_m,
     height_evidence: place.height_evidence,
     material: place.material,
+    provenance: place.provenance,
   };
 }
 

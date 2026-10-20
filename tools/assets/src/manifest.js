@@ -9,6 +9,7 @@ export const MAX_TEXTURE_BYTES = 262144;
 const BASE_COLOR_CHANNELS = 4;
 const COLOR_RANGE = { min: 0, max: 1 };
 const REMOTE_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
+const SUPPORTED_ROTATION_RAD = 0;
 
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 const positive = (value) => finite(value) && value > 0;
@@ -26,6 +27,16 @@ function validateProvenance(provenance, where, errors) {
   if (!filled(provenance.attribution)) errors.push(`${where}: provenance.attribution is required`);
 }
 
+function validateSections(manifest, errors) {
+  for (const key of ['places', 'materials', 'waypoints']) {
+    if (!Array.isArray(manifest[key])) errors.push(`${key} must be an array`);
+  }
+  if (manifest.textures !== undefined && !Array.isArray(manifest.textures)) {
+    errors.push('textures must be an array');
+  }
+  if (!filled(manifest.ground?.material)) errors.push('ground: material is required');
+}
+
 function validateHeader(manifest, errors) {
   if (manifest.schema !== SCHEMA) errors.push(`schema must be ${SCHEMA}`);
   if (!filled(manifest.id)) errors.push('id is required');
@@ -33,6 +44,7 @@ function validateHeader(manifest, errors) {
   if (manifest.network_allowed === true) {
     errors.push('network_allowed: the pipeline is offline; remote material needs authorization');
   }
+  validateSections(manifest, errors);
 }
 
 function validateIllustration(illustration, errors) {
@@ -58,8 +70,8 @@ function validateCalibration(calibration, errors) {
   if (!finite(calibration.origin_px_x) || !finite(calibration.origin_px_y)) {
     errors.push('calibration: origin_px_x and origin_px_y must be finite');
   }
-  if (!finite(calibration.rotation_radians)) {
-    errors.push('calibration: rotation_radians must be finite');
+  if (calibration.rotation_radians !== SUPPORTED_ROTATION_RAD) {
+    errors.push('calibration: rotation_radians must be 0; ground and nav grid are axis-aligned');
   }
   validateProvenance(calibration.provenance, 'calibration', errors);
 }
@@ -131,8 +143,18 @@ function validatePlaceLinks(place, materialIds, errors) {
   }
 }
 
+function validatePixel(place, frame, errors) {
+  const { u, v } = place.pixel ?? {};
+  if (!finite(u) || !finite(v)) {
+    errors.push(`place ${place.id}: pixel needs finite u and v`);
+    return;
+  }
+  const outside = u < 0 || v < 0 || u > frame.width_px || v > frame.height_px;
+  if (outside) errors.push(`place ${place.id}: pixel outside the illustration frame`);
+}
+
 function validatePlace(place, context) {
-  const { materialIds, seen, errors } = context;
+  const { materialIds, frame, seen, errors } = context;
   if (!filled(place.id)) {
     errors.push('place: id is required');
     return;
@@ -140,9 +162,7 @@ function validatePlace(place, context) {
   if (seen.has(place.id)) errors.push(`duplicate place id ${place.id}`);
   seen.add(place.id);
   if (!filled(place.name)) errors.push(`place ${place.id}: name is required`);
-  if (!finite(place.pixel?.u) || !finite(place.pixel?.v)) {
-    errors.push(`place ${place.id}: pixel needs finite u and v`);
-  }
+  validatePixel(place, frame, errors);
   validateFootprint(place, errors);
   validatePlaceLinks(place, materialIds, errors);
   validateHeight(place, errors);
@@ -208,13 +228,34 @@ function escapesAssetDir(value) {
   return value.startsWith('/') || value.includes('..');
 }
 
+function groundExtent(manifest) {
+  const { illustration, calibration } = manifest;
+  const width = illustration?.width_px;
+  const height = illustration?.height_px;
+  const scale = calibration?.meters_per_pixel;
+  if (!(positive(width) && positive(height) && positive(scale))) return null;
+  return { width_m: width * scale, height_m: height * scale };
+}
+
+function validateAnchor(spec) {
+  const { where, point, extent, errors } = spec;
+  const { x_m: x, z_m: z } = point ?? {};
+  if (!finite(x) || !finite(z)) {
+    errors.push(`${where}: x_m and z_m must be finite`);
+    return;
+  }
+  if (extent === null) return;
+  const outside = x < 0 || z < 0 || x > extent.width_m || z > extent.height_m;
+  if (outside) errors.push(`${where}: outside the calibrated ground`);
+}
+
 function validateAnchors(manifest, errors) {
-  const spawn = manifest.spawn ?? {};
-  if (!finite(spawn.x_m) || !finite(spawn.z_m)) errors.push('spawn: x_m and z_m must be finite');
-  for (const waypoint of manifest.waypoints ?? []) {
-    if (!finite(waypoint.x_m) || !finite(waypoint.z_m)) {
-      errors.push(`waypoint ${waypoint.id}: x_m and z_m must be finite`);
-    }
+  const waypoints = Array.isArray(manifest.waypoints) ? manifest.waypoints : [];
+  if (waypoints.length === 0) errors.push('waypoints: at least one navigation anchor is required');
+  const extent = groundExtent(manifest);
+  validateAnchor({ where: 'spawn', point: manifest.spawn, extent, errors });
+  for (const waypoint of waypoints) {
+    validateAnchor({ where: `waypoint ${waypoint.id}`, point: waypoint, extent, errors });
   }
 }
 
@@ -234,7 +275,12 @@ export function validateManifest(manifest) {
   if (manifest.ground?.material && !materialIds.has(manifest.ground.material)) {
     errors.push(`ground: unknown material ${manifest.ground.material}`);
   }
-  const context = { materialIds, seen: new Set(), errors };
-  for (const place of manifest.places ?? []) validatePlace(place, context);
+  const places = Array.isArray(manifest.places) ? manifest.places : [];
+  if (places.length > 0 && !places.some((place) => typeof place.height_m === 'number')) {
+    errors.push('places: at least one declared height is required to build geometry');
+  }
+  const frame = manifest.illustration ?? {};
+  const context = { materialIds, frame, seen: new Set(), errors };
+  for (const place of places) validatePlace(place, context);
   return { errors };
 }

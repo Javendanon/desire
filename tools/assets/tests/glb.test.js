@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { uncoveredSolids } from '../src/check.js';
 import { encodeGlb } from '../src/glb.js';
-import { nodeAabbs, parseGlb } from '../src/gltf-read.js';
+import { collisionBlockers, parseGlb } from '../src/gltf-read.js';
 import { readManifest } from '../src/io.js';
 import { buildScene } from '../src/scene.js';
 import { sampleManifestPath } from './helpers.js';
@@ -45,12 +46,36 @@ test('collision geometry carries no material and no render children', () => {
 
 test('collision bounds cover every solid footprint', () => {
   const { manifest, gltf } = build();
-  const boxes = nodeAabbs(gltf, nodeByName(gltf.json, 'collision').mesh);
+  const blockers = collisionBlockers(gltf);
   const scene = buildScene(manifest);
-  for (const solid of scene.solids) {
-    const covering = boxes.filter((box) => box.min[0] <= solid.center.x_m + solid.width_m / 2
-      && box.max[0] >= solid.center.x_m - solid.width_m / 2);
-    assert.ok(covering.length > 0, `collision misses ${solid.id}`);
+  assert.deepEqual(uncoveredSolids(blockers, scene.solids), []);
+});
+
+test('coverage fails when a solid loses its collision box', () => {
+  const { manifest, gltf } = build();
+  const blockers = collisionBlockers(gltf);
+  const scene = buildScene(manifest);
+  const [first, ...rest] = scene.solids;
+  const kept = blockers.filter((blocker) => {
+    return blocker.min_x > first.center.x_m + first.width_m / 2
+      || blocker.max_x < first.center.x_m - first.width_m / 2;
+  });
+  assert.deepEqual(uncoveredSolids(kept, scene.solids), [first.id]);
+  assert.equal(rest.length, scene.solids.length - 1);
+});
+
+test('every vertex attribute count is an integer and matches POSITION', () => {
+  const { gltf } = build();
+  for (const mesh of gltf.json.meshes) {
+    for (const primitive of mesh.primitives) {
+      const position = gltf.json.accessors[primitive.attributes.POSITION];
+      for (const [name, index] of Object.entries(primitive.attributes)) {
+        const accessor = gltf.json.accessors[index];
+        assert.ok(Number.isInteger(accessor.count) && accessor.count > 0,
+          `${name} count ${accessor.count} is not a positive integer`);
+        assert.equal(accessor.count, position.count, `${name} count differs from POSITION`);
+      }
+    }
   }
 });
 

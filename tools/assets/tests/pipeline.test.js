@@ -51,13 +51,26 @@ test('the artifact and its report are written next to each other', async () => {
   assert.equal(written.pass, true);
 });
 
+test('a malformed manifest writes a failing report and leaves no artifact', async () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
+  const brokenPath = path.join(outDir, 'broken.json');
+  fs.writeFileSync(brokenPath, JSON.stringify({ schema: 'desire.asset-scene/1', places: {} }));
+  const { report, artifactPath } = await buildAsset({ manifestPath: brokenPath, outDir });
+  assert.equal(report.pass, false);
+  assert.equal(artifactPath, null);
+  assert.ok(fs.existsSync(path.join(outDir, 'report.json')));
+  assert.deepEqual(fs.readdirSync(outDir).filter((name) => name.endsWith('.glb')), []);
+});
+
 test('a manifest with a broken scale check fails the build instead of shipping', async () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
   const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
   manifest.scale_checks[0].expected_m = 300;
   const brokenPath = path.join(outDir, 'broken.json');
   fs.writeFileSync(brokenPath, JSON.stringify(manifest));
-  const { report } = await buildAsset({ manifestPath: brokenPath, outDir });
+  const { report, artifactPath } = await buildAsset({ manifestPath: brokenPath, outDir });
   assert.equal(report.pass, false);
   assert.match(JSON.stringify(report.checks), /scale/);
+  assert.equal(artifactPath, null);
+  assert.equal(report.artifact.written, false);
 });

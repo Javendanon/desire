@@ -154,7 +154,13 @@ function addSolidNodes(spec) {
   for (const solid of scene.solids) {
     pushNode(`render/lod0/${solid.id}`, buildBox(solid, colorById(manifest, solid.material)), {
       material: materialById.get(solid.material),
-      extras: { desire: { place_id: solid.id, height_evidence: solid.height_evidence } },
+      extras: {
+        desire: {
+          place_id: solid.id,
+          height_evidence: solid.height_evidence,
+          provenance: solid.provenance,
+        },
+      },
     });
   }
 }

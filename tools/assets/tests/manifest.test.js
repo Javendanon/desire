@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { readManifest } from '../src/io.js';
 import { validateManifest } from '../src/manifest.js';
-import { sampleManifestPath, samplePath } from './helpers.js';
+import { sampleManifestPath } from './helpers.js';
 
 const base = () => readManifest(sampleManifestPath()).manifest;
 
@@ -28,6 +31,45 @@ test('an interpreted height needs a rationale', () => {
   const place = manifest.places.find((entry) => entry.height_evidence === 'interpretation');
   delete place.rationale;
   assert.match(errorsOf(manifest).join('\n'), /rationale/);
+});
+
+test('a rotated calibration is rejected until ground and grid rotate too', () => {
+  const manifest = base();
+  manifest.calibration.rotation_radians = Math.PI / 2;
+  assert.match(errorsOf(manifest).join('\n'), /rotation_radians/);
+});
+
+test('a place outside the illustration frame is rejected', () => {
+  const manifest = base();
+  manifest.places[0].pixel = { u: 99999, v: 99999 };
+  assert.match(errorsOf(manifest).join('\n'), /illustration frame/);
+});
+
+test('anchors outside the calibrated ground are rejected', () => {
+  const manifest = base();
+  manifest.spawn = { x_m: 99999, z_m: 99999 };
+  manifest.waypoints[0] = { id: 'far', x_m: -5, z_m: 10 };
+  const errors = errorsOf(manifest).join('\n');
+  assert.match(errors, /spawn/);
+  assert.match(errors, /waypoint far/);
+});
+
+test('a manifest without a reachable anchor or a solid cannot build', () => {
+  const manifest = base();
+  manifest.waypoints = [];
+  for (const place of manifest.places) place.height_m = null;
+  const errors = errorsOf(manifest).join('\n');
+  assert.match(errors, /waypoints/);
+  assert.match(errors, /declared height/);
+});
+
+test('malformed sections return errors instead of throwing', () => {
+  const manifest = base();
+  manifest.places = {};
+  manifest.ground = undefined;
+  const errors = errorsOf(manifest).join('\n');
+  assert.match(errors, /places/);
+  assert.match(errors, /ground/);
 });
 
 test('an unknown height is allowed and invents nothing', () => {
@@ -64,9 +106,21 @@ test('duplicate place ids and impossible footprints are rejected', () => {
   assert.match(errors, /footprint_m/);
 });
 
-test('the sample texture is a real webp inside its budget', () => {
+test('the sample texture passes the magic-byte and budget check', async () => {
+  const { checkTextures } = await import('../src/textures.js');
   const { manifest } = readManifest(sampleManifestPath());
-  const texture = manifest.textures[0];
-  assert.equal(texture.mime, 'image/webp');
-  assert.ok(samplePath(texture.path).endsWith('.webp'));
+  const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
+  assert.equal(texture.id, 'paving-webp');
+  assert.equal(texture.pass, true, texture.detail);
+});
+
+test('a renamed file does not pass as compressed', async () => {
+  const { checkTextures } = await import('../src/textures.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-texture-'));
+  fs.writeFileSync(path.join(dir, 'fake.webp'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const textures = [{ id: 'fake', path: 'fake.webp', mime: 'image/webp', max_bytes: 1024 }];
+  const manifest = { textures };
+  const [texture] = checkTextures(manifest, dir);
+  assert.equal(texture.pass, false);
+  assert.match(texture.detail, /not image\/webp/);
 });

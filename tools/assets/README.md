@@ -28,15 +28,17 @@ km cogcom tools/assets --per-function
 km dups tools/assets --exclude-ext json
 ```
 
-Exit code is `0` only when every acceptance check passes, `2` otherwise. The report is
-written even when the build fails, so the failure is auditable.
+Exit code is `0` only when every acceptance check passes, `2` otherwise. The report is written
+even when the build fails, so the failure is auditable. A failing build leaves no `.glb` next
+to the report: the artifact is staged as `scene-<id>.glb.pending` and only renamed into place
+when every check passes.
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
 | `asset-pipeline.js` | CLI: `--manifest`, optional `--out` |
-| `src/io.js` | Only file access for inputs; parses and validates the manifest |
+| `src/io.js` | Reads and validates the manifest |
 | `src/manifest.js` | Pure manifest validation (schema, provenance, heights, textures) |
 | `src/calibration.js` | D04 pixel-to-meter transform and scale checks |
 | `src/scene.js` | Metric scene: solids, unknown places, fidelity tally |
@@ -44,7 +46,7 @@ written even when the build fails, so the failure is auditable.
 | `src/glb.js` | glTF 2.0 binary writer: render LODs plus separated collision |
 | `src/gltf-read.js` | Reads the artifact back for checks |
 | `src/nav.js` | Conservative walkability (grid flood fill) |
-| `src/textures.js` | Compressed-texture magic bytes and byte budgets |
+| `src/textures.js` | Reads textures: magic bytes and byte budgets |
 | `src/check.js` | Acceptance findings and report |
 | `src/pipeline.js` | Orchestration: validate, build, write, check |
 | `samples/sample-harbor/` | Input manifest, texture, generated `.glb` and report |
@@ -67,9 +69,10 @@ runtime scene is D13.
 
 `scale.checks` recomputes declared reference distances from the calibration; `fidelity.tally`
 counts verified, interpreted, synthetic and unknown heights; `collision.*` proves the collision
-node exists, has no material and covers the solids; `lod.levels` proves LOD nodes exist;
-`artifact.embedded` proves the buffer is embedded and no image is downloaded; `textures.compressed`
-reads magic bytes and byte budgets; `navigation.waypoints` floods the free cells from the spawn
-and requires every waypoint to be reachable.
+node exists, has no material and that every solid footprint lies inside a collision quad;
+`lod.levels` proves LOD nodes exist; `artifact.accessors` proves every vertex attribute count is
+an integer matching POSITION; `artifact.embedded` proves the buffer is embedded and no image is
+downloaded; `textures.compressed` reads magic bytes and byte budgets; `navigation.waypoints`
+floods the ground from the spawn and requires at least one declared waypoint to be reachable.
 
 The checks inspect the written `.glb`, not the in-memory plan.

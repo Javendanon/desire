@@ -35,8 +35,9 @@ scene-<id>.glb: render/ground, render/lod0/<place>, render/lod1, collision
 report.json: scale, fidelity, collision, LOD, textures, navigation, provenance
 ```
 
-Every stage is a pure function except `src/io.js` and `src/pipeline.js`. Nothing fetches,
-nothing renders, nothing infers geometry. Running the sample takes about 0.1 s.
+Every stage is a pure function except `src/io.js`, `src/textures.js` and `src/pipeline.js`,
+which touch the filesystem. Nothing fetches, nothing renders, nothing infers geometry.
+Running the sample takes about 0.1 s.
 
 ## 3. Manifest contract
 
@@ -51,10 +52,19 @@ The manifest reuses D04's vocabulary so a D05-derived calibration needs no trans
   meters, rounded to millimetres only in the report.
 
 Validation is strict on purpose. A manifest is rejected when: the schema or label is missing,
-the illustration has no license, the calibration is absent or non-positive, there is no
+the illustration has no license, the calibration is absent or non-positive, `places`,
+`materials` or `waypoints` are not arrays, `ground.material` is missing, there is no
 `scale_check` reference distance, a place id repeats, a footprint exceeds 200 m, a place
-references an unknown material, a texture is not compressed, a texture budget exceeds 256 KiB,
-a texture path escapes the asset directory, or heights violate the policy in §4.
+pixel falls outside the illustration frame, the spawn or a waypoint falls outside the
+calibrated ground, there is no waypoint, no place declares a height, a place references an
+unknown material, a texture is not compressed, a texture budget exceeds 256 KiB, a texture
+path escapes the asset directory, `rotation_radians` is not 0, or heights violate the policy
+in §4.
+
+`rotation_radians` is rejected while non-zero because the ground quad and the navigation grid
+are axis-aligned. Anchor rotation alone would place the scene off its own ground. Supporting
+rotation means rotating the ground, the collision quads and the nav grid together; that is a
+contract change, not a hidden correction in the renderer.
 
 ## 4. Fidelity versus interpretation
 
@@ -98,7 +108,10 @@ not show (heights, interiors, hidden alleys) stay unknown by construction.
   4-neighbour flood fill from the spawn. A waypoint counts as reachable when a reached cell
   centre lies within 1.5 m. Blocking is conservative: a cell is blocked when a collision quad
   overlaps it, so the check can only under-report reachability, never over-report it. The
-  sample reaches 47 624 of 49 152 cells (96.9%) and all three waypoints.
+  sample reaches 47 624 of 49 152 ground cells (96.9%) and all three waypoints.
+- **Coverage**: the check recomputes, from the artifact's collision quads, that every solid
+  footprint lies inside some collision quad. A collision mesh that covers one building out of
+  eight fails the build.
 
 The artifact is glTF 2.0 binary with an embedded buffer and no images, so a consumer needs no
 second download. Materials carry PBR factors; the declared texture is referenced by id in
@@ -151,7 +164,9 @@ rejection, not a stub.
 ## 9. Provenance, privacy and cost
 
 - Every manifest declares illustration provenance (source, attribution, evidence) and a license.
-  Both are copied into `asset.extras.desire` and the report.
+  Both are copied into `asset.extras.desire` and the report. Each solid node also carries its
+  place id, height evidence and provenance tags, so a place can be traced back from the artifact
+  without opening the input manifest.
 - `network_allowed: true` is rejected. The pipeline has no network code, and texture URLs are
   rejected by validation. Nothing leaves the machine, so no private material is uploaded.
 - No paid service is used and no API key is required. The only external binary used during
@@ -188,6 +203,17 @@ rejection, not a stub.
 
 - The nav grid is conservative and axis-aligned: a rotated wall over-blocks. This can hide a
   reachable waypoint but never claim a blocked one. Upgrade path: rasterize triangles exactly.
+- Rotation is rejected, not implemented (see §3). Circular or north-rotated plans need the
+  ground, collision and grid to rotate together.
+- Some checks are structural invariants rather than evidence: `artifact.embedded` can only fail
+  if the writer starts emitting URIs or images, and `fidelity.tally` compares the tally against
+  the same manifest it was built from. They guard against regressions, not against a bad input.
+- The public boundary is plain JavaScript objects with runtime validation. Nothing in the repo
+  type-checks `tools/assets` (`tsconfig.json` covers `src/**` only, `tsconfig.node.json` covers
+  `vite.config.ts`), so F13 is enforced by validation and tests, not by a type checker. A
+  `checkJs` target belongs to the gate work in D02.
+- `reachable_ratio` divides reached cells by all ground cells, not by free cells; blocked cells
+  are reported separately as `blocked_cells`.
 - LOD1 does not reduce triangles yet. It is a draw-call LOD, measured as such.
 - Footprints are axis-aligned boxes. Arbitrary silhouettes need an authored mesh path (Blender
   or `gltf-transform`) that this sample did not justify.

@@ -26,12 +26,17 @@
     {
       "id": "collision.covers_solids",
       "pass": true,
-      "detail": "40 collision quads"
+      "detail": "8 solid footprints covered"
     },
     {
       "id": "lod.levels",
       "pass": true,
       "detail": "lod0 8/8, lod1 true"
+    },
+    {
+      "id": "artifact.accessors",
+      "pass": true,
+      "detail": "attribute counts match POSITION"
     },
     {
       "id": "artifact.embedded",
@@ -136,8 +141,9 @@
   },
   "artifact": {
     "path": "tools/assets/samples/sample-harbor/scene-sample-harbor.glb",
-    "bytes": 30416,
-    "generator": "desire-asset-pipeline/1"
+    "bytes": 30656,
+    "generator": "desire-asset-pipeline/1",
+    "written": true
   },
   "provenance": {
     "source": "synthetic:sample-harbor",
