@@ -19,6 +19,23 @@ class ExampleTests(unittest.TestCase):
     def test_fixture_links_are_coherent(self):
         check_examples(self.fixture, self.schema)
 
+    def test_place_anchor_requires_an_existing_map(self):
+        anchor = self.fixture['places'][0]['anchors'][0]
+        anchor['map_version_id'] = '00000000-0000-4000-8000-000000000999'
+        with self.assertRaisesRegex(ValueError, 'anchors.map_version_id: missing reference'):
+            check_examples(self.fixture, self.schema)
+
+    def test_place_anchor_map_must_belong_to_the_place_city(self):
+        anchor = self.fixture['places'][0]['anchors'][0]
+        anchor['map_version_id'] = self.fixture['maps'][1]['id']
+        with self.assertRaisesRegex(ValueError, 'anchors.map_version_id: map city mismatch'):
+            check_examples(self.fixture, self.schema)
+
+    def test_place_anchor_needs_a_calibrated_map(self):
+        self.fixture['maps'][0]['calibration'] = None
+        with self.assertRaisesRegex(ValueError, 'anchors.map_version_id: map is not calibrated'):
+            check_examples(self.fixture, self.schema)
+
     def test_missing_reference_is_rejected(self):
         self.fixture['cities'] = []
         with self.assertRaisesRegex(ValueError, 'missing reference'):

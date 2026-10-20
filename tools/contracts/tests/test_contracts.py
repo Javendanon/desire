@@ -57,6 +57,16 @@ class ContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'meters_per_pixel'):
             validate(self.fixture, self.schema)
 
+    def test_place_without_anchors_list_is_rejected(self):
+        del self.fixture['places'][0]['anchors']
+        with self.assertRaisesRegex(ValueError, 'anchors'):
+            validate(self.fixture, self.schema)
+
+    def test_nonfinite_anchor_position_is_rejected(self):
+        self.fixture['places'][0]['anchors'][0]['position']['z_m'] = float('inf')
+        with self.assertRaisesRegex(ValueError, 'z_m'):
+            validate(self.fixture, self.schema)
+
     def test_dm_fields_do_not_fit_player_snapshot(self):
         snapshot = copy.deepcopy(self.fixture['snapshots'][0])
         snapshot['secrets'] = []

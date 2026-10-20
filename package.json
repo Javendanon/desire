@@ -21,6 +21,7 @@
     "test:quality": "python3 -m unittest discover -s tools/quality/tests -p 'test_*.py'",
     "check:tests": "tsc -p tsconfig.tests.json",
     "quality:gate": "python3 tools/quality/gate.py",
+    "verify:waterdeep": "node --test \"docs/maps/waterdeep/*.test.mjs\" && node docs/maps/waterdeep/verify-waterdeep-reference.mjs",
     "db:up": "docker compose up -d db",
     "db:stop": "docker compose stop db"
   },

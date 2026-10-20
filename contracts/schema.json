@@ -221,7 +221,8 @@
         "city_id",
         "district_id",
         "name",
-        "provenance"
+        "provenance",
+        "anchors"
       ],
       "properties": {
         "id": {
@@ -242,6 +243,33 @@
         },
         "name": {
           "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaceAnchor"
+          }
+        }
+      }
+    },
+    "PlaceAnchor": {
+      "type": "object",
+      "x-module": "catalog",
+      "additionalProperties": false,
+      "required": [
+        "map_version_id",
+        "position",
+        "provenance"
+      ],
+      "properties": {
+        "map_version_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
         },
         "provenance": {
           "$ref": "#/$defs/Provenance"

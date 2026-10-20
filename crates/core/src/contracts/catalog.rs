@@ -53,6 +53,15 @@ pub struct Place {
     pub district_id: Option<Id>,
     pub name: String,
     pub provenance: Provenance,
+    pub anchors: Vec<PlaceAnchor>,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlaceAnchor {
+    pub map_version_id: Id,
+    pub position: Position,
+    pub provenance: Provenance,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

@@ -65,6 +65,13 @@ export interface Place {
   district_id: Id | null;
   name: string;
   provenance: Provenance;
+  anchors: PlaceAnchor[];
+}
+
+export interface PlaceAnchor {
+  map_version_id: Id;
+  position: Position;
+  provenance: Provenance;
 }
 
 export interface MapVersion {

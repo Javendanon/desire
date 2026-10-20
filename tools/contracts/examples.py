@@ -60,6 +60,19 @@ def check_snapshot(snapshot: dict, index: dict) -> None:
             check_projection(record, index, collection)
 
 
+def check_place_anchors(place: dict, index: dict) -> None:
+    """Each anchor points at a calibrated map of the place's own city; O(anchors)."""
+    for anchor in place['anchors']:
+        location = 'places.anchors.map_version_id'
+        map_version = index['maps'].get(anchor['map_version_id'])
+        if map_version is None:
+            raise ValueError(f'{location}: missing reference {anchor["map_version_id"]}')
+        if map_version['city_id'] != place['city_id']:
+            raise ValueError(f'{location}: map city mismatch')
+        if map_version['calibration'] is None:
+            raise ValueError(f'{location}: map is not calibrated')
+
+
 def check_travel_event(event: dict, index: dict) -> None:
     if event['campaign_id'] != event['travel']['campaign_id']:
         raise ValueError('travel_events.travel: cross-campaign reference')
@@ -96,6 +109,8 @@ def check_examples(examples: dict, schema: dict) -> None:
         check_snapshot(snapshot, index)
     for event in examples['travel_events']:
         check_travel_event(event, index)
+    for place in examples['places']:
+        check_place_anchors(place, index)
 
 
 if __name__ == '__main__':
