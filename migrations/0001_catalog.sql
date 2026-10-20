@@ -9,6 +9,7 @@ CREATE DOMAIN catalog.provenance AS jsonb CHECK (
     AND VALUE ?& ARRAY['source', 'attribution', 'evidence']
     AND jsonb_typeof(VALUE->'source') = 'string'
     AND jsonb_typeof(VALUE->'attribution') = 'string'
+    AND jsonb_typeof(VALUE->'evidence') = 'string'
     AND VALUE->>'evidence' IN ('verified', 'interpretation', 'synthetic')
 );
 CREATE TABLE catalog.worlds (
