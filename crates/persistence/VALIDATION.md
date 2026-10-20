@@ -128,8 +128,19 @@ reproduced history lookup failure after changing `search_path`. Wrapped the SQL
 line and added a failing search-path regression before qualifying the history
 table as `public.persistence_migrations`. Some fixture-heavy tests remain 26–35
 lines: below the hard ceiling, kept explicit rather than adding more factories.
-A final independent check of these follow-ups and the documented CI blocker is
-pending; scoped review is not remote-CI or production approval.
+Round 3: two fresh-context reviewers independently verified the follow-up diff
+`d5ed1f4..f6db31e`, including the search-path regression, SQL line width, and CI
+handoff. Both returned targeted **PASS, 98/100**, with no remaining findings.
+Both reran the hostile-environment suite (34 Rust tests, 19 persistence tests,
+25 SQL rejection checks), fmt, Clippy, and scoped diff checks successfully.
+Evidence cites `src/migrations.rs:31,48,60`, `tests/repositories.rs:23-43`, and
+`migrations/0003_notes.sql:72-73`. Full scoped review passed in round 2; round 3
+approved its follow-ups. Neither approval covers remote CI, PostgreSQL 17,
+deployment roles, production upgrades, or backup/restore.
+
+Implementation is committed through `f6db31e`; this validation record is committed
+separately. Integration remains blocked on D01 manifest review and D24/integrator
+CI harness wiring. The card was not moved or reassigned.
 
 Local raw evidence is under `.local/d08/` (gitignored): baseline/final test logs,
 RED logs, gate JSON/logs, focused metrics, frontend/tooling results, and reviewer
