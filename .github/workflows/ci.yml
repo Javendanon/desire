@@ -91,8 +91,10 @@ jobs:
       # that touches the database; `crates/persistence/tests/pipeline.rs` guards that contract.
       - name: Put the runner's PostgreSQL binaries on PATH
         run: |
-          pg_bin="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
-          if [ -z "$pg_bin" ]; then pg_bin="$(pg_config --bindir)"; fi
+          pg_bin="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1 || true)"
+          if [ -z "$pg_bin" ] && command -v pg_config > /dev/null; then
+              pg_bin="$(pg_config --bindir)"
+          fi
           test -n "$pg_bin" || { echo "::error::no PostgreSQL binaries on this runner"; exit 1; }
           echo "$pg_bin" >> "$GITHUB_PATH"
           "$pg_bin/initdb" --version
