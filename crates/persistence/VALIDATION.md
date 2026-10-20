@@ -164,10 +164,10 @@ Card rework addressed the two review findings and the three suspicions.
 
 Executed after the rework, same toolchain and gate configuration:
 
-- `bash crates/persistence/test-postgres.sh`: exit 0, **41** Rust tests passed (15 test
+- `bash crates/persistence/test-postgres.sh`: exit 0, **42** Rust tests passed (15 test
   binaries/doc-test targets), including the 2 new `sql_constraints` tests carrying the
-  25 SQL rejection assertions and the 5 new `pipeline` tests. No test ignored or skipped.
-  The hostile-environment wrapper (`tests/test-environment.sh`) also exits 0 with 41 passed.
+  25 SQL rejection assertions and the 6 new `pipeline` tests. No test ignored or skipped.
+  The hostile-environment wrapper (`tests/test-environment.sh`) also exits 0.
 - `cargo fmt --all --check` and
   `cargo clippy --workspace --all-targets --locked -- -D warnings`: exit 0.
 - `corepack pnpm run test:frontend` (41 passed), `corepack pnpm run check:tests`,
@@ -202,6 +202,20 @@ proves a commented-out command does not satisfy the guard), the harness runs `ca
 unconditionally instead of exiting 0 when `crates/persistence/Cargo.toml` is absent, the
 PostgreSQL discovery path now reaches its explicit `::error::` with no binaries and no
 `pg_config` (reproduced: exit 1 with the message), and the README no longer claims the local
-gate and CI share one command verbatim. Left open by decision: the `frontend-check` and
-`quality-gate` gate `cmd` approximations (policy owner's call, and their CI jobs now run the
-suites) and PostgreSQL 17 compatibility (needs a runner or image this worktree cannot create).
+gate and CI share one command verbatim.
+
+Round 4 (fresh contexts, `3cf0a8c`) asked for stricter step parsing and flagged a
+150-column fixture. Taken: `runs()` now only accepts a `run:` value or a line inside a
+`run: |`/`>` block, so `- run: echo <cmd>` no longer counts; parser tests cover inline,
+block, sequence, `name:` and `echo` forms; the fixture is `concat!`ed; the timestamp claim
+is corrected to wall-clock.
+
+Round 5 (`7e36bff`) asked for two more items. Taken: `runs()` no longer treats a line of a
+multi-line `name:` as a step, and CI stopped probing `psql --version`, so the documented
+prerequisite list (`initdb`, `pg_ctl`; `psql` only for manual inspection) is true again.
+Left with a written justification, not fixed: `merge-policy.json` keeps one gate per line,
+so the edited `rust-test` entry is 115 columns while its neighbours are 139–153; reformatting
+one entry would make the array inconsistent and this file is `T2-never`. Left open by
+decision: the `frontend-check` and `quality-gate` gate `cmd` approximations (policy owner's
+call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility (needs a runner
+or image this worktree cannot create).
