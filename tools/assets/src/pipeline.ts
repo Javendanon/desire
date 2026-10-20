@@ -64,10 +64,6 @@ function stage(spec: ArtifactSpec) {
   return { pendingPath, gltf, textures, bytes };
 }
 
-function staleName(stale: string | null) {
-  return stale === null ? undefined : reportedArtifactName(stale);
-}
-
 function finishArtifact(spec: { pendingPath: string; report: BuildReport; artifactPath: string }) {
   const { pendingPath, report, artifactPath } = spec;
   report.artifact.written = report.pass;
@@ -76,7 +72,8 @@ function finishArtifact(spec: { pendingPath: string; report: BuildReport; artifa
     return report;
   }
   fs.rmSync(pendingPath, { force: true });
-  report.artifact.stale_path = staleName(quarantine(artifactPath));
+  const stale = quarantine(artifactPath);
+  if (stale) report.artifact.stale_path = reportedArtifactName(stale);
   return report;
 }
 
@@ -91,7 +88,8 @@ function buildArtifact(spec: ArtifactSpec): Report {
   } catch (cause) {
     fs.rmSync(pendingPath, { force: true });
     const report = failureReport(scene.id, [], String(cause));
-    report.stale_path = staleName(quarantine(artifactPath));
+    const stale = quarantine(artifactPath);
+    if (stale) report.stale_path = reportedArtifactName(stale);
     return report;
   }
 }
@@ -100,7 +98,8 @@ function rejectManifest(manifest: Manifest | null, errors: string[], targetDir: 
   const report = invalidReport(manifest, errors);
   if (safeAssetId(manifest?.id)) {
     const artifact = outputPath(targetDir, `scene-${manifest.id}.glb`);
-    report.stale_path = staleName(quarantine(artifact));
+    const stale = quarantine(artifact);
+    if (stale) report.stale_path = reportedArtifactName(stale);
   }
   return report;
 }

@@ -113,7 +113,66 @@ test('a texture whose decoded raster exceeds one mebibyte still publishes', (con
   assert.equal(buildAsset({ manifestPath }).report.pass, true);
 });
 
-test('the committed sample report is reproducible and repository-relative', (context) => {
+const FAKE_PNG_2X2 = String.raw`printf '\211PNG\r\n\032\n\000\000\000\015IHDR` +
+  String.raw`\000\000\000\002\000\000\000\002'`;
+const WRITE_TARGET = 'out=""; prev=""; for arg in "$@"; do if [ "$prev" = "-o" ];' +
+  ' then out="$arg"; fi; prev="$arg"; done';
+
+/** Put a scripted dwebp first on PATH, or an empty PATH to simulate a missing decoder. */
+function scriptedDecoder(context, body) {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-fake-dwebp-'));
+  const previous = process.env.PATH;
+  if (body !== null) {
+    const script = `#!/bin/sh\ncat >/dev/null\n${body}\n`;
+    fs.writeFileSync(path.join(bin, 'dwebp'), script, { mode: 0o755 });
+  }
+  process.env.PATH = body === null ? bin : `${bin}:${previous}`;
+  context.after(() => {
+    process.env.PATH = previous;
+    fs.rmSync(bin, { recursive: true, force: true });
+  });
+}
+
+/** A valid WebP plus the manifest that declares its real resolution. */
+function decodedFixture(context) {
+  const { source, manifest } = fixture(context);
+  fs.copyFileSync(fixturePath('detail-640.webp'), path.join(source, 'detail.webp'));
+  manifest.textures[0] = { ...manifest.textures[0], path: 'detail.webp', width_px: 640,
+    height_px: 640 };
+  return { source, manifest };
+}
+
+function checkWithScript(context, body) {
+  scriptedDecoder(context, body);
+  const { source, manifest } = decodedFixture(context);
+  return checkTextures(manifest, source)[0];
+}
+
+test('a decoder that writes a different raster fails the texture check', (context) => {
+  const texture = checkWithScript(context, `${WRITE_TARGET}\n${FAKE_PNG_2X2} > "$out"`);
+  assert.equal(texture.pass, false);
+  assert.match(texture.detail, /decoded raster does not match the declared resolution/);
+});
+
+test('a decoder that writes a non-image fails the texture check', (context) => {
+  const texture = checkWithScript(context, `${WRITE_TARGET}\nprintf 'not-a-png' > "$out"`);
+  assert.equal(texture.pass, false);
+  assert.match(texture.detail, /decoded raster is not a PNG image/);
+});
+
+test('a decoder that writes nothing fails with context instead of throwing', (context) => {
+  const texture = checkWithScript(context, 'exit 0');
+  assert.equal(texture.pass, false);
+  assert.match(texture.detail, /decoded raster cannot be read/);
+});
+
+test('a missing decoder is reported as such, not as a bad texture', (context) => {
+  const texture = checkWithScript(context, null);
+  assert.equal(texture.pass, false);
+  assert.match(texture.detail, /dwebp decoder unavailable or failed/);
+});
+
+test('the committed sample report is reproducible and path-independent', (context) => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-sample-report-'));
   context.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
   const { report } = buildAsset({ manifestPath: sampleManifestPath(), outDir });

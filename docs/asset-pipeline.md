@@ -142,8 +142,9 @@ metallic and roughness factors are applied once and preserved across both LODs.
   child's stdout, so a 4096×4096 raster cannot collide with a pipe buffer limit; the decoded
   PNG header must match the declared `width_px` / `height_px` before the temporary file is
   removed. Declared dimensions must also match the WebP header. Resolution metadata travels in
-  report and image extras. Missing decoders, truncated images and symlink escapes fail before
-  GLB publication.
+  report and image extras. Failures stay distinct: a missing binary reads as a missing decoder, an
+  exceeded budget as a timeout, and an unreadable output names its filesystem cause. Truncated
+  images and symlink escapes fail before GLB publication.
 - The sample ships a 52-byte WebP ground texture; a synthetic 16×16 pattern produced once with
   `cwebp`. The pipeline itself does not depend on `cwebp`.
 - WebP uses the locally installed libwebp tools: `cwebp` for one-off sample authoring and

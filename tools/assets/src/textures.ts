@@ -24,7 +24,6 @@ export type TextureCheck = {
   id: string; mime: string; bytes: number; max_bytes: number; pass: boolean; detail: string;
   width_px: number; height_px: number;
 };
-type Raster = { width_px: number; height_px: number };
 type TextureFileSize = { width_px: number; height_px: number };
 
 function probeTexture(texture: Texture, baseDir: string): TextureFile {
@@ -67,7 +66,7 @@ function webpDimensions(data: Buffer): TextureFileSize {
   return { width_px: 0, height_px: 0 };
 }
 
-function pngDimensions(file: string): Raster | null {
+function pngDimensions(file: string): TextureFileSize | null {
   const header = Buffer.alloc(PNG.headerBytes);
   const handle = fs.openSync(file, 'r');
   try {
@@ -80,24 +79,35 @@ function pngDimensions(file: string): Raster | null {
     height_px: header.readUInt32BE(PNG.heightOffset) };
 }
 
+function decodeError(error: Error & { code?: string }) {
+  if (error.code === 'ETIMEDOUT') return `dwebp decode exceeded ${DECODE_TIMEOUT_MS} ms`;
+  return `dwebp decoder unavailable or failed: ${error.message}`;
+}
+
+function readRaster(file: string): { raster?: TextureFileSize | null; problem?: string } {
+  try {
+    return { raster: pngDimensions(file) };
+  } catch (cause) {
+    return { problem: `decoded raster cannot be read: ${String(cause)}` };
+  }
+}
+
 /**
  * Decode stdin to a temporary PNG. A file target keeps large rasters away from the child
  * stdout buffer, so a 4096x4096 texture cannot be mistaken for an unavailable decoder.
  */
-function decodeRaster(data: Buffer): { raster?: Raster | null; problem?: string } {
+function decodeRaster(data: Buffer): { raster?: TextureFileSize | null; problem?: string } {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-webp-'));
   try {
     const file = path.join(directory, 'decoded.png');
     const decoded = spawnSync('dwebp', ['-quiet', '-o', file, '--', '-'], {
       input: data, timeout: DECODE_TIMEOUT_MS,
     });
-    if (decoded.error) {
-      return { problem: `dwebp decoder unavailable or failed: ${decoded.error.message}` };
-    }
+    if (decoded.error) return { problem: decodeError(decoded.error) };
     if (decoded.status !== 0) {
       return { problem: `invalid WebP payload: ${String(decoded.stderr).trim()}` };
     }
-    return { raster: pngDimensions(file) };
+    return readRaster(file);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
