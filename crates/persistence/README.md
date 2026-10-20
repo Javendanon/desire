@@ -12,7 +12,7 @@ D08 implements the D04 v1 contract without changing generated DTOs or domain cod
 - `catalog` holds shared editorial content; `campaign` holds mutable campaign data;
   `private` holds DM secret bodies. Catalog imports are atomic and append-only by
   stable ID/revision: identical rows are accepted, differences return `SeedMismatch`.
-  Removed anchors are differences too. Nothing silently overwrites installed content.
+  Removed or duplicate anchors are errors too. Nothing silently overwrites installed content.
 - All contract entities have normalized storage, including logical `maps`, place
   anchors, travel coordinates, and typed secret subjects. Composite foreign keys
   enforce city, campaign, controller membership, and rules-edition relationships.
@@ -76,6 +76,7 @@ Prerequisites: Cargo/Rust 1.97.1 and PostgreSQL binaries (`initdb`, `pg_ctl`, `p
 
 ```sh
 bash crates/persistence/test-postgres.sh
+bash crates/persistence/tests/test-environment.sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 python3 tools/quality/gate.py --json .local/d08/after.json
@@ -87,7 +88,9 @@ km dups crates/persistence
 ```
 
 The harness initializes a fresh cluster under this worktree's `.local/d08/`, disables
-TCP listening, and uses a private Unix socket. Each Rust integration test creates a
+TCP listening, clears inherited libpq environment settings, and uses a private Unix
+socket. The environment regression wrapper supplies hostile routing settings and
+must still pass. Each Rust integration test creates a
 separate database in that cluster. It runs SQL constraint tests and the entire Rust
 workspace suite, then stops/removes only its own cluster, also on failure. A direct
 `cargo test --workspace` without `DESIRE_TEST_SOCKET` fails with instructions rather

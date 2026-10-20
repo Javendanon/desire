@@ -2,6 +2,10 @@
 # A socket-only cluster owned by this invocation; never connects to an existing service.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# libpq hostaddr/service/options can override a socket host; inherit none of them.
+for variable in "${!PG@}"; do
+    unset "$variable"
+done
 mkdir -p .local/d08
 cluster=$(mktemp -d "$PWD/.local/d08/pg.XXXXXX")
 cleanup() {

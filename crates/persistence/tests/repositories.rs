@@ -91,14 +91,7 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
     let mut db = support::database();
     migrations::apply_through(&mut db, 2).unwrap();
     desire_persistence::CatalogRepository::seed(&mut db, &support::catalog()).unwrap();
-    let campaign = Campaign {
-        id: support::id(1),
-        owner_id: support::id(10),
-        city_id: None,
-        name: "First campaign".into(),
-        rules_edition: RulesEdition::Dnd2014,
-        revision: 1,
-    };
+    let campaign = campaign();
     CampaignRepository::create(&mut db, &campaign).unwrap();
     migrations::apply(&mut db).unwrap();
     migrations::apply(&mut db).unwrap();
@@ -106,6 +99,31 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
         CampaignRepository::get(&mut db, &campaign.id).unwrap(),
         Some(campaign.clone())
     );
+    assert_eq!(
+        db.query_one("SELECT count(*) FROM persistence_migrations", &[])
+            .unwrap()
+            .get::<_, i64>(0),
+        4
+    );
+}
+
+fn campaign() -> Campaign {
+    Campaign {
+        id: support::id(1),
+        owner_id: support::id(10),
+        city_id: None,
+        name: "First campaign".into(),
+        rules_edition: RulesEdition::Dnd2014,
+        revision: 1,
+    }
+}
+
+#[test]
+fn campaign_rename_requires_the_expected_revision() {
+    let mut db = support::database();
+    migrations::apply(&mut db).unwrap();
+    let campaign = campaign();
+    CampaignRepository::create(&mut db, &campaign).unwrap();
     let rename = CampaignRename {
         campaign_id: &campaign.id,
         expected_revision: 1,
@@ -124,11 +142,5 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
             .unwrap()
             .revision,
         2
-    );
-    assert_eq!(
-        db.query_one("SELECT count(*) FROM persistence_migrations", &[])
-            .unwrap()
-            .get::<_, i64>(0),
-        4
     );
 }
