@@ -43,17 +43,36 @@ fn is_job_header(line: &str) -> bool {
     line.starts_with("  ") && !line.starts_with("   ") && line.ends_with(':')
 }
 
+/// A step has to invoke the command, not mention it: `run: echo "..."` does not count.
+fn runs(steps: &str, command: &str) -> bool {
+    steps
+        .lines()
+        .map(|line| line.trim().strip_prefix("run: ").unwrap_or(line.trim()))
+        .any(|step| step.starts_with(command))
+}
+
 #[test]
 fn comments_do_not_satisfy_the_guard() {
-    let workflow = "jobs:\n  rust-test:\n    - run: |\n        # cargo test --workspace\n        bash crates/persistence/test-postgres.sh\n  next:\n";
+    let workflow = concat!(
+        "jobs:\n  rust-test:\n    - run: |\n",
+        "        # cargo test --workspace\n",
+        "        bash crates/persistence/test-postgres.sh\n",
+        "    - run: echo bash crates/persistence/test-postgres.sh\n",
+        "  next:\n",
+    );
     let steps = job(workflow, "rust-test");
     assert!(
-        steps.contains(HARNESS),
-        "the guard reads the step, not the comment"
+        runs(&steps, HARNESS),
+        "the guard reads the step, not a comment"
     );
     assert!(
         !steps.contains("cargo test"),
         "a commented-out command is not a step"
+    );
+    let echo = "    - run: echo bash crates/persistence/test-postgres.sh\n";
+    assert!(
+        !runs(echo, HARNESS),
+        "a step that echoes the command is not a run"
     );
 }
 
@@ -70,6 +89,10 @@ fn rust_tests_run_through_the_postgres_harness() {
     assert!(
         binaries < harness,
         "PostgreSQL is on PATH after the harness runs"
+    );
+    assert!(
+        runs(&steps, HARNESS),
+        "the rust-test job must run the harness"
     );
     assert!(
         !steps.contains("cargo test --workspace"),
@@ -108,7 +131,7 @@ fn ci_runs_every_existing_suite() {
         ),
     ] {
         assert!(
-            job(&workflow, name).contains(command),
+            runs(&job(&workflow, name), command),
             "the {name} job never runs `{command}`"
         );
     }
