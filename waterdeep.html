@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#141a1e" />
+    <title>Desire · Waterdeep sectors</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #ece6d6;
+        --muted: #a7a294;
+        --panel: #191f24;
+        --line: #2f3a40;
+        --accent: #f0c36a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 21rem;
+        background: #10161a;
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        overflow: hidden;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+        display: block;
+        outline: none;
+        touch-action: none;
+      }
+      #labels {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .label {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+        font-size: 0.68rem;
+        letter-spacing: 0.04em;
+        text-shadow: 0 1px 3px #000, 0 0 8px #000;
+        opacity: 0.92;
+      }
+      .label.ward {
+        color: #d8cdb4;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+      }
+      .label.place {
+        color: var(--accent);
+      }
+      .label[hidden] {
+        display: none;
+      }
+      aside {
+        padding: 1.25rem;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 0.66rem;
+        letter-spacing: 0.18em;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 0.3rem 0 0.5rem;
+        font-size: 1.35rem;
+        line-height: 1.15;
+      }
+      h2 {
+        margin: 0;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+      p {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      #stats {
+        font-variant-numeric: tabular-nums;
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .toggles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        align-items: center;
+      }
+      .toggles label {
+        display: flex;
+        gap: 0.35rem;
+        align-items: center;
+        font-size: 0.74rem;
+      }
+      button {
+        font: inherit;
+        font-size: 0.74rem;
+        color: var(--ink);
+        background: #232c32;
+        border: 1px solid var(--line);
+        border-radius: 0.35rem;
+        padding: 0.4rem 0.6rem;
+        cursor: pointer;
+      }
+      button:hover,
+      button:focus-visible {
+        border-color: var(--accent);
+        outline: none;
+      }
+      #places {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.3rem;
+      }
+      #places button {
+        width: 100%;
+        text-align: left;
+      }
+      #places button[aria-pressed='true'] {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      #selected {
+        border-top: 1px solid var(--line);
+        padding-top: 0.8rem;
+        font-size: 0.76rem;
+      }
+      #selected h3 {
+        margin: 0 0 0.35rem;
+        font-size: 0.95rem;
+      }
+      #selected dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.2rem 0.6rem;
+        margin: 0.5rem 0 0;
+      }
+      #selected dt {
+        color: var(--muted);
+      }
+      #selected dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      code {
+        font-size: 0.7rem;
+        color: var(--accent);
+      }
+      .note {
+        margin-top: 0.6rem;
+      }
+      .interpreted {
+        margin-top: 0.5rem;
+        padding: 0.45rem 0.6rem;
+        border-left: 2px solid var(--accent);
+        color: var(--ink);
+        background: #212a30;
+      }
+      @media (max-width: 760px) {
+        body {
+          grid-template-columns: 1fr;
+          grid-template-rows: 60vh auto;
+          overflow: auto;
+        }
+        aside {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas
+      id="map"
+      tabindex="0"
+      aria-label="Waterdeep in three dimensions. Drag to pan, shift-drag to orbit, wheel to zoom."
+    ></canvas>
+    <div id="labels" aria-hidden="true"></div>
+    <aside>
+      <header>
+        <p class="eyebrow">DESIRE / WATERDEEP</p>
+        <h1>Calibrated sectors</h1>
+        <p>
+          Drag to pan · shift-drag to orbit · wheel or pinch to zoom · <kbd>0</kbd> resets.
+        </p>
+        <p class="interpreted">
+          Place and control-point positions come from the D05 calibration. Building lots,
+          footprints, heights, facades, shoreline and harbour are interpreted scene geometry.
+          Three Market approach corridors are traced from the raster. Widths are interpreted.
+          Streets outside this small pilot are not reconstructed.
+        </p>
+      </header>
+      <div id="stats" aria-live="polite">Starting the scene…</div>
+      <div class="toggles">
+        <label><input type="checkbox" id="control-points" /> D05 control points</label>
+        <label><input type="checkbox" id="streets" /> Street anchors</label>
+        <button id="reset" type="button">Reset view</button>
+      </div>
+      <h2>Places</h2>
+      <ul id="places"></ul>
+      <section id="selected" hidden aria-live="polite">
+        <h3 id="selected-name"></h3>
+        <p id="selected-where"></p>
+        <dl>
+          <dt>Catalog</dt>
+          <dd>
+            <code id="selected-catalog"></code>
+          </dd>
+          <dt>Record</dt>
+          <dd>
+            <code id="selected-record"></code>
+          </dd>
+          <dt>Source ref</dt>
+          <dd id="selected-ref"></dd>
+          <dt>Provenance</dt>
+          <dd id="selected-provenance"></dd>
+        </dl>
+        <p class="note">
+          The catalog link is stable. Lore text arrives with the knowledge import, so this
+          scene never invents it.
+        </p>
+      </section>
+    </aside>
+    <script type="module" src="/content/maps/waterdeep/demo.ts"></script>
+  </body>
+</html>
