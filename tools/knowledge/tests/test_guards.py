@@ -8,9 +8,9 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from tools.knowledge import campaign, contract, loader  # noqa: E402
-from tools.knowledge.tests import support  # noqa: E402
-from tools.knowledge.tests.support import EntryTarget, mutate_entry  # noqa: E402
+from tools.knowledge import campaign, contract, loader
+from tools.knowledge.tests import support
+from tools.knowledge.tests.support import EntryTarget, mutate_entry
 
 SPELL_2014 = EntryTarget("spells.json", "fireball", "dnd_2014")
 SPELL_2024 = EntryTarget("spells.json", "fireball", "dnd_2024")

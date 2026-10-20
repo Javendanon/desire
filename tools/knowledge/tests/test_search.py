@@ -10,8 +10,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from tools.knowledge import importer, loader, search  # noqa: E402
-from tools.knowledge.search import SearchFilters  # noqa: E402
+from tools.knowledge import importer, loader, search
+from tools.knowledge.search import SearchFilters
 
 
 @contextmanager

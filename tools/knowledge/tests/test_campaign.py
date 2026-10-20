@@ -8,7 +8,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from tools.knowledge import campaign, contract, loader  # noqa: E402
+from tools.knowledge import campaign, contract, loader
 
 
 class CampaignTests(unittest.TestCase):

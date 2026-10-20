@@ -20,8 +20,9 @@ documentation stay English.
 - Only the D&D System Reference Documents listed in `sources.json` are used. They are
   CC-BY-4.0. This is not a license for all D&D content, so a new source must register
   its own license before the importer accepts it.
-- Canon entries cannot use a synthetic source. A source edition and license must match
-  the entry.
+- Canon entries cannot use a synthetic source or synthetic provenance evidence, even
+  with a registered SRD source and matching license. A source edition and license must
+  match the entry.
 - Bodies are short Spanish interpretive summaries, not verbatim SRD text. The
   `translation_status` field is explicit; the seed uses `translated`, not `reviewed`.
 - `dnd_2014` and `dnd_2024` are separate entries and can link with `previous_edition`.

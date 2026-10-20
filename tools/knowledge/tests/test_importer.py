@@ -11,9 +11,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from tools.knowledge import campaign, contract, importer, loader, search  # noqa: E402
-from tools.knowledge.model import CONTENT_DIR, Provenance, Reference, Source  # noqa: E402
-from tools.knowledge.search import SearchFilters  # noqa: E402
+from tools.knowledge import campaign, contract, importer, loader, search
+from tools.knowledge.model import CONTENT_DIR, Provenance, Reference, Source
+from tools.knowledge.search import SearchFilters
 
 
 class ImporterTests(unittest.TestCase):

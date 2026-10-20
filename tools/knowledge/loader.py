@@ -203,6 +203,10 @@ def check_sources(entries: list[Entry], sources: dict[str, Source]) -> None:
         require(
             source.license != SYNTHETIC_EVIDENCE, f"{entry.key}: synthetic source cannot be canon"
         )
+        require(
+            entry.provenance.evidence != SYNTHETIC_EVIDENCE,
+            f"{entry.key}: synthetic provenance cannot be canon",
+        )
 
 
 def check_references(entries: list[Entry]) -> None:
