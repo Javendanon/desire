@@ -12,6 +12,7 @@ import { waterdeepSector } from './buildings.ts';
 import { WATERDEEP_COAST, waterdeepIsLand, waterdeepLandSpans } from './coast.ts';
 import { WATERDEEP_REFERENCE, type PlanPoint } from './reference.ts';
 import { zoneForWard } from './zones.ts';
+import { WATERDEEP_ROADS } from './streets.ts';
 
 export { WATERDEEP_COAST, waterdeepIsLand } from './coast.ts';
 export { WATERDEEP_ZONES } from './zones.ts';
@@ -114,6 +115,7 @@ export const WATERDEEP_MAP: MapDefinition = {
   places,
   controlPoints: markers(WATERDEEP_REFERENCE.control_points),
   streets: markers(WATERDEEP_REFERENCE.main_streets),
+  roads: WATERDEEP_ROADS,
   isLand: waterdeepIsLand,
   landSpans: waterdeepLandSpans,
 };

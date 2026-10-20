@@ -70,6 +70,8 @@ const MIN_RADIUS = 45;
 const HALF_LIFE = 0.3;
 /** D11 fog is tuned for a 200 m scene. Map haze scales with the orbit radius instead. */
 const FOG_PER_RADIUS = 0.45;
+const MIN_NEAR_CLIP = 1.5;
+const NEAR_CLIP_PER_RADIUS = 0.01;
 
 const live = new Set<MapViewer>();
 
@@ -154,7 +156,7 @@ export class MapViewer implements MapInputTarget {
   private setupCamera(): void {
     this.camera.addComponent('camera', {
       fov: 32,
-      nearClip: 1.5,
+      nearClip: MIN_NEAR_CLIP,
       farClip: 26000,
       clearColor: new pc.Color().fromString('#5d5866'),
     });
@@ -180,6 +182,10 @@ export class MapViewer implements MapInputTarget {
     const position = rigPosition(this.rig);
     this.camera.setPosition(position.x, position.y, position.z);
     this.camera.lookAt(this.rig.target.x, this.rig.target.y, this.rig.target.z);
+    // A fixed close-up near plane loses depth precision over kilometre-wide ground strips.
+    if (this.camera.camera) {
+      this.camera.camera.nearClip = Math.max(MIN_NEAR_CLIP, this.rig.radius * NEAR_CLIP_PER_RADIUS);
+    }
     this.app.scene.fog.density = FOG_PER_RADIUS / Math.max(this.rig.radius, MIN_RADIUS);
     this.scaleMarkers();
     this.sectorCity?.update(this.rig.target);

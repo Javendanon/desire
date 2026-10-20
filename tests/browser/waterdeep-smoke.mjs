@@ -152,6 +152,18 @@ try {
   const topPath = screenshot.replace(/\.png$/, '-top.png');
   if (topShot.result?.data) writeFileSync(topPath, Buffer.from(topShot.result.data, 'base64'));
 
+  await evaluate(`(() => {
+    const viewer = window.__waterdeep.viewer;
+    viewer.reset();
+    viewer.focusPlace('the-market');
+    viewer.zoomBy(-8);
+    viewer.orbit(0, 5000);
+  })()`);
+  await sleep(3000);
+  const pilotShot = await send('Page.captureScreenshot', { format: 'png' });
+  const pilotPath = screenshot.replace(/\.png$/, '-market.png');
+  if (pilotShot.result?.data) writeFileSync(pilotPath, Buffer.from(pilotShot.result.data, 'base64'));
+
   const moved =
     Math.hypot(panned.stats.focus.x - first.stats.focus.x, panned.stats.focus.z - first.stats.focus.z) >
     20;
@@ -183,6 +195,7 @@ try {
         screenshot,
         overview: screenshot.replace(/\.png$/, '-overview.png'),
         top: screenshot.replace(/\.png$/, '-top.png'),
+        market: pilotPath,
         backend: first.stats.backend,
         first: first.stats.sectors,
         pannedFocus: panned.stats.focus,
