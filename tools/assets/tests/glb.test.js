@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import { accessorFinding, uncoveredSolids } from '../src/check.js';
@@ -10,7 +12,9 @@ import { sampleManifestPath } from './helpers.js';
 
 const build = () => {
   const { manifest } = readManifest(sampleManifestPath());
-  return { manifest, gltf: parseGlb(encodeGlb(buildScene(manifest), manifest)) };
+  const images = manifest.textures.map((texture) =>
+    fs.readFileSync(path.join(path.dirname(sampleManifestPath()), texture.path)));
+  return { manifest, gltf: parseGlb(encodeGlb(buildScene(manifest), manifest, images)) };
 };
 
 const nodeByName = (json, name) => json.nodes.find((node) => node.name === name);
@@ -20,7 +24,7 @@ test('the artifact is a glTF 2.0 binary with an embedded buffer', () => {
   assert.equal(gltf.json.asset.version, '2.0');
   assert.equal(gltf.json.buffers[0].uri, undefined, 'no external buffer download');
   assert.ok(gltf.bin.length > 0);
-  assert.equal(gltf.json.images, undefined, 'textures travel beside the manifest');
+  assert.ok(gltf.json.images.every((image) => image.bufferView !== undefined && !image.uri));
 });
 
 test('the default scene renders only ground and LOD0; auxiliary scenes are explicit', () => {
@@ -48,6 +52,25 @@ test('LOD0 and LOD1 apply the same base color exactly once', () => {
       assert.deepEqual([...colors.slice(0, 3)], [1, 1, 1], 'top color is not baked twice');
     }
   }
+});
+
+test('compressed textures have embedded images, real bindings, UVs and resolution metadata', () => {
+  const { gltf } = build();
+  const json = gltf.json;
+  assert.ok(json.extensionsRequired.includes('EXT_texture_webp'));
+  const material = json.materials.find((entry) => entry.name === 'paving');
+  const binding = material.pbrMetallicRoughness.baseColorTexture;
+  const imageIndex = json.textures[binding.index].extensions.EXT_texture_webp.source;
+  const image = json.images[imageIndex];
+  assert.equal(image.mimeType, 'image/webp');
+  assert.deepEqual(image.extras, { width_px: 16, height_px: 16 });
+  const view = json.bufferViews[image.bufferView];
+  const embedded = gltf.bin.subarray(view.byteOffset, view.byteOffset + view.byteLength);
+  assert.equal(embedded.toString('ascii', 8, 12), 'WEBP');
+  const ground = nodeByName(json, 'render/ground');
+  const primitive = json.meshes[ground.mesh].primitives[0];
+  const uv = readAccessor(gltf, primitive.attributes.TEXCOORD_0);
+  assert.deepEqual([...uv], [0, 0, 0, 1, 1, 1, 1, 0]);
 });
 
 test('render, LOD and collision live in separate nodes', () => {

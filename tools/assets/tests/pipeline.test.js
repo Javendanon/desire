@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { parseGlb } from '../src/gltf-read.js';
 import { buildAsset } from '../src/pipeline.js';
 import { sampleManifestPath } from './helpers.js';
 
@@ -39,6 +40,15 @@ test('the report records scale, fidelity, collision, textures and navigation', a
   assert.equal(report.navigation.pass, true);
   assert.equal(report.navigation.waypoints.length, 3);
   assert.deepEqual(report.unknown_places.sort(), ['chandlers-row', 'tide-stairs']);
+});
+
+test('--out produces a portable textured artifact without source sidecars', async () => {
+  const { artifactPath } = await build();
+  const json = parseGlb(fs.readFileSync(artifactPath)).json;
+  assert.ok(json.images.length > 0);
+  assert.ok(json.images.every((image) => image.bufferView !== undefined && !image.uri));
+  assert.ok(json.images.every((image) => image.extras.width_px > 0 && image.extras.height_px > 0));
+  assert.ok(json.materials[0].pbrMetallicRoughness.baseColorTexture);
 });
 
 test('a failing rebuild quarantines the previous artifact', async () => {
