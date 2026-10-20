@@ -26,6 +26,17 @@ test('a full-height wall keeps a waypoint unreachable', () => {
   assert.equal(report.pass, false);
 });
 
+test('arrival proximity cannot reach across a thin full-span wall', () => {
+  const report = navigate({
+    ground,
+    blockers: [{ min_x: 10, max_x: 10.1, min_z: 0, max_z: 100 }],
+    spawn: { x_m: 5, z_m: 5.5 },
+    waypoints: [{ id: 'behind-thin-wall', x_m: 11, z_m: 5.5 }],
+  });
+  assert.equal(report.pass, false);
+  assert.equal(report.waypoints[0].reachable, false);
+});
+
 test('blocked cells are counted so the report is auditable', () => {
   const wall = { min_x: 48, max_x: 52, min_z: 0, max_z: 100 };
   const report = navigate({ ground, blockers: [wall], spawn, waypoints: [] });
