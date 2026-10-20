@@ -52,6 +52,22 @@ class EditionVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "edition_verification: expected object"):
             loader.load_entries(self.content)
 
+    def test_importer_rejects_a_2024_entry_without_verification(self):
+        def change(entry):
+            entry.pop("edition_verification")
+
+        mutate_entry(self.content, GREASE_2024, change)
+        with self.assertRaisesRegex(ValueError, "edition_verification: expected object"):
+            importer.sync(self.content)
+
+    def test_2024_entry_may_stay_pending_review(self):
+        def change(entry):
+            entry["edition_verification"] = {"status": "pending_review", "citation": ""}
+
+        mutate_entry(self.content, FIREBALL_2024, change)
+        index = loader.build_index(loader.load_entries(self.content))
+        self.assertEqual(index[key(FIREBALL_2024)].edition_verification.status, "pending_review")
+
     def test_verified_entry_requires_a_citation(self):
         def change(entry):
             entry["edition_verification"] = {"status": VERIFIED, "citation": ""}
