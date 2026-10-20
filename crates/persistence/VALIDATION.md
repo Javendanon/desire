@@ -156,7 +156,7 @@ Card rework addressed the two review findings and the three suspicions.
 
 | Finding | Change | Evidence |
 | --- | --- | --- |
-| BLOCKER `ci.yml:79` bare `cargo test --workspace` | `rust-test` adds the runner's PostgreSQL `bin` directory to `GITHUB_PATH` (newest installed major, printed) and runs the harness; `package.json` `test:rust` = `bash crates/persistence/test-postgres.sh` | `tests/pipeline.rs` (RED before the edit: 3 failed; green after) |
+| BLOCKER `ci.yml:79` bare `cargo test --workspace` | `rust-test` adds the runner's PostgreSQL `bin` directory to `GITHUB_PATH` (newest installed major, printed; fails closed if none) and runs the harness; `package.json` `test:rust` and the `merge-policy.json` `rust-test` gate `cmd` run the same harness | `tests/pipeline.rs` (RED before the edits: 3 failed; green after: 4 passed) |
 | MEDIUM `ci.yml:48` suites never run | `frontend-check` runs `test:frontend` + `check:tests`; `quality-gate` runs `tools/contracts/generate.py --check` + contract `unittest` discover. Existing jobs extended, no job renamed (merge-policy contract) | `tests/pipeline.rs::ci_runs_every_existing_suite` |
 | Suspicion: PID-based database names never dropped | `tests/support/mod.rs` names databases with PID + monotonic timestamp + counter, so a recycled PID cannot collide | `tests/support/mod.rs:20-33`; 19 DB tests pass |
 | Suspicion: harness seeded a schema with `psql -f`, never recording `public.persistence_migrations` | `test-postgres.sh` now only starts/stops the cluster; `tests/sql_constraints.rs` installs the schema with `migrations::apply` and runs `schema.sql` + `constraints.sql` on it. The from-zero path under test is the production runner | sabotage run (expected SQLSTATE changed to `99999`) failed the harness with exit 101; restored file passes |
@@ -177,4 +177,22 @@ Executed after the rework, same toolchain and gate configuration:
 
 `pnpm test:rust` now requires PostgreSQL server binaries on `PATH`, which is a public
 behaviour change of an existing script; `README.md` and `docs/app-tests-plan.md` record it.
-CI wiring, the PG 17 gap, and deployment-role behaviour remain unverified from here.
+`.github/workflows/ci.yml`, `package.json` and `merge-policy.json` are `never_paths`
+(`T2-never`): the CI, policy and D01/integrator owners must review and own those edits.
+The `frontend-check` and `quality-gate` policy `cmd` values remain approximations of their
+CI jobs; aligning them is the policy owner's call. CI wiring, the PG 17 gap, and
+deployment-role behaviour remain unverified from here.
+
+### Independent advisor on the rework
+
+Two fresh-context reviewers reviewed commit `f6d8259` with adversarial instructions and
+cited `file:line`. Both returned `CHANGES_REQUESTED` (76/100 and 72/100) for the same
+BLOCKER: `merge-policy.json` still ran `cargo test --workspace --locked` in its `rust-test`
+gate `cmd`, so the local gate stayed red even though the CI job was wired. Taken for this
+follow-up: the gate `cmd` now runs the harness; `tests/pipeline.rs` asserts the gate `cmd`
+and parses CI **job blocks** instead of raw file text, so a comment or a neighbouring job
+cannot satisfy it; the PostgreSQL `PATH` step fails closed with an explicit `::error::`
+message instead of an empty `GITHUB_PATH` line. Both reviewers confirmed the schema-seeding
+and PID-collision suspicions closed and PG 17 still open. Left open by decision: the
+`frontend-check`/`quality-gate` gate `cmd` approximations (policy owner) and PG 17
+compatibility (needs a runner or image this worktree cannot create).

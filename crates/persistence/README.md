@@ -127,10 +127,13 @@ the merge queue: the `rust-test` job puts the runner's PostgreSQL binaries on `P
 and runs `bash crates/persistence/test-postgres.sh`; `frontend-check` also runs
 `pnpm test:frontend` and `pnpm check:tests`, and `quality-gate` runs
 `python3 tools/contracts/generate.py --check` plus the contract `unittest` suite.
-`package.json` `test:rust` (and therefore `pnpm test`) points at the same harness.
+`package.json` `test:rust` (and therefore `pnpm test`) points at the same harness, and the
+`merge-policy.json` `rust-test` gate `cmd` runs the harness too, so the local gate and the
+CI check execute the same command.
 
-`.github/workflows/ci.yml` and `package.json` are `never_paths` in
-`merge-policy.json`, so this is `T2-never`: the CI owner and the D01/integrator must
-review and own the workflow and script edits, and the job names stay the merge-policy
+`.github/workflows/ci.yml`, `merge-policy.json` and `package.json` are `never_paths` in
+`merge-policy.json`, so this is `T2-never`: the CI owner, the policy owner and the
+D01/integrator must review and own those edits, and the job names stay the merge-policy
 contract. The workflow was not executed remotely from this worktree; the wiring is
-verified locally by `tests/pipeline.rs` and by running the harness the job now runs.
+verified locally by `tests/pipeline.rs` (job-scoped, so a comment cannot satisfy it) and by
+running the harness the job now runs.
