@@ -5,6 +5,7 @@ import {
   isCurrentResult,
   isGrid,
   isPoint,
+  isPositiveU32,
   isRouteResponse,
   type RouteEndpoints,
   type RouteIdentity,
@@ -49,7 +50,7 @@ function assertGrid(grid: RoutingGrid): void {
 
 function assertEndpoints(endpoints: RouteEndpoints): void {
   if (!isPoint(endpoints.start) || !isPoint(endpoints.goal)) {
-    throw new TypeError('routing endpoints must have integer x and y coordinates');
+    throw new TypeError('routing endpoints must have u32 x and y coordinates');
   }
 }
 
@@ -71,8 +72,11 @@ export class RoutingWorkerClient {
   request(revision: number, grid: RoutingGrid, endpoints: RouteEndpoints): number {
     assertGrid(grid);
     assertEndpoints(endpoints);
-    if (!Number.isInteger(revision) || revision <= 0) {
-      throw new TypeError(`routing revision must be a positive integer, got ${revision}`);
+    if (!isPositiveU32(revision)) {
+      throw new TypeError(`routing revision must be a positive u32, got ${revision}`);
+    }
+    if (!isPositiveU32(this.nextRequestId)) {
+      throw new RangeError('routing request IDs exhausted; create a new client');
     }
     if (this.current !== null) this.cancel();
     const requestId = this.nextRequestId;

@@ -43,6 +43,15 @@ export interface RouteMessage {
 }
 
 export const ROUTING_WORKER_PROTOCOL_VERSION = 1;
+const U32_MAX = 0xffff_ffff;
+
+function isU32(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= U32_MAX;
+}
+
+export function isPositiveU32(value: unknown): value is number {
+  return isU32(value) && value > 0;
+}
 
 /** A result is usable only for the latest request and map revision. */
 export function isCurrentResult(
@@ -60,15 +69,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function isGrid(value: unknown): value is RoutingGrid {
   if (!isRecord(value)) return false;
   return (
-    Number.isInteger(value.width) &&
-    Number.isInteger(value.height) &&
+    isPositiveU32(value.width) &&
+    isPositiveU32(value.height) &&
     value.costs instanceof Uint32Array
   );
 }
 
 export function isPoint(value: unknown): value is GridPoint {
   if (!isRecord(value)) return false;
-  return Number.isInteger(value.x) && Number.isInteger(value.y);
+  return isU32(value.x) && isU32(value.y);
 }
 
 /** Best-effort identity for rejecting a malformed request without hanging. */
@@ -85,8 +94,8 @@ export function isRouteMessage(value: unknown): value is RouteMessage {
   if (!isRecord(value) || value.kind !== 'route' || !isRecord(value.request)) return false;
   const request = value.request as Partial<RoutingRequest>;
   return (
-    Number.isInteger(request.requestId) &&
-    Number.isInteger(request.revision) &&
+    isPositiveU32(request.requestId) &&
+    isPositiveU32(request.revision) &&
     isGrid(request.grid) &&
     isPoint(request.start) &&
     isPoint(request.goal)
