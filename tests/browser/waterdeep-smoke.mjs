@@ -61,7 +61,8 @@ const send = (method, params = {}) =>
 const evaluate = async (expression) => {
   const reply = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
   if (reply.result?.exceptionDetails) {
-    throw new Error(reply.result.exceptionDetails.text ?? 'evaluation failed');
+    throw new Error(reply.result.exceptionDetails.exception?.description ??
+      reply.result.exceptionDetails.text ?? 'evaluation failed');
   }
   return reply.result?.result?.value ?? null;
 };
@@ -131,7 +132,6 @@ try {
   const reloaded = await evaluate('window.__waterdeep.check()');
   const selectedState = await evaluate('window.__waterdeep.check()');
   const closePicking = await checkClosePicking(send, evaluate);
-  const touch = await checkTouchGestures(send, evaluate);
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   if (shot.result?.data) writeFileSync(screenshot, Buffer.from(shot.result.data, 'base64'));
   await evaluate('window.__waterdeep.viewer.reset()');
@@ -170,6 +170,9 @@ try {
 
   const sweep = await sweepSectors(send, evaluate);
   const memory = await memoryAudit.finish();
+  // Fresh mobile navigation applies the meta viewport. Its resources are outside this
+  // desktop-resolution budget, so run it only after the allocation audit has finished.
+  const touch = await checkTouchGestures(send, evaluate);
 
   const moved =
     Math.hypot(panned.stats.focus.x - first.stats.focus.x, panned.stats.focus.z - first.stats.focus.z) >

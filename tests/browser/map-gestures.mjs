@@ -43,9 +43,29 @@ async function gesture(send, points) {
   await settle();
 }
 
-export async function checkTouchGestures(send, evaluate) {
+async function loadMobilePage(send, evaluate) {
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: 600, height: 900, deviceScaleFactor: 1, mobile: true,
+  });
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
-  assert.equal(await evaluate("getComputedStyle(document.getElementById('map')).touchAction"), 'none');
+  // The meta viewport is evaluated at load, not when desktop emulation is resized in place.
+  await evaluate('window.__waterdeep.ready = false');
+  await send('Page.reload');
+  for (let attempt = 0; attempt < 120; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const probe = await evaluate('window.__waterdeep?.ready ?? false');
+    if (!probe) continue;
+    const action = await evaluate("getComputedStyle(document.getElementById('map')).touchAction");
+    assert.equal(action, 'none');
+    assert.equal(await evaluate("document.getElementById('map').clientWidth"), 600);
+    return;
+  }
+  throw new Error('mobile scene did not become ready');
+}
+
+export async function checkTouchGestures(send, evaluate) {
+  await loadMobilePage(send, evaluate);
+  await settle();
   await evaluate(`(() => {
     window.__touchCancels = 0;
     document.getElementById('map').addEventListener('pointercancel', () => window.__touchCancels++);
@@ -66,5 +86,5 @@ export async function checkTouchGestures(send, evaluate) {
     [0, 0, 1], 'native scrolling and viewport zoom must stay disabled');
   assert.equal(await evaluate('window.__touchCancels'), 0, 'browser cancelled a touch gesture');
   await send('Emulation.setTouchEmulationEnabled', { enabled: false });
-  return { pan: true, pinch: true, pointerCancels: 0 };
+  return { pan: true, pinch: true, pointerCancels: 0, mobileViewport: '600x900' };
 }
