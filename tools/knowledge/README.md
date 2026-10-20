@@ -41,8 +41,10 @@ languages. Use `--verify-fixtures` to reproduce every case in the artifact.
 - Unknown sources, license mismatches, sources flagged `synthetic: true` and dangling
   references fail.
 - Every shared search fixture holds; the fixture set covers all four filter dimensions,
-  both rules editions, a status that matches nothing, a title-only word and a
-  multi-token query whose tokens appear in reverse order.
+  both rules editions, a status that matches nothing, a title-only word, a kind-only
+  word and a multi-token query whose tokens appear in reverse order. The tests also
+  assert that each of those property fixtures is still present, so deleting one cannot
+  silently drop the property it pins.
 - The fixture file itself is validated: a required `semantics` block with all six
   keys, known filter names, closed-vocabulary filter values, UUID expectations, no
   duplicate fixture or expected id and no empty fixture list.

@@ -22,6 +22,25 @@ from tools.knowledge.model import CONTENT_DIR, RULES_EDITIONS
 from tools.knowledge.search import SearchFilters
 
 
+REQUIRED_FIXTURES = frozenset(
+    {
+        "accented_query_matches_ignoring_accents",
+        "unaccented_query_matches_accented_body",
+        "uppercase_query_ignores_case",
+        "tokens_match_independently_of_order",
+        "multi_token_query_requires_every_token",
+        "kind_word_is_searchable",
+        "title_only_word_is_searchable",
+        "language_filter_rejects_unsupported_language",
+        "edition_filter_separates_2014",
+        "edition_filter_separates_2024",
+        "reference_target_is_searchable",
+        "status_filter_reviewed_matches_nothing",
+        "campaign_lore_stays_out_of_canon",
+    }
+)
+
+
 def shared_fixtures():
     """Read the shared artifact per test instead of at import time."""
     return fixtures.load_fixtures()
@@ -44,6 +63,10 @@ class SharedSearchFixtureTests(unittest.TestCase):
             found = search.find(fixture.query, filters)
             with self.subTest(fixture=fixture.name):
                 self.assertEqual({entry["id"] for entry in found}, set(fixture.expected_ids))
+
+    def test_each_required_property_has_its_fixture(self):
+        names = {fixture.name for fixture in shared_fixtures()}
+        self.assertLessEqual(REQUIRED_FIXTURES, names)
 
     def test_token_order_fixture_stays_discriminating(self):
         fixture = next(
