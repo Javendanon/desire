@@ -234,6 +234,25 @@ test('rejects an invalid grid before starting a worker', () => {
   assert.equal(workers.length, 0);
 });
 
+test('rejects values that would narrow or wrap at the Wasm u32 boundary', () => {
+  const { client, workers } = setup();
+  const invalid = [-1, 0x1_0000_0000, Number.MAX_SAFE_INTEGER, 0.5, NaN, Infinity];
+  for (const value of invalid) {
+    assert.throws(() => client.request(1, GRID, { ...ENDPOINTS, start: { x: value, y: 0 } }));
+    assert.throws(() => client.request(value, GRID, ENDPOINTS));
+    const request = { requestId: 1, revision: 1, grid: GRID, ...ENDPOINTS };
+    assert.equal(isRouteMessage({ kind: 'route', request: { ...request, revision: value } }), false);
+    assert.equal(isRouteMessage({ kind: 'route', request: { ...request, requestId: value } }), false);
+    assert.equal(isRouteMessage({
+      kind: 'route', request: { ...request, goal: { x: 0, y: value } },
+    }), false);
+  }
+  assert.throws(() => client.request(0, GRID, ENDPOINTS));
+  assert.equal(workers.length, 0, 'invalid inputs never start or transfer to a worker');
+  client.request(0xffff_ffff, GRID, ENDPOINTS);
+  assert.equal(workers.length, 1, 'maximum u32 revision is valid');
+});
+
 test('maps Wasm outcomes to explicit worker responses', () => {
   const identity = { requestId: 3, revision: 4 };
   const ok = {
