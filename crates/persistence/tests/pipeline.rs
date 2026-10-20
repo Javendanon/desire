@@ -59,7 +59,7 @@ fn runs(steps: &str, command: &str) -> bool {
                 return true;
             }
             block = value.trim().starts_with(['|', '>']).then_some(indent);
-        } else if block.is_some() && text.starts_with(command) {
+        } else if block.is_some() && text.trim_end() == command {
             return true;
         }
     }
@@ -78,6 +78,10 @@ fn only_run_steps_satisfy_the_guard() {
         "cargo fmt --all"
     ));
     assert!(!runs("        name: cargo fmt --all\n", "cargo fmt --all"));
+    assert!(
+        !runs("        run: cargo fmt --all || true\n", "cargo fmt --all"),
+        "a step that swallows failures is not the command"
+    );
     assert!(!runs(
         "        run: echo cargo fmt --all\n",
         "cargo fmt --all"
@@ -160,7 +164,7 @@ fn ci_runs_every_existing_suite() {
         ),
         (
             "quality-gate",
-            "python3 -m unittest discover -s tools/contracts/tests",
+            "python3 -m unittest discover -s tools/contracts/tests -p 'test_*.py'",
         ),
     ] {
         assert!(
@@ -177,11 +181,8 @@ fn package_scripts_route_rust_tests_through_the_harness() {
         scripts["test:rust"], HARNESS,
         "pnpm test:rust must fail closed through the harness, like CI"
     );
-    assert!(
-        scripts["test"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("test:rust"),
-        "pnpm test must still include the Rust suite"
+    assert_eq!(
+        scripts["test"], "pnpm run test:frontend && pnpm run test:rust",
+        "pnpm test must still run the frontend suite first, then the harness"
     );
 }

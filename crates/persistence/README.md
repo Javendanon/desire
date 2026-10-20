@@ -122,9 +122,9 @@ no external coordination or approval is claimed.
 
 ## CI handoff to D24/integrator
 
-The PR that follows this change wires the harness instead of leaving the blocker for
-the merge queue: the `rust-test` job puts the runner's PostgreSQL binaries on `PATH`
-and runs `bash crates/persistence/test-postgres.sh`; `frontend-check` also runs
+This change wires the harness instead of leaving the blocker for the merge queue: the
+`rust-test` job puts the runner's PostgreSQL binaries on `PATH` and runs
+`bash crates/persistence/test-postgres.sh`; `frontend-check` also runs
 `pnpm test:frontend` and `pnpm check:tests`, and `quality-gate` runs
 `python3 tools/contracts/generate.py --check` plus the contract `unittest` suite.
 `package.json` `test:rust` (and therefore `pnpm test`) points at the same harness, and the
@@ -137,5 +137,6 @@ runner's PostgreSQL `bin` directory; the local gate still requires `initdb` and 
 `merge-policy.json`, so this is `T2-never`: the CI owner, the policy owner and the
 D01/integrator must review and own those edits, and the job names stay the merge-policy
 contract. The workflow was not executed remotely from this worktree; the wiring is
-verified locally by `tests/pipeline.rs` (job-scoped, so a comment cannot satisfy it) and by
-running the harness the job now runs.
+verified locally by `tests/pipeline.rs`, which only accepts a real `run:` step in the
+named job (a comment, an `echo`, a multi-line `name:` or a `|| true` tail does not count),
+and by running the harness the job now runs.
