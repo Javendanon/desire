@@ -80,3 +80,28 @@ that false positive. The fix to the rule belongs to a separate change in `tools/
 Remaining below-target warnings (functions over 25 lines or 3 parameters in `render/`, files over
 300 LOC in `viewer.ts`, `miniatures.ts` and the design page) are listed by the gate and are not
 floor blocks.
+
+## Map viewer (D13)
+
+A second, generic viewer renders calibrated city maps. It takes a `MapDefinition` and never
+mentions a city by name, so other cities and campaigns can supply their own content package.
+
+| Path | Role |
+| --- | --- |
+| `plan/map-definition.ts` | Grid, bounds, land spans, sector content, places and markers |
+| `plan/sectors.ts` | Sector grid, resident set around a focus, detail levels, memory estimate |
+| `plan/polygon.ts` | Point-in-polygon and scanline land spans |
+| `scene/map-camera.ts` | Pan, orbit, zoom, clamps and projection as pure functions |
+| `scene/map-markers.ts` | Place, control-point and street markers plus pick spheres |
+| `input/map-input.ts` | Canvas pan/orbit/pinch/wheel/key input for the map |
+| `render/sector-city.ts` | Far shell plus instanced walls and roofs per resident sector |
+| `map-viewer.ts` | `createMapViewer(canvas, map, options)`, frame loop, events, stats |
+
+`content/maps/waterdeep/` provides the first `MapDefinition`. The waterdeep demo lives in
+`waterdeep.html` and `content/maps/waterdeep/demo.ts`; `tests/browser/waterdeep-smoke.mjs`
+checks it in a real browser. Sector streaming caps maximum detail and keeps a low-detail shell
+resident so panning never shows a hole.
+
+Shared additions used by both viewers: `page-watch.ts` (resize and tab visibility) and
+`flatMesh()` in `render/kit.ts`. They replaced duplicated code in `viewer.ts`, `city.ts` and
+`water.ts` (F9 rule of three).

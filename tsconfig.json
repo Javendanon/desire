@@ -14,5 +14,5 @@
     "verbatimModuleSyntax": true,
     "types": ["svelte", "vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"]
+  "include": ["src/**/*.ts", "src/**/*.svelte", "content/**/*.ts"]
 }

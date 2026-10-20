@@ -12,7 +12,7 @@ import {
   type CityPlan,
   type DistrictSeed,
 } from '../plan/test-city.ts';
-import { gableMesh, geometryMesh, instancedEntity, material, part, trs } from './kit.ts';
+import { flatMesh, gableMesh, geometryMesh, instancedEntity, material, part, trs } from './kit.ts';
 import type { Textures } from './textures.ts';
 
 const ROOF_COLORS = ['#7c8792', '#b8714f', '#5f6a74', '#8f8770', '#a35f45'];
@@ -186,13 +186,7 @@ function landMesh(device: pc.GraphicsDevice): pc.Mesh {
   for (let z = -220; z < 220; z += 2) {
     for (const [x0, x1] of landRuns(z + 1)) quad(x0, x1, z, z + 2);
   }
-  const mesh = new pc.Mesh(device);
-  mesh.setPositions(positions);
-  mesh.setNormals(pc.calculateNormals(positions, indices));
-  mesh.setUvs(0, uvs);
-  mesh.setIndices(indices);
-  mesh.update(pc.PRIMITIVE_TRIANGLES);
-  return mesh;
+  return flatMesh(device, { positions, uvs, indices });
 }
 
 function buildLand(app: pc.AppBase, tx: Textures): pc.Entity {
