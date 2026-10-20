@@ -98,7 +98,6 @@ jobs:
           test -n "$pg_bin" || { echo "::error::no PostgreSQL binaries on this runner"; exit 1; }
           echo "$pg_bin" >> "$GITHUB_PATH"
           "$pg_bin/initdb" --version
-          "$pg_bin/psql" --version
       - name: Workspace tests against a disposable PostgreSQL cluster
         run: bash crates/persistence/test-postgres.sh
 

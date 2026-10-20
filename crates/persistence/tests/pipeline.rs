@@ -43,12 +43,45 @@ fn is_job_header(line: &str) -> bool {
     line.starts_with("  ") && !line.starts_with("   ") && line.ends_with(':')
 }
 
-/// A step has to invoke the command, not mention it: `run: echo "..."` does not count.
+/// A step has to invoke the command, not mention it. A commented-out line, an `echo`, or a
+/// multi-line `name:` that contains the command does not count.
 fn runs(steps: &str, command: &str) -> bool {
-    steps
-        .lines()
-        .map(|line| line.trim().strip_prefix("run: ").unwrap_or(line.trim()))
-        .any(|step| step.starts_with(command))
+    let mut block: Option<usize> = None;
+    for line in steps.lines() {
+        let trimmed = line.trim_start();
+        let indent = line.len() - trimmed.len();
+        let text = trimmed.strip_prefix("- ").unwrap_or(trimmed);
+        if block.is_some_and(|key| indent <= key) {
+            block = None;
+        }
+        if let Some(value) = text.strip_prefix("run:") {
+            if value.trim() == command {
+                return true;
+            }
+            block = value.trim().starts_with(['|', '>']).then_some(indent);
+        } else if block.is_some() && text.starts_with(command) {
+            return true;
+        }
+    }
+    false
+}
+
+#[test]
+fn only_run_steps_satisfy_the_guard() {
+    assert!(runs("        run: cargo fmt --all\n", "cargo fmt --all"));
+    assert!(runs(
+        "        run: |\n          cargo fmt --all\n",
+        "cargo fmt --all"
+    ));
+    assert!(runs(
+        "      - run: |\n          cargo fmt --all\n",
+        "cargo fmt --all"
+    ));
+    assert!(!runs("        name: cargo fmt --all\n", "cargo fmt --all"));
+    assert!(!runs(
+        "        run: echo cargo fmt --all\n",
+        "cargo fmt --all"
+    ));
 }
 
 #[test]
