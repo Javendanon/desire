@@ -213,9 +213,14 @@ is corrected to wall-clock.
 Round 5 (`7e36bff`) asked for two more items. Taken: `runs()` no longer treats a line of a
 multi-line `name:` as a step, and CI stopped probing `psql --version`, so the documented
 prerequisite list (`initdb`, `pg_ctl`; `psql` only for manual inspection) is true again.
-Left with a written justification, not fixed: `merge-policy.json` keeps one gate per line,
-so the edited `rust-test` entry is 115 columns while its neighbours are 139–153; reformatting
-one entry would make the array inconsistent and this file is `T2-never`. Left open by
-decision: the `frontend-check` and `quality-gate` gate `cmd` approximations (policy owner's
-call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility (needs a runner
-or image this worktree cannot create).
+
+Round 6 (`268025f`) found that `starts_with` still accepted `bash ... || true` and that the
+`pnpm test` check accepted a substring. Taken: a block command must equal the command
+line-for-line, `pnpm test` must equal `pnpm run test:frontend && pnpm run test:rust`, and
+parser tests cover the `|| true` and `echo` forms. Also taken: `merge-policy.json` gates are
+now one field per line (the array was 115–153 columns wide), and the README describes the
+wiring as part of this change instead of as a future PR.
+
+Left open by decision: the `frontend-check` and `quality-gate` gate `cmd` approximations
+(policy owner's call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility
+(needs a runner or image this worktree cannot create).
