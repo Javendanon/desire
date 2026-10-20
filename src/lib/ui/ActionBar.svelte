@@ -30,4 +30,12 @@
     flex-wrap: wrap;
     gap: var(--space-2);
   }
+
+  /* Phones: a 2 × 2 grid, so the bar keeps a fixed height above the narrative panel. */
+  @media (max-width: 600px) {
+    .bar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
 </style>
