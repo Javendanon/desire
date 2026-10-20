@@ -9,7 +9,7 @@ import { readManifest } from './io.ts';
 import { safeAssetId } from './manifest.ts';
 import { outputPath } from './output.ts';
 import { buildScene } from './scene.ts';
-import { checkTextures } from './textures.ts';
+import { prepareTextures } from './textures.ts';
 import type { BuildReport } from './check.ts';
 import type { Scene } from './scene.ts';
 import type { Finding, Manifest } from './types.ts';
@@ -55,11 +55,11 @@ function stage(spec: ArtifactSpec) {
   const { manifest, scene, artifactPath, sourceDir } = spec;
   const pendingPath = checkedPath(`${artifactPath}${PENDING_SUFFIX}`);
   fs.rmSync(pendingPath, { force: true });
-  const images = manifest.textures.map((texture) =>
-    fs.readFileSync(path.join(sourceDir, texture.path)));
+  const { images, checks: textures } = prepareTextures(manifest, sourceDir);
+  const failed = textures.filter((texture) => !texture.pass);
+  if (failed.length > 0) throw new Error(failed.map((texture) => texture.detail).join('; '));
   fs.writeFileSync(pendingPath, encodeGlb(scene, manifest, images));
   const gltf = parseGlb(fs.readFileSync(pendingPath));
-  const textures = checkTextures(manifest, sourceDir);
   const bytes = fs.statSync(pendingPath).size;
   return { pendingPath, gltf, textures, bytes };
 }

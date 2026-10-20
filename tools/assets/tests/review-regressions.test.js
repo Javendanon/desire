@@ -28,7 +28,8 @@ test('truncated and header-only WebP images cannot ship', (context) => {
   const { source, manifest, manifestPath } = fixture(context);
   manifest.textures[0].path = 'broken.webp';
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
-  const sample = fs.readFileSync(path.join(path.dirname(sampleManifestPath()), 'textures/paving.webp'));
+  const imagePath = path.join(path.dirname(sampleManifestPath()), 'textures/paving.webp');
+  const sample = fs.readFileSync(imagePath);
   const headerOnly = Buffer.alloc(30);
   headerOnly.write('RIFF', 0);
   headerOnly.writeUInt32LE(22, 4);
@@ -86,7 +87,8 @@ test('ground grid and scene sizes have preflight budgets', () => {
   manifest.illustration.width_px = 1e9;
   assert.match(validateManifest(manifest).errors.join('\n'), /grid.*budget/);
   const crowded = base();
-  crowded.places = Array.from({ length: 1025 }, (_, index) => ({ ...crowded.places[0], id: `${index}` }));
+  crowded.places = Array.from({ length: 1025 }, (_, index) =>
+    ({ ...crowded.places[0], id: `${index}` }));
   assert.match(validateManifest(crowded).errors.join('\n'), /places.*budget/);
 });
 

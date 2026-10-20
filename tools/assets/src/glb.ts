@@ -236,8 +236,10 @@ function sceneSelections(id: string, nodes: GltfNode[]) {
 function textureResources(builder: Builder, manifest: Manifest, images: Buffer[]) {
   if (images.length !== manifest.textures.length) throw new Error('texture buffers are required');
   if (images.length === 0) return {};
-  const extensions = manifest.textures.map((texture) => texture.mime === 'image/webp'
-    ? 'EXT_texture_webp' : 'KHR_texture_basisu');
+  if (manifest.textures.some((texture) => texture.mime !== 'image/webp')) {
+    throw new Error('only decoded WebP textures are supported; BasisU is not verified');
+  }
+  const extensions = manifest.textures.map(() => 'EXT_texture_webp');
   return {
     extensionsUsed: [...new Set(extensions)],
     extensionsRequired: [...new Set(extensions)],

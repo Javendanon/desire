@@ -2,18 +2,18 @@
 import { planGround } from './calibration.ts';
 import { EVIDENCE, validateHeight } from './heights.ts';
 import { filled, finite, positive } from './values.ts';
+import { gridFitsBudget } from './nav.ts';
+import { validateMaterials, validateTextures } from './surface-manifest.ts';
 import type {
-  Calibration, Ground, Illustration, Manifest, Material, Pixel, Place, Plan,
-  Provenance, ScaleCheck, Texture,
+  Calibration, Ground, Illustration, Manifest, Pixel, Place, Plan, Provenance, ScaleCheck,
 } from './types.ts';
 
 export const SCHEMA = 'desire.asset-scene/1';
-export const COMPRESSED_MIME = new Set(['image/webp', 'image/ktx2']);
+export const MAX_PLACES = 1024;
+const MAX_MATERIALS = 256;
+const MAX_TEXTURES = 64;
+const MAX_WAYPOINTS = 1024;
 export const MAX_FOOTPRINT_M = 200;
-export const MAX_TEXTURE_BYTES = 262144;
-const BASE_COLOR_CHANNELS = 4;
-const COLOR_RANGE = { min: 0, max: 1 };
-const REMOTE_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 const SUPPORTED_ROTATION_RAD = 0;
 
 const ASSET_ID_MAX_LENGTH = 64;
@@ -34,10 +34,18 @@ function validateProvenance(provenance: Provenance, where: string, errors: strin
 }
 
 function validateSections(manifest: Manifest, errors: string[]) {
+  const limits = { places: MAX_PLACES, materials: MAX_MATERIALS,
+    textures: MAX_TEXTURES, waypoints: MAX_WAYPOINTS };
+  let withinBudget = true;
   for (const key of ['places', 'materials', 'textures', 'waypoints'] as const) {
     if (!Array.isArray(manifest[key])) errors.push(`${key} must be an array`);
+    else if (manifest[key].length > limits[key]) {
+      errors.push(`${key} exceeds its count budget`);
+      withinBudget = false;
+    }
   }
   if (!filled(manifest.ground?.material)) errors.push('ground: material is required');
+  return withinBudget;
 }
 
 function validateHeader(manifest: Manifest, errors: string[]) {
@@ -49,7 +57,7 @@ function validateHeader(manifest: Manifest, errors: string[]) {
   if (manifest.network_allowed === true) {
     errors.push('network_allowed: the pipeline is offline; remote material needs authorization');
   }
-  validateSections(manifest, errors);
+  return validateSections(manifest, errors);
 }
 
 function validateIllustration(illustration: Illustration, errors: string[]) {
@@ -159,86 +167,6 @@ function validatePlace(place: Place, context: PlaceContext) {
   validateHeight(place, errors);
 }
 
-function validateColor(material: Material, errors: string[]) {
-  const color = material.base_color ?? [];
-  const shaped = Array.isArray(color) && color.length === BASE_COLOR_CHANNELS;
-  const inRange = shaped && color.every((channel) => {
-    return finite(channel) && channel >= COLOR_RANGE.min && channel <= COLOR_RANGE.max;
-  });
-  if (!shaped || !inRange) {
-    const message = `material ${material.id}: base_color needs ${BASE_COLOR_CHANNELS} channels`;
-    errors.push(`${message} in range`);
-  }
-}
-
-function validateMaterial(material: Material, textureIds: Set<string>, errors: string[]) {
-  if (material === null || typeof material !== 'object') {
-    errors.push('material: every entry must be an object');
-    return;
-  }
-  if (!filled(material.id)) errors.push('material: id is required');
-  validateColor(material, errors);
-  if (material.texture !== undefined && !textureIds.has(material.texture)) {
-    errors.push(`material ${material.id}: unknown texture ${material.texture}`);
-  }
-}
-
-function validateMaterials(materials: Material[], textureIds: Set<string>, errors: string[]) {
-  const ids = new Set<string>();
-  for (const material of materials ?? []) {
-    if (material === null || typeof material !== 'object') {
-      validateMaterial(material, textureIds, errors);
-      continue;
-    }
-    if (ids.has(material.id)) errors.push(`duplicate material id ${material.id}`);
-    ids.add(material.id);
-    validateMaterial(material, textureIds, errors);
-  }
-  return ids;
-}
-
-function validateTexture(texture: Texture, errors: string[]) {
-  if (texture === null || typeof texture !== 'object') {
-    errors.push('texture: every entry must be an object');
-    return;
-  }
-  const where = `texture ${texture.id}`;
-  if (!COMPRESSED_MIME.has(texture.mime)) {
-    errors.push(`${where}: ${texture.mime} is not compressed; use image/webp or image/ktx2`);
-  }
-  if (!Number.isInteger(texture.width_px) || !positive(texture.width_px)
-    || !Number.isInteger(texture.height_px) || !positive(texture.height_px)) {
-    errors.push(`${where}: width_px and height_px must be positive integer resolution`);
-  }
-  if (!positive(texture.max_bytes) || texture.max_bytes > MAX_TEXTURE_BYTES) {
-    errors.push(`${where}: max_bytes must be 0 < b <= ${MAX_TEXTURE_BYTES}`);
-  }
-  if (!filled(texture.path) || escapesAssetDir(texture.path)) {
-    errors.push(`${where}: path must be relative and stay inside the asset directory`);
-  } else if (REMOTE_SCHEME.test(texture.path)) {
-    errors.push(`${where}: remote texture urls are not allowed`);
-  }
-}
-
-function validateTextures(textures: Texture[], errors: string[]) {
-  const ids = new Set<string>();
-  for (const texture of textures ?? []) {
-    if (texture === null || typeof texture !== 'object') {
-      validateTexture(texture, errors);
-      continue;
-    }
-    if (!filled(texture.id)) errors.push('texture: id is required');
-    if (ids.has(texture.id)) errors.push(`duplicate texture id ${texture.id}`);
-    ids.add(texture.id);
-    validateTexture(texture, errors);
-  }
-  return ids;
-}
-
-function escapesAssetDir(value: string) {
-  return value.startsWith('/') || value.includes('..');
-}
-
 function groundExtent(manifest: Manifest) {
   const { illustration, calibration } = manifest;
   const width = illustration?.width_px;
@@ -269,8 +197,13 @@ function validateAnchors(manifest: Manifest, errors: string[]) {
   const waypoints = Array.isArray(manifest.waypoints) ? manifest.waypoints : [];
   if (waypoints.length === 0) errors.push('waypoints: at least one navigation anchor is required');
   const extent = groundExtent(manifest);
+  if (extent && !gridFitsBudget(extent)) errors.push('navigation grid exceeds its cell budget');
   validateAnchor({ where: 'spawn', point: manifest.spawn, extent, errors });
   for (const waypoint of waypoints) {
+    if (!waypoint || typeof waypoint !== 'object') {
+      errors.push('waypoint: every entry must be an object');
+      continue;
+    }
     validateAnchor({ where: `waypoint ${waypoint.id}`, point: waypoint, extent, errors });
   }
 }
@@ -283,13 +216,15 @@ export function validateManifest(value: unknown): { errors: string[] } {
   }
   // This cast permits defensive field checks; callers must reject any returned errors.
   const manifest = value as Manifest;
-  validateHeader(manifest, errors);
+  if (!validateHeader(manifest, errors)) return { errors };
   validateIllustration(manifest.illustration, errors);
   validateCalibration(manifest.calibration, errors);
   validateScaleChecks(manifest.scale_checks, errors);
   validateAnchors(manifest, errors);
-  const textureIds = validateTextures(manifest.textures, errors);
-  const materialIds = validateMaterials(manifest.materials, textureIds, errors);
+  const textures = Array.isArray(manifest.textures) ? manifest.textures : [];
+  const materials = Array.isArray(manifest.materials) ? manifest.materials : [];
+  const textureIds = validateTextures(textures, errors);
+  const materialIds = validateMaterials(materials, textureIds, errors);
   if (manifest.ground?.material && !materialIds.has(manifest.ground.material)) {
     errors.push(`ground: unknown material ${manifest.ground.material}`);
   }

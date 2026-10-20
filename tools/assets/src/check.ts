@@ -76,7 +76,8 @@ function blockerContains(blocker: Blocker, solid: Solid) {
     && blocker.min_z <= north && blocker.max_z >= south;
 }
 
-/** Solids whose footprint is not inside any collision quad. Exported for tests. */
+/** O(solids × blockers); returns footprints not covered by any collision quad. */
+// ponytail: bounded to 1024 authored places; use a spatial index for larger scene chunks.
 export function uncoveredSolids(blockers: Blocker[], solids: Solid[]): string[] {
   const missing = solids.filter((solid) => {
     return !blockers.some((blocker) => blockerContains(blocker, solid));

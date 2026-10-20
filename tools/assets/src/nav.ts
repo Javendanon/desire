@@ -8,6 +8,13 @@ type Navigation = { ground: Ground; blockers: Blocker[]; spawn: Plan;
   waypoints: Anchor[]; cell_m?: number };
 
 export const DEFAULT_CELL_M = 1;
+export const MAX_NAV_CELLS = 1_000_000;
+
+/** Finite allocation budget, shared by manifest preflight and direct callers. */
+export function gridFitsBudget(ground: Ground, cell = DEFAULT_CELL_M): boolean {
+  const count = Math.ceil(ground.width_m / cell) * Math.ceil(ground.height_m / cell);
+  return Number.isFinite(count) && count > 0 && count <= MAX_NAV_CELLS;
+}
 const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const PER_MILLE = 1000;
 
@@ -24,6 +31,8 @@ function gridOf(ground: Ground, cell: number) {
     rows: Math.ceil(ground.height_m / cell),
     origin_x_m: ground.origin_x_m,
     origin_z_m: ground.origin_z_m,
+    max_x_m: ground.origin_x_m + ground.width_m,
+    max_z_m: ground.origin_z_m + ground.height_m,
   };
 }
 
@@ -82,12 +91,14 @@ function flood({ blocked, grid, start }: FloodSpec) {
   return spread({ blocked, grid, queue: [start], reached });
 }
 
+function pointInGrid(point: Plan, grid: Grid) {
+  return point.x_m >= grid.origin_x_m && point.x_m <= grid.max_x_m
+    && point.z_m >= grid.origin_z_m && point.z_m <= grid.max_z_m;
+}
+
 function waypointReached(spec: Pick<Walk, 'reached' | 'grid'> & { point: Plan; cell: number }) {
   const { reached, point, grid, cell } = spec;
-  const column = cellColumn(point.x_m, cell, grid.origin_x_m);
-  const row = cellRow(point.z_m, cell, grid.origin_z_m);
-  if (column < 0 || row < 0 || column >= grid.columns || row >= grid.rows) return false;
-  return reached[row * grid.columns + column] === 1;
+  return pointInGrid(point, grid) && reached[spawnIndex(point, grid, cell)] === 1;
 }
 
 type WaypointSpec = Pick<Walk, 'reached' | 'grid'> & { waypoints: Anchor[]; cell: number };
@@ -139,7 +150,11 @@ export function navigate(spec: Navigation) {
   if (!(ground.width_m > 0 && ground.height_m > 0)) {
     throw new Error('ground must have a positive size');
   }
+  if (!Number.isFinite(cell_m) || cell_m <= 0 || !gridFitsBudget(ground, cell_m)) {
+    throw new Error('navigation grid exceeds its cell budget or has invalid cell size');
+  }
   const grid = gridOf(ground, cell_m);
+  if (!pointInGrid(spawn, grid)) throw new Error('spawn is outside the navigation ground');
   const blocked = markBlocked(blockers, grid, cell_m);
   const start = spawnIndex(spawn, grid, cell_m);
   const reached = flood({ blocked, grid, start });

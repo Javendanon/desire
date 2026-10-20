@@ -55,7 +55,7 @@ export function evaluateScaleChecks(calibration: Calibration, checks: ScaleCheck
       expected_m: check.expected_m,
       delta_m,
       tolerance_m: tolerance,
-      pass: Math.abs(delta_m) <= tolerance,
+      pass: Math.abs(computed - check.expected_m) <= tolerance,
     };
   });
 }

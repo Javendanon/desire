@@ -1,73 +1,106 @@
-/** Texture policy: only GPU/transport compressed formats may ship, inside a byte budget. */
+/** Preflight local images, decode WebP offline, and validate the exact buffers exported. */
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
 import type { Manifest, Texture } from './types.ts';
+import { MAX_TEXTURE_BYTES, MAX_TEXTURE_PIXELS } from './surface-manifest.ts';
 
-export type TextureCheck = ReturnType<typeof inspect>;
+export const MAX_TOTAL_TEXTURE_BYTES = 16 * 1024 * 1024;
+const DECODE_TIMEOUT_MS = 5000;
+const WEBP = {
+  chunkStart: 12, chunkEnd: 16, lossyWidth: 26, lossyHeight: 28,
+  losslessSignature: 20, losslessBits: 21, losslessHeader: 25,
+  extendedWidth: 24, extendedHeight: 27, frameHeader: 30,
+  dimensionMask: 0x3fff, dimensionBits: 14, losslessMagic: 0x2f,
+};
+type TextureFile = { file: string; bytes: number; error?: string };
+export type TextureCheck = {
+  id: string; mime: string; bytes: number; max_bytes: number; pass: boolean; detail: string;
+  width_px: number; height_px: number;
+};
 
-const HEADER_BYTES = 12;
-const WEBP_RIFF = { offset: 0, length: 4 };
-const WEBP_TAG = { offset: 8, length: 4 };
-const KTX2_TAG = { offset: 1, length: 6 };
-const KTX2_IDENTIFIER_BYTE = 0xab;
-
-function hasWebpMagic(header: Buffer) {
-  const riff = header.toString('ascii', WEBP_RIFF.offset, WEBP_RIFF.offset + WEBP_RIFF.length);
-  const tag = header.toString('ascii', WEBP_TAG.offset, WEBP_TAG.offset + WEBP_TAG.length);
-  return header.length >= HEADER_BYTES && riff === 'RIFF' && tag === 'WEBP';
+function probeTexture(texture: Texture, baseDir: string): TextureFile {
+  let bytes = 0;
+  try {
+    const root = fs.realpathSync(baseDir);
+    const file = fs.realpathSync(path.resolve(root, texture.path));
+    const relative = path.relative(root, file);
+    if (relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      throw new Error('texture resolves outside the asset directory');
+    }
+    const stat = fs.statSync(file);
+    bytes = stat.size;
+    if (!stat.isFile()) throw new Error('texture must be a regular file');
+    if (bytes > texture.max_bytes || bytes > MAX_TEXTURE_BYTES) throw new Error('texture byte budget');
+    return { file, bytes };
+  } catch (cause) {
+    return { file: '', bytes, error: `texture ${texture.id}: ${String(cause)}` };
+  }
 }
 
-function hasKtx2Magic(header: Buffer) {
-  const tag = header.toString('ascii', KTX2_TAG.offset, KTX2_TAG.offset + KTX2_TAG.length);
-  return header.length >= HEADER_BYTES && header[0] === KTX2_IDENTIFIER_BYTE && tag === 'KTX 20';
-}
-
-function magicMatches(mime: string, header: Buffer) {
-  if (mime === 'image/webp') return hasWebpMagic(header);
-  if (mime === 'image/ktx2') return hasKtx2Magic(header);
-  return false;
-}
-
-function resolution(mime: string, data: Buffer) {
-  if (mime === 'image/ktx2' && data.length >= 80) {
-    return { width_px: data.readUInt32LE(20), height_px: data.readUInt32LE(24) };
+function webpDimensions(data: Buffer) {
+  const chunk = data.toString('ascii', WEBP.chunkStart, WEBP.chunkEnd);
+  if (chunk === 'VP8 ' && data.length >= WEBP.frameHeader) {
+    return { width_px: data.readUInt16LE(WEBP.lossyWidth) & WEBP.dimensionMask,
+      height_px: data.readUInt16LE(WEBP.lossyHeight) & WEBP.dimensionMask };
   }
-  const chunk = data.toString('ascii', 12, 16);
-  if (chunk === 'VP8 ' && data.length >= 30) {
-    return { width_px: data.readUInt16LE(26) & 0x3fff, height_px: data.readUInt16LE(28) & 0x3fff };
+  if (chunk === 'VP8L' && data.length >= WEBP.losslessHeader
+    && data[WEBP.losslessSignature] === WEBP.losslessMagic) {
+    const bits = data.readUInt32LE(WEBP.losslessBits);
+    return { width_px: (bits & WEBP.dimensionMask) + 1,
+      height_px: ((bits >>> WEBP.dimensionBits) & WEBP.dimensionMask) + 1 };
   }
-  if (chunk === 'VP8L' && data.length >= 25 && data[20] === 0x2f) {
-    const bits = data.readUInt32LE(21);
-    return { width_px: (bits & 0x3fff) + 1, height_px: ((bits >>> 14) & 0x3fff) + 1 };
-  }
-  if (chunk === 'VP8X' && data.length >= 30) {
-    return { width_px: data.readUIntLE(24, 3) + 1, height_px: data.readUIntLE(27, 3) + 1 };
+  if (chunk === 'VP8X' && data.length >= WEBP.frameHeader) {
+    return { width_px: data.readUIntLE(WEBP.extendedWidth, 3) + 1,
+      height_px: data.readUIntLE(WEBP.extendedHeight, 3) + 1 };
   }
   return { width_px: 0, height_px: 0 };
 }
 
-function inspect(texture: Texture, baseDir: string) {
-  const file = path.join(baseDir, texture.path);
-  const exists = fs.existsSync(file);
-  const data = exists ? fs.readFileSync(file) : Buffer.alloc(0);
-  const bytes = data.length;
-  const magic = magicMatches(texture.mime, data);
-  const size = resolution(texture.mime, data);
-  const matches = size.width_px === texture.width_px && size.height_px === texture.height_px;
+function decodeProblem(texture: Texture, data: Buffer, size: ReturnType<typeof webpDimensions>) {
+  const magic = data.toString('ascii', 0, 4) === 'RIFF'
+    && data.toString('ascii', 8, 12) === 'WEBP';
+  if (texture.mime !== 'image/webp' || !magic) return `bytes are not ${texture.mime}`;
+  if (size.width_px !== texture.width_px || size.height_px !== texture.height_px) {
+    return 'texture resolution mismatch';
+  }
+  const pixels = size.width_px * size.height_px;
+  if (!(pixels > 0 && pixels <= MAX_TEXTURE_PIXELS)) return 'texture pixel budget';
+  const decoded = spawnSync('dwebp', ['-quiet', '--', '-'], {
+    input: data, timeout: DECODE_TIMEOUT_MS, encoding: 'utf8',
+  });
+  if (decoded.error) return `dwebp decoder unavailable or failed: ${decoded.error.message}`;
+  if (decoded.status !== 0) return `invalid WebP payload: ${decoded.stderr.trim()}`;
+  return null;
+}
+
+function inspect(texture: Texture, data: Buffer, file: TextureFile): TextureCheck {
+  const size = webpDimensions(data);
+  const error = file.error ?? decodeProblem(texture, data, size);
   return {
-    id: texture.id,
-    mime: texture.mime,
-    bytes,
-    max_bytes: texture.max_bytes,
-    ...size,
-    pass: magic && matches && bytes <= texture.max_bytes,
-    detail: !exists ? `missing ${texture.path}` : !magic ? `bytes are not ${texture.mime}`
-      : `${texture.mime}, ${bytes} B, resolution ${matches ? 'matches' : 'mismatch'}`,
+    id: texture.id, mime: texture.mime, bytes: file.bytes, max_bytes: texture.max_bytes,
+    ...size, pass: error === null,
+    detail: error ?? `${texture.mime}, ${file.bytes} B, resolution matches; dwebp decoded`,
   };
 }
 
-/** Checks every declared texture against its magic bytes and byte budget. */
-export function checkTextures(manifest: Pick<Manifest, 'textures'>, baseDir: string) {
-  return manifest.textures.map((texture) => inspect(texture, baseDir));
+/** O(textures + bytes); preflight all file sizes before any reads, then decode each buffer once. */
+export function prepareTextures(manifest: Pick<Manifest, 'textures'>, baseDir: string) {
+  const files = manifest.textures.map((texture) => probeTexture(texture, baseDir));
+  const total = files.reduce((sum, file) => sum + file.bytes, 0);
+  if (total > MAX_TOTAL_TEXTURE_BYTES) {
+    for (const file of files) file.error = 'aggregate texture byte budget';
+  }
+  const images = files.map((file) => file.error ? Buffer.alloc(0) : fs.readFileSync(file.file));
+  const checks = manifest.textures.map((texture, index) =>
+    inspect(texture, images[index], files[index]));
+  return { images, checks };
+}
+
+/** Checks local image containment, budgets, dimensions and actual decoder acceptance. */
+export function checkTextures(
+  manifest: Pick<Manifest, 'textures'>, baseDir: string
+): TextureCheck[] {
+  return prepareTextures(manifest, baseDir).checks;
 }
