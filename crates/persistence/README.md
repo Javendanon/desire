@@ -128,8 +128,10 @@ and runs `bash crates/persistence/test-postgres.sh`; `frontend-check` also runs
 `pnpm test:frontend` and `pnpm check:tests`, and `quality-gate` runs
 `python3 tools/contracts/generate.py --check` plus the contract `unittest` suite.
 `package.json` `test:rust` (and therefore `pnpm test`) points at the same harness, and the
-`merge-policy.json` `rust-test` gate `cmd` runs the harness too, so the local gate and the
-CI check execute the same command.
+`merge-policy.json` `rust-test` gate `cmd` runs the harness too, so the local gate executes
+the same command as the CI job once PostgreSQL is on `PATH`. CI additionally discovers the
+runner's PostgreSQL `bin` directory; the local gate still requires `initdb` and `pg_ctl` on
+`PATH` (see the prerequisites above).
 
 `.github/workflows/ci.yml`, `merge-policy.json` and `package.json` are `never_paths` in
 `merge-policy.json`, so this is `T2-never`: the CI owner, the policy owner and the

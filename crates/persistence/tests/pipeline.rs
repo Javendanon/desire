@@ -23,7 +23,8 @@ fn json(name: &str) -> Value {
         .unwrap_or_else(|error| panic!("{name} must be valid JSON: {error}"))
 }
 
-/// The `run` steps of one CI job, so a comment or a neighbouring job cannot satisfy a check.
+/// The `run` steps of one CI job, so neither a comment nor a neighbouring job can satisfy a
+/// check. Comment lines are dropped, including shell comments inside a step's `run` block.
 fn job(workflow: &str, name: &str) -> String {
     let start = workflow
         .lines()
@@ -33,12 +34,27 @@ fn job(workflow: &str, name: &str) -> String {
         .lines()
         .skip(start + 1)
         .take_while(|line| !is_job_header(line))
+        .filter(|line| !line.trim_start().starts_with('#'))
         .collect();
     steps.join("\n")
 }
 
 fn is_job_header(line: &str) -> bool {
     line.starts_with("  ") && !line.starts_with("   ") && line.ends_with(':')
+}
+
+#[test]
+fn comments_do_not_satisfy_the_guard() {
+    let workflow = "jobs:\n  rust-test:\n    - run: |\n        # cargo test --workspace\n        bash crates/persistence/test-postgres.sh\n  next:\n";
+    let steps = job(workflow, "rust-test");
+    assert!(
+        steps.contains(HARNESS),
+        "the guard reads the step, not the comment"
+    );
+    assert!(
+        !steps.contains("cargo test"),
+        "a commented-out command is not a step"
+    );
 }
 
 #[test]

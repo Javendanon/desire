@@ -193,6 +193,14 @@ follow-up: the gate `cmd` now runs the harness; `tests/pipeline.rs` asserts the 
 and parses CI **job blocks** instead of raw file text, so a comment or a neighbouring job
 cannot satisfy it; the PostgreSQL `PATH` step fails closed with an explicit `::error::`
 message instead of an empty `GITHUB_PATH` line. Both reviewers confirmed the schema-seeding
-and PID-collision suspicions closed and PG 17 still open. Left open by decision: the
-`frontend-check`/`quality-gate` gate `cmd` approximations (policy owner) and PG 17
-compatibility (needs a runner or image this worktree cannot create).
+and PID-collision suspicions closed and PG 17 still open.
+
+Round 3 (same two reviewers, adversarial, on `ceec9c7`) returned **87/100 PASS** and 76/100
+`CHANGES_REQUESTED`. Taken from it: the job parser drops comment lines (and a parser test
+proves a commented-out command does not satisfy the guard), the harness runs `cargo test`
+unconditionally instead of exiting 0 when `crates/persistence/Cargo.toml` is absent, the
+PostgreSQL discovery path now reaches its explicit `::error::` with no binaries and no
+`pg_config` (reproduced: exit 1 with the message), and the README no longer claims the local
+gate and CI share one command verbatim. Left open by decision: the `frontend-check` and
+`quality-gate` gate `cmd` approximations (policy owner's call, and their CI jobs now run the
+suites) and PostgreSQL 17 compatibility (needs a runner or image this worktree cannot create).
