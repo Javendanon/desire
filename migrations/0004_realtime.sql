@@ -26,6 +26,7 @@ CREATE TABLE campaign.idempotency_keys (
     campaign_id uuid NOT NULL REFERENCES campaign.campaigns,
     key uuid NOT NULL,
     event_id uuid NOT NULL,
+    request jsonb NOT NULL,
     PRIMARY KEY (campaign_id, key),
     FOREIGN KEY (campaign_id, event_id) REFERENCES campaign.outbox (campaign_id, event_id)
 );
