@@ -1,16 +1,22 @@
 // Runs the browser scene regressions against a throwaway Vite server.
 // The smoke test drives real Chrome over DevTools, so CI needs a served page first.
+// Vite is spawned as a direct child: `pnpm dev` would leave a grandchild holding stdout open and
+// the CI step would never finish after the checks pass.
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const PORT = Number(process.env.BROWSER_SMOKE_PORT ?? 5219);
 const BASE = `http://127.0.0.1:${PORT}`;
 const START_ATTEMPTS = 60;
+const VITE_PACKAGE = dirname(createRequire(import.meta.url).resolve('vite/package.json'));
+const VITE = join(VITE_PACKAGE, 'bin', 'vite.js');
 
 function startServer() {
   const child = spawn(
-    'corepack',
-    ['pnpm', 'dev', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
+    process.execPath,
+    [VITE, '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'],
     { stdio: ['ignore', 'pipe', 'pipe'], env: process.env },
   );
   child.stdout.on('data', (chunk) => process.stdout.write(chunk));
@@ -36,6 +42,12 @@ function run(command, args) {
   return new Promise((resolve) => child.on('exit', (code) => resolve(code ?? 1)));
 }
 
+function stopServer(server) {
+  if (server.exitCode !== null) return;
+  server.kill('SIGTERM');
+  setTimeout(() => server.kill('SIGKILL'), 2000).unref();
+}
+
 const server = startServer();
 let exitCode = 1;
 try {
@@ -44,6 +56,6 @@ try {
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
 } finally {
-  server.kill('SIGTERM');
+  stopServer(server);
 }
 process.exitCode = exitCode;
