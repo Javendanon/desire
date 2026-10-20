@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { checkClosePicking, checkTouchGestures } from './map-gestures.mjs';
 
 const [base = 'http://127.0.0.1:5200', screenshot = '/tmp/waterdeep-sectors.png'] =
   process.argv.slice(2);
@@ -125,6 +126,8 @@ try {
   await sleep(1500);
   const reloaded = await evaluate('window.__waterdeep.check()');
   const selectedState = await evaluate('window.__waterdeep.check()');
+  const closePicking = await checkClosePicking(send, evaluate);
+  const touch = await checkTouchGestures(send, evaluate);
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   if (shot.result?.data) writeFileSync(screenshot, Buffer.from(shot.result.data, 'base64'));
   await evaluate('window.__waterdeep.viewer.reset()');
@@ -186,6 +189,8 @@ try {
         radius: { before: panned.stats.radius, after: zoomed.stats.radius },
         streamed,
         pickedByPointer,
+        closePicking,
+        touch,
         survivedReload,
         projection,
         selected: selected?.id ?? null,
