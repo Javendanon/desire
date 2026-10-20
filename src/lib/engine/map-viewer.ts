@@ -24,10 +24,15 @@ import {
   type Quality,
   type TimeOfDay,
 } from './render/atmosphere.ts';
-import { SectorCity, type SectorCityStats } from './render/sector-city.ts';
+import { SectorCity } from './render/sector-city.ts';
+import type {
+  MapMemoryStats,
+  MapViewerEvents,
+  MapViewerOptions,
+  MapViewerStats,
+} from './map-viewer-types.ts';
 import { MapMarkers } from './scene/map-markers.ts';
 import {
-  clampRadius,
   orbitGoal,
   panGoal,
   projectPoint,
@@ -38,33 +43,8 @@ import {
 
 export type { Quality, TimeOfDay };
 
-export interface MapViewerOptions {
-  quality?: Quality;
-  timeOfDay?: TimeOfDay;
-  fog?: number;
-  reducedMotion?: boolean;
-  backend?: 'auto' | 'webgl2';
-  sectorLimit?: number;
-  detailRadiusM?: number;
-}
-
-export interface MapViewerStats {
-  frames: number;
-  backend: string;
-  radius: number;
-  azimuth: number;
-  polar: number;
-  focus: Point2;
-  selected: string | null;
-  sectors: SectorCityStats;
-}
-
+export type { MapMemoryStats, MapViewerEvents, MapViewerOptions, MapViewerStats };
 export type { ProjectedPoint };
-
-export interface MapViewerEvents {
-  place: MapPlace;
-  hover: MapPlace | null;
-}
 
 const MIN_RADIUS = 45;
 const HALF_LIFE = 0.3;
@@ -223,6 +203,15 @@ export class MapViewer implements MapInputTarget {
       focus: { x: this.rig.target.x, z: this.rig.target.z },
       selected: this.selected,
       sectors,
+    };
+  }
+
+  memoryStats(): MapMemoryStats {
+    const vram = this.app.stats.vram;
+    return {
+      textures: vram.tex,
+      geometry: vram.vb + vram.ib,
+      buffers: vram.ub + vram.sb,
     };
   }
 

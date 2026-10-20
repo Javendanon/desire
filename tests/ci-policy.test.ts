@@ -12,6 +12,6 @@ test('frontend-check executes frontend tests and reference verification in both 
   assert.equal(localGate?.optional, false);
   for (const command of ['test:frontend', 'verify:waterdeep']) {
     assert.ok(frontendJob.includes(`corepack pnpm run ${command}`), `CI omits ${command}`);
-    assert.ok(localGate.cmd.includes(`corepack pnpm run ${command}`), `local gate omits ${command}`);
+    assert.ok(localGate.cmd.includes(`corepack pnpm run ${command}`), `local omits ${command}`);
   }
 });

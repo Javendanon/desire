@@ -61,7 +61,7 @@ export interface MapDefinition {
   places: readonly MapPlace[];
   controlPoints: readonly MapMarker[];
   streets: readonly MapMarker[];
-  /** Optional scene-only corridors; older map packages need not supply them. */
+  /** Optional scene-only corridors. Older map packages need not supply them. */
   roads?: readonly MapRoad[];
   /** True where the map has land, including its own water bodies. */
   isLand(point: Point2): boolean;

@@ -88,7 +88,7 @@ export function groupByTone(map: MapDefinition, toneCount: number): Map<number, 
   return new Map([...groups].sort((left, right) => left[0] - right[0]));
 }
 
-/** Always-resident road surface; shared edges do not depend on sector load order. */
+/** Always-resident road surface. Shared edges do not depend on sector load order. */
 export function roadMesh(device: pc.GraphicsDevice, map: MapDefinition): pc.Mesh {
   const positions: number[] = [];
   const uvs: number[] = [];

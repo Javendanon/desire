@@ -9,6 +9,7 @@ Two kinds of data live here, kept apart on purpose:
 | Kind | Source | Where |
 | --- | --- | --- |
 | Geography | D05 plan metres: coast control points, ward boxes and centroids, 20 control points, 10 places, 7 street label anchors | `reference.ts`, `bounds.ts`, `zones.ts`, `coast.ts`, `plan.ts` |
+| Street pilot | Raster-traced Market approaches and open-square interior, with interpreted widths | `streets.ts`, [comparison](../../../docs/reports/d13-street-comparison.md) |
 | Facades | D13 interpretation: lot grid, density, footprint, height, roof tone | `buildings.ts`, `zones.ts` profiles |
 
 Every building carries `heightSource: 'interpreted'`. D05 records no building heights, so no height
@@ -18,7 +19,7 @@ labelled visual reading, not a vector coastline.
 ## What is in the scene
 
 - The whole map in D04 metres: 3560 x 7256 px at `0.983225806451613` m/px.
-- 435 sectors of 250 m; 13,858 generated lots in 8 ward zones.
+- 435 sectors of 250 m; 13,607 generated lots in 8 ward zones.
 - 10 places with a D04 `Place` record and one `PlaceAnchor` each (`waterdeepPlaces()`).
 - 20 D05 control-point markers and 7 street label anchors, off by default in the demo.
 - A far shell with every lot at low detail (one instanced batch per roof tone) and streamed
@@ -27,7 +28,9 @@ labelled visual reading, not a vector coastline.
 
 Ward boxes are calibration aids, not legal boundaries. Lots are assigned to the ward whose centre
 is nearest among the boxes that contain the point, so overlapping boxes do not double-build. Street
-anchors are points, not polylines: the scene never invents a street graph from them.
+anchors are points, not polylines: the scene never invents a street graph from them. Three Market
+approaches are traced separately from the raster and reserve their full width plus roof clearance.
+The Market square stays open. This is a small pilot, not a reconstructed full-city road network.
 
 ## Places and the catalog
 
@@ -56,28 +59,49 @@ node tests/browser/waterdeep-smoke.mjs http://127.0.0.1:5211 /tmp/waterdeep.png
 
 It fails unless the scene renders, the far shell covers the city, resident detail stays under the
 cap, pan moves the focus, zoom changes the radius, and selecting `castle-waterdeep` succeeds. It
-also writes three screenshots: a close sector view, an overview, and a near-top view with the D05
-control points visible.
+also verifies close-zoom pointer selection and actual browser touch pan/pinch without native
+scrolling, zoom or pointer cancellation on a freshly loaded 600×900 mobile page. It writes a
+sector view, overview, near-top view with D05 control points, and a Market pilot view. Two ten-place
+sweeps visit 80 sectors in the latest run (the count varies with camera damping) and verify that
+old instance buffers are freed, the far shell stays intact, and retained CPU growth stays below
+8 MiB after an identical second cycle.
 
 ## Budget observed in the smoke run
 
 | Measure | Value |
 | --- | --- |
-| Far-shell lots | 13,858 (about 0.85 MiB of instance matrices) |
+| Far-shell lots | 13,607 (about 0.83 MiB of instance matrices) |
 | Resident detail sectors | 8 typical (cap 20), 2 near + 6 mid |
 | Detailed buildings | 599 typical (wall + roof matrix each) |
-| Estimated matrix bytes | about 0.94 MiB total in the smoke run |
-| Estimated draw calls | about 33 typical |
+| Estimated matrix bytes | about 0.93 MiB total in the smoke run |
+| Estimated draw calls | about 34 typical |
 | Sector grid | 250 m, 435 sectors |
 
-`SectorCity.stats()` reports the live numbers. Memory is an estimate over instance matrices plus
-per-sector overhead (`residentBytes`), not a GPU profiler reading.
+`SectorCity.stats().matrixBytes` is only the legacy instance estimate, explicitly labelled in the
+panel. It is **not** the scene memory budget. `MapViewer.memoryStats()` exposes device allocation
+counters for textures, geometry (including instances), and uniform/storage buffers.
+
+The browser audit includes those resources, real WebGL renderbuffer storage (including MSAA),
+and CDP heap/backing/embedder usage, including the CPU building caches. Device counters are
+observed each frame after readiness, so earlier/between-frame texture/buffer peaks are unverified.
+The renderbuffer hook and CPU sampling start before navigation. Budgets at 1440×900,
+DPR 1, high quality, Chrome WebGL2: **192 MiB graphics, 192 MiB CPU, 320 MiB combined**.
+Latest observed peaks: **64.3 MiB graphics, 67.6 MiB CPU, 131.9 MiB combined**. Earlier CPU peaks
+varied between 75.1 and 119.7 MiB, still within budget. Mobile gestures run separately after the
+desktop audit; mobile allocations are not certified by this budget.
+The audit fails on unsupported renderbuffer formats, missing counters, budget excess or retained
+growth. See [measurement scope and results](../../../docs/reports/d13-rework.md).
+
+These are measured browser-visible resource allocations, not physical VRAM. Driver/compiler,
+swapchain and browser-process overhead are excluded. WebGPU and other screen sizes require a
+separate run and budget validation; they are not certified by the WebGL2 result.
 
 ## Expanding to another city
 
 `src/lib/engine/plan/` and `src/lib/engine/render/sector-city.ts` are generic. A new map package
 only supplies a `MapDefinition`: grid, bounds, land spans, `sector(index)`, places, control points,
-street anchors and a seed. Nothing in those engine modules mentions Waterdeep.
+street anchors, optional visual road corridors, and a seed. Nothing in those engine modules
+mentions Waterdeep.
 
 ## Known limits
 

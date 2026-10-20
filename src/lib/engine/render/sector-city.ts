@@ -43,6 +43,7 @@ export interface SectorCityStats {
   mid: number;
   detailedBuildings: number;
   farInstances: number;
+  /** Legacy instance/sector estimate only, not a complete scene memory budget. */
   matrixBytes: number;
   drawCalls: number;
 }

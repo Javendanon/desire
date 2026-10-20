@@ -18,7 +18,7 @@ test('path distance handles endpoints, corners and degenerate segments', () => {
   assert.equal(distanceToPath([], { x: 0, z: 0 }), Infinity);
 });
 
-test('the Market corridors follow independently inspected raster checkpoints within 12 pixels', () => {
+test('Market corridors follow independent raster checkpoints within 12 pixels', () => {
   const checkpoints = [
     ['traders-way', 1510, 2585],
     ['traders-way', 1940, 2585],
@@ -49,7 +49,24 @@ test('roof footprints leave the traced corridors and Market square unobstructed'
   }
 });
 
+test('roof circles clear rendered strips including their square end caps', () => {
+  const surfaces = WATERDEEP_ROADS.flatMap(corridorQuads).map((quad) => ({
+    quad, boundary: [...quad, quad[0]],
+  }));
+  // O(lots * pilot segments). The pilot has only 15 segments, not a full-city network.
+  for (const building of allWaterdeepBuildings()) {
+    const radius = Math.hypot(building.width * 1.15, building.depth * 1.08) / 2;
+    for (const { quad, boundary } of surfaces) {
+      assert.equal(pointInPolygon(quad, building), false);
+      assert.ok(distanceToPath(boundary, building) > radius);
+    }
+  }
+});
+
 test('corridor surfaces are continuous quads with nonzero width at sector crossings', () => {
+  assert.throws(() => corridorQuads({ id: 'invalid', widthM: 0, points: [] }), /positive/);
+  assert.throws(() => corridorQuads({ id: 'duplicate', widthM: 2,
+    points: [{ x: 0, z: 0 }, { x: 0, z: 0 }] }), /differ/);
   for (const road of WATERDEEP_ROADS) {
     const quads = corridorQuads(road);
     assert.equal(quads.length, road.points.length - 1);

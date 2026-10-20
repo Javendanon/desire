@@ -163,7 +163,7 @@ function showStats(viewer: MapViewer): void {
     `${sectors.sectors}/${TOTAL_SECTORS} sectors resident ` +
     `(${sectors.near} near, ${sectors.mid} mid) · ` +
     `${sectors.detailedBuildings} detailed / ${sectors.farInstances} far lots · ` +
-    `~${megabytes} MiB · ~${sectors.drawCalls} draws`;
+    `~${megabytes} MiB instance estimate · ~${sectors.drawCalls} draws`;
 }
 
 function bindPlaceList(viewer: MapViewer): void {
