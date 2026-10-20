@@ -1,7 +1,9 @@
 // Required frontend checks must include the regression suite in CI and the local policy.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+
+const RUNNER = new URL('../tools/ci/browser-smoke.mjs', import.meta.url);
 
 test('frontend-check executes frontend tests and reference verification in both gates', () => {
   const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
@@ -20,8 +22,17 @@ test('the browser scene regressions are reachable from the required frontend scr
   const scripts = JSON.parse(
     readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
   assert.ok(scripts['test:browser'], 'package.json has no test:browser script');
-  const runner = readFileSync(
-    new URL('../tools/ci/browser-smoke.mjs', import.meta.url), 'utf8');
+  const runner = readFileSync(RUNNER, 'utf8');
   assert.match(runner, /tests\/browser\/waterdeep-smoke\.mjs/,
     'the browser runner must execute the Waterdeep scene smoke test');
+});
+
+// Every module the runner imports must exist, or the required CI step dies on ERR_MODULE_NOT_FOUND.
+test('the modules imported by the browser runner exist', () => {
+  const runner = readFileSync(RUNNER, 'utf8');
+  const localImports = [...runner.matchAll(/from\s+'\.\/([^']+)'/g)].map((hit) => hit[1]);
+  assert.ok(localImports.length > 0, 'the runner imports no local module');
+  for (const name of localImports) {
+    assert.ok(existsSync(new URL(name, RUNNER)), `the runner imports a missing module: ${name}`);
+  }
 });

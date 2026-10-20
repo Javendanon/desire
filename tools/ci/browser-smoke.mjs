@@ -1,57 +1,20 @@
 // Runs the browser scene regressions against a throwaway Vite server.
 // The smoke test drives real Chrome over DevTools, so CI needs a served page first.
-// Vite is spawned as a direct child: `pnpm dev` would leave a grandchild holding stdout open and
-// the CI step would never finish after the checks pass.
 import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises';
+import { startVite, stopServer, waitForServer } from './dev-server.mjs';
 
 const PORT = Number(process.env.BROWSER_SMOKE_PORT ?? 5219);
 const BASE = `http://127.0.0.1:${PORT}`;
-const START_ATTEMPTS = 60;
-const VITE_PACKAGE = dirname(createRequire(import.meta.url).resolve('vite/package.json'));
-const VITE = join(VITE_PACKAGE, 'bin', 'vite.js');
-
-function startServer() {
-  const child = spawn(
-    process.execPath,
-    [VITE, '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'],
-    { stdio: ['ignore', 'pipe', 'pipe'], env: process.env },
-  );
-  child.stdout.on('data', (chunk) => process.stdout.write(chunk));
-  child.stderr.on('data', (chunk) => process.stderr.write(chunk));
-  return child;
-}
-
-async function waitForServer() {
-  for (let attempt = 0; attempt < START_ATTEMPTS; attempt++) {
-    try {
-      const reply = await fetch(`${BASE}/waterdeep.html`);
-      if (reply.ok) return;
-    } catch {
-      /* the server is still starting */
-    }
-    await sleep(500);
-  }
-  throw new Error(`the dev server did not answer on ${BASE}`);
-}
 
 function run(command, args) {
   const child = spawn(command, args, { stdio: 'inherit', env: process.env });
   return new Promise((resolve) => child.on('exit', (code) => resolve(code ?? 1)));
 }
 
-function stopServer(server) {
-  if (server.exitCode !== null) return;
-  server.kill('SIGTERM');
-  setTimeout(() => server.kill('SIGKILL'), 2000).unref();
-}
-
-const server = startServer();
+const server = startVite(PORT);
 let exitCode = 1;
 try {
-  await waitForServer();
+  await waitForServer(server, BASE);
   exitCode = await run('node', ['tests/browser/waterdeep-smoke.mjs', BASE]);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
