@@ -28,7 +28,7 @@ pub fn apply_through(client: &mut Client, target: usize) -> Result<(), Error> {
     tx.query_one("SELECT pg_advisory_xact_lock($1)", &[&MIGRATION_LOCK])
         .context("lock migration history")?;
     tx.batch_execute(concat!(
-        "CREATE TABLE IF NOT EXISTS persistence_migrations (",
+        "CREATE TABLE IF NOT EXISTS public.persistence_migrations (",
         "version bigint PRIMARY KEY, sql text NOT NULL, ",
         "installed_at timestamptz NOT NULL DEFAULT now())"
     ))
@@ -45,7 +45,7 @@ fn install_pending(tx: &mut Transaction<'_>, installed: usize, target: usize) ->
         tx.batch_execute(sql)
             .context(format!("apply migration {version:04}"))?;
         tx.execute(
-            "INSERT INTO persistence_migrations (version, sql) VALUES ($1, $2)",
+            "INSERT INTO public.persistence_migrations (version, sql) VALUES ($1, $2)",
             &[&version, sql],
         )
         .context(format!("record migration {version:04}"))?;
@@ -57,7 +57,7 @@ fn install_pending(tx: &mut Transaction<'_>, installed: usize, target: usize) ->
 fn verify_history(tx: &mut Transaction<'_>, target: usize) -> Result<usize, Error> {
     let rows = tx
         .query(
-            "SELECT version, sql FROM persistence_migrations ORDER BY version",
+            "SELECT version, sql FROM public.persistence_migrations ORDER BY version",
             &[],
         )
         .context("read migration history")?;

@@ -60,7 +60,9 @@ constructing a repository never runs migrations. `apply_through` supports rehear
 of any forward prefix, not downgrade.
 
 The four numbered SQL files are embedded in the crate. An advisory transaction
-lock serializes migration runners. The installed ordered prefix and exact SQL
+lock serializes migration runners. History is always stored in
+`public.persistence_migrations`, independent of connection `search_path`. The
+installed ordered prefix and exact SQL
 text must match before any new SQL runs. History recording and all pending DDL
 are in one transaction. Unknown, edited, missing, or out-of-order history and
 requests to downgrade fail without modifying data. Do not edit a deployed file;
@@ -105,3 +107,13 @@ changed outside D08's directories. All new dependency declarations are in this
 crate's manifest; no frontend, toolchain, Compose, core contract, or API manifest
 was changed. D01/integrator review of this narrow manifest delta is still required;
 no external coordination or approval is claimed.
+
+## CI handoff to D24/integrator
+
+The existing `.github/workflows/ci.yml` `rust-test` job invokes plain
+`cargo test --workspace --locked` without PostgreSQL setup. That command now fails
+closed with setup instructions; it does not skip database tests. Before merge,
+the CI owner must provide PostgreSQL binaries on PATH and replace that invocation
+with `bash crates/persistence/test-postgres.sh` (optionally also the hostile-env
+wrapper). This is a known CI integration blocker, not a passing CI claim. The
+workflow is outside D08's allowed scope and was not changed without coordination.

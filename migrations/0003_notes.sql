@@ -69,7 +69,8 @@ CREATE TABLE private.dm_secrets (
     FOREIGN KEY (campaign_id, session_id) REFERENCES campaign.sessions (campaign_id, id),
     FOREIGN KEY (campaign_id, journal_entry_id)
         REFERENCES campaign.journal_entries (campaign_id, id),
-    FOREIGN KEY (campaign_id, campaign_knowledge_id) REFERENCES campaign.knowledge (campaign_id, id),
+    FOREIGN KEY (campaign_id, campaign_knowledge_id)
+        REFERENCES campaign.knowledge (campaign_id, id),
     FOREIGN KEY (campaign_id, travel_id) REFERENCES campaign.travels (campaign_id, id),
     FOREIGN KEY (campaign_id, place_override_id)
         REFERENCES campaign.place_overrides (campaign_id, id),

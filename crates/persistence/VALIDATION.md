@@ -15,8 +15,9 @@ Same worktree, gate configuration, exclusions, and kimun **0.26.0**:
 | Project `rs/ts/js` score | 94.99 (A+) | 95.48 (A+) |
 | Analyzed product files / LOC | 41 / 3513 | 50 / 4231 |
 | Floor-blocking findings | 0 | 0 |
-| Rust workspace tests | 15 passed | 33 passed |
-| New persistence integration tests | No persistence crate | 18 passed |
+| Target warnings | 25 | 26 |
+| Rust workspace tests | 15 passed | 34 passed |
+| New persistence integration tests | No persistence crate | 19 passed |
 | Focused persistence score | No persistence crate | 97.9 (A++) |
 | Focused duplication | No persistence crate | 0% |
 
@@ -38,8 +39,8 @@ contract's named PostgreSQL revision/edition/finite-number domains.
 ## Executed checks
 
 - `bash crates/persistence/test-postgres.sh` and the hostile-environment regression
-  `bash crates/persistence/tests/test-environment.sh`: PostgreSQL **14.19**, all 33
-  Rust workspace tests passed (18 new DB integration tests), plus 25 SQL rejection
+  `bash crates/persistence/tests/test-environment.sh`: PostgreSQL **14.19**, all 34
+  Rust workspace tests passed (19 new DB integration tests), plus 25 SQL rejection
   assertions and schema-presence assertions. No ignored/skipped DB tests.
 - `cargo fmt --all --check`: passed.
 - `cargo clippy --workspace --all-targets --locked -- -D warnings`: passed.
@@ -64,7 +65,8 @@ line/branch coverage measurement is claimed.
 
 - Fresh schema installation; every version prefix 0–4 upgraded to current; repeated
   migration runs; preservation of saved campaign/catalog data across upgrade.
-- Rejection of edited history, unknown target, and downgrade; failed DDL rolls back
+- Schema-qualified migration history remains stable after connection search-path
+  changes. Rejection of edited history, unknown target, and downgrade; failed DDL rolls back
   both the schema and migration history.
 - Idempotent catalog imports including calibration, chunks and anchors; mismatch
   errors; partial seed rollback; removed anchors reported without deletion;
@@ -92,6 +94,14 @@ No new service, frontend dependency, domain abstraction, or API/auth implementat
 Only root Cargo workspace membership and the generated lockfile cross D08 scope;
 D01/integrator review remains required, with no approval claimed.
 
+**CI integration blocker:** `.github/workflows/ci.yml:79` still runs plain
+`cargo test --workspace --locked` without the isolated PostgreSQL harness. Reproduced
+that command without `DESIRE_TEST_SOCKET`: exit 101 with explicit setup errors.
+The complete suite passes through the harness, but the current CI test job will
+not pass until its owner supplies PostgreSQL binaries and invokes the harness.
+No tests were silently disabled and no out-of-scope workflow edits were made.
+See the D24/integrator handoff in `README.md`; remote CI was not executed.
+
 Repository calls assume an authorized server caller; deployment privileges and
 identity checks are D09/D10 integration obligations. Further CRUD and immutable
 travel event snapshots are explicitly not implemented by the initial adapters;
@@ -112,7 +122,14 @@ Anchor imports reject duplicate map-version IDs before set cardinality can be
 misinterpreted; a failed replacement rolls back the new anchor. Test scenarios and
 fixtures are split into functions below the hard F1 ceiling, and the named source
 functions were shortened. No threshold or metric suppression was changed.
-Round 2 independent review is pending; this is not approval.
+Round 2: both independent reviewers returned scoped PASS, **96/100** each, with
+no must-fix findings. A and B noted one 101-column SQL line; B additionally
+reproduced history lookup failure after changing `search_path`. Wrapped the SQL
+line and added a failing search-path regression before qualifying the history
+table as `public.persistence_migrations`. Some fixture-heavy tests remain 26–35
+lines: below the hard ceiling, kept explicit rather than adding more factories.
+A final independent check of these follow-ups and the documented CI blocker is
+pending; scoped review is not remote-CI or production approval.
 
 Local raw evidence is under `.local/d08/` (gitignored): baseline/final test logs,
 RED logs, gate JSON/logs, focused metrics, frontend/tooling results, and reviewer
