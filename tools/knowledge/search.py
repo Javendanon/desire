@@ -53,6 +53,7 @@ CATALOG_FIELDS = (
     "translation_status",
     "source_id",
     "license",
+    "edition_verification",
     "references",
 )
 

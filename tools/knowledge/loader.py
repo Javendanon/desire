@@ -272,6 +272,10 @@ def check_verification(entries: list[Entry], sources: dict[str, Source]) -> None
             source.document_sha256 in verification.citation,
             f"{entry.key}: citation does not name the registered document",
         )
+        require(
+            entry.source_locator in verification.citation,
+            f"{entry.key}: citation does not name the source section",
+        )
 
 
 def check_references(entries: list[Entry]) -> None:

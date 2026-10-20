@@ -136,6 +136,14 @@ class CompendiumShapeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invalid compendium"):
                 search.find("", content_dir=content)
 
+    def test_catalog_record_must_carry_the_verification_state(self):
+        document = importer.render_compendium(loader.load_entries())
+        first_id = next(iter(document["catalog"]))
+        del document["catalog"][first_id]["edition_verification"]
+        with compendium_content(document) as content:
+            with self.assertRaisesRegex(ValueError, "invalid compendium"):
+                search.find("", content_dir=content)
+
     def test_catalog_references_must_be_an_array(self):
         document = importer.render_compendium(loader.load_entries())
         first_id = next(iter(document["catalog"]))

@@ -89,6 +89,16 @@ class EditionVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not name the registered document"):
             loader.load_entries(self.content)
 
+    def test_verified_citation_must_name_the_source_section(self):
+        digest = loader.load_sources(self.content)["srd-5.2"].document_sha256
+
+        def change(entry):
+            entry["edition_verification"]["citation"] = digest
+
+        mutate_entry(self.content, GREASE_2024, change)
+        with self.assertRaisesRegex(ValueError, "does not name the source section"):
+            loader.load_entries(self.content)
+
     def test_document_url_must_be_http(self):
         path = self.content / "sources.json"
         document = support.read(path)
