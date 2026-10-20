@@ -44,6 +44,12 @@ matcher.
   canon.
 - Bodies are short Spanish interpretive summaries, not verbatim SRD text. The
   `translation_status` field is explicit; the seed uses `translated`, not `reviewed`.
+- Every entry declares `edition_verification`: `verified` with a `citation` that names
+  the source section, or `pending_review` with an empty citation. The importer rejects
+  an entry without the block, an unknown status and a `verified` entry without a
+  citation, so 2024 content cannot pass as verified without review. The citation for a
+  verified 2024 entry names the retrieved document and its SHA-256 so the check can be
+  repeated; the delivery report records the URL and locators.
 - `dnd_2014` and `dnd_2024` are separate entries and can link with `previous_edition`.
 - References use `edition:slug` targets. The importer rejects dangling, duplicate,
   self or relation-incompatible links.

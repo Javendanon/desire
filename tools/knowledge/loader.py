@@ -18,6 +18,9 @@ from .model import (
     SYNTHETIC_EVIDENCE,
     TRANSLATION_STATUSES,
     UUID_PATTERN,
+    VERIFICATION_STATUSES,
+    VERIFIED,
+    EditionVerification,
     Entry,
     Provenance,
     Reference,
@@ -112,6 +115,20 @@ def parse_provenance(raw: object, location: str) -> Provenance:
     )
 
 
+def parse_verification(raw: dict, location: str) -> EditionVerification:
+    """A verified entry must name the cited section; review may stay pending."""
+    where = f"{location}.edition_verification"
+    verification = raw.get("edition_verification")
+    require(isinstance(verification, dict), f"{where}: expected object")
+    status = choice(verification.get("status"), VERIFICATION_STATUSES, f"{where}.status")
+    citation = optional_text(verification, "citation", where)
+    require(
+        status != VERIFIED or bool(citation.strip()),
+        f"{where}.citation: verified entry needs a citation",
+    )
+    return EditionVerification(status=status, citation=citation)
+
+
 def parse_entry(raw: object, kind: str, location: str) -> Entry:
     require(isinstance(raw, dict), f"{location}: expected object")
     entry_kind = choice(raw.get("kind"), KINDS, f"{location}.kind")
@@ -134,6 +151,7 @@ def parse_entry(raw: object, kind: str, location: str) -> Entry:
         license=text(raw, "license", location),
         source_locator=text(raw, "source_locator", location),
         provenance=parse_provenance(raw.get("provenance"), f"{location}.provenance"),
+        edition_verification=parse_verification(raw, location),
         references=parse_references(raw.get("references", []), f"{location}.references"),
     )
 

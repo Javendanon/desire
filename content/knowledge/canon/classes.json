@@ -19,6 +19,10 @@
         "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
         "evidence": "interpretation"
       },
+      "edition_verification": {
+        "status": "pending_review",
+        "citation": ""
+      },
       "references": []
     },
     {
@@ -38,6 +42,10 @@
         "source": "Systems Reference Document 5.2",
         "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
         "evidence": "interpretation"
+      },
+      "edition_verification": {
+        "status": "pending_review",
+        "citation": ""
       },
       "references": [
         {

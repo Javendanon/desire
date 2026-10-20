@@ -19,6 +19,10 @@
         "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
         "evidence": "interpretation"
       },
+      "edition_verification": {
+        "status": "pending_review",
+        "citation": ""
+      },
       "references": []
     },
     {
@@ -29,7 +33,7 @@
       "rules_edition": "dnd_2024",
       "language": "es",
       "title": "Derribado",
-      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse, a menos que se ponga de pie y termine así la condición. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
+      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse o gastar movimiento igual a la mitad de su velocidad (redondeado hacia abajo) para ponerse de pie y terminar así la condición; si su velocidad es 0, no puede ponerse de pie. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
       "translation_status": "translated",
       "source_id": "srd-5.2",
       "license": "CC-BY-4.0",
@@ -38,6 +42,10 @@
         "source": "Systems Reference Document 5.2",
         "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
         "evidence": "interpretation"
+      },
+      "edition_verification": {
+        "status": "verified",
+        "citation": "SRD 5.2, Conditions: Prone [Condition] (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)"
       },
       "references": [
         {
