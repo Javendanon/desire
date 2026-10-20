@@ -26,7 +26,8 @@ export const OPENING: readonly StoryLine[] = [
   {
     speaker: 'Narrador',
     text:
-      'La niebla sube del agua y se pega a las grúas. En el muelle siete, una está partida en dos.',
+      'La niebla sube del agua y se pega a las grúas. ' +
+      'En el muelle siete, una está partida en dos.',
     tone: 'narration',
   },
   {
@@ -70,7 +71,8 @@ export const CHOICES: readonly DemoChoice[] = [
     reply: {
       speaker: 'Narrador',
       text:
-        'Detrás de los barriles, un matón de Xanathar sonríe. Algo grande se mueve bajo el muelle.',
+        'Detrás de los barriles, un matón de Xanathar sonríe. ' +
+        'Algo grande se mueve bajo el muelle.',
       tone: 'narration',
     },
   },
@@ -78,23 +80,107 @@ export const CHOICES: readonly DemoChoice[] = [
 
 export const COMBATANTS: readonly Combatant[] = [
   {
-    id: 'aubrey', name: 'Aubrey', fullName: 'Aubrey Valcourt', role: 'Exploradora', side: 'ally',
-    initiative: 18, hp: 22, maxHp: 26, armorClass: 16, condition: 'Concentrada',
+    id: 'aubrey',
+    name: 'Aubrey',
+    fullName: 'Aubrey Valcourt',
+    role: 'Exploradora',
+    side: 'ally',
+    initiative: 18,
+    hp: 22,
+    maxHp: 26,
+    armorClass: 16,
+    condition: 'Concentrada',
   },
   {
-    id: 'celeste', name: 'Celeste', fullName: 'Celeste Marwyn', role: 'Maga', side: 'ally',
-    initiative: 16, hp: 0, maxHp: 20, armorClass: 12, condition: 'Caída',
+    id: 'celeste',
+    name: 'Celeste',
+    fullName: 'Celeste Marwyn',
+    role: 'Maga',
+    side: 'ally',
+    initiative: 16,
+    hp: 0,
+    maxHp: 20,
+    armorClass: 12,
+    condition: 'Caída',
   },
   {
-    id: 'sera', name: 'Sera', fullName: 'Sera Dunmore', role: 'Clériga', side: 'ally',
-    initiative: 14, hp: 19, maxHp: 24, armorClass: 18, condition: '',
+    id: 'sera',
+    name: 'Sera',
+    fullName: 'Sera Dunmore',
+    role: 'Clériga',
+    side: 'ally',
+    initiative: 14,
+    hp: 19,
+    maxHp: 24,
+    armorClass: 18,
+    condition: '',
   },
   {
-    id: 'thug', name: 'Matón', fullName: 'Matón de Xanathar', role: 'Hostil', side: 'enemy',
-    initiative: 12, hp: 11, maxHp: 16, armorClass: 13, condition: 'Herido',
+    id: 'thug',
+    name: 'Matón',
+    fullName: 'Matón de Xanathar',
+    role: 'Hostil',
+    side: 'enemy',
+    initiative: 12,
+    hp: 11,
+    maxHp: 16,
+    armorClass: 13,
+    condition: 'Herido',
   },
   {
-    id: 'crab', name: 'Cangrejo', fullName: 'Cangrejo gigante', role: 'Hostil', side: 'enemy',
-    initiative: 9, hp: 7, maxHp: 7, armorClass: 15, condition: '',
+    id: 'crab',
+    name: 'Cangrejo',
+    fullName: 'Cangrejo gigante',
+    role: 'Hostil',
+    side: 'enemy',
+    initiative: 9,
+    hp: 7,
+    maxHp: 7,
+    armorClass: 15,
+    condition: '',
   },
 ];
+
+/** Names for the test city's districts (demo content: the geometry is not the real cartography). */
+export const DISTRICTS: Readonly<Record<string, Place>> = {
+  castle: {
+    kicker: 'Monte y guarnición',
+    name: 'Castillo de Waterdeep',
+    text: 'La piedra más antigua de la ciudad.',
+  },
+  graveyard: {
+    kicker: 'Cementerio amurallado',
+    name: 'Ciudad de los Muertos',
+    text: 'De día pasean los vivos; de noche, no.',
+  },
+  north: {
+    kicker: 'Casas y jardines',
+    name: 'Barrio Norte',
+    text: 'Calles tranquilas. La gente aquí sabe callar.',
+  },
+  sea: {
+    kicker: 'Mansiones frente al agua',
+    name: 'Barrio del Mar',
+    text: 'Vista al Mar de las Espadas y apellidos que pesan.',
+  },
+  trade: {
+    kicker: 'Gremios y talleres',
+    name: 'Barrio del Comercio',
+    text: 'La Calle del Dragón no duerme.',
+  },
+  harbor: HARBOR,
+  south: {
+    kicker: 'Caravanas y posadas',
+    name: 'Barrio Sur',
+    text: 'Establos, carros y forasteros que llegan por tierra.',
+  },
+};
+
+/** How each demo combatant looks on the board and where it starts, relative to the scene. */
+export const MINIATURES = {
+  aubrey: { look: 'ranger', at: { x: -3.5, z: 2.3 } },
+  celeste: { look: 'mage', at: { x: -4.9, z: -1.2 } },
+  sera: { look: 'cleric', at: { x: -1.5, z: -2.6 } },
+  thug: { look: 'thug', at: { x: 2.8, z: 0.7 } },
+  crab: { look: 'crab', at: { x: 4.6, z: -2.8 } },
+} as const;

@@ -61,6 +61,8 @@
     font-weight: 700;
     font-size: var(--text-ui-sm);
     letter-spacing: 0.06em;
+    line-height: 1.15;
+    text-align: center;
     cursor: pointer;
     transition:
       border-color var(--duration-quick) ease,

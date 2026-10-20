@@ -60,4 +60,17 @@
     border-color: var(--color-lantern);
     color: var(--color-ink);
   }
+
+  /* Narrow screens: a row under the header, so the right edge stays free for the scene. */
+  @media (max-width: 1100px) {
+    .rail {
+      flex-direction: row;
+      width: auto;
+    }
+
+    .level {
+      flex: 1 1 0;
+      padding: 0 var(--space-2);
+    }
+  }
 </style>

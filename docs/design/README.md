@@ -29,8 +29,9 @@ The owner chose this direction after reviewing the earlier prototype; it replace
 | `src/design/`, `design.html` | Isolated design page that composes the components. |
 | `docs/design/*.md` | This document, tokens, components, motion, accessibility, provenance. |
 
-The 3D scene itself (engine, camera, miniatures, the cinematic intro) belongs to D11. The design
-page shows a flat placeholder where the scene goes.
+The 3D scene itself (engine, camera, miniatures, the cinematic intro) belongs to D11 and lives in
+`src/lib/engine/`. The design page mounts it through `ViewerHost.svelte`. See
+[the engine document](../engine.md).
 
 ## Run it
 
