@@ -14,8 +14,6 @@ const SCALAR_SIZE = 1;
 const VEC3_SIZE = 3;
 const GLB_HEADER_BYTES = 12;
 const CHUNK_HEADER_BYTES = 8;
-const LOD_MATERIAL = 'lod-merged';
-const LOD_ROUGHNESS = 0.9;
 const WHITE = [1, 1, 1, 1];
 
 const align4 = (value) => (value + 3) & ~3;
@@ -104,19 +102,7 @@ function buildMaterials(manifest) {
     if (material.texture) entry.extras = { desire: { texture: material.texture } };
     return entry;
   });
-  materials.push({
-    name: LOD_MATERIAL,
-    pbrMetallicRoughness: {
-      baseColorFactor: WHITE,
-      metallicFactor: 0,
-      roughnessFactor: LOD_ROUGHNESS,
-    },
-  });
   return materials;
-}
-
-function colorById(manifest, id) {
-  return manifest.materials.find((material) => material.id === id)?.base_color ?? WHITE;
 }
 
 function assetExtras(scene, manifest) {
@@ -152,7 +138,7 @@ function createNodeWriter(spec) {
 function addSolidNodes(spec) {
   const { pushNode, scene, manifest, materialById } = spec;
   for (const solid of scene.solids) {
-    pushNode(`render/lod0/${solid.id}`, buildBox(solid, colorById(manifest, solid.material)), {
+    pushNode(`render/lod0/${solid.id}`, buildBox(solid, WHITE), {
       material: materialById.get(solid.material),
       extras: {
         desire: {
@@ -166,22 +152,27 @@ function addSolidNodes(spec) {
 }
 
 function addMergedNodes(spec) {
-  const { pushNode, scene, manifest, materialById } = spec;
-  const boxes = scene.solids.map((solid) => buildBox(solid, colorById(manifest, solid.material)));
-  pushNode('render/lod1', mergeMeshes(boxes), { material: materialById.get(LOD_MATERIAL) });
+  const { writer, builder, scene, materialById } = spec;
+  const groups = Map.groupBy(scene.solids, (solid) => solid.material);
+  const primitives = [...groups].map(([id, solids]) => {
+    const mesh = mergeMeshes(solids.map((solid) => buildBox(solid, WHITE)));
+    return addPrimitive(builder, mesh, materialById.get(id));
+  });
+  writer.meshes.push({ name: 'render/lod1', primitives });
+  writer.nodes.push({ name: 'render/lod1', mesh: writer.meshes.length - 1 });
   const collision = scene.solids.map((solid) => buildBox(solid, WHITE));
-  pushNode('collision', mergeMeshes(collision), { extras: { role: 'collision' } });
+  writer.pushNode('collision', mergeMeshes(collision), { extras: { role: 'collision' } });
 }
 
 function addMeshes(spec) {
   const { scene, manifest, materialById } = spec;
   const writer = createNodeWriter(spec);
   const { pushNode } = writer;
-  pushNode('render/ground', buildGround(scene.ground, colorById(manifest, scene.ground.material)), {
+  pushNode('render/ground', buildGround(scene.ground, WHITE), {
     material: materialById.get(scene.ground.material),
   });
   addSolidNodes({ pushNode, scene, manifest, materialById });
-  addMergedNodes({ pushNode, scene, manifest, materialById });
+  addMergedNodes({ writer, builder: spec.builder, scene, materialById });
   return { meshes: writer.meshes, nodes: writer.nodes };
 }
 
@@ -209,6 +200,17 @@ function packGlb(json, bin) {
   return Buffer.concat([header, jsonChunk, binChunk]);
 }
 
+function sceneSelections(id, nodes) {
+  const indices = nodes.map((_, index) => index);
+  return [
+    { name: id, nodes: indices.filter((index) => nodes[index].name === 'render/ground'
+      || nodes[index].name.startsWith('render/lod0/')) },
+    { name: 'lod1', nodes: indices.filter((index) => ['render/ground', 'render/lod1']
+      .includes(nodes[index].name)) },
+    { name: 'collision', nodes: indices.filter((index) => nodes[index].name === 'collision') },
+  ];
+}
+
 /** Encodes the metric scene as a single .glb buffer. */
 export function encodeGlb(scene, manifest) {
   const builder = createBuilder();
@@ -227,7 +229,7 @@ export function encodeGlb(scene, manifest) {
       extras: { desire: assetExtras(scene, manifest) },
     },
     scene: 0,
-    scenes: [{ name: scene.id, nodes: nodes.map((_, index) => index) }],
+    scenes: sceneSelections(scene.id, nodes),
     nodes,
     meshes,
     materials,
