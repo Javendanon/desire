@@ -164,9 +164,9 @@ Card rework addressed the two review findings and the three suspicions.
 
 Executed after the rework, same toolchain and gate configuration:
 
-- `bash crates/persistence/test-postgres.sh`: exit 0, **43** Rust tests passed (15 test
+- `bash crates/persistence/test-postgres.sh`: exit 0, **44** Rust tests passed (15 test
   binaries/doc-test targets), including the 3 `sql_constraints` tests carrying the
-  25 SQL rejection assertions plus the migration-embedding guard, and the 6 `pipeline`
+  25 SQL rejection assertions plus the migration-embedding guard, and the 7 `pipeline`
   tests. No test ignored or skipped.
   The hostile-environment wrapper (`tests/test-environment.sh`) also exits 0.
 - `cargo fmt --all --check` and
@@ -240,6 +240,15 @@ it distinguishes the two states on its own. Also taken: `every_migration_file_is
 the_runner` compares `migrations/*.sql` with the installed history, closing the coverage the
 deleted `psql` loop used to give; reproduced RED by adding an unembedded
 `migrations/0005_guard_check.sql` (harness exit 101), then removed it.
+
+Round 9 (`45e2978`) returned **PASS 90/100** and 88/100 `CHANGES_REQUESTED`. Both reviewers
+agreed the leak and migration-embedding guards can now fail (one checked
+`src/catalog.rs:55-68` and `sql_constraints.rs:26-33` directly). Taken from the remaining
+notes: `pipeline.rs` also asserts that `test-postgres.sh` still runs
+`cargo test --workspace --locked` unconditionally — the exact "exits 0 with no tests"
+regression round 3 found — and `docs/app-tests-plan.md` names the harness as the Rust runner
+instead of plain `cargo test`. Documented instead: the guard is a tripwire, not a workflow
+policy engine, so an `if:`-guarded step would need the `never_paths` owner review.
 
 Left open by decision: the `frontend-check` and `quality-gate` gate `cmd` approximations
 (policy owner's call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility
