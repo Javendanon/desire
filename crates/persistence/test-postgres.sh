@@ -9,13 +9,14 @@ done
 mkdir -p .local/d08
 cluster=$(mktemp -d "$PWD/.local/d08/pg.XXXXXX")
 cleanup() {
-    pg_ctl -D "$cluster/data" -m immediate -w stop > /dev/null
+    # A failed start or stop must not leave the cluster directory behind.
+    pg_ctl -D "$cluster/data" -m immediate -w stop > /dev/null || true
     rm -rf "$cluster"
 }
+trap cleanup EXIT
 initdb -D "$cluster/data" -U desire_test --auth-local=trust --no-locale > "$cluster/init.log"
 pg_ctl -D "$cluster/data" -l "$cluster/server.log" \
     -o "-c listen_addresses='' -c unix_socket_directories='$cluster' -c fsync=off" -w start
-trap cleanup EXIT
 export PGHOST="$cluster" PGUSER=desire_test PGDATABASE=postgres
 export DESIRE_TEST_SOCKET="$cluster"
 # The Rust tests install the schema through the production migration runner and run the SQL
