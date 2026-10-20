@@ -1,14 +1,11 @@
 /** Conservative walkability check over the scene ground; conservative means over-blocking. */
 
 export const DEFAULT_CELL_M = 1;
-export const ARRIVAL_RADIUS_M = 1.5;
 const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const PER_MILLE = 1000;
 
 const cellColumn = (x, cell, origin) => Math.floor((x - origin) / cell);
 const cellRow = (z, cell, origin) => Math.floor((z - origin) / cell);
-const cellCenterX = (column, cell, origin) => origin + (column + 0.5) * cell;
-const cellCenterZ = (row, cell, origin) => origin + (row + 0.5) * cell;
 
 function clamp(value, limit) {
   return Math.min(Math.max(value, 0), limit - 1);
@@ -74,23 +71,18 @@ function flood({ blocked, grid, start }) {
   return spread({ blocked, grid, queue: [start], reached });
 }
 
-function nearestReached(spec) {
+function waypointReached(spec) {
   const { reached, point, grid, cell } = spec;
-  for (let row = 0; row < grid.rows; row += 1) {
-    for (let column = 0; column < grid.columns; column += 1) {
-      if (reached[row * grid.columns + column] === 0) continue;
-      const dx = cellCenterX(column, cell, grid.origin_x_m) - point.x_m;
-      const dz = cellCenterZ(row, cell, grid.origin_z_m) - point.z_m;
-      if (Math.hypot(dx, dz) <= ARRIVAL_RADIUS_M) return true;
-    }
-  }
-  return false;
+  const column = cellColumn(point.x_m, cell, grid.origin_x_m);
+  const row = cellRow(point.z_m, cell, grid.origin_z_m);
+  if (column < 0 || row < 0 || column >= grid.columns || row >= grid.rows) return false;
+  return reached[row * grid.columns + column] === 1;
 }
 
 function waypointResults(spec) {
   return spec.waypoints.map((waypoint) => ({
     id: waypoint.id,
-    reachable: nearestReached({
+    reachable: waypointReached({
       reached: spec.reached,
       point: waypoint,
       grid: spec.grid,
