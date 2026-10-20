@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+import { buildAsset } from '../src/pipeline.js';
+import { sampleManifestPath } from './helpers.js';
+
+const build = async () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
+  const result = await buildAsset({ manifestPath: sampleManifestPath(), outDir });
+  return result;
+};
+
+test('the sample scene builds into a navigable artifact with all checks green', async () => {
+  const { report } = await build();
+  const failed = report.checks.filter((check) => !check.pass);
+  assert.deepEqual(failed, [], 'no failing acceptance check');
+  assert.equal(report.pass, true);
+});
+
+test('the report records scale, fidelity, collision, textures and navigation', async () => {
+  const { report } = await build();
+  assert.equal(report.scale.checks.length, 1);
+  assert.equal(report.scale.checks[0].pass, true);
+  assert.deepEqual(report.fidelity, {
+    verified: 0,
+    interpretation: 1,
+    synthetic: 7,
+    unknown: 2,
+  });
+  assert.equal(report.lod.lod0_nodes, 8);
+  assert.equal(report.lod.lod1_nodes, 1);
+  assert.ok(report.lod.lod1_triangles > 0);
+  assert.equal(report.collision.separate, true);
+  assert.equal(report.collision.materialless, true);
+  assert.deepEqual(report.textures.map((texture) => texture.pass), [true]);
+  assert.equal(report.navigation.pass, true);
+  assert.equal(report.navigation.waypoints.length, 3);
+  assert.deepEqual(report.unknown_places.sort(), ['chandlers-row', 'tide-stairs']);
+});
+
+test('the artifact and its report are written next to each other', async () => {
+  const { artifactPath, reportPath, bytes } = await build();
+  assert.ok(fs.existsSync(artifactPath));
+  assert.ok(fs.existsSync(reportPath));
+  assert.ok(bytes > 1000, `artifact bytes ${bytes}`);
+  const written = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  assert.equal(written.id, 'sample-harbor');
+  assert.equal(written.pass, true);
+});
+
+test('a manifest with a broken scale check fails the build instead of shipping', async () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
+  const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
+  manifest.scale_checks[0].expected_m = 300;
+  const brokenPath = path.join(outDir, 'broken.json');
+  fs.writeFileSync(brokenPath, JSON.stringify(manifest));
+  const { report } = await buildAsset({ manifestPath: brokenPath, outDir });
+  assert.equal(report.pass, false);
+  assert.match(JSON.stringify(report.checks), /scale/);
+});

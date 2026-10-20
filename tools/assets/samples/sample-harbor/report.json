@@ -1,0 +1,148 @@
+{
+  "id": "sample-harbor",
+  "label": "Synthetic sample scene for the asset pipeline. It is not Waterdeep cartography.",
+  "pass": true,
+  "checks": [
+    {
+      "id": "scale.checks",
+      "pass": true,
+      "detail": "1 reference distances"
+    },
+    {
+      "id": "fidelity.tally",
+      "pass": true,
+      "detail": "verified 0, interpretation 1, synthetic 7, unknown 2"
+    },
+    {
+      "id": "collision.separate",
+      "pass": true,
+      "detail": "collision node apart from render LODs"
+    },
+    {
+      "id": "collision.materialless",
+      "pass": true,
+      "detail": "collision has no material"
+    },
+    {
+      "id": "collision.covers_solids",
+      "pass": true,
+      "detail": "40 collision quads"
+    },
+    {
+      "id": "lod.levels",
+      "pass": true,
+      "detail": "lod0 8/8, lod1 true"
+    },
+    {
+      "id": "artifact.embedded",
+      "pass": true,
+      "detail": "no external buffer or embedded image download"
+    },
+    {
+      "id": "artifact.provenance",
+      "pass": true,
+      "detail": "source synthetic:sample-harbor, network false"
+    },
+    {
+      "id": "artifact.unknown_places",
+      "pass": true,
+      "detail": "listed chandlers-row, tide-stairs"
+    },
+    {
+      "id": "textures.compressed",
+      "pass": true,
+      "detail": "paving-webp: image/webp, 52 B"
+    },
+    {
+      "id": "navigation.waypoints",
+      "pass": true,
+      "detail": "47624/49152 reached"
+    }
+  ],
+  "scale": {
+    "meters_per_pixel": 0.25,
+    "evidence": "synthetic",
+    "checks": [
+      {
+        "id": "quay-length",
+        "computed_m": 224,
+        "expected_m": 224,
+        "delta_m": 0,
+        "tolerance_m": 1,
+        "pass": true
+      }
+    ]
+  },
+  "fidelity": {
+    "verified": 0,
+    "interpretation": 1,
+    "synthetic": 7,
+    "unknown": 2
+  },
+  "unknown_places": [
+    "chandlers-row",
+    "tide-stairs"
+  ],
+  "collision": {
+    "separate": true,
+    "materialless": true,
+    "triangles": 40
+  },
+  "lod": {
+    "lod0_nodes": 8,
+    "lod1_nodes": 1,
+    "lod0_triangles": 80,
+    "lod1_triangles": 80
+  },
+  "textures": [
+    {
+      "id": "paving-webp",
+      "mime": "image/webp",
+      "bytes": 52,
+      "max_bytes": 262144,
+      "pass": true,
+      "detail": "image/webp, 52 B"
+    }
+  ],
+  "navigation": {
+    "cell_m": 1,
+    "columns": 256,
+    "rows": 192,
+    "total_cells": 49152,
+    "free_cells": 47624,
+    "blocked_cells": 1528,
+    "reachable_cells": 47624,
+    "reachable_ratio": 0.969,
+    "spawn": {
+      "x_m": 16,
+      "z_m": 16,
+      "spawn_free": true
+    },
+    "waypoints": [
+      {
+        "id": "fish-market",
+        "reachable": true
+      },
+      {
+        "id": "quay-gate",
+        "reachable": true
+      },
+      {
+        "id": "watch",
+        "reachable": true
+      }
+    ],
+    "pass": true
+  },
+  "artifact": {
+    "path": "tools/assets/samples/sample-harbor/scene-sample-harbor.glb",
+    "bytes": 30416,
+    "generator": "desire-asset-pipeline/1"
+  },
+  "provenance": {
+    "source": "synthetic:sample-harbor",
+    "attribution": "Desire project, synthetic sample.",
+    "evidence": "synthetic"
+  },
+  "network_allowed": false
+}
