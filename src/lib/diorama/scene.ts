@@ -9,6 +9,7 @@ import { cloneRig, dampRig, rigPosition, type Rig } from '../engine/math/camera-
 import { buildSun, createFrame } from '../engine/render/atmosphere.ts';
 import { paintTextures } from '../engine/render/textures.ts';
 import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
+import { buildEdgeHaze } from './edge-haze.ts';
 import { bindOrbit, ZOOM } from './orbit.ts';
 import { animateSea, buildSea } from './sea.ts';
 import type { Slice } from './slice-data.ts';
@@ -106,6 +107,7 @@ export async function createDiorama(
   app.root.addChild(town.root);
   const ambience = buildAmbience(app, { slice, town });
   app.root.addChild(ambience.root);
+  app.root.addChild(buildEdgeHaze(app, slice.meta));
   const centre = sceneCentre(slice);
   const extent = Math.max(slice.meta.width_m, slice.meta.depth_m);
   const sea = buildSea(app.graphicsDevice, extent, centre);
