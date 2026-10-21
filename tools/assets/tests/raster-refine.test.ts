@@ -26,7 +26,7 @@ test('small isolated water patches inland become ground', () => {
     'WWWWWWGGWG',
     'WWWWWWGGGG',
   ]);
-  const refined = refineSurfaces({ classes, size, streets: [], minWaterFraction: 0.2 });
+  const refined = refineSurfaces({ classes, size, streets: [], minWaterFraction: 0.2, pierRadius: 1 });
   assert.equal(refined[1 * 10 + 8], G, 'the inland puddle is not sea');
   assert.equal(refined[0], W, 'open water stays water');
 });
@@ -52,7 +52,9 @@ test('a roof-coloured strip ringed by an outline and surrounded by water is a pi
     'WWOOOOOOOWWW',
     'WWWWWWWWWWWW',
   ]);
-  const refined = refineSurfaces({ classes, size, streets: [], minWaterFraction: 0.1, majorityRadius: 0 });
+  const refined = refineSurfaces({
+    classes, size, streets: [], minWaterFraction: 0.1, majorityRadius: 0, pierRadius: 2,
+  });
   assert.equal(refined[2 * 12 + 5], Surface.Pier);
 });
 
@@ -64,6 +66,43 @@ test('a roof block on land with one side to the water stays a roof', () => {
     'WWWWGRRRRRRG',
     'WWWWGGGGGGGG',
   ]);
-  const refined = refineSurfaces({ classes, size, streets: [], minWaterFraction: 0.1, majorityRadius: 0 });
+  const refined = refineSurfaces({
+    classes, size, streets: [], minWaterFraction: 0.1, majorityRadius: 0, pierRadius: 2,
+  });
   assert.equal(refined[2 * 12 + 8], R);
+});
+
+test('a narrow pier attached to a coastal block is split off by the opening', () => {
+  const { classes, size } = grid([
+    'WWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWW',
+    'WWRRRRRRRRRRSS',
+    'WWWWWWRRRRRRSS',
+    'WWWWWWRRRRRRSS',
+    'WWWWWWRRRRRRSS',
+    'WWWWWWRRRRRRSS',
+    'WWWWWWSSSSSSSS',
+  ]);
+  const refined = refineSurfaces({
+    classes, size, streets: [], minWaterFraction: 0.1, majorityRadius: 0, pierRadius: 1,
+    pierGapPixels: 1,
+  });
+  assert.equal(refined[2 * 14 + 3], Surface.Pier, 'the one-pixel strip reaching into the water');
+  assert.equal(refined[5 * 14 + 9], R, 'the coastal block, with streets on its land sides');
+});
+
+test('a wide crossing of two piers is a pier junction, not a building', () => {
+  const { classes, size } = grid([
+    'WWWWWWWWWWWWWW',
+    'WWWWWRRRRWWWWW',
+    'WRRRRRRRRRRRRW',
+    'WRRRRRRRRRRRRW',
+    'WWWWWRRRRWWWWW',
+    'WWWWWWWWWWWWWW',
+  ]);
+  const refined = refineSurfaces({
+    classes, size, streets: [], minWaterFraction: 0.1, majorityRadius: 0, pierRadius: 1,
+  });
+  assert.equal(refined[2 * 14 + 6], Surface.Pier, 'the junction');
+  assert.equal(refined[2 * 14 + 1], Surface.Pier, 'an arm');
 });
