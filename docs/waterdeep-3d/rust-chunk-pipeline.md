@@ -102,7 +102,7 @@ measurement compared with the previous state on the same input.
 
 | | Goal | Acceptance |
 | --- | --- | --- |
-| **M0** | Quick fixes in the TS pipeline from the audit (`majority`, `from` copies, `erode`/`dilate`, `paintAlbedo` noise) | Byte-identical `classes.bin` and slice outputs; full-map time and peak heap measured |
+| **M0** ✅ | Quick fixes in the TS pipeline from the audit (`majority`, `from` copies, `erode`/`dilate`, components, classification) | Done: `extract-surfaces` on the full map 93.2 s → 15.0 s, peak 2.44 → 2.0 GB, no large-heap flag needed; `classes.bin` and `blocks.json` byte-identical. `paintAlbedo` noise moves to M2 |
 | **M1** | Write the format: `render.bin` and ground tile layout in `crates/core`, with a TS reader and round-trip tests on both sides; choose the sector size from real counts | One sector of the Dock Ward written by TS and read back in the viewer, same image as today |
 | **M2** | `crates/atlas` ports the stages in order (classify → refine → blocks → lots → features → tiles). Each stage gets a **parity test** against the TS output on the same input | Parity per stage (identical rasters; equal polygons and lots within a stated tolerance); time per stage, native vs TS |
 | **M3** | Viewer streams sectors through a Worker; per-sector batches and culling | The Dock Ward cut into sectors looks identical; hitches while panning measured with `?hud` |
