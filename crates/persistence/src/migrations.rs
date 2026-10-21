@@ -7,6 +7,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../migrations/0002_campaign.sql"),
     include_str!("../../../migrations/0003_notes.sql"),
     include_str!("../../../migrations/0004_realtime.sql"),
+    include_str!("../../../migrations/0005_calibrated_anchors.sql"),
 ];
 const MIGRATION_LOCK: i64 = 0x444553495245;
 

@@ -253,3 +253,59 @@ policy engine, so an `if:`-guarded step would need the `never_paths` owner revie
 Left open by decision: the `frontend-check` and `quality-gate` gate `cmd` approximations
 (policy owner's call, and their CI jobs now run the suites) and PostgreSQL 17 compatibility
 (needs a runner or image this worktree cannot create).
+
+## PR and Flow follow-up (2026-10-21)
+
+Baseline: `1e0ecf3`, worktree `d08-review`, branch `fix/d08-review`. The following
+corrections address the latest PR review and the outstanding Flow pre-review:
+
+- **HIGH, calibrated anchors:** new migration `0005_calibrated_anchors.sql` adds a
+  generated calibration discriminator and a composite foreign key. It prevents both
+  inserting an anchor on an uncalibrated map and removing calibration from an
+  anchored map. Migrations 0001–0004 are unchanged. Existing invalid anchors abort
+  the entire upgrade, preserving their rows and the four-version history; they need
+  explicit editorial repair, not invented calibration or automatic deletion.
+- **MEDIUM, UUID normalization:** catalog and anchor comparisons now use typed SQL
+  records, accepting uppercase and lowercase spellings of the same UUID. Explicit
+  insert columns preserve database-owned generated/default fields. Comparisons
+  retain those fields while checking every supplied field, so reseeding still
+  detects changed content and works after the new internal columns are installed.
+- **LOW, stale documentation:** `docs/ci.md` describes the PostgreSQL harness and
+  the frontend/contract checks actually run by CI; the root README no longer claims
+  Rust has zero tests. The persistence README documents the forward upgrade and
+  its failure behaviour for invalid legacy data.
+
+### Verification
+
+The baseline harness passed **44** workspace tests against PostgreSQL **14.19**.
+Five new regression tests were added first; four reproduced failures before the
+implementation (uncalibrated seed accepted, calibration removal accepted, UUID
+seed mismatch, and invalid legacy upgrade accepted). The fifth guards valid data
+preservation and reseeding across the upgrade. The final harness passes **49**
+workspace tests, with no ignored tests, and **27** SQL rejection assertions.
+The migration-prefix test now exercises versions 0–5; unknown version 6 still fails.
+
+Also passed: Rust fmt, Clippy with `-D warnings`, contract generator drift check,
+29 contract Python tests, and `git diff --check`. The project quality gate exits 0
+with `OK (partial)` and `Integral approval: NO`; manual and unmeasured coverage
+remain required. The SQL and shell are not certified by the code score.
+
+Same `km` 0.26.0 and focused `crates/persistence` scope before/after: score
+**97.9 → 97.9 (A++)**, production LOC **737 → 749**, duplication **0% → 0%**.
+No long-function or excessive-parameter findings at the hard limits. The existing
+numeric-placeholder smell in `secrets.rs` is unchanged. The final project gate
+reports 95.48 (A+), 0 floor blocks and 26 preexisting target warnings.
+
+The independent advisor reviewed the full follow-up diff, including the new SQL
+and tests, and returned **APPROVED**, with no reproducible blocking finding.
+Evidence: migration 0005 lines 3–11 (both directions of the calibration invariant),
+`catalog.rs` lines 52–86 and 134–168 (typed comparison and explicit insert columns),
+and `tests/calibration.rs` lines 21–116 (regressions and upgrade paths). That review
+was static; the advisor did not independently rerun PostgreSQL or Clippy.
+
+The six remote checks of the baseline `1e0ecf3` were verified green, resolving the
+old uncertainty about whether the runner can start the harness. This does not
+prove PostgreSQL 17 compatibility: local evidence remains 14.19. Remote checks for
+this correction, final owner review of the migration/previous manifest and CI
+changes, and integration into main remain pending. No existing database, Docker
+service, volume or production data was touched.
