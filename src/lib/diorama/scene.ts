@@ -54,6 +54,31 @@ function placeCamera(camera: pc.Entity, rig: Rig) {
   camera.lookAt(rig.target.x, rig.target.y, rig.target.z);
 }
 
+/** Everything the frame loop moves. */
+type Live = {
+  app: pc.AppBase;
+  camera: pc.Entity;
+  sun: pc.Entity;
+  sky: pc.Entity;
+  sea: ReturnType<typeof buildSea>;
+  orbit: { goal: Rig };
+  rig: Rig;
+  frames: number;
+  time: number;
+};
+
+function tick(live: Live, dt: number) {
+  live.time += dt;
+  live.frames += 1;
+  live.rig = dampRig(live.rig, live.orbit.goal, dt, CAMERA_HALF_LIFE_S);
+  placeCamera(live.camera, live.rig);
+  live.sky.setPosition(live.camera.getPosition());
+  live.app.scene.fog.density = FOG_PER_RADIUS / Math.max(live.rig.radius, 1) / 100;
+  const shadowRange = Math.max(MIN_SHADOW_DISTANCE_M, live.rig.radius * SHADOW_PER_RADIUS);
+  if (live.sun.light) live.sun.light.shadowDistance = shadowRange;
+  animateSea(live.sea, live.time);
+}
+
 function buildCamera(app: pc.AppBase): pc.Entity {
   const camera = new pc.Entity('camera');
   camera.addComponent('camera', { fov: FIELD_OF_VIEW, nearClip: 0.5, farClip: FAR_CLIP_M });
@@ -88,26 +113,14 @@ export async function createDiorama(
   const goal: Rig = { target: { x: centre.x, y: centre.y, z: centre.z }, radius: ZOOM.city,
     polar: 0.92, azimuth: 0.7 };
   const orbit = { goal };
-  let rig = cloneRig(goal);
-  let frames = 0;
-  let time = 0;
+  const live: Live = { app, camera, sun, sky, sea, orbit, rig: cloneRig(goal), frames: 0, time: 0 };
   const unbind = bindOrbit(canvas, orbit);
-  app.on('update', (dt: number) => {
-    time += dt;
-    frames += 1;
-    rig = dampRig(rig, orbit.goal, dt, CAMERA_HALF_LIFE_S);
-    placeCamera(camera, rig);
-    sky.setPosition(camera.getPosition());
-    app.scene.fog.density = FOG_PER_RADIUS / Math.max(rig.radius, 1) / 100;
-    const shadowRange = Math.max(MIN_SHADOW_DISTANCE_M, rig.radius * SHADOW_PER_RADIUS);
-    if (sun.light) sun.light.shadowDistance = shadowRange;
-    animateSea(sea, time);
-  });
+  app.on('update', (dt: number) => tick(live, dt));
   app.start();
   return {
     app,
     orbit,
-    stats: () => ({ frames, houses: slice.houses.length, radius: rig.radius,
+    stats: () => ({ frames: live.frames, houses: slice.houses.length, radius: live.rig.radius,
       backend: app.graphicsDevice.deviceType }),
     destroy: () => {
       unbind();

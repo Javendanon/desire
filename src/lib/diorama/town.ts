@@ -1,169 +1,160 @@
-// Houses of the slice: instanced timber and stone walls with lit windows, gable roofs whose
-// colour comes from the source map, and chimneys. The gable faces the street: a narrow frontage
-// with its gable end to the lane, as in a medieval harbour town.
+// Houses of the slice, built storey by storey from their plans (house-plan.ts): timber and stone
+// walls with lit windows, jettied upper floors, gable or hip roofs tinted from the map and the
+// design palette, dormers and chimneys. Every part is a hardware-instanced batch.
 
 import * as pc from 'playcanvas';
 
 import { gableMesh, geometryMesh, instancedEntity, material, trs } from '../engine/render/kit.ts';
 import type { Textures } from '../engine/render/textures.ts';
-import { createRandom, type Random } from '../engine/math/rng.ts';
+import { hipMesh } from './house-kit.ts';
+import { planHouse, STOREY_M, type HousePlan } from './house-plan.ts';
+import { roofPalette } from './roof-palette.ts';
 import type { SliceHouse } from './slice-data.ts';
-
-type Rgb = [number, number, number];
 
 /** Land sits 1 m above the water plane (tools/assets/src/slice.ts). */
 const GROUND_Y = 1;
-const ROOF_TONES = 6;
-const KMEANS_ROUNDS = 12;
-const EAVE_OVERHANG = 1.14;
+const EAVE_OVERHANG = 1.12;
 const GABLE_OVERHANG = 1.06;
 /** Roof rise as a share of the span: steep, like the reference art. */
-const ROOF_PITCH = 0.85;
-const STONE_SHARE = 0.25;
-const CHIMNEY_SHARE = 0.4;
-const CHIMNEY_SIZE: [number, number, number] = [0.7, 2.2, 0.7];
-/**
- * Roof tints of the design canvas ("Farol en la niebla"), as D13 uses them. A painted map colour
- * is far darker than a daylight albedo, so each sampled tone is mixed with its nearest tint.
- */
-const DESIGN_ROOFS: Rgb[] = [
-  [124, 135, 146], [184, 113, 79], [95, 106, 116], [143, 135, 112], [163, 95, 69],
-];
-const DESIGN_SHARE = 0.55;
+const GABLE_PITCH = 0.85;
+const HIP_PITCH = 0.6;
+const ROOF_TILING = 3;
+const CHIMNEY_SIZE: [number, number, number] = [0.7, 2.4, 0.7];
+const DORMER_SIZE: [number, number, number] = [1.5, 1.3, 1.2];
+const PLAN_SEED = 0x7a1;
 
+type Batch = Map<string, pc.Mat4[]>;
 type Build = {
   app: pc.AppBase;
   root: pc.Entity;
-  houses: SliceHouse[];
   tx: Textures;
+};
+type Placed = {
+  house: SliceHouse;
+  plan: HousePlan;
+  tone: number;
 };
 
 export interface Town {
   root: pc.Entity;
   windowMaterials: pc.StandardMaterial[];
   chimneyTops: pc.Vec3[];
+  fronts: pc.Vec3[];
 }
 
-const distance2 = (a: Rgb, b: Rgb) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
-
-function nearest(colour: Rgb, centres: Rgb[]): number {
-  let best = 0;
-  centres.forEach((centre, index) => {
-    if (distance2(colour, centre) < distance2(colour, centres[best])) best = index;
-  });
-  return best;
+function push(batch: Batch, key: string, matrix: pc.Mat4) {
+  const list = batch.get(key);
+  if (list) list.push(matrix);
+  else batch.set(key, [matrix]);
 }
 
-type Tones = {
-  centres: Rgb[];
-  labels: number[];
-};
+/** World position of a point given in the house's local frame (x across, z along the depth). */
+function local(house: SliceHouse, x: number, y: number, z: number): [number, number, number] {
+  const rotation = new pc.Quat().setFromEulerAngles(0, (house.rotation_radians * 180) / Math.PI, 0);
+  const offset = rotation.transformVector(new pc.Vec3(x, 0, z));
+  return [house.center.x_m + offset.x, y, house.center.z_m + offset.z];
+}
 
-/** k-means over roof colours, seeded deterministically from evenly spaced samples. */
-function roofTones(houses: SliceHouse[]): Tones {
-  const colours = houses.map((house) => house.roof_rgb);
-  let centres: Rgb[] = Array.from({ length: Math.min(ROOF_TONES, colours.length) }, (_, index) =>
-    colours[Math.floor((index * colours.length) / ROOF_TONES)]);
-  let labels = colours.map((colour) => nearest(colour, centres));
-  for (let round = 0; round < KMEANS_ROUNDS; round += 1) {
-    centres = centres.map((centre, index) => {
-      const members = colours.filter((_, house) => labels[house] === index);
-      if (members.length === 0) return centre;
-      return [0, 1, 2].map((channel) =>
-        members.reduce((sum, colour) => sum + colour[channel], 0) / members.length) as Rgb;
-    });
-    labels = colours.map((colour) => nearest(colour, centres));
+const roofDepth = ({ house, plan }: Placed) =>
+  house.depth_m + (plan.storeys > 1 ? 2 * plan.jetty : 0);
+
+const pitchOf = (plan: HousePlan) => (plan.roof === 'gable' ? GABLE_PITCH : HIP_PITCH);
+
+function addStoreys(batch: Batch, placed: Placed) {
+  const { house, plan } = placed;
+  const wall = plan.stone ? 'stone' : 'timber';
+  for (let storey = 0; storey < plan.storeys; storey += 1) {
+    const depth = house.depth_m + (storey > 0 ? 2 * plan.jetty : 0);
+    const y = GROUND_Y + storey * STOREY_M + STOREY_M / 2;
+    push(batch, wall, trs(local(house, 0, y, 0), house.rotation_radians,
+      [house.width_m, STOREY_M, depth]));
   }
-  return { centres, labels };
 }
 
-/** Hue-led match: compare colours with their brightness removed. */
-function nearestDesignRoof(colour: Rgb): Rgb {
-  const chroma = (value: Rgb) => {
-    const sum = value[0] + value[1] + value[2] || 1;
-    return value.map((channel) => (channel / sum) * 255) as Rgb;
-  };
-  return DESIGN_ROOFS[nearest(chroma(colour), DESIGN_ROOFS.map(chroma))];
+function addRoof(batch: Batch, placed: Placed) {
+  const { house, plan, tone } = placed;
+  const y = GROUND_Y + plan.wallHeight;
+  const scale: [number, number, number] = [house.width_m * EAVE_OVERHANG,
+    house.width_m * pitchOf(plan), roofDepth(placed) * GABLE_OVERHANG];
+  push(batch, `${plan.roof}:${tone}`, trs(local(house, 0, y, 0), house.rotation_radians, scale));
 }
 
-function roofHex(colour: Rgb): string {
-  const tint = nearestDesignRoof(colour);
-  const mixed = colour.map((channel, index) =>
-    channel * (1 - DESIGN_SHARE) + tint[index] * DESIGN_SHARE);
-  return `#${mixed.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
+function addChimney(batch: Batch, placed: Placed, tops: pc.Vec3[]) {
+  const { house, plan } = placed;
+  if (!plan.chimney) return;
+  const side = (house.center.x_m * 7 + house.center.z_m) % 2 > 1 ? 1 : -1;
+  const y = GROUND_Y + plan.wallHeight + house.width_m * pitchOf(plan) * 0.55;
+  const position = local(house, side * house.width_m * 0.2, y, roofDepth(placed) * 0.2);
+  push(batch, 'chimney', trs(position, house.rotation_radians, CHIMNEY_SIZE));
+  tops.push(new pc.Vec3(position[0], y + CHIMNEY_SIZE[1] / 2, position[2]));
+}
+
+function addDormer(batch: Batch, placed: Placed) {
+  const { house, plan, tone } = placed;
+  if (!plan.dormer) return;
+  const z = -(roofDepth(placed) / 2 - DORMER_SIZE[2]);
+  const y = GROUND_Y + plan.wallHeight + DORMER_SIZE[1] / 2;
+  push(batch, plan.stone ? 'stone' : 'timber',
+    trs(local(house, 0, y, z), house.rotation_radians, DORMER_SIZE));
+  const roofScale: [number, number, number] = [DORMER_SIZE[0] * 1.2, 0.9, DORMER_SIZE[2] * 1.3];
+  push(batch, `gable:${tone}`, trs(local(house, 0, y + DORMER_SIZE[1] / 2, z),
+    house.rotation_radians, roofScale));
+}
+
+function frontOf(placed: Placed): pc.Vec3 {
+  const [x, , z] = local(placed.house, 0, 0, -(roofDepth(placed) / 2 + 0.25));
+  return new pc.Vec3(x, GROUND_Y + 2.6, z);
 }
 
 function windowedWall(map: pc.Texture, windows: pc.Texture): pc.StandardMaterial {
   return material({ map, emissive: '#ffffff', emissiveMap: windows, emissiveIntensity: 0.9 });
 }
 
-const wallMatrix = (house: SliceHouse) => trs(
-  [house.center.x_m, GROUND_Y + house.height_m / 2, house.center.z_m],
-  house.rotation_radians,
-  [house.width_m, house.height_m, house.depth_m],
-);
-
-const roofMatrix = (house: SliceHouse) => trs(
-  [house.center.x_m, GROUND_Y + house.height_m, house.center.z_m],
-  house.rotation_radians,
-  [house.width_m * EAVE_OVERHANG, house.width_m * ROOF_PITCH, house.depth_m * GABLE_OVERHANG],
-);
-
-/** A chimney on one roof slope, a third of the way along the ridge. */
-function chimneyMatrix(house: SliceHouse, random: Random): pc.Mat4 {
-  const side = random() < 0.5 ? -1 : 1;
-  const local = new pc.Vec3(side * house.width_m * 0.22, 0, (random() - 0.5) * house.depth_m * 0.5);
-  const rotation = new pc.Quat().setFromEulerAngles(0, (house.rotation_radians * 180) / Math.PI, 0);
-  const offset = rotation.transformVector(local);
-  const y = GROUND_Y + house.height_m + house.width_m * ROOF_PITCH * 0.55;
-  return trs([house.center.x_m + offset.x, y, house.center.z_m + offset.z], house.rotation_radians,
-    CHIMNEY_SIZE);
+function materialsFor(build: Build, tones: string[]) {
+  const { tx } = build;
+  const roofs = tones.map((colour) =>
+    material({ map: tx.shingle, color: colour, gloss: 0.3, twoSided: true, tiling: ROOF_TILING }));
+  return {
+    timber: windowedWall(tx.timber, tx.windows),
+    stone: windowedWall(tx.stone, tx.windows),
+    chimney: material({ map: tx.stone, color: '#8a7f74' }),
+    roofs,
+  };
 }
 
-function addWalls(build: Build) {
-  const { app, root, houses, tx } = build;
-  const random = createRandom(11);
-  const stone = houses.map(() => random() < STONE_SHARE);
+function emitBatches(build: Build, batch: Batch, tones: string[]) {
+  const { app, root } = build;
+  const mats = materialsFor(build, tones);
   const cube = geometryMesh(app.graphicsDevice, new pc.BoxGeometry());
-  const timberWall = windowedWall(tx.timber, tx.windows);
-  const stoneWall = windowedWall(tx.stone, tx.windows);
-  root.addChild(instancedEntity(app, cube, timberWall,
-    houses.filter((_, index) => !stone[index]).map(wallMatrix)));
-  root.addChild(instancedEntity(app, cube, stoneWall,
-    houses.filter((_, index) => stone[index]).map(wallMatrix)));
-  return [timberWall, stoneWall];
-}
-
-function addRoofs(build: Build) {
-  const { app, root, houses, tx } = build;
-  const gable = gableMesh(app.graphicsDevice);
-  const { centres, labels } = roofTones(houses);
-  centres.forEach((centre, tone) => {
-    const roof = material({ map: tx.shingle, color: roofHex(centre), gloss: 0.3, twoSided: true });
-    const matrices = houses.filter((_, index) => labels[index] === tone).map(roofMatrix);
-    root.addChild(instancedEntity(app, gable, roof, matrices));
-  });
-}
-
-function addChimneys(build: Build) {
-  const { app, root, houses, tx } = build;
-  const random = createRandom(23);
-  const chosen = houses.filter(() => random() < CHIMNEY_SHARE);
-  const matrices = chosen.map((house) => chimneyMatrix(house, random));
-  const cube = geometryMesh(app.graphicsDevice, new pc.BoxGeometry());
-  const brick = material({ map: tx.stone, color: '#8a7f74' });
-  root.addChild(instancedEntity(app, cube, brick, matrices));
-  return matrices.map((matrix) => {
-    const top = matrix.getTranslation();
-    return new pc.Vec3(top.x, top.y + CHIMNEY_SIZE[1] / 2, top.z);
-  });
+  const meshes = { gable: gableMesh(app.graphicsDevice), hip: hipMesh(app.graphicsDevice) };
+  const walls: Record<string, pc.StandardMaterial> = {
+    stone: mats.stone, timber: mats.timber, chimney: mats.chimney,
+  };
+  for (const [key, matrices] of batch) {
+    const [kind, tone] = key.split(':');
+    const roof = kind === 'gable' || kind === 'hip';
+    const mesh = roof ? meshes[kind] : cube;
+    const surface = roof ? mats.roofs[Number(tone)] : walls[kind];
+    root.addChild(instancedEntity(app, mesh, surface, matrices));
+  }
+  return [mats.timber, mats.stone];
 }
 
 export function buildTown(app: pc.AppBase, houses: SliceHouse[], tx: Textures): Town {
-  const build = { app, root: new pc.Entity('town'), houses, tx };
-  const windowMaterials = addWalls(build);
-  addRoofs(build);
-  const chimneyTops = addChimneys(build);
-  const { root } = build;
-  return { root, windowMaterials, chimneyTops };
+  const build = { app, root: new pc.Entity('town'), tx };
+  const palette = roofPalette(houses);
+  const batch: Batch = new Map();
+  const chimneyTops: pc.Vec3[] = [];
+  const fronts: pc.Vec3[] = [];
+  houses.forEach((house, index) => {
+    const plan = planHouse(house, PLAN_SEED + index);
+    const placed = { house, plan, tone: palette.labels[index] };
+    addStoreys(batch, placed);
+    addRoof(batch, placed);
+    addChimney(batch, placed, chimneyTops);
+    addDormer(batch, placed);
+    if (house.frontage) fronts.push(frontOf(placed));
+  });
+  const windowMaterials = emitBatches(build, batch, palette.colours);
+  return { root: build.root, windowMaterials, chimneyTops, fronts };
 }
