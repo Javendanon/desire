@@ -112,7 +112,19 @@ measurement compared with the previous state on the same input.
 Order note: M0 is cheap and shortens every later parity run, so it goes first even though Rust
 replaces those stages at M2.
 
-## 5. Risks and open questions
+## 5. Decisions taken during M2
+
+- **The canonical source raster is lossless.** JPEG decoders do not agree pixel for pixel. On
+  the Waterdeep map, `image` (Rust) and libjpeg-turbo (`sharp`, the TS pipeline) differ enough
+  to change 294,822 classified pixels (0.51 %). The source JPEG is therefore decoded once with
+  `sharp` and saved as PNG (`outputs/waterdeep-source/map.png`, 108 MB, ignored). Rust reads
+  that PNG. Its classes then equal the TS classes of the JPEG byte for byte, so every later
+  stage can be compared exactly instead of within a tolerance.
+- **Parity goldens come from synthetic or exhaustive inputs** (`tools/assets/parity.ts` →
+  `crates/atlas/tests/fixtures/parity.json`, `--check` for staleness), never the licensed map.
+  The whole-map parity runs are local and their results are reported in the PR.
+
+## 6. Risks and open questions
 
 - **Parity of vector stages.** Douglas–Peucker, edge tracing and the lot placement are
   order-sensitive. Fix a deterministic order in both implementations, compare with tolerances,

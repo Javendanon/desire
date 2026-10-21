@@ -14,10 +14,15 @@ fn fnv1a(bytes: &[u8]) -> u32 {
 
 /// The integer after `"key": ` inside the named golden section.
 fn golden_number(section: &str, key: &str) -> u64 {
-    let start = GOLDEN.find(&format!("\"{section}\"")).expect("section in golden");
+    let start = GOLDEN
+        .find(&format!("\"{section}\""))
+        .expect("section in golden");
     let rest = &GOLDEN[start..];
     let at = rest.find(&format!("\"{key}\": ")).expect("key in section") + key.len() + 4;
-    let digits: String = rest[at..].chars().take_while(char::is_ascii_digit).collect();
+    let digits: String = rest[at..]
+        .chars()
+        .take_while(char::is_ascii_digit)
+        .collect();
     digits.parse().expect("a number")
 }
 
@@ -31,8 +36,16 @@ fn every_colour_classifies_as_in_typescript() {
         .collect();
     let section = "classify_all_colours";
     for surface in Surface::ALL {
-        let count = table.iter().filter(|&&class| class == surface as u8).count() as u64;
-        assert_eq!(count, golden_number(section, surface.name()), "{}", surface.name());
+        let count = table
+            .iter()
+            .filter(|&&class| class == surface as u8)
+            .count() as u64;
+        assert_eq!(
+            count,
+            golden_number(section, surface.name()),
+            "{}",
+            surface.name()
+        );
     }
     assert_eq!(u64::from(fnv1a(&table)), golden_number(section, "fnv1a"));
 }
