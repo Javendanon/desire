@@ -26,16 +26,26 @@ export interface FrameFeatures {
   trees: SliceTree[];
 }
 
-function span(from: number, extent: number, size: number, count: number): [number, number] {
-  const first = Math.max(0, Math.floor(from / size));
-  const last = Math.min(count - 1, Math.floor((from + extent) / size));
+/** A frame's extent along one axis, and the grid's cells along it. */
+type Axis = {
+  from: number;
+  extent: number;
+  cell: number;
+  cells: number;
+};
+
+/** First and last cell an axis span touches, clipped to the grid. */
+function span(axis: Axis): [number, number] {
+  const first = Math.max(0, Math.floor(axis.from / axis.cell));
+  const last = Math.min(axis.cells - 1, Math.floor((axis.from + axis.extent) / axis.cell));
   return [first, last];
 }
 
 /** Indices of the grid's sectors that the frame touches, in index order. */
 export function sectorsOverlapping(grid: GridShape, frame: Frame): number[] {
-  const [left, right] = span(frame.x_m, frame.width_m, grid.size_m, grid.columns);
-  const [top, bottom] = span(frame.z_m, frame.depth_m, grid.size_m, grid.rows);
+  const cell = grid.size_m;
+  const [left, right] = span({ from: frame.x_m, extent: frame.width_m, cell, cells: grid.columns });
+  const [top, bottom] = span({ from: frame.z_m, extent: frame.depth_m, cell, cells: grid.rows });
   const indices: number[] = [];
   for (let row = top; row <= bottom; row += 1) {
     for (let column = left; column <= right; column += 1) indices.push(row * grid.columns + column);

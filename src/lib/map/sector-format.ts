@@ -73,37 +73,111 @@ type Section = {
   offset: number;
 };
 
+/** Where a record starts: the payload's view and the record's byte offset. */
+type Slot = {
+  view: DataView;
+  at: number;
+};
+
+/** One record kind: its section, its stride, and how a record sits at its offset. */
+interface Codec<T> {
+  kind: number;
+  stride: number;
+  list(sector: Sector): T[];
+  write(slot: Slot, record: T): void;
+  read(slot: Slot): T;
+}
+
+const f32 = ({ view, at }: Slot, field: number) => view.getFloat32(at + field, LITTLE);
+const setF32 = ({ view, at }: Slot, field: number, value: number) =>
+  view.setFloat32(at + field, value, LITTLE);
+
+const HOUSES: Codec<SectorHouse> = {
+  kind: L.HOUSES_KIND,
+  stride: L.HOUSES_STRIDE,
+  list: (sector) => sector.houses,
+  write(slot, house) {
+    slot.view.setUint32(slot.at + L.HOUSES_ID, house.id, LITTLE);
+    setF32(slot, L.HOUSES_X_M, house.x_m);
+    setF32(slot, L.HOUSES_Z_M, house.z_m);
+    setF32(slot, L.HOUSES_WIDTH_M, house.width_m);
+    setF32(slot, L.HOUSES_DEPTH_M, house.depth_m);
+    setF32(slot, L.HOUSES_ROTATION_RADIANS, house.rotation_radians);
+    setF32(slot, L.HOUSES_HEIGHT_M, house.height_m);
+    house.roof_rgb.forEach((channel, offset) =>
+      slot.view.setUint8(slot.at + L.HOUSES_ROOF_RGB + offset, channel));
+    slot.view.setUint8(slot.at + L.HOUSES_FLAGS, house.frontage ? L.HOUSES_FRONTAGE_BIT : 0);
+  },
+  read(slot) {
+    const byte = (field: number) => slot.view.getUint8(slot.at + field);
+    return {
+      id: slot.view.getUint32(slot.at + L.HOUSES_ID, LITTLE),
+      x_m: f32(slot, L.HOUSES_X_M),
+      z_m: f32(slot, L.HOUSES_Z_M),
+      width_m: f32(slot, L.HOUSES_WIDTH_M),
+      depth_m: f32(slot, L.HOUSES_DEPTH_M),
+      rotation_radians: f32(slot, L.HOUSES_ROTATION_RADIANS),
+      height_m: f32(slot, L.HOUSES_HEIGHT_M),
+      roof_rgb: [byte(L.HOUSES_ROOF_RGB), byte(L.HOUSES_ROOF_RGB + 1), byte(L.HOUSES_ROOF_RGB + 2)],
+      frontage: (byte(L.HOUSES_FLAGS) & L.HOUSES_FRONTAGE_BIT) !== 0,
+    };
+  },
+};
+
+const BERTHS: Codec<SectorBerth> = {
+  kind: L.BERTHS_KIND,
+  stride: L.BERTHS_STRIDE,
+  list: (sector) => sector.berths,
+  write(slot, berth) {
+    setF32(slot, L.BERTHS_X_M, berth.x_m);
+    setF32(slot, L.BERTHS_Z_M, berth.z_m);
+    setF32(slot, L.BERTHS_HEADING_RADIANS, berth.heading_radians);
+  },
+  read: (slot) => ({ x_m: f32(slot, L.BERTHS_X_M), z_m: f32(slot, L.BERTHS_Z_M),
+    heading_radians: f32(slot, L.BERTHS_HEADING_RADIANS) }),
+};
+
+const TREES: Codec<SectorTree> = {
+  kind: L.TREES_KIND,
+  stride: L.TREES_STRIDE,
+  list: (sector) => sector.trees,
+  write(slot, tree) {
+    setF32(slot, L.TREES_X_M, tree.x_m);
+    setF32(slot, L.TREES_Z_M, tree.z_m);
+    setF32(slot, L.TREES_SCALE, tree.scale);
+  },
+  read: (slot) => ({ x_m: f32(slot, L.TREES_X_M), z_m: f32(slot, L.TREES_Z_M),
+    scale: f32(slot, L.TREES_SCALE) }),
+};
+
+/** Every known kind, in kind order: the order sections are written in. */
+const CODECS = [HOUSES, BERTHS, TREES] as const;
+/** Dispatch table for reading: kind → codec. Kinds missing here are skipped. */
+const BY_KIND = new Map<number, Codec<unknown>>(CODECS.map((codec) => [codec.kind, codec]));
+
+/** Section table entries for a sector: known kinds in order, records after the table. */
+function layout(sector: Sector): Section[] {
+  let offset = L.HEADER_BYTES + CODECS.length * L.ENTRY_BYTES;
+  return CODECS.map((codec) => {
+    const section = { kind: codec.kind, count: codec.list(sector).length, stride: codec.stride,
+      offset };
+    offset += section.count * section.stride;
+    return section;
+  });
+}
+
 /** Serialises a sector, sections in kind order with their known strides. O(records). */
 export function writeSector(sector: Sector): Uint8Array {
-  const sections: Section[] = [
-    { kind: L.HOUSES_KIND, count: sector.houses.length, stride: L.HOUSES_STRIDE, offset: 0 },
-    { kind: L.BERTHS_KIND, count: sector.berths.length, stride: L.BERTHS_STRIDE, offset: 0 },
-    { kind: L.TREES_KIND, count: sector.trees.length, stride: L.TREES_STRIDE, offset: 0 },
-  ];
-  let offset = L.HEADER_BYTES + sections.length * L.ENTRY_BYTES;
-  for (const section of sections) {
-    section.offset = offset;
-    offset += section.count * section.stride;
-  }
-  const bytes = new Uint8Array(offset);
-  const view = new DataView(bytes.buffer);
+  const sections = layout(sector);
+  const last = sections[sections.length - 1];
+  const view = new DataView(new ArrayBuffer(last.offset + last.count * last.stride));
   writeHeader(view, sector, sections);
-  const [houses, berths, trees] = sections;
-  sector.houses.forEach((house, record) =>
-    writeHouse(view, house, houses.offset + record * houses.stride));
-  sector.berths.forEach((berth, record) => {
-    const at = berths.offset + record * berths.stride;
-    view.setFloat32(at + L.BERTHS_X_M, berth.x_m, LITTLE);
-    view.setFloat32(at + L.BERTHS_Z_M, berth.z_m, LITTLE);
-    view.setFloat32(at + L.BERTHS_HEADING_RADIANS, berth.heading_radians, LITTLE);
+  CODECS.forEach((codec: Codec<unknown>, number) => {
+    const { offset, stride } = sections[number];
+    codec.list(sector).forEach((record, index) =>
+      codec.write({ view, at: offset + index * stride }, record));
   });
-  sector.trees.forEach((tree, record) => {
-    const at = trees.offset + record * trees.stride;
-    view.setFloat32(at + L.TREES_X_M, tree.x_m, LITTLE);
-    view.setFloat32(at + L.TREES_Z_M, tree.z_m, LITTLE);
-    view.setFloat32(at + L.TREES_SCALE, tree.scale, LITTLE);
-  });
-  return bytes;
+  return new Uint8Array(view.buffer);
 }
 
 function writeHeader(view: DataView, sector: Sector, sections: Section[]) {
@@ -123,28 +197,20 @@ function writeHeader(view: DataView, sector: Sector, sections: Section[]) {
   });
 }
 
-function writeHouse(view: DataView, house: SectorHouse, at: number) {
-  view.setUint32(at + L.HOUSES_ID, house.id, LITTLE);
-  view.setFloat32(at + L.HOUSES_X_M, house.x_m, LITTLE);
-  view.setFloat32(at + L.HOUSES_Z_M, house.z_m, LITTLE);
-  view.setFloat32(at + L.HOUSES_WIDTH_M, house.width_m, LITTLE);
-  view.setFloat32(at + L.HOUSES_DEPTH_M, house.depth_m, LITTLE);
-  view.setFloat32(at + L.HOUSES_ROTATION_RADIANS, house.rotation_radians, LITTLE);
-  view.setFloat32(at + L.HOUSES_HEIGHT_M, house.height_m, LITTLE);
-  house.roof_rgb.forEach((channel, field) =>
-    view.setUint8(at + L.HOUSES_ROOF_RGB + field, channel));
-  view.setUint8(at + L.HOUSES_FLAGS, house.frontage ? L.HOUSES_FRONTAGE_BIT : 0);
-}
-
-/** Parses and validates a sector payload. Throws SectorFormatError. O(bytes). */
-export function readSector(bytes: Uint8Array): Sector {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+/** The magic and the major version, before anything else is trusted. */
+function checkIdentity(bytes: Uint8Array, view: DataView) {
   if (bytes.length < L.HEADER_VERSION + 2) throw new SectorFormatError('truncated');
   if (MAGIC_BYTES.some((byte, at) => bytes[L.HEADER_MAGIC + at] !== byte)) {
     throw new SectorFormatError('bad magic');
   }
   const version = view.getUint16(L.HEADER_VERSION, LITTLE);
   if (version !== L.VERSION) throw new SectorFormatError(`unsupported version ${version}`);
+}
+
+/** Parses and validates a sector payload. Throws SectorFormatError. O(bytes). */
+export function readSector(bytes: Uint8Array): Sector {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  checkIdentity(bytes, view);
   if (bytes.length < L.HEADER_BYTES) throw new SectorFormatError('truncated');
   const sector: Sector = {
     index: view.getUint32(L.HEADER_INDEX, LITTLE),
@@ -157,6 +223,16 @@ export function readSector(bytes: Uint8Array): Sector {
   };
   for (const section of sectionTable(view)) readSection(view, section, sector);
   return sector;
+}
+
+/** Appends a validated section's records to the sector. Unknown kinds are skipped. */
+function readSection(view: DataView, section: Section, sector: Sector) {
+  const codec = BY_KIND.get(section.kind);
+  if (!codec) return;
+  const records = codec.list(sector);
+  for (let record = 0; record < section.count; record += 1) {
+    records.push(codec.read({ view, at: section.offset + record * section.stride }));
+  }
 }
 
 function sectionTable(view: DataView): Section[] {
@@ -177,55 +253,16 @@ function sectionTable(view: DataView): Section[] {
   });
 }
 
-const KNOWN_STRIDES = new Map<number, number>([
-  [L.HOUSES_KIND, L.HOUSES_STRIDE],
-  [L.BERTHS_KIND, L.BERTHS_STRIDE],
-  [L.TREES_KIND, L.TREES_STRIDE],
-]);
-
 function validate(view: DataView, section: Section) {
   const { kind } = section;
   if (section.offset % L.ALIGNMENT !== 0) {
     throw new SectorFormatError(`section ${kind} misaligned`);
   }
-  const minimum = KNOWN_STRIDES.get(kind);
-  if (minimum !== undefined && section.stride < minimum) {
+  const known = BY_KIND.get(kind);
+  if (known && section.stride < known.stride) {
     throw new SectorFormatError(`section ${kind} stride too small`);
   }
   if (section.offset + section.count * section.stride > view.byteLength) {
     throw new SectorFormatError(`section ${kind} out of bounds`);
   }
-}
-
-/** Appends a validated section's records. Unknown kinds are skipped. */
-function readSection(view: DataView, section: Section, sector: Sector) {
-  for (let record = 0; record < section.count; record += 1) {
-    const at = section.offset + record * section.stride;
-    const float = (field: number) => view.getFloat32(at + field, LITTLE);
-    if (section.kind === L.HOUSES_KIND) sector.houses.push(readHouse(view, at));
-    if (section.kind === L.BERTHS_KIND) {
-      sector.berths.push({ x_m: float(L.BERTHS_X_M), z_m: float(L.BERTHS_Z_M),
-        heading_radians: float(L.BERTHS_HEADING_RADIANS) });
-    }
-    if (section.kind === L.TREES_KIND) {
-      sector.trees.push({ x_m: float(L.TREES_X_M), z_m: float(L.TREES_Z_M),
-        scale: float(L.TREES_SCALE) });
-    }
-  }
-}
-
-function readHouse(view: DataView, at: number): SectorHouse {
-  const float = (field: number) => view.getFloat32(at + field, LITTLE);
-  const rgb = at + L.HOUSES_ROOF_RGB;
-  return {
-    id: view.getUint32(at + L.HOUSES_ID, LITTLE),
-    x_m: float(L.HOUSES_X_M),
-    z_m: float(L.HOUSES_Z_M),
-    width_m: float(L.HOUSES_WIDTH_M),
-    depth_m: float(L.HOUSES_DEPTH_M),
-    rotation_radians: float(L.HOUSES_ROTATION_RADIANS),
-    height_m: float(L.HOUSES_HEIGHT_M),
-    roof_rgb: [view.getUint8(rgb), view.getUint8(rgb + 1), view.getUint8(rgb + 2)],
-    frontage: (view.getUint8(at + L.HOUSES_FLAGS) & L.HOUSES_FRONTAGE_BIT) !== 0,
-  };
 }
