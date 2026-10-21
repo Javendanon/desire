@@ -13,6 +13,8 @@ pub enum RoutingError {
     BufferLengthMismatch { expected: usize, actual: usize },
     /// D04 revisions are positive integers.
     InvalidRevision,
+    /// Request identifiers are positive; zero never names a live request.
+    InvalidRequestId,
     /// The start cell lies outside the grid.
     StartOutOfBounds { x: u32, y: u32 },
     /// The goal cell lies outside the grid.
@@ -41,6 +43,7 @@ impl fmt::Display for RoutingError {
                 "buffer length {actual} does not match expected {expected}"
             ),
             Self::InvalidRevision => write!(formatter, "revision must be a positive integer"),
+            Self::InvalidRequestId => write!(formatter, "request id must be a positive integer"),
             Self::StartOutOfBounds { x, y } => {
                 write!(formatter, "start cell ({x}, {y}) is outside the grid")
             }

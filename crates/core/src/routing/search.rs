@@ -65,6 +65,9 @@ pub(crate) fn find_route(
     grid: &Grid<'_>,
     request: &RouteRequest,
 ) -> Result<RoutePlan, RoutingError> {
+    if request.request_id == 0 {
+        return Err(RoutingError::InvalidRequestId);
+    }
     if request.revision == 0 {
         return Err(RoutingError::InvalidRevision);
     }

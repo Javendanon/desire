@@ -14,7 +14,7 @@ pub use grid::{BLOCKED_CELL, Cell, Grid, MAX_GRID_CELLS};
 /// Typed request with the identity needed to discard stale results.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RouteRequest {
-    /// Monotonic identifier assigned by the worker client.
+    /// Positive monotonic identifier assigned by the worker client.
     pub request_id: u32,
     /// Map revision that produced the cost buffer (D04 positive revision).
     pub revision: u32,
