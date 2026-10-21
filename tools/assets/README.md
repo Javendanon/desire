@@ -22,7 +22,7 @@ node --experimental-strip-types tools/assets/asset-pipeline.ts \
 node --experimental-strip-types tools/assets/asset-pipeline.ts \
   --manifest tools/assets/samples/sample-harbor/asset.json --out /tmp/asset-out
 
-# Regression tests; JS deliberately permits malformed input fixtures
+# Regression tests; malformed-input fixtures are typed as `unknown`
 pnpm test:assets   # or: node --test --experimental-test-coverage "tools/assets/tests/*.test.ts"
 
 # Quality metrics (kimun 0.26.0; tests excluded by its default filter)

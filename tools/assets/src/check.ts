@@ -47,6 +47,7 @@ function collisionState(gltf: Gltf) {
     separate: Boolean(collision) && lod0.length > 0 && Boolean(lod1),
     materialless,
     blockers: collisionBlockers(gltf),
+    triangles: collision ? triangleCount(json, collision.mesh) : 0,
     lod0_nodes: lod0.length,
     lod1: Boolean(lod1),
   };
@@ -231,7 +232,7 @@ function reportSections(context: Context) {
     collision: {
       separate: collision.separate,
       materialless: collision.materialless,
-      triangles: collision.blockers.length,
+      triangles: collision.triangles,
     },
     lod: lodState(gltf),
     textures,

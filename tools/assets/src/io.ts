@@ -8,7 +8,12 @@ import type { Manifest } from './types.ts';
 type ManifestRead = { manifest: Manifest | null; errors: string[] };
 
 export function readManifest(manifestPath: string): ManifestRead {
-  const raw = fs.readFileSync(manifestPath, 'utf8');
+  let raw: string;
+  try {
+    raw = fs.readFileSync(manifestPath, 'utf8');
+  } catch (cause) {
+    return { manifest: null, errors: [`cannot read manifest ${manifestPath} (${String(cause)})`] };
+  }
   let manifest: Manifest;
   try {
     manifest = JSON.parse(raw);

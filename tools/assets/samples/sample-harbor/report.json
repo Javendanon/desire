@@ -96,7 +96,7 @@
   "collision": {
     "separate": true,
     "materialless": true,
-    "triangles": 40
+    "triangles": 80
   },
   "lod": {
     "lod0_nodes": 8,
