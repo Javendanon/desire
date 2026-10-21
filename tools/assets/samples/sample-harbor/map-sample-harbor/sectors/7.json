@@ -1,0 +1,22 @@
+{
+  "schema": "desire.map-sector/1",
+  "index": 7,
+  "buildings": [
+    {
+      "x": 220,
+      "z": 125,
+      "width": 14,
+      "depth": 12,
+      "height": 5,
+      "rotation": 0,
+      "roof": 1,
+      "tone": 2,
+      "stone": false,
+      "place_id": "salt-store",
+      "height_evidence": "synthetic",
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ]
+}

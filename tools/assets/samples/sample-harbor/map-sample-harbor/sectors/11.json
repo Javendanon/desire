@@ -1,0 +1,22 @@
+{
+  "schema": "desire.map-sector/1",
+  "index": 11,
+  "buildings": [
+    {
+      "x": 235,
+      "z": 175,
+      "width": 10,
+      "depth": 6,
+      "height": 8,
+      "rotation": 0,
+      "roof": 0,
+      "tone": 0,
+      "stone": true,
+      "place_id": "quay-gate",
+      "height_evidence": "synthetic",
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ]
+}

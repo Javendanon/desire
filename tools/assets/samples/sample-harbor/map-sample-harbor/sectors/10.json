@@ -1,0 +1,22 @@
+{
+  "schema": "desire.map-sector/1",
+  "index": 10,
+  "buildings": [
+    {
+      "x": 175,
+      "z": 155,
+      "width": 8,
+      "depth": 8,
+      "height": 4,
+      "rotation": 0,
+      "roof": 3,
+      "tone": 1,
+      "stone": false,
+      "place_id": "net-menders-hut",
+      "height_evidence": "synthetic",
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ]
+}

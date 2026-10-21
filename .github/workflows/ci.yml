@@ -46,6 +46,11 @@ jobs:
         run: corepack pnpm install --frozen-lockfile
       - name: Type and Svelte checks
         run: corepack pnpm check
+      # Offline asset pipeline (D18): strict types for sources and tests, then its test suite.
+      - name: Asset pipeline types
+        run: corepack pnpm check:assets
+      - name: Asset pipeline tests
+        run: corepack pnpm test:assets
       # The source raster and dataset are not in the repository, so CI checks the package's
       # internal consistency and the verifier's own tests; --image/--dataset run locally.
       - name: Waterdeep reference package

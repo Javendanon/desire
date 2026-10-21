@@ -1,0 +1,125 @@
+{
+  "id": "sample-harbor",
+  "label": "Synthetic sample scene for the asset pipeline. It is not Waterdeep cartography.",
+  "pass": true,
+  "checks": [
+    {
+      "id": "scale.checks",
+      "pass": true,
+      "detail": "1 reference distances"
+    },
+    {
+      "id": "fidelity.tally",
+      "pass": true,
+      "detail": "verified 0, interpretation 1, synthetic 7, unknown 2"
+    },
+    {
+      "id": "package.buildings",
+      "pass": true,
+      "detail": "8 buildings in 7 sectors"
+    },
+    {
+      "id": "package.chunks",
+      "pass": true,
+      "detail": "7 D04 chunks of map version d1800000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "nav.costs",
+      "pass": true,
+      "detail": "256x192 u32 cells at 1 m, every footprint blocked"
+    },
+    {
+      "id": "package.provenance",
+      "pass": true,
+      "detail": "calibration synthetic:sample-harbor-scale, unknown places chandlers-row, tide-stairs"
+    },
+    {
+      "id": "navigation.waypoints",
+      "pass": true,
+      "detail": "47718/49152 reached"
+    }
+  ],
+  "scale": {
+    "meters_per_pixel": 0.25,
+    "evidence": "synthetic",
+    "checks": [
+      {
+        "id": "quay-length",
+        "computed_m": 224,
+        "expected_m": 224,
+        "delta_m": 0,
+        "tolerance_m": 1,
+        "pass": true
+      }
+    ]
+  },
+  "fidelity": {
+    "verified": 0,
+    "interpretation": 1,
+    "synthetic": 7,
+    "unknown": 2
+  },
+  "unknown_places": [
+    "chandlers-row",
+    "tide-stairs"
+  ],
+  "package": {
+    "sectors": 7,
+    "chunks": 7,
+    "buildings": 8,
+    "grid": {
+      "sizeM": 64,
+      "originX": 0,
+      "originZ": 0,
+      "columns": 4,
+      "rows": 3
+    }
+  },
+  "navigation": {
+    "asset_uri": "nav-costs.bin",
+    "cell_m": 1,
+    "origin_x_m": 0,
+    "origin_z_m": 0,
+    "width": 256,
+    "height": 192,
+    "blocked_cell": 4294967295,
+    "free_cost": 1,
+    "total_cells": 49152,
+    "free_cells": 47718,
+    "blocked_cells": 1434,
+    "reachable_cells": 47718,
+    "reachable_ratio": 0.971,
+    "spawn": {
+      "x_m": 16,
+      "z_m": 16,
+      "spawn_free": true
+    },
+    "waypoints": [
+      {
+        "id": "fish-market",
+        "reachable": true
+      },
+      {
+        "id": "quay-gate",
+        "reachable": true
+      },
+      {
+        "id": "watch",
+        "reachable": true
+      }
+    ],
+    "pass": true
+  },
+  "artifact": {
+    "bytes": 204518,
+    "files": 9,
+    "path": "map-sample-harbor",
+    "written": true
+  },
+  "provenance": {
+    "source": "synthetic:sample-harbor",
+    "attribution": "Desire project, synthetic sample.",
+    "evidence": "synthetic"
+  },
+  "network_allowed": false
+}

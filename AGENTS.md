@@ -5,9 +5,11 @@ cuando hay dudas. Leerlas antes de escribir o modificar código en cualquier len
 Para tomar o entregar tarjetas, seguir [desarrollo paralelo](docs/desarrollo-paralelo.md).
 
 - Usar pnpm para el frontend y Cargo para Rust.
-- El tooling de build/CI en `tools/` se escribe en Python 3 con la biblioteca estándar,
-  incluido `unittest`; es la convención que ya usan `tools/contracts`, `tools/quality`,
-  `tools/ci` y `tools/knowledge`.
+- El tooling en `tools/` no se escribe en JavaScript sin tipos. Si comparte tipos o contratos
+  con la app, el motor o el worker (por ejemplo `tools/assets`, que emite datos para D12/D13),
+  se escribe en TypeScript estricto con `node:test`. Las herramientas que ya están en Python 3
+  con la biblioteca estándar y `unittest` (`tools/contracts`, `tools/quality`, `tools/ci`,
+  `tools/knowledge`) siguen así.
 - Apuntar al objetivo A- (87), no solo al piso B- (77).
 - Aplicar F1–F16 y el flujo RED → implementación → gate → tests → advisor → reporte.
 - El advisor independiente es obligatorio para cambios de más de 50 líneas o archivos

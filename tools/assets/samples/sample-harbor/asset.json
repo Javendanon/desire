@@ -1,0 +1,302 @@
+{
+  "schema": "desire.asset-scene/2",
+  "id": "sample-harbor",
+  "label": "Synthetic sample scene for the asset pipeline. It is not Waterdeep cartography.",
+  "network_allowed": false,
+  "map_version": {
+    "id": "d1800000-0000-4000-8000-000000000001",
+    "map_id": "d1800000-0000-4000-8000-000000000002",
+    "revision": 1
+  },
+  "illustration": {
+    "title": "Synthetic harbor illustration",
+    "width_px": 1024,
+    "height_px": 768,
+    "license": "Generated for this repository; no third-party artwork.",
+    "attribution": "Desire project, synthetic sample.",
+    "provenance": {
+      "source": "synthetic:sample-harbor",
+      "attribution": "Desire project, synthetic sample.",
+      "evidence": "synthetic"
+    }
+  },
+  "calibration": {
+    "origin_px_x": 0,
+    "origin_px_y": 0,
+    "meters_per_pixel": 0.25,
+    "rotation_radians": 0,
+    "provenance": {
+      "source": "synthetic:sample-harbor-scale",
+      "attribution": "Desire project, synthetic sample.",
+      "evidence": "synthetic"
+    }
+  },
+  "scale_checks": [
+    {
+      "id": "quay-length",
+      "from_px": {
+        "u": 64,
+        "v": 704
+      },
+      "to_px": {
+        "u": 960,
+        "v": 704
+      },
+      "expected_m": 224,
+      "tolerance_m": 1
+    }
+  ],
+  "sector_size_m": 64,
+  "nav_cell_m": 1,
+  "spawn": {
+    "x_m": 16,
+    "z_m": 16
+  },
+  "waypoints": [
+    {
+      "id": "fish-market",
+      "x_m": 108,
+      "z_m": 140
+    },
+    {
+      "id": "quay-gate",
+      "x_m": 228,
+      "z_m": 166
+    },
+    {
+      "id": "watch",
+      "x_m": 52,
+      "z_m": 36
+    }
+  ],
+  "places": [
+    {
+      "id": "quay-gate",
+      "name": "Quay gate",
+      "pixel": {
+        "u": 940,
+        "v": 700
+      },
+      "footprint_m": {
+        "width_m": 10,
+        "depth_m": 6
+      },
+      "height_m": 8,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 0,
+        "tone": 0,
+        "stone": true
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "fish-market",
+      "name": "Fish market",
+      "pixel": {
+        "u": 520,
+        "v": 460
+      },
+      "footprint_m": {
+        "width_m": 24,
+        "depth_m": 14
+      },
+      "height_m": 7,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 3,
+        "tone": 1,
+        "stone": false
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "chandlers-row",
+      "name": "Chandler's row",
+      "pixel": {
+        "u": 300,
+        "v": 380
+      },
+      "footprint_m": {
+        "width_m": 12,
+        "depth_m": 10
+      },
+      "height_m": null,
+      "style": {
+        "roof": 1,
+        "tone": 2,
+        "stone": false
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "net-menders-hut",
+      "name": "Net mender's hut",
+      "pixel": {
+        "u": 700,
+        "v": 620
+      },
+      "footprint_m": {
+        "width_m": 8,
+        "depth_m": 8
+      },
+      "height_m": 4,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 3,
+        "tone": 1,
+        "stone": false
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "watch-tower",
+      "name": "Watch tower",
+      "pixel": {
+        "u": 150,
+        "v": 180
+      },
+      "footprint_m": {
+        "width_m": 9,
+        "depth_m": 9
+      },
+      "height_m": 18,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 0,
+        "tone": 0,
+        "stone": true
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "customs-house",
+      "name": "Customs house",
+      "pixel": {
+        "u": 760,
+        "v": 240
+      },
+      "footprint_m": {
+        "width_m": 20,
+        "depth_m": 16
+      },
+      "rotation_radians": -0.2,
+      "height_m": 12,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 0,
+        "tone": 0,
+        "stone": true
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "tide-stairs",
+      "name": "Tide stairs",
+      "pixel": {
+        "u": 60,
+        "v": 520
+      },
+      "footprint_m": {
+        "width_m": 6,
+        "depth_m": 12
+      },
+      "height_m": null,
+      "style": {
+        "roof": 0,
+        "tone": 0,
+        "stone": true
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "ropewalk",
+      "name": "Ropewalk",
+      "pixel": {
+        "u": 620,
+        "v": 300
+      },
+      "footprint_m": {
+        "width_m": 30,
+        "depth_m": 8
+      },
+      "rotation_radians": 0.3,
+      "height_m": 6,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 3,
+        "tone": 1,
+        "stone": false
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "salt-store",
+      "name": "Salt store",
+      "pixel": {
+        "u": 880,
+        "v": 500
+      },
+      "footprint_m": {
+        "width_m": 14,
+        "depth_m": 12
+      },
+      "height_m": 5,
+      "height_evidence": "synthetic",
+      "rationale": "Sample value; the illustration has no measured heights.",
+      "style": {
+        "roof": 1,
+        "tone": 2,
+        "stone": false
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "lighthouse",
+      "name": "Lighthouse",
+      "pixel": {
+        "u": 980,
+        "v": 120
+      },
+      "footprint_m": {
+        "width_m": 7,
+        "depth_m": 7
+      },
+      "height_m": 22,
+      "height_evidence": "interpretation",
+      "rationale": "Tower silhouette without a measurable height; 22 m follows the sample scale.",
+      "style": {
+        "roof": 0,
+        "tone": 0,
+        "stone": true
+      },
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ]
+}
