@@ -14,6 +14,103 @@ struct Section {
     offset: usize,
 }
 
+/// A record kind of the payload: how one record is laid out at its offset. Sections are
+/// written and read by the same generic walk, whatever the kind.
+trait Record: Sized {
+    fn write(&self, out: &mut [u8], at: usize);
+    fn read(bytes: &[u8], at: usize) -> Self;
+}
+
+impl Record for House {
+    fn write(&self, out: &mut [u8], at: usize) {
+        put_u32(out, at + HOUSES_ID, self.id);
+        put_f32(out, at + HOUSES_X_M, self.x_m);
+        put_f32(out, at + HOUSES_Z_M, self.z_m);
+        put_f32(out, at + HOUSES_WIDTH_M, self.width_m);
+        put_f32(out, at + HOUSES_DEPTH_M, self.depth_m);
+        put_f32(out, at + HOUSES_ROTATION_RADIANS, self.rotation_radians);
+        put_f32(out, at + HOUSES_HEIGHT_M, self.height_m);
+        out[at + HOUSES_ROOF_RGB..at + HOUSES_ROOF_RGB + 3].copy_from_slice(&self.roof_rgb);
+        out[at + HOUSES_FLAGS] = if self.frontage {
+            HOUSES_FRONTAGE_BIT
+        } else {
+            0
+        };
+    }
+
+    fn read(bytes: &[u8], at: usize) -> Self {
+        let rgb = at + HOUSES_ROOF_RGB;
+        House {
+            id: u32_at(bytes, at + HOUSES_ID),
+            x_m: f32_at(bytes, at + HOUSES_X_M),
+            z_m: f32_at(bytes, at + HOUSES_Z_M),
+            width_m: f32_at(bytes, at + HOUSES_WIDTH_M),
+            depth_m: f32_at(bytes, at + HOUSES_DEPTH_M),
+            rotation_radians: f32_at(bytes, at + HOUSES_ROTATION_RADIANS),
+            height_m: f32_at(bytes, at + HOUSES_HEIGHT_M),
+            roof_rgb: [bytes[rgb], bytes[rgb + 1], bytes[rgb + 2]],
+            frontage: bytes[at + HOUSES_FLAGS] & HOUSES_FRONTAGE_BIT != 0,
+        }
+    }
+}
+
+impl Record for Berth {
+    fn write(&self, out: &mut [u8], at: usize) {
+        put_f32(out, at + BERTHS_X_M, self.x_m);
+        put_f32(out, at + BERTHS_Z_M, self.z_m);
+        put_f32(out, at + BERTHS_HEADING_RADIANS, self.heading_radians);
+    }
+
+    fn read(bytes: &[u8], at: usize) -> Self {
+        Berth {
+            x_m: f32_at(bytes, at + BERTHS_X_M),
+            z_m: f32_at(bytes, at + BERTHS_Z_M),
+            heading_radians: f32_at(bytes, at + BERTHS_HEADING_RADIANS),
+        }
+    }
+}
+
+impl Record for Tree {
+    fn write(&self, out: &mut [u8], at: usize) {
+        put_f32(out, at + TREES_X_M, self.x_m);
+        put_f32(out, at + TREES_Z_M, self.z_m);
+        put_f32(out, at + TREES_SCALE, self.scale);
+    }
+
+    fn read(bytes: &[u8], at: usize) -> Self {
+        Tree {
+            x_m: f32_at(bytes, at + TREES_X_M),
+            z_m: f32_at(bytes, at + TREES_Z_M),
+            scale: f32_at(bytes, at + TREES_SCALE),
+        }
+    }
+}
+
+impl Section {
+    /// Byte offset of each record, in order.
+    fn records(&self) -> impl Iterator<Item = usize> + '_ {
+        (0..self.count).map(|record| self.offset + record * self.stride)
+    }
+
+    fn write_entry(&self, out: &mut [u8], at: usize) {
+        put_u32(out, at + ENTRY_KIND, self.kind);
+        put_u32(out, at + ENTRY_COUNT, to_u32(self.count));
+        put_u32(out, at + ENTRY_STRIDE, to_u32(self.stride));
+        put_u32(out, at + ENTRY_OFFSET, to_u32(self.offset));
+    }
+
+    fn write<T: Record>(&self, out: &mut [u8], items: &[T]) {
+        items
+            .iter()
+            .zip(self.records())
+            .for_each(|(item, at)| item.write(out, at));
+    }
+
+    fn read<'a, T: Record>(&'a self, bytes: &'a [u8]) -> impl Iterator<Item = T> + 'a {
+        self.records().map(move |at| T::read(bytes, at))
+    }
+}
+
 /// Serialises a sector. Sections are written in kind order with their known strides.
 /// O(records).
 pub fn write_sector(sector: &Sector) -> Vec<u8> {
@@ -22,28 +119,11 @@ pub fn write_sector(sector: &Sector) -> Vec<u8> {
     let mut out = vec![0; last.offset + last.count * last.stride];
     write_header(&mut out, sector, sections.len());
     for (number, section) in sections.iter().enumerate() {
-        let at = HEADER_BYTES + number * ENTRY_BYTES;
-        put_u32(&mut out, at + ENTRY_KIND, section.kind);
-        put_u32(&mut out, at + ENTRY_COUNT, to_u32(section.count));
-        put_u32(&mut out, at + ENTRY_STRIDE, to_u32(section.stride));
-        put_u32(&mut out, at + ENTRY_OFFSET, to_u32(section.offset));
+        section.write_entry(&mut out, HEADER_BYTES + number * ENTRY_BYTES);
     }
-    let [houses, berths, trees] = [0, 1, 2].map(|kind| &sections[kind]);
-    for (record, house) in sector.houses.iter().enumerate() {
-        write_house(&mut out, houses.offset + record * houses.stride, house);
-    }
-    for (record, berth) in sector.berths.iter().enumerate() {
-        let at = berths.offset + record * berths.stride;
-        put_f32(&mut out, at + BERTHS_X_M, berth.x_m);
-        put_f32(&mut out, at + BERTHS_Z_M, berth.z_m);
-        put_f32(&mut out, at + BERTHS_HEADING_RADIANS, berth.heading_radians);
-    }
-    for (record, tree) in sector.trees.iter().enumerate() {
-        let at = trees.offset + record * trees.stride;
-        put_f32(&mut out, at + TREES_X_M, tree.x_m);
-        put_f32(&mut out, at + TREES_Z_M, tree.z_m);
-        put_f32(&mut out, at + TREES_SCALE, tree.scale);
-    }
+    sections[0].write(&mut out, &sector.houses);
+    sections[1].write(&mut out, &sector.berths);
+    sections[2].write(&mut out, &sector.trees);
     out
 }
 
@@ -84,22 +164,6 @@ fn write_header(out: &mut [u8], sector: &Sector, sections: usize) {
     put_f32(out, HEADER_SIZE_M, sector.size_m);
 }
 
-fn write_house(out: &mut [u8], at: usize, house: &House) {
-    put_u32(out, at + HOUSES_ID, house.id);
-    put_f32(out, at + HOUSES_X_M, house.x_m);
-    put_f32(out, at + HOUSES_Z_M, house.z_m);
-    put_f32(out, at + HOUSES_WIDTH_M, house.width_m);
-    put_f32(out, at + HOUSES_DEPTH_M, house.depth_m);
-    put_f32(out, at + HOUSES_ROTATION_RADIANS, house.rotation_radians);
-    put_f32(out, at + HOUSES_HEIGHT_M, house.height_m);
-    out[at + HOUSES_ROOF_RGB..at + HOUSES_ROOF_RGB + 3].copy_from_slice(&house.roof_rgb);
-    out[at + HOUSES_FLAGS] = if house.frontage {
-        HOUSES_FRONTAGE_BIT
-    } else {
-        0
-    };
-}
-
 fn put_u32(out: &mut [u8], at: usize, value: u32) {
     out[at..at + 4].copy_from_slice(&value.to_le_bytes());
 }
@@ -108,18 +172,23 @@ fn put_f32(out: &mut [u8], at: usize, value: f32) {
     put_u32(out, at, value.to_bits());
 }
 
-/// Parses and validates a sector payload. O(bytes).
-pub fn read_sector(bytes: &[u8]) -> Result<Sector, SectorFormatError> {
+/// The magic and the major version, before anything else is trusted.
+fn check_identity(bytes: &[u8]) -> Result<(), SectorFormatError> {
     if bytes.len() < HEADER_VERSION + 2 {
         return Err(SectorFormatError::Truncated);
     }
     if &bytes[HEADER_MAGIC..HEADER_MAGIC + MAGIC.len()] != MAGIC {
         return Err(SectorFormatError::BadMagic);
     }
-    let version = u16_at(bytes, HEADER_VERSION);
-    if version != VERSION {
-        return Err(SectorFormatError::UnsupportedVersion { version });
+    match u16_at(bytes, HEADER_VERSION) {
+        VERSION => Ok(()),
+        version => Err(SectorFormatError::UnsupportedVersion { version }),
     }
+}
+
+/// Parses and validates a sector payload. O(bytes).
+pub fn read_sector(bytes: &[u8]) -> Result<Sector, SectorFormatError> {
+    check_identity(bytes)?;
     if bytes.len() < HEADER_BYTES {
         return Err(SectorFormatError::Truncated);
     }
@@ -184,39 +253,13 @@ fn validate(bytes: &[u8], section: &Section) -> Result<(), SectorFormatError> {
     }
 }
 
-/// Appends a validated section's records; unknown kinds are skipped.
+/// Appends a validated section's records. Unknown kinds are skipped.
 fn read_section(bytes: &[u8], section: &Section, sector: &mut Sector) {
-    let records = (0..section.count).map(|record| section.offset + record * section.stride);
     match section.kind {
-        HOUSES_KIND => sector
-            .houses
-            .extend(records.map(|at| read_house(bytes, at))),
-        BERTHS_KIND => sector.berths.extend(records.map(|at| Berth {
-            x_m: f32_at(bytes, at + BERTHS_X_M),
-            z_m: f32_at(bytes, at + BERTHS_Z_M),
-            heading_radians: f32_at(bytes, at + BERTHS_HEADING_RADIANS),
-        })),
-        TREES_KIND => sector.trees.extend(records.map(|at| Tree {
-            x_m: f32_at(bytes, at + TREES_X_M),
-            z_m: f32_at(bytes, at + TREES_Z_M),
-            scale: f32_at(bytes, at + TREES_SCALE),
-        })),
+        HOUSES_KIND => sector.houses.extend(section.read(bytes)),
+        BERTHS_KIND => sector.berths.extend(section.read(bytes)),
+        TREES_KIND => sector.trees.extend(section.read(bytes)),
         _ => {}
-    }
-}
-
-fn read_house(bytes: &[u8], at: usize) -> House {
-    let rgb = at + HOUSES_ROOF_RGB;
-    House {
-        id: u32_at(bytes, at + HOUSES_ID),
-        x_m: f32_at(bytes, at + HOUSES_X_M),
-        z_m: f32_at(bytes, at + HOUSES_Z_M),
-        width_m: f32_at(bytes, at + HOUSES_WIDTH_M),
-        depth_m: f32_at(bytes, at + HOUSES_DEPTH_M),
-        rotation_radians: f32_at(bytes, at + HOUSES_ROTATION_RADIANS),
-        height_m: f32_at(bytes, at + HOUSES_HEIGHT_M),
-        roof_rgb: [bytes[rgb], bytes[rgb + 1], bytes[rgb + 2]],
-        frontage: bytes[at + HOUSES_FLAGS] & HOUSES_FRONTAGE_BIT != 0,
     }
 }
 
