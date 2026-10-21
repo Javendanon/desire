@@ -3,7 +3,7 @@
  *
  * `MapBuilding` and `SectorGrid` mirror `src/lib/engine/plan/map-definition.ts` and
  * `plan/sectors.ts` from D13 field for field. They are copied, not imported, until D13 is on
- * main; `tests/package.test.ts` pins the exact keys so drift fails the suite.
+ * main. `tests/package.test.ts` pins the exact keys so drift fails the suite.
  */
 import type { Evidence, MapVersionRef, Plan, Provenance } from './types.ts';
 
@@ -47,7 +47,11 @@ export type SectorGrid = {
 export type Chunk = {
   id: string;
   map_version_id: string;
-  origin: { x_m: number; y_m: number; z_m: number };
+  origin: {
+    x_m: number;
+    y_m: number;
+    z_m: number;
+  };
   size_m: number;
   asset_uri: string;
 };

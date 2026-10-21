@@ -4,7 +4,7 @@
  * A cell is blocked when any building footprint overlaps it (separating-axis test), so blocking
  * follows the real rotated footprint and never leaks through a thin wall.
  */
-import { footprintBounds, footprintCorners, overlapsCell } from './footprint.ts';
+import { footprintBounds, footprintCorners, overlapsCell, type Footprint } from './footprint.ts';
 import { BLOCKED_CELL, FREE_CELL_COST } from './map-types.ts';
 import type { Anchor, Ground, Plan, Solid } from './types.ts';
 
@@ -67,19 +67,20 @@ function cellBounds(dims: NavDims, column: number, row: number) {
   return { min_x, max_x: min_x + dims.cell_m, min_z, max_z: min_z + dims.cell_m };
 }
 
-/** Blocks the cells one footprint overlaps. O(cells in its bounding box). */
-function blockSolid(costs: Uint32Array, dims: NavDims, solid: Solid) {
-  const corners = footprintCorners(solid);
+/** Indices of the cells a footprint overlaps. O(cells in its bounding box). */
+export function footprintCells(dims: NavDims, footprint: Footprint): number[] {
+  const corners = footprintCorners(footprint);
   const bounds = footprintBounds(corners);
   const first = cellIndex(dims, { x_m: bounds.min_x, z_m: bounds.min_z });
   const last = cellIndex(dims, { x_m: bounds.max_x, z_m: bounds.max_z });
+  const cells: number[] = [];
   for (let row = Math.floor(first / dims.width); row <= Math.floor(last / dims.width); row += 1) {
     for (let column = first % dims.width; column <= last % dims.width; column += 1) {
-      if (overlapsCell(corners, cellBounds(dims, column, row))) {
-        costs[row * dims.width + column] = BLOCKED_CELL;
-      }
+      const cell = row * dims.width + column;
+      if (overlapsCell(corners, cellBounds(dims, column, row))) cells.push(cell);
     }
   }
+  return cells;
 }
 
 /** Builds the D12 cost buffer: row-major, `FREE_CELL_COST` or `BLOCKED_CELL` per cell. */
@@ -93,7 +94,9 @@ export function buildCostGrid({ ground, solids, cell_m = DEFAULT_CELL_M }: CostS
   }
   const dims = dimsOf(ground, cell_m);
   const costs = new Uint32Array(dims.width * dims.height).fill(FREE_CELL_COST);
-  for (const solid of solids) blockSolid(costs, dims, solid);
+  for (const solid of solids) {
+    for (const cell of footprintCells(dims, solid)) costs[cell] = BLOCKED_CELL;
+  }
   return { dims, costs };
 }
 

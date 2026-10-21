@@ -1,8 +1,7 @@
 /** Acceptance checks over a map package read back from disk. Pure: takes the parsed files. */
-import { footprintBounds, footprintCorners, overlapsCell } from './footprint.ts';
 import { BLOCKED_CELL, FREE_CELL_COST } from './map-types.ts';
 import type { MapPackage, PackageBuilding, SectorFile } from './map-types.ts';
-import { cellIndex, MAX_NAV_CELLS, type NavDims } from './nav.ts';
+import { footprintCells, MAX_NAV_CELLS, type NavDims } from './nav.ts';
 import { sectorIndexAt } from './package.ts';
 import type { Scene } from './scene.ts';
 import type { Finding } from './types.ts';
@@ -14,7 +13,8 @@ export type WrittenPackage = {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-export const finding = (id: string, pass: boolean, detail: string): Finding => ({ id, pass, detail });
+export const finding = (id: string, pass: boolean, detail: string): Finding =>
+  ({ id, pass, detail });
 
 const buildingsOf = (sectors: SectorFile[]) => sectors.flatMap((sector) => sector.buildings);
 
@@ -80,31 +80,11 @@ function footprintOf(building: PackageBuilding) {
   };
 }
 
-function cellAt(dims: NavDims, column: number, row: number) {
-  const min_x = dims.origin_x_m + column * dims.cell_m;
-  const min_z = dims.origin_z_m + row * dims.cell_m;
-  return { min_x, max_x: min_x + dims.cell_m, min_z, max_z: min_z + dims.cell_m };
-}
-
-/** True when every cell the footprint overlaps is blocked. O(cells in its bounding box). */
-function footprintBlocked(costs: Uint32Array, dims: NavDims, building: PackageBuilding) {
-  const corners = footprintCorners(footprintOf(building));
-  const bounds = footprintBounds(corners);
-  const first = cellIndex(dims, { x_m: bounds.min_x, z_m: bounds.min_z });
-  const last = cellIndex(dims, { x_m: bounds.max_x, z_m: bounds.max_z });
-  for (let row = Math.floor(first / dims.width); row <= Math.floor(last / dims.width); row++) {
-    for (let column = first % dims.width; column <= last % dims.width; column++) {
-      const free = costs[row * dims.width + column] !== BLOCKED_CELL;
-      if (free && overlapsCell(corners, cellAt(dims, column, row))) return false;
-    }
-  }
-  return true;
-}
-
-/** Recomputes coverage from the written buildings alone, not from the scene. */
+/** Recomputes coverage from the written buildings alone, not from the scene's solids. */
 function uncoveredBuildings(written: WrittenPackage, dims: NavDims): string[] {
   return buildingsOf(written.sectors)
-    .filter((building) => !footprintBlocked(written.costs, dims, building))
+    .filter((building) => footprintCells(dims, footprintOf(building))
+      .some((cell) => written.costs[cell] !== BLOCKED_CELL))
     .map((building) => building.place_id);
 }
 
@@ -128,8 +108,9 @@ function provenanceFinding(written: WrittenPackage, scene: Scene): Finding {
   const listed = JSON.stringify(map.unknown_places) === JSON.stringify(expected);
   const source = map.map_version.calibration_provenance?.source;
   const pass = listed && Boolean(source) && map.network_allowed === false;
+  const unknown = map.unknown_places.join(', ') || 'none';
   return finding('package.provenance', pass,
-    `calibration ${source ?? 'missing'}, unknown places ${map.unknown_places.join(', ') || 'none'}`);
+    `calibration ${source ?? 'missing'}, unknown places ${unknown}`);
 }
 
 export function packageFindings(written: WrittenPackage, scene: Scene): Finding[] {

@@ -68,6 +68,11 @@ test('each non-empty sector is one D04 Chunk of the map version', () => {
   assert.equal(new Set(map.chunks.map((chunk) => chunk.id)).size, map.chunks.length);
 });
 
+test('chunk ids are RFC 9562 name-based UUIDs, equal to Python uuid.uuid5', () => {
+  // python3 -c "import uuid; print(uuid.uuid5(uuid.UUID('d1800000-...-000000000001'), 'chunk:6'))"
+  assert.equal(chunkId('d1800000-0000-4000-8000-000000000001', 6), '6232a52e-af9b-5707-beb6-396e31d1045d');
+});
+
 test('places without a height stay places: listed, anchored and absent from the buildings', () => {
   const { map, sectors } = build();
   assert.deepEqual(map.unknown_places, ['chandlers-row', 'tide-stairs']);

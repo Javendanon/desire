@@ -13,6 +13,12 @@ export const NAV_ASSET = 'nav-costs.bin';
 const UUID_VERSION_5 = 0x50;
 const UUID_VARIANT = 0x80;
 const UUID_BYTES = 16;
+/** RFC 9562 layout: version nibble in byte 6, variant bits in byte 8, hex groups 8-4-4-4-12. */
+const VERSION_BYTE = 6;
+const VARIANT_BYTE = 8;
+const VERSION_KEEP = 0x0f;
+const VARIANT_KEEP = 0x3f;
+const HEX_GROUP_ENDS = [8, 12, 16, 20, 32];
 
 /** D13 `createGrid`: square sectors from the ground's north-west corner. */
 export function createSectorGrid(ground: Ground, sizeM: number): SectorGrid {
@@ -38,10 +44,10 @@ export function chunkId(mapVersionId: string, index: number): string {
   const namespace = Buffer.from(mapVersionId.replaceAll('-', ''), 'hex');
   const hash = createHash('sha1').update(namespace).update(`chunk:${index}`).digest();
   const bytes = hash.subarray(0, UUID_BYTES);
-  bytes[6] = (bytes[6] & 0x0f) | UUID_VERSION_5;
-  bytes[8] = (bytes[8] & 0x3f) | UUID_VARIANT;
+  bytes[VERSION_BYTE] = (bytes[VERSION_BYTE] & VERSION_KEEP) | UUID_VERSION_5;
+  bytes[VARIANT_BYTE] = (bytes[VARIANT_BYTE] & VARIANT_KEEP) | UUID_VARIANT;
   const hex = bytes.toString('hex');
-  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)]
+  return HEX_GROUP_ENDS.map((end, group) => hex.slice(HEX_GROUP_ENDS[group - 1] ?? 0, end))
     .join('-');
 }
 

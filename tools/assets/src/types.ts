@@ -62,7 +62,7 @@ export type Place = {
     width_m: number;
     depth_m: number;
   };
-  /** Building rotation around Y; not a calibration rotation. */
+  /** Building rotation around Y, not a calibration rotation. */
   rotation_radians?: number;
   height_m: number | null;
   height_evidence?: Evidence;

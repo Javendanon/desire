@@ -46,5 +46,7 @@ export function validateStyle(place: Place, errors: string[]) {
   if (!Number.isInteger(style.tone) || !finite(style.tone) || style.tone < 0) {
     errors.push(`place ${place.id}: style.tone must be a non-negative integer`);
   }
-  if (typeof style.stone !== 'boolean') errors.push(`place ${place.id}: style.stone must be boolean`);
+  if (typeof style.stone !== 'boolean') {
+    errors.push(`place ${place.id}: style.stone must be boolean`);
+  }
 }
