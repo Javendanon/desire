@@ -84,3 +84,12 @@ export function overlapsCell(corners: Plan[], cell: Bounds): boolean {
   const footprintAxes = edges.map(([x, z]): Axis => [x / Math.hypot(x, z), z / Math.hypot(x, z)]);
   return ![...CELL_AXES, ...footprintAxes].some((axis) => separated(corners, square, axis));
 }
+
+/** Point at fractions of a footprint: `u` along the width (corner 0 to 1), `v` along the depth. */
+export function footprintPoint(corners: Plan[], u: number, v: number): Plan {
+  const [origin, alongWidth, , alongDepth] = corners;
+  return {
+    x_m: origin.x_m + (alongWidth.x_m - origin.x_m) * u + (alongDepth.x_m - origin.x_m) * v,
+    z_m: origin.z_m + (alongWidth.z_m - origin.z_m) * u + (alongDepth.z_m - origin.z_m) * v,
+  };
+}

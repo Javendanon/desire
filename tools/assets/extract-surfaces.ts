@@ -55,6 +55,7 @@ type Options = {
   crop?: Crop;
   out: string;
   blocks?: string;
+  classes?: string;
   pierRadius?: number;
 };
 
@@ -85,6 +86,7 @@ function parseOptions(argv: string[]): Options {
     map: need('--map'), streets: need('--streets'), wards: need('--wards'),
     zoom: Number(need('--zoom')), west: Number(need('--west')), north: Number(need('--north')),
     crop: parseCrop(values.get('--crop')), out: need('--out'), blocks: values.get('--blocks'),
+    classes: values.get('--classes'),
     pierRadius: radius === undefined ? undefined : Number(radius),
   };
 }
@@ -167,6 +169,7 @@ async function main(argv: string[]) {
   const size = { width: raster.width, height: raster.height };
   const urban = urbanMask(options, size);
   const full = classifyMap(options, raster, urban);
+  if (options.classes) fs.writeFileSync(options.classes, full);
   if (options.blocks) {
     const blocks = traceBlocks(blockMask(full, urban), size, {
       minAreaPx: MIN_BLOCK_AREA_PX,

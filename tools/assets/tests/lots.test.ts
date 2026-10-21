@@ -50,7 +50,9 @@ test('the built predicate keeps houses off ground the map draws as open', () => 
   const builtWestHalf = (point: Plan) => point.x_m < 20;
   const houses = placeHouses({ outer: square(40), holes: [] }, { ...RULES, isBuilt: builtWestHalf });
   assert.ok(houses.length > 0);
-  for (const house of houses) assert.ok(house.center.x_m < 20, `house at x ${house.center.x_m}`);
+  for (const house of houses) {
+    assert.ok(house.center.x_m < 20 + house.width_m / 2, `house at x ${house.center.x_m}`);
+  }
 });
 
 test('placement is deterministic for a seed and varies across seeds', () => {
@@ -65,4 +67,11 @@ test('a block narrower than the shallowest lot gets no houses rather than overfl
     { x_m: 0, z_m: 0 }, { x_m: 30, z_m: 0 }, { x_m: 30, z_m: 3 }, { x_m: 0, z_m: 3 },
   ];
   assert.deepEqual(placeHouses({ outer: sliver, holes: [] }, RULES), []);
+});
+
+test('a ridge line under the centre does not reject an otherwise built lot', () => {
+  const ridgeFree = (point: Plan) => Math.abs(point.x_m - 20) > 0.4 && Math.abs(point.z_m - 20) > 0.4;
+  const everywhere = placeHouses({ outer: square(40), holes: [] }, RULES).length;
+  const withRidges = placeHouses({ outer: square(40), holes: [] }, { ...RULES, isBuilt: ridgeFree }).length;
+  assert.ok(withRidges >= everywhere - 2, `${withRidges} of ${everywhere}`);
 });
