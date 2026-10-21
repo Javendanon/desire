@@ -87,3 +87,29 @@ Next approach, structural rather than colour-only:
 
 The diorama does not need every house traced. Blocks, streets, courtyards and roof colours must
 match the map; houses must have the ward's density and look.
+
+## Vertical slice: Dock Ward diorama
+
+`pnpm dev`, then `/diorama.html`. The slice comes from `tools/assets/export-slice.ts` and is written
+to `outputs/waterdeep-layers/slice-dock/`. That folder is ignored, because it is derived from the
+source map. The slice holds the albedo, the heights, 1065 houses, 18 berths and meta.
+
+What the slice shows, and the decisions behind it:
+
+- **Houses** are planned from their data plus a seed (`house-plan.ts`): storeys from the measured
+  height and jettied timber upper floors. The map's red roofs mark notable buildings, which become
+  stone houses with hip roofs. Roof tones come from k-means over the map colours, mixed with the
+  design canvas tints and lifted 1.3×.
+- **Ground**: a neutral stone and earth palette with tiled cobble detail. Water has foam within
+  2 px of land and fades from shallows to deep over 40 px. The sea is translucent over it.
+- **Life**: lanterns with halos on every third street door, smoke from a third of the chimneys,
+  fog banks over the water, and caravels moored alongside the piers. Berths follow each pier
+  edge's normal, so diagonal piers take ships on both sides.
+- **Edge**: a haze ring hides the straight cut where the data ends. It is clear 70 m inside the
+  edge and opaque 30 m outside.
+- **Light**: the sun is at 38°, not 18°. Once instanced batches carried real bounds, house
+  shadows rendered fully, and at 18° they ran three heights long and darkened the streets. Masts
+  cast no shadow. The sea is a dielectric with its specular scaled to 0.2.
+
+Still to do: city walls (anchored least-cost tracing), the remaining wards, the D04/D05 rescale,
+and frame-time measurement.
