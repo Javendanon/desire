@@ -48,14 +48,15 @@ class FakeWorker implements WorkerLike {
     this.terminated = true;
   }
 
-  addEventListener(type: string, listener: Listener): void {
+  // `never` accepts both typed listener overloads of WorkerLike.
+  addEventListener(type: string, listener: (event: never) => void): void {
     this.addListenerCalls += 1;
     const current = this.listeners.get(type) ?? [];
-    current.push(listener);
+    current.push(listener as Listener);
     this.listeners.set(type, current);
   }
 
-  emit(type: string, event: { data: RouteResponse } | { message: string }): void {
+  emit(type: string, event: { data: unknown } | { message: string }): void {
     for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
 }
@@ -217,6 +218,28 @@ test('reports worker failures with context', () => {
   workers[0].emit('error', { message: 'wasm load failed' });
   assert.deepEqual(errors, [
     { requestId: 1, revision: 1, message: 'routing worker failed: wasm load failed' },
+  ]);
+});
+
+test('dispose releases the idle worker kept after a result', () => {
+  const { client, workers } = setup();
+  const requestId = client.request(1, GRID, ENDPOINTS);
+  workers[0].emit('message', { data: response(requestId, 1) });
+  assert.equal(workers[0].terminated, false, 'idle worker is kept for reuse');
+
+  client.dispose();
+  assert.equal(workers[0].terminated, true);
+});
+
+test('terminates and reports a malformed worker response', () => {
+  const { client, workers, results, errors } = setup();
+  client.request(4, GRID, ENDPOINTS);
+  workers[0].emit('message', { data: { status: 'ok' } });
+
+  assert.equal(workers[0].terminated, true);
+  assert.equal(results.length, 0);
+  assert.deepEqual(errors, [
+    { requestId: 1, revision: 4, message: 'routing worker sent an invalid response' },
   ]);
 });
 
