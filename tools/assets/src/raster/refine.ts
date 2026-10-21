@@ -3,7 +3,9 @@
  * centrelines, piers told apart from roofs. Pure.
  */
 import { paintPolylines, type PixelPolyline } from './polyline.ts';
-import { components, dilate, erode, majority, neighbours4, type RasterSize } from './raster-ops.ts';
+import {
+  components, dilate, erode, invert, majority, maskWhere, neighbours4, type RasterSize,
+} from './raster-ops.ts';
 import { Surface } from './surface.ts';
 
 export type RefineSpec = {
@@ -45,20 +47,27 @@ const PIER_JUNCTION_SHARE = 0.6;
 const PIER_SOURCES = new Set<number>([Surface.Roof, Surface.Outline, Surface.Ground]);
 
 const maskOf = (classes: Uint8Array, wanted: number) =>
-  Uint8Array.from(classes, (value) => (value === wanted ? 1 : 0));
+  maskWhere(classes, (value) => value === wanted);
+
+/** Largest size, by a loop: spreading every component into Math.max can overflow the stack. */
+function largest(sizes: number[]): number {
+  let most = 0;
+  for (const size of sizes) if (size > most) most = size;
+  return most;
+}
 
 /** Keeps the sea and water bodies comparable to it. The rest becomes land. O(pixels). */
 function openWater(classes: Uint8Array, size: RasterSize, minShare: number): Uint8Array {
   const { labels, sizes } = components(maskOf(classes, Surface.Water), size);
-  const minimum = minShare * Math.max(0, ...sizes);
-  return Uint8Array.from(labels, (label) => (label >= 0 && sizes[label] >= minimum ? 1 : 0));
+  const minimum = minShare * largest(sizes);
+  return maskWhere(labels, (label) => label >= 0 && sizes[label] >= minimum);
 }
 
 /** Land that a morphological opening removes: protrusions narrower than the radius. */
 function narrowLand(water: Uint8Array, size: RasterSize, radius: number): Uint8Array {
-  const land = Uint8Array.from(water, (value) => (value === 0 ? 1 : 0));
+  const land = invert(water);
   const opened = dilate(erode(land, size, radius), size, radius);
-  return Uint8Array.from(land, (value, index) => (value === 1 && opened[index] === 0 ? 1 : 0));
+  return maskWhere(land, (value, index) => value === 1 && opened[index] === 0);
 }
 
 type Tally = {
@@ -100,8 +109,8 @@ function wetShares(candidates: Uint8Array, size: RasterSize, near: Uint8Array) {
 
 function markPiers(classes: Uint8Array, spec: RefineSpec, water: Uint8Array) {
   const narrow = narrowLand(water, spec.size, spec.pierRadius ?? DEFAULT_PIER_RADIUS);
-  const candidates = Uint8Array.from(narrow, (value, index) =>
-    (value === 1 && PIER_SOURCES.has(classes[index]) ? 1 : 0));
+  const candidates = maskWhere(narrow, (value, index) =>
+    value === 1 && PIER_SOURCES.has(classes[index]));
   const near = dilate(water, spec.size, spec.pierGapPixels ?? DEFAULT_PIER_GAP);
   const { labels, shares } = wetShares(candidates, spec.size, near);
   const threshold = spec.pierWetShare ?? DEFAULT_PIER_WET_SHARE;
@@ -113,8 +122,8 @@ function markPiers(classes: Uint8Array, spec: RefineSpec, water: Uint8Array) {
 
 /** Wide pier crossings survive the opening. They are roof patches ringed by water and pier. */
 function markPierJunctions(classes: Uint8Array, spec: RefineSpec, water: Uint8Array) {
-  const wetOrPier = Uint8Array.from(water, (value, index) =>
-    (value === 1 || classes[index] === Surface.Pier ? 1 : 0));
+  const wetOrPier = maskWhere(water, (value, index) =>
+    value === 1 || classes[index] === Surface.Pier);
   const near = dilate(wetOrPier, spec.size, spec.pierGapPixels ?? DEFAULT_PIER_GAP);
   const { labels, shares } = wetShares(maskOf(classes, Surface.Roof), spec.size, near);
   for (let index = 0; index < classes.length; index += 1) {

@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { mulberry32 } from '../src/random.ts';
 import { components, dilate, erode, majority } from '../src/raster/raster-ops.ts';
+import { classifyPixel, classifyRgb } from '../src/raster/surface.ts';
 
 type Size = { width: number, height: number };
 
@@ -109,4 +110,19 @@ test('components label in scan order with exact sizes', () => {
     });
     assert.deepEqual(sizes, [...seen.values()]);
   });
+});
+
+test('classifying a buffer equals classifying each pixel, repeated colours included', () => {
+  const random = mulberry32(42);
+  const pixels = 5000;
+  const palette = Array.from({ length: 300 }, () =>
+    [0, 1, 2].map(() => Math.floor(random() * 256)));
+  const rgb = new Uint8Array(pixels * 3);
+  for (let index = 0; index < pixels; index += 1) {
+    rgb.set(palette[Math.floor(random() * palette.length)], index * 3);
+  }
+  const expected = Uint8Array.from({ length: pixels }, (_, index) =>
+    classifyPixel(rgb[index * 3], rgb[index * 3 + 1], rgb[index * 3 + 2]));
+  assert.deepEqual(classifyRgb(rgb, pixels), expected);
+  assert.deepEqual(classifyRgb(rgb, pixels), expected, 'a second pass gives the same answer');
 });
