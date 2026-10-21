@@ -111,5 +111,6 @@ What the slice shows, and the decisions behind it:
   shadows rendered fully, and at 18° they ran three heights long and darkened the streets. Masts
   cast no shadow. The sea is a dielectric with its specular scaled to 0.2.
 
-Still to do: city walls (anchored least-cost tracing), the remaining wards, the D04/D05 rescale,
-and frame-time measurement.
+Still to do: city walls (anchored least-cost tracing), the remaining wards and the D04/D05
+rescale. The whole city is planned in sectors built by a Rust pipeline:
+[rust-chunk-pipeline.md](rust-chunk-pipeline.md).
