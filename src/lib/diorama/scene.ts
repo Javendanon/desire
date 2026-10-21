@@ -8,6 +8,7 @@ import { bootApp } from '../engine/boot.ts';
 import { cloneRig, dampRig, rigPosition, type Rig } from '../engine/math/camera-rig.ts';
 import { buildSun, createFrame } from '../engine/render/atmosphere.ts';
 import { paintTextures } from '../engine/render/textures.ts';
+import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
 import { bindOrbit, ZOOM } from './orbit.ts';
 import { animateSea, buildSea } from './sea.ts';
 import type { Slice } from './slice-data.ts';
@@ -63,6 +64,7 @@ type Live = {
   sun: pc.Entity;
   sky: pc.Entity;
   sea: ReturnType<typeof buildSea>;
+  ambience: Ambience;
   orbit: { goal: Rig };
   rig: Rig;
   frames: number;
@@ -79,6 +81,7 @@ function tick(live: Live, dt: number) {
   const shadowRange = Math.max(MIN_SHADOW_DISTANCE_M, live.rig.radius * SHADOW_PER_RADIUS);
   if (live.sun.light) live.sun.light.shadowDistance = shadowRange;
   animateSea(live.sea, live.time);
+  animateAmbience(live.ambience, { time: live.time, facing: live.camera.getRotation() });
 }
 
 function buildCamera(app: pc.AppBase): pc.Entity {
@@ -101,6 +104,8 @@ export async function createDiorama(
   const town = buildTown(app, slice.houses, textures);
   app.root.addChild(buildTerrain(app, slice, textures.cobble));
   app.root.addChild(town.root);
+  const ambience = buildAmbience(app, { slice, town });
+  app.root.addChild(ambience.root);
   const centre = sceneCentre(slice);
   const extent = Math.max(slice.meta.width_m, slice.meta.depth_m);
   const sea = buildSea(app.graphicsDevice, extent, centre);
@@ -117,7 +122,9 @@ export async function createDiorama(
   const goal: Rig = { target: { x: centre.x, y: centre.y, z: centre.z }, radius: ZOOM.city,
     polar: 0.92, azimuth: 0.7 };
   const orbit = { goal };
-  const live: Live = { app, camera, sun, sky, sea, orbit, rig: cloneRig(goal), frames: 0, time: 0 };
+  const live: Live = {
+    app, camera, sun, sky, sea, ambience, orbit, rig: cloneRig(goal), frames: 0, time: 0,
+  };
   const unbind = bindOrbit(canvas, orbit);
   app.on('update', (dt: number) => tick(live, dt));
   app.start();
