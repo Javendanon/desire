@@ -14,6 +14,7 @@ import { bindOrbit, ZOOM } from './orbit.ts';
 import { animateSea, buildSea } from './sea.ts';
 import { animateFleet, buildFleet, type Fleet } from './ships.ts';
 import type { Slice } from './slice-data.ts';
+import type { TiledSlice } from './stress-slice.ts';
 import { buildSky, lightScene } from './sky.ts';
 import { buildTerrain } from './terrain.ts';
 import { buildTown } from './town.ts';
@@ -106,18 +107,31 @@ function buildCamera(app: pc.AppBase): pc.Entity {
   return camera;
 }
 
+/** The source slice's terrain at every tile offset; clones share its mesh and material. */
+function buildGround(app: pc.AppBase, layout: TiledSlice, detail: pc.Texture): pc.Entity {
+  const ground = new pc.Entity('ground');
+  const terrain = buildTerrain(app, layout.source, detail);
+  layout.offsets.forEach((offset, index) => {
+    const tile = index === 0 ? terrain : terrain.clone();
+    tile.setPosition(offset.x_m, 0, offset.z_m);
+    ground.addChild(tile);
+  });
+  return ground;
+}
+
 export async function createDiorama(
   canvas: HTMLCanvasElement,
-  slice: Slice,
+  layout: TiledSlice,
   options: DioramaOptions = {},
 ): Promise<Diorama> {
+  const { slice } = layout;
   const app = await bootApp(canvas, { backend: options.backend ?? 'auto', lowQuality: false });
   const textures = paintTextures(app.graphicsDevice, TEXTURE_SEED);
   const camera = buildCamera(app);
   const sun = buildSun('high');
   app.root.addChild(sun);
   const town = buildTown(app, slice.houses, textures);
-  app.root.addChild(buildTerrain(app, slice, textures.cobble));
+  app.root.addChild(buildGround(app, layout, textures.cobble));
   app.root.addChild(town.root);
   const fleet = buildFleet(slice.features.berths, textures);
   app.root.addChild(fleet.root);
