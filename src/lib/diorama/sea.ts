@@ -1,13 +1,13 @@
 // Water plane of the slice at y = 0, larger than the slice so the horizon is never bare.
-// Vertices swell with two slow sine waves; the faceted normals catch the low sun.
+// Vertices swell with two slow crossing waves (sea-swell.ts), shaded by their exact normals.
 
 import * as pc from 'playcanvas';
 
 import { geometryMesh, material } from '../engine/render/kit.ts';
+import { swellHeight, swellNormal } from './sea-swell.ts';
 
 const SEGMENTS = 128;
 const MARGIN = 3.5;
-const SWELL_M = 0.25;
 const WATER_COLOUR = '#3d7480';
 /**
  * The open ocean past the swell grid: one opaque plane just under the seabed, wide enough for
@@ -30,6 +30,7 @@ export interface Sea {
   entity: pc.Entity;
   mesh: pc.Mesh;
   base: Float32Array;
+  normals: Float32Array;
   positions: Float32Array;
   indices: number[];
 }
@@ -72,7 +73,8 @@ export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.V
     castShadows: false,
   });
   entity.addChild(buildOcean(device, centre));
-  return { entity, mesh, base: positions.slice(), positions, indices };
+  const normals = new Float32Array(positions.length);
+  return { entity, mesh, base: positions.slice(), positions, normals, indices };
 }
 
 function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
@@ -88,15 +90,19 @@ function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
   return ocean;
 }
 
+/** Heights and exact normals from the swell formula, written in place: no per-frame garbage. */
 export function animateSea(sea: Sea, time: number): void {
-  const { base, positions } = sea;
+  const { base, positions, normals } = sea;
   for (let index = 0; index < positions.length; index += 3) {
     const x = base[index];
     const z = base[index + 2];
-    positions[index + 1] = Math.sin(x * 0.05 + time * 0.6) * SWELL_M
-      + Math.cos(z * 0.04 + time * 0.45) * SWELL_M * 0.8;
+    positions[index + 1] = swellHeight(x, z, time);
+    const [nx, ny, nz] = swellNormal(x, z, time);
+    normals[index] = nx;
+    normals[index + 1] = ny;
+    normals[index + 2] = nz;
   }
   sea.mesh.setPositions(positions);
-  sea.mesh.setNormals(pc.calculateNormals(Array.from(positions), sea.indices));
+  sea.mesh.setNormals(normals);
   sea.mesh.update(pc.PRIMITIVE_TRIANGLES);
 }

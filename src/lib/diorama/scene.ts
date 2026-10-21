@@ -33,6 +33,11 @@ const SKY_RADIUS_M = 3000;
 const WINDOW_GLOW = 1.1;
 /** Below the engine default: the warm light saturates enough. */
 const GRADING_SATURATION = 0.86;
+/**
+ * Ambient occlusion at half resolution: on a 2x display at full resolution it took 10 of the
+ * frame's 16 ms of GPU time, and the halved pass looks the same at these scales.
+ */
+const SSAO_SCALE = 0.5;
 
 export interface DioramaOptions {
   backend?: 'auto' | 'webgl2';
@@ -132,6 +137,7 @@ export async function createDiorama(
   }
   const frame = createFrame(app, camera.camera!, 'high');
   frame.grading.saturation = GRADING_SATURATION;
+  frame.ssao.scale = SSAO_SCALE;
   frame.update();
   const goal: Rig = { target: { x: centre.x, y: centre.y, z: centre.z }, radius: ZOOM.city,
     polar: 0.92, azimuth: 0.7 };
