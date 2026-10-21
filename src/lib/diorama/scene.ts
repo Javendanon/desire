@@ -11,6 +11,7 @@ import { paintTextures } from '../engine/render/textures.ts';
 import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
 import { buildEdgeHaze, tiltEdgeHaze, type EdgeHaze } from './edge-haze.ts';
 import { bindOrbit, ZOOM } from './orbit.ts';
+import { QUALITY, type QualityName, type QualitySettings } from './quality.ts';
 import { animateSea, buildSea } from './sea.ts';
 import { animateFleet, buildFleet, type Fleet } from './ships.ts';
 import type { Slice } from './slice-data.ts';
@@ -42,6 +43,7 @@ const SSAO_SCALE = 0.5;
 
 export interface DioramaOptions {
   backend?: 'auto' | 'webgl2';
+  quality?: QualityName;
 }
 
 export interface DioramaStats {
@@ -109,6 +111,17 @@ function buildCamera(app: pc.AppBase): pc.Entity {
   return camera;
 }
 
+/** Pixel density, antialiasing, ambient occlusion and bloom for a quality preset. */
+function applyQuality(app: pc.AppBase, frame: pc.CameraFrame, quality: QualitySettings) {
+  app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
+  app.resizeCanvas();
+  frame.rendering.samples = quality.msaa;
+  frame.ssao.scale = SSAO_SCALE;
+  if (!quality.ssao) frame.ssao.type = pc.SSAOTYPE_NONE;
+  if (!quality.bloom) frame.bloom.intensity = 0;
+  frame.update();
+}
+
 /** The source slice's terrain at every tile offset; clones share its mesh and material. */
 function buildGround(app: pc.AppBase, layout: TiledSlice, detail: pc.Texture): pc.Entity {
   const ground = new pc.Entity('ground');
@@ -153,8 +166,7 @@ export async function createDiorama(
   }
   const frame = createFrame(app, camera.camera!, 'high');
   frame.grading.saturation = GRADING_SATURATION;
-  frame.ssao.scale = SSAO_SCALE;
-  frame.update();
+  applyQuality(app, frame, QUALITY[options.quality ?? 'high']);
   const goal: Rig = { target: { x: centre.x, y: centre.y, z: centre.z }, radius: ZOOM.city,
     polar: 0.92, azimuth: 0.7 };
   const orbit = { goal };

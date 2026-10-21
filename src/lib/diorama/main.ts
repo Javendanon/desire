@@ -1,7 +1,10 @@
 // Entry of the diorama review page: loads the slice exported by tools/assets and mounts the
 // scene. The slice lives under ignored outputs/ (derived from the source map, not redistributed).
-// `?stress=5x4` repeats it over a city-sized area for performance work (stress-slice.ts).
+// `?stress=5x4` repeats it over a city-sized area for performance work (stress-slice.ts),
+// `?quality=high|medium|low` picks a preset (quality.ts) and `?hud` shows frame times.
 
+import { mountHud } from './hud.ts';
+import { parseQuality } from './quality.ts';
 import { createDiorama, type Diorama } from './scene.ts';
 import { loadSlice } from './slice-data.ts';
 import { parseStress, tileSlice } from './stress-slice.ts';
@@ -38,7 +41,9 @@ async function start() {
     const slice = await loadSlice(params.get('slice') ?? DEFAULT_SLICE);
     const grid = parseStress(params.get('stress')) ?? { columns: 1, rows: 1 };
     const backend = params.get('backend') === 'webgl2' ? 'webgl2' : 'auto';
-    window.diorama = await createDiorama(canvas, tileSlice(slice, grid), { backend });
+    const quality = parseQuality(params.get('quality'));
+    window.diorama = await createDiorama(canvas, tileSlice(slice, grid), { backend, quality });
+    if (params.has('hud')) mountHud(document.getElementById('hud')!, window.diorama.app, quality);
   } catch (error) {
     window.dioramaError = error instanceof Error ? error.message : String(error);
     document.getElementById('status')!.textContent = window.dioramaError;

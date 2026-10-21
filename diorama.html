@@ -61,6 +61,21 @@
         font-size: 15px;
         color: var(--ash);
       }
+      #hud {
+        position: fixed;
+        right: 16px;
+        top: 16px;
+        margin: 0;
+        padding: 10px 12px;
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--ink) 78%, transparent);
+        color: var(--parchment);
+        font: 13px/1.5 ui-monospace, monospace;
+        white-space: pre;
+      }
+      #hud[hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -73,6 +88,7 @@
       <h1>Puerto Profundo</h1>
     </div>
     <p id="status"></p>
+    <pre id="hud" hidden aria-live="off"></pre>
     <script type="module" src="/src/lib/diorama/main.ts"></script>
   </body>
 </html>
