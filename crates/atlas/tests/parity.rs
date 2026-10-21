@@ -58,7 +58,10 @@ const SYNTHETIC_SIZE: Size = Size {
 };
 
 fn labels_bytes(labels: &[i32]) -> Vec<u8> {
-    labels.iter().flat_map(|label| label.to_le_bytes()).collect()
+    labels
+        .iter()
+        .flat_map(|label| label.to_le_bytes())
+        .collect()
 }
 
 #[test]
@@ -76,7 +79,10 @@ fn raster_operations_match_typescript_on_a_synthetic_raster() {
     assert_eq!(hash(&dilate(&water, size, 40)), golden("dilate_r40"));
     assert_eq!(hash(&erode(&water, size, 2)), golden("erode_r2"));
     let found = components(&water, size);
-    assert_eq!(hash(&labels_bytes(&found.labels)), golden("components_labels"));
+    assert_eq!(
+        hash(&labels_bytes(&found.labels)),
+        golden("components_labels")
+    );
     assert_eq!(found.sizes.len() as u64, golden("components_count"));
     let largest = found.sizes.iter().copied().max().unwrap_or(0);
     assert_eq!(largest as u64, golden("components_largest"));

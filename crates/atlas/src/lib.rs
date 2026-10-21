@@ -3,4 +3,5 @@
 //! version on the same input. Plan: `docs/waterdeep-3d/rust-chunk-pipeline.md` (M2).
 
 pub mod raster;
+pub mod raster_ops;
 pub mod surface;
