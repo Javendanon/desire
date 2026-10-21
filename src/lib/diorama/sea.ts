@@ -4,7 +4,7 @@
 import * as pc from 'playcanvas';
 
 import { geometryMesh, material } from '../engine/render/kit.ts';
-import { swellHeight, swellNormal } from './sea-swell.ts';
+import { writeSwell, type SwellGrid } from './sea-swell.ts';
 
 const SEGMENTS = 128;
 const MARGIN = 3.5;
@@ -29,7 +29,7 @@ const WATER_SPECULARITY = 0.2;
 export interface Sea {
   entity: pc.Entity;
   mesh: pc.Mesh;
-  base: Float32Array;
+  grid: SwellGrid;
   normals: Float32Array;
   positions: Float32Array;
   indices: number[];
@@ -54,7 +54,8 @@ function grid(size: number, centre: pc.Vec3) {
 }
 
 export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.Vec3): Sea {
-  const { positions, indices } = grid(extent * MARGIN, centre);
+  const size = extent * MARGIN;
+  const { positions, indices } = grid(size, centre);
   const mesh = new pc.Mesh(device);
   mesh.setPositions(positions);
   mesh.setNormals(pc.calculateNormals(Array.from(positions), indices));
@@ -74,7 +75,12 @@ export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.V
   });
   entity.addChild(buildOcean(device, centre));
   const normals = new Float32Array(positions.length);
-  return { entity, mesh, base: positions.slice(), positions, normals, indices };
+  const steps = Array.from({ length: SEGMENTS + 1 }, (_, step) => (step / SEGMENTS - 0.5) * size);
+  const swell = {
+    xs: Float32Array.from(steps, (step) => centre.x + step),
+    zs: Float32Array.from(steps, (step) => centre.z + step),
+  };
+  return { entity, mesh, grid: swell, positions, normals, indices };
 }
 
 function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
@@ -90,19 +96,11 @@ function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
   return ocean;
 }
 
-/** Heights and exact normals from the swell formula, written in place: no per-frame garbage. */
+/** Heights and exact normals from the swell formula, written in place (sea-swell.ts). */
 export function animateSea(sea: Sea, time: number): void {
-  const { base, positions, normals } = sea;
-  for (let index = 0; index < positions.length; index += 3) {
-    const x = base[index];
-    const z = base[index + 2];
-    positions[index + 1] = swellHeight(x, z, time);
-    const [nx, ny, nz] = swellNormal(x, z, time);
-    normals[index] = nx;
-    normals[index + 1] = ny;
-    normals[index + 2] = nz;
-  }
-  sea.mesh.setPositions(positions);
-  sea.mesh.setNormals(normals);
-  sea.mesh.update(pc.PRIMITIVE_TRIANGLES);
+  writeSwell(sea.grid, time, sea);
+  sea.mesh.setPositions(sea.positions);
+  sea.mesh.setNormals(sea.normals);
+  // The swell stays within a fixed band: the bounds need no recomputing each frame.
+  sea.mesh.update(pc.PRIMITIVE_TRIANGLES, false);
 }
