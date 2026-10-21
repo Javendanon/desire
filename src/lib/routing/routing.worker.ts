@@ -1,8 +1,8 @@
 // Dedicated Web Worker. The main thread cancels work by terminating this
 // worker, because the synchronous Wasm search blocks this message loop.
 
-// @ts-ignore -- emitted by `pnpm build:wasm`; absent until that step runs.
-import * as wasm from '../../generated/wasm/desire_wasm.js';
+// Typed by the checked-in declarations; the glue itself comes from `pnpm build:wasm`.
+import * as wasm from '#routing-wasm';
 import { errorResponse, failureResponse, outcomeResponse } from './outcome.ts';
 import {
   isRouteMessage,

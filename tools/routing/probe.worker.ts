@@ -2,7 +2,7 @@
 export {};
 
 const boot = performance.now();
-const wasm = await import('../../src/generated/wasm/desire_wasm.js');
+const wasm = await import('#routing-wasm');
 const loadStart = performance.now();
 const cold = self.name === 'cold-validation';
 const memory = cold ? undefined : (await wasm.default()).memory;
