@@ -164,7 +164,7 @@ fn reports_out_of_bounds_endpoints() {
 }
 
 #[test]
-fn rejects_invalid_grids_and_revisions() {
+fn rejects_invalid_grids_and_identities() {
     assert_eq!(
         Grid::new(0, 1, &[]).expect_err("zero width must fail"),
         RoutingError::EmptyGrid
@@ -181,6 +181,11 @@ fn rejects_invalid_grids_and_revisions() {
         find_route(&map, &request(1, 0, Cell::new(0, 0), Cell::new(0, 0)))
             .expect_err("revision zero must fail"),
         RoutingError::InvalidRevision
+    );
+    assert_eq!(
+        find_route(&map, &request(0, 1, Cell::new(0, 0), Cell::new(0, 0)))
+            .expect_err("request id zero must fail"),
+        RoutingError::InvalidRequestId
     );
 }
 
