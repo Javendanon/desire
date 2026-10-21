@@ -1,0 +1,50 @@
+{
+  "kind": "condition",
+  "entries": [
+    {
+      "id": "895aa639-5a48-58f8-9ab8-9d0e83391086",
+      "slug": "prone",
+      "revision": 1,
+      "kind": "condition",
+      "rules_edition": "dnd_2014",
+      "language": "es",
+      "title": "Derribado",
+      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse, a menos que se ponga de pie y termine así la condición. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
+      "translation_status": "translated",
+      "source_id": "srd-5.1",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.1, Conditions: Prone",
+      "provenance": {
+        "source": "Systems Reference Document 5.1",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": []
+    },
+    {
+      "id": "af775fbc-c3e7-5d34-ae2b-fa70759156f5",
+      "slug": "prone",
+      "revision": 1,
+      "kind": "condition",
+      "rules_edition": "dnd_2024",
+      "language": "es",
+      "title": "Derribado",
+      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse, a menos que se ponga de pie y termine así la condición. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
+      "translation_status": "translated",
+      "source_id": "srd-5.2",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.2, Conditions: Prone",
+      "provenance": {
+        "source": "Systems Reference Document 5.2",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": [
+        {
+          "target": "dnd_2014:prone",
+          "relation": "previous_edition"
+        }
+      ]
+    }
+  ]
+}

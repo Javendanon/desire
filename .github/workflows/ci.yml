@@ -1,0 +1,115 @@
+# Continuous integration for Desire.
+#
+# Every job is fail-closed: it installs its own toolchain or fails; nothing is skipped because a
+# tool is missing. The job names are the contract with merge-policy.json (D25): the merge actor
+# requires one green check per policy gate name, so renaming a job here is a policy change.
+#
+# Triggers: `pull_request` for review, and `merge_group` so the merge queue can test the
+# integrated candidate (without it the queue waits forever).
+
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pinned to the version the repository's quality baseline was measured with.
+  KIMUN_VERSION: "0.26.0"
+
+jobs:
+  frontend-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # Needs the corepack bundled with Node >= 24 (`.nvmrc`): the one in Node 22.17 (0.33) cannot
+      # start pnpm 12 — it looks for bin/pnpm.cjs and pnpm 12 ships bin/pnpm.mjs.
+      - name: Enable corepack (pnpm version comes from package.json packageManager)
+        run: |
+          corepack enable
+          corepack --version
+          corepack pnpm --version
+      - name: Install dependencies from the lockfile only
+        run: corepack pnpm install --frozen-lockfile
+      - name: Type and Svelte checks
+        run: corepack pnpm check
+      # The source raster and dataset are not in the repository, so CI checks the package's
+      # internal consistency and the verifier's own tests; --image/--dataset run locally.
+      - name: Waterdeep reference package
+        run: corepack pnpm run verify:waterdeep
+
+  rust-fmt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the toolchain pinned in rust-toolchain.toml
+        run: ./tools/ci/install-rust-toolchain.sh
+      - run: cargo fmt --all --check
+
+  rust-clippy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the toolchain pinned in rust-toolchain.toml
+        run: ./tools/ci/install-rust-toolchain.sh
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  rust-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the toolchain pinned in rust-toolchain.toml
+        run: ./tools/ci/install-rust-toolchain.sh
+      - run: cargo test --workspace --locked
+
+  wasm-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the toolchain pinned in rust-toolchain.toml (includes wasm32 target)
+        run: ./tools/ci/install-rust-toolchain.sh
+      - run: cargo build -p desire-wasm --target wasm32-unknown-unknown --release --locked
+
+  quality-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Anti-tamper check on the change (suppressions, disabled or deleted tests, thresholds)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          test -n "$BASE_SHA" || { echo "::error::no base SHA for this event"; exit 1; }
+          python3 tools/ci/tamper_check.py "$BASE_SHA" HEAD
+      - name: Tooling tests for the anti-tamper check
+        run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
+      - name: Install the toolchain pinned in rust-toolchain.toml
+        run: ./tools/ci/install-rust-toolchain.sh
+      - name: Install kimun (km)
+        run: cargo install kimun --version "$KIMUN_VERSION" --locked
+      - name: Quality gate
+        run: |
+          test -f tools/quality/gate.py || {
+            echo "::error::tools/quality/gate.py is missing (delivered by D02); failing closed"
+            exit 1
+          }
+          python3 tools/quality/gate.py --root .

@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <title>Routing worker verification</title>
+  <button type="button">Interact while routing</button>
+  <output>idle</output>
+  <script type="module">
+    import { runBrowserChecks } from './browser-check.ts';
+    window.runBrowserChecks = runBrowserChecks;
+  </script>
+</html>

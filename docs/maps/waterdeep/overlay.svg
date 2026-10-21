@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 3560 7256" width="3560" height="7256">
+  <title>Waterdeep calibration control points</title>
+  <desc>Generated from data/waterdeep-reference.json.
+    Map artwork by Jason Engle; hosted by AideDD.</desc>
+  <style>
+    .ward { fill: none; stroke: #1d4ed8; stroke-width: 6;
+     stroke-dasharray: 24 18; opacity: .75; }
+    .control circle { fill: none; stroke: #dc2626; stroke-width: 6; }
+    .control line { stroke: #dc2626; stroke-width: 4; }
+    .control text { font: 700 42px sans-serif; fill: #fff;
+     stroke: #7f1d1d; stroke-width: 10; paint-order: stroke; }
+    .credit { font: 700 44px sans-serif; fill: #fff;
+     stroke: #111827; stroke-width: 12; paint-order: stroke; }
+  </style>
+  <image x="0" y="0" width="3560" height="7256"
+    href="https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg" xlink:href="https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg" />
+  <rect class="ward" x="731" y="176" width="2260" height="1817" />
+<rect class="ward" x="400" y="2311" width="1839" height="2766" />
+<rect class="ward" x="1279" y="4549" width="1765" height="1688" />
+<rect class="ward" x="1774" y="907" width="1287" height="2296" />
+<rect class="ward" x="305" y="370" width="1774" height="1989" />
+<rect class="ward" x="2477" y="4589" width="678" height="1408" />
+<rect class="ward" x="2093" y="2753" width="944" height="2013" />
+<rect class="ward" x="2376" y="2952" width="614" height="1083" />
+  <g class="control" data-id="north-gate"><circle cx="2156" cy="559" r="22" /><line x1="2120" y1="559" x2="2192" y2="559" /><line x1="2156" y1="523" x2="2156" y2="595" /><text x="2186" y="541">1. North Gate</text></g>
+<g class="control" data-id="troll-gate"><circle cx="825" cy="177" r="22" /><line x1="789" y1="177" x2="861" y2="177" /><line x1="825" y1="141" x2="825" y2="213" /><text x="855" y="159">2. Troll Gate</text></g>
+<g class="control" data-id="west-gate"><circle cx="420" cy="1759" r="22" /><line x1="384" y1="1759" x2="456" y2="1759" /><line x1="420" y1="1723" x2="420" y2="1795" /><text x="450" y="1741">3. West Gate</text></g>
+<g class="control" data-id="field-ward-center"><circle cx="2133" cy="945" r="22" /><line x1="2097" y1="945" x2="2169" y2="945" /><line x1="2133" y1="909" x2="2133" y2="981" /><text x="2163" y="927">4. Field Ward (zone centroid)</text></g>
+<g class="control" data-id="sea-ward-center"><circle cx="988" cy="1337" r="22" /><line x1="952" y1="1337" x2="1024" y2="1337" /><line x1="988" y1="1301" x2="988" y2="1373" /><text x="1018" y="1319">5. Sea Ward (zone centroid)</text></g>
+<g class="control" data-id="north-ward-center"><circle cx="2685" cy="2526" r="22" /><line x1="2649" y1="2526" x2="2721" y2="2526" /><line x1="2685" y1="2490" x2="2685" y2="2562" /><text x="2715" y="2508">6. North Ward (zone centroid)</text></g>
+<g class="control" data-id="blackstaff-tower"><circle cx="989" cy="2842" r="22" /><line x1="953" y1="2842" x2="1025" y2="2842" /><line x1="989" y1="2806" x2="989" y2="2878" /><text x="1019" y="2824">7. Blackstaff Tower</text></g>
+<g class="control" data-id="new-olamn"><circle cx="712" cy="2701" r="22" /><line x1="676" y1="2701" x2="748" y2="2701" /><line x1="712" y1="2665" x2="712" y2="2737" /><text x="742" y="2683">8. New Olamn</text></g>
+<g class="control" data-id="city-of-the-dead-center"><circle cx="2675" cy="3483" r="22" /><line x1="2639" y1="3483" x2="2711" y2="3483" /><line x1="2675" y1="3447" x2="2675" y2="3519" /><text x="2705" y="3465">9. City of the Dead (zone centroid)</text></g>
+<g class="control" data-id="castle-waterdeep"><circle cx="1781" cy="4238" r="22" /><line x1="1745" y1="4238" x2="1817" y2="4238" /><line x1="1781" y1="4202" x2="1781" y2="4274" /><text x="1811" y="4220">10. Castle Waterdeep</text></g>
+<g class="control" data-id="piergeirons-palace"><circle cx="1136" cy="3918" r="22" /><line x1="1100" y1="3918" x2="1172" y2="3918" /><line x1="1136" y1="3882" x2="1136" y2="3954" /><text x="1166" y="3900">11. Piergeiron's Palace</text></g>
+<g class="control" data-id="the-market"><circle cx="1548" cy="2719" r="22" /><line x1="1512" y1="2719" x2="1584" y2="2719" /><line x1="1548" y1="2683" x2="1548" y2="2755" /><text x="1578" y="2701">12. The Market</text></g>
+<g class="control" data-id="the-yawning-portal"><circle cx="2053" cy="4472" r="22" /><line x1="2017" y1="4472" x2="2089" y2="4472" /><line x1="2053" y1="4436" x2="2053" y2="4508" /><text x="2083" y="4454">13. The Yawning Portal</text></g>
+<g class="control" data-id="trades-ward-center"><circle cx="2472" cy="3924" r="22" /><line x1="2436" y1="3924" x2="2508" y2="3924" /><line x1="2472" y1="3888" x2="2472" y2="3960" /><text x="2502" y="3906">14. Trades Ward (zone centroid)</text></g>
+<g class="control" data-id="river-gate"><circle cx="2944" cy="4398" r="22" /><line x1="2908" y1="4398" x2="2980" y2="4398" /><line x1="2944" y1="4362" x2="2944" y2="4434" /><text x="2974" y="4380">15. River Gate</text></g>
+<g class="control" data-id="harborwatch-tower"><circle cx="540" cy="5198" r="22" /><line x1="504" y1="5198" x2="576" y2="5198" /><line x1="540" y1="5162" x2="540" y2="5234" /><text x="570" y="5180">16. Harborwatch Tower</text></g>
+<g class="control" data-id="dock-ward-center"><circle cx="2079" cy="5446" r="22" /><line x1="2043" y1="5446" x2="2115" y2="5446" /><line x1="2079" y1="5410" x2="2079" y2="5482" /><text x="2109" y="5428">17. Dock Ward (zone centroid)</text></g>
+<g class="control" data-id="southern-ward-center"><circle cx="2861" cy="5228" r="22" /><line x1="2825" y1="5228" x2="2897" y2="5228" /><line x1="2861" y1="5192" x2="2861" y2="5264" /><text x="2891" y="5210">18. Southern Ward (zone centroid)</text></g>
+<g class="control" data-id="south-gate"><circle cx="3041" cy="5994" r="22" /><line x1="3005" y1="5994" x2="3077" y2="5994" /><line x1="3041" y1="5958" x2="3041" y2="6030" /><text x="3071" y="5976">19. South Gate</text></g>
+<g class="control" data-id="deepwater-beacon"><circle cx="3078" cy="6644" r="22" /><line x1="3042" y1="6644" x2="3114" y2="6644" /><line x1="3078" y1="6608" x2="3078" y2="6680" /><text x="3108" y="6626">20. Deepwater Beacon</text></g>
+  <text class="credit" x="40" y="7166">
+    Map artwork: Jason Engle via AideDD.</text>
+  <text class="credit" x="40" y="7216">
+    Overlay: Desire D05 calibration; not for redistribution.</text>
+</svg>

@@ -1,0 +1,528 @@
+{
+  "schema": "desire.waterdeep.reference/2",
+  "status": "Reference package for calibration and provenance. Positions use the D04 world frame; the place ids are local and become contract ids when D13 imports them.",
+  "attribution": {
+    "map_artwork": "Jason Engle",
+    "artwork_url": "https://www.inprnt.com/gallery/j_a_e/waterdeep/",
+    "hosted_by": "AideDD",
+    "page_url": "https://www.aidedd.org/atlas/es/waterdeep",
+    "image_url": "https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg",
+    "note": "The map artwork is copyrighted. It is referenced by URL and is not redistributed in this repository. Marker names and pixel positions are recorded for calibration; AideDD lore text is not copied."
+  },
+  "image": {
+    "mime": "image/jpeg",
+    "width": 3560,
+    "height": 7256,
+    "local_path": null
+  },
+  "source_snapshot": {
+    "fetched_at_utc": "2026-10-18T21:19:04Z",
+    "page": {
+      "url": "https://www.aidedd.org/atlas/es/waterdeep",
+      "http_status": 200,
+      "bytes": 18012,
+      "sha256": "9660a2ecc3dbe08a17ee971db21227e8923fb8dd6891a923d24224324094d7d7"
+    },
+    "dataset": {
+      "url": "https://www.aidedd.org/atlas/dataW.js?v=7",
+      "http_status": 200,
+      "bytes": 155973,
+      "sha256": "72f0baff203370bf46bf966d3acd742b1a8a03468b976362dda29ee8c870af93",
+      "last_modified": "Sat, 03 Oct 2026 00:44:11 GMT"
+    },
+    "image": {
+      "url": "https://www.aidedd.org/atlas/images/waterdeep-3560-7256.jpg",
+      "http_status": 200,
+      "content_type": "image/jpeg",
+      "bytes": 12039169,
+      "sha256": "45f5f862095ebd7d279592b8c20ad23a8b52918504f6cc87369cf3b246790e16",
+      "last_modified": "Tue, 27 Jul 2021 00:01:49 GMT"
+    },
+    "derived": {
+      "active_marker_entries": 768,
+      "duplicate_names": 2,
+      "duplicate_names_detail": [
+        "Sighing Maiden's Walk (1009,1102 and 956,1371)",
+        "Tezambril's Street (2868,5178 and 2885,4928)"
+      ],
+      "duplicate_coordinates": 2,
+      "duplicate_coordinates_detail": [
+        "1020,375: North Tower / Trolltower (aliases)",
+        "1021,751: Aurenaar Street / Aureenar Street (spelling variants)"
+      ],
+      "zone_polygons": 8,
+      "group_legend_entries": 9,
+      "commented_out_rows": 25,
+      "raw_marker_rows_including_comments": 802
+    }
+  },
+  "orientation": {
+    "north": "image up",
+    "west": "image left",
+    "plan_axes": "x_m increases east (image right); z_m increases south (image down)",
+    "evidence": "Dock Ward and Waterdeep Harbor are at the bottom of the plan; the Sea of Swords is on the left; the City of the Dead is east of Castle Ward. This matches the conventional north-up presentation of Waterdeep and was checked against the landmark control points."
+  },
+  "scale": {
+    "source_constant": "factorDist = 310",
+    "source_comment": "310 px = 1000 ft",
+    "pixels_per_1000_feet": 310,
+    "feet_per_pixel": 3.225806451612903,
+    "meters_per_pixel": 0.983225806451613,
+    "pixels_per_meter": 1.0170603674540681,
+    "status": "source-asserted, not independently georeferenced",
+    "sanity_check": {
+      "route": "North Gate to South Gate",
+      "pixel_length": 5506.6,
+      "derived_miles": 3.36,
+      "derived_km": 5.41,
+      "note": "Straight-line distance derived from the source scale, not independent scale validation. This gate-to-gate segment is not established as the city's full north-south extent."
+    }
+  },
+  "calibration": {
+    "origin_px_x": 0,
+    "origin_px_y": 0,
+    "meters_per_pixel": 0.983225806451613,
+    "rotation_radians": 0,
+    "provenance": {
+      "source": "aidedd:dataW.js?v=7 factorDist",
+      "attribution": "Scale constant from AideDD; map artwork by Jason Engle",
+      "evidence": "interpretation"
+    }
+  },
+  "frame": {
+    "contract": "D04 Calibration and Position (docs/modelo-de-datos.md)",
+    "axes": "x_m east (image right), z_m south (image down), y_m elevation",
+    "elevation": "Unknown in the source. Points carry plan_m {x_m, z_m} only; y_m is not inferred.",
+    "precision": "Rounded to 3 decimals (about 1 mm). Bookkeeping precision, not survey accuracy."
+  },
+  "coast": {
+    "description": "Waterdeep's shoreline runs along the left and bottom edges of the plan: cliffs and beaches on the west, then Waterdeep Harbor and the southern docks.",
+    "evidence": "Visual inspection of the plan and the Harborwatch Tower (540,5198) and Deepwater Beacon (3078,6644) control points.",
+    "control_point_ids": ["harborwatch-tower", "deepwater-beacon"],
+    "status": "visual interpretation; no vector coastline was extracted"
+  },
+  "wards": [
+    {
+      "name": "Field Ward",
+      "centroid_pixel": {"x": 2133, "y": 945},
+      "bbox_pixel": {"min_x": 731, "min_y": 176, "max_x": 2991, "max_y": 1993},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 2097.221, "z_m": 929.148}
+    },
+    {
+      "name": "Castle Ward",
+      "centroid_pixel": {"x": 1281, "y": 4187},
+      "bbox_pixel": {"min_x": 400, "min_y": 2311, "max_x": 2239, "max_y": 5077},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 1259.512, "z_m": 4116.766}
+    },
+    {
+      "name": "Dock Ward",
+      "centroid_pixel": {"x": 2079, "y": 5446},
+      "bbox_pixel": {"min_x": 1279, "min_y": 4549, "max_x": 3044, "max_y": 6237},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 2044.126, "z_m": 5354.648}
+    },
+    {
+      "name": "North Ward",
+      "centroid_pixel": {"x": 2685, "y": 2526},
+      "bbox_pixel": {"min_x": 1774, "min_y": 907, "max_x": 3061, "max_y": 3203},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 2639.961, "z_m": 2483.628}
+    },
+    {
+      "name": "Sea Ward",
+      "centroid_pixel": {"x": 988, "y": 1337},
+      "bbox_pixel": {"min_x": 305, "min_y": 370, "max_x": 2079, "max_y": 2359},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 971.427, "z_m": 1314.573}
+    },
+    {
+      "name": "Southern Ward",
+      "centroid_pixel": {"x": 2861, "y": 5228},
+      "bbox_pixel": {"min_x": 2477, "min_y": 4589, "max_x": 3155, "max_y": 5997},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 2813.009, "z_m": 5140.305}
+    },
+    {
+      "name": "Trades Ward",
+      "centroid_pixel": {"x": 2472, "y": 3924},
+      "bbox_pixel": {"min_x": 2093, "min_y": 2753, "max_x": 3037, "max_y": 4766},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 2430.534, "z_m": 3858.178}
+    },
+    {
+      "name": "City of the Dead",
+      "centroid_pixel": {"x": 2675, "y": 3483},
+      "bbox_pixel": {"min_x": 2376, "min_y": 2952, "max_x": 2990, "max_y": 4035},
+      "source": "AideDD dataW.js zone path: bounding box and mean of path vertices only; path geometry not copied",
+      "centroid_plan_m": {"x_m": 2630.129, "z_m": 3424.575}
+    }
+  ],
+  "main_streets_status": "Each entry is the AideDD street marker label anchor (a single point from dataW.js), not a routable polyline. The source provides no street geometry; these points must not be treated as a street graph.",
+  "main_streets": [
+    {
+      "id": "waterdeep-way",
+      "name": "Waterdeep Way",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 1990, "y": 4063},
+      "plan_m": {"x_m": 1956.619, "z_m": 3994.846},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    },
+    {
+      "id": "traders-way",
+      "name": "Trader's Way",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 1466, "y": 2584},
+      "plan_m": {"x_m": 1441.409, "z_m": 2540.655},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    },
+    {
+      "id": "bazaar-street",
+      "name": "Bazaar Street",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 1630, "y": 2901},
+      "plan_m": {"x_m": 1602.658, "z_m": 2852.338},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    },
+    {
+      "id": "swords-street",
+      "name": "Swords Street",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 1193, "y": 3198},
+      "plan_m": {"x_m": 1172.988, "z_m": 3144.356},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    },
+    {
+      "id": "the-high-road",
+      "name": "The High Road",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 2112, "y": 2971},
+      "plan_m": {"x_m": 2076.573, "z_m": 2921.164},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    },
+    {
+      "id": "the-wide-way",
+      "name": "The Wide Way",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 2691, "y": 4171},
+      "plan_m": {"x_m": 2645.861, "z_m": 4101.035},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    },
+    {
+      "id": "dock-street",
+      "name": "Dock Street",
+      "kind": "street-label-anchor",
+      "pixel": {"x": 2034, "y": 5629},
+      "plan_m": {"x_m": 1999.881, "z_m": 5534.578},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-street-marker"]
+    }
+  ],
+  "control_points": [
+    {
+      "id": "north-gate",
+      "name": "North Gate",
+      "kind": "gate",
+      "pixel": {"x": 2156, "y": 559},
+      "plan_m": {"x_m": 2119.835, "z_m": 549.623},
+      "source_ref": "N78",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "troll-gate",
+      "name": "Troll Gate",
+      "kind": "gate",
+      "pixel": {"x": 825, "y": 177},
+      "plan_m": {"x_m": 811.161, "z_m": 174.031},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "west-gate",
+      "name": "West Gate",
+      "kind": "gate",
+      "pixel": {"x": 420, "y": 1759},
+      "plan_m": {"x_m": 412.955, "z_m": 1729.494},
+      "source_ref": "$72",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "field-ward-center",
+      "name": "Field Ward (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 2133, "y": 945},
+      "plan_m": {"x_m": 2097.221, "z_m": 929.148},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "sea-ward-center",
+      "name": "Sea Ward (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 988, "y": 1337},
+      "plan_m": {"x_m": 971.427, "z_m": 1314.573},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "north-ward-center",
+      "name": "North Ward (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 2685, "y": 2526},
+      "plan_m": {"x_m": 2639.961, "z_m": 2483.628},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "blackstaff-tower",
+      "name": "Blackstaff Tower",
+      "kind": "landmark",
+      "pixel": {"x": 989, "y": 2842},
+      "plan_m": {"x_m": 972.41, "z_m": 2794.328},
+      "source_ref": "C6",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "new-olamn",
+      "name": "New Olamn",
+      "source_name": "New Olamn's academy of music and other arts",
+      "kind": "landmark",
+      "pixel": {"x": 712, "y": 2701},
+      "plan_m": {"x_m": 700.057, "z_m": 2655.693},
+      "source_ref": "C72",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "city-of-the-dead-center",
+      "name": "City of the Dead (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 2675, "y": 3483},
+      "plan_m": {"x_m": 2630.129, "z_m": 3424.575},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "castle-waterdeep",
+      "name": "Castle Waterdeep",
+      "kind": "landmark",
+      "pixel": {"x": 1781, "y": 4238},
+      "plan_m": {"x_m": 1751.125, "z_m": 4166.911},
+      "source_ref": "C76",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "piergeirons-palace",
+      "name": "Piergeiron's Palace",
+      "kind": "landmark",
+      "pixel": {"x": 1136, "y": 3918},
+      "plan_m": {"x_m": 1116.945, "z_m": 3852.279},
+      "source_ref": "C75",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "the-market",
+      "name": "The Market",
+      "kind": "landmark",
+      "pixel": {"x": 1548, "y": 2719},
+      "plan_m": {"x_m": 1522.034, "z_m": 2673.391},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "the-yawning-portal",
+      "name": "The Yawning Portal",
+      "kind": "landmark",
+      "pixel": {"x": 2053, "y": 4472},
+      "plan_m": {"x_m": 2018.563, "z_m": 4396.986},
+      "source_ref": "C48",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "trades-ward-center",
+      "name": "Trades Ward (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 2472, "y": 3924},
+      "plan_m": {"x_m": 2430.534, "z_m": 3858.178},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "river-gate",
+      "name": "River Gate",
+      "kind": "gate",
+      "pixel": {"x": 2944, "y": 4398},
+      "plan_m": {"x_m": 2894.617, "z_m": 4324.227},
+      "source_ref": "T48",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "harborwatch-tower",
+      "name": "Harborwatch Tower",
+      "kind": "coast",
+      "pixel": {"x": 540, "y": 5198},
+      "plan_m": {"x_m": 530.942, "z_m": 5110.808},
+      "source_ref": "H1",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "dock-ward-center",
+      "name": "Dock Ward (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 2079, "y": 5446},
+      "plan_m": {"x_m": 2044.126, "z_m": 5354.648},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "southern-ward-center",
+      "name": "Southern Ward (zone centroid)",
+      "kind": "ward-center",
+      "pixel": {"x": 2861, "y": 5228},
+      "plan_m": {"x_m": 2813.009, "z_m": 5140.305},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid"]
+    },
+    {
+      "id": "south-gate",
+      "name": "South Gate",
+      "kind": "gate",
+      "pixel": {"x": 3041, "y": 5994},
+      "plan_m": {"x_m": 2989.99, "z_m": 5893.455},
+      "source_ref": "S52",
+      "provenance": ["aidedd-dataW-marker"]
+    },
+    {
+      "id": "deepwater-beacon",
+      "name": "Deepwater Beacon",
+      "kind": "coast",
+      "pixel": {"x": 3078, "y": 6644},
+      "plan_m": {"x_m": 3026.369, "z_m": 6532.552},
+      "source_ref": "H7",
+      "provenance": ["aidedd-dataW-marker"]
+    }
+  ],
+  "initial_places": [
+    {
+      "id": "castle-waterdeep",
+      "name": "Castle Waterdeep",
+      "ward": "Castle Ward",
+      "role": "seat-of-government",
+      "pixel": {"x": 1781, "y": 4238},
+      "plan_m": {"x_m": 1751.125, "z_m": 4166.911},
+      "source_ref": "C76",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "piergeirons-palace",
+      "name": "Piergeiron's Palace",
+      "ward": "Castle Ward",
+      "role": "open-lord-palace",
+      "pixel": {"x": 1136, "y": 3918},
+      "plan_m": {"x_m": 1116.945, "z_m": 3852.279},
+      "source_ref": "C75",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "the-yawning-portal",
+      "name": "The Yawning Portal",
+      "ward": "Castle Ward",
+      "role": "famous-inn",
+      "pixel": {"x": 2053, "y": 4472},
+      "plan_m": {"x_m": 2018.563, "z_m": 4396.986},
+      "source_ref": "C48",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "blackstaff-tower",
+      "name": "Blackstaff Tower",
+      "ward": "Castle Ward",
+      "role": "wizard-tower",
+      "pixel": {"x": 989, "y": 2842},
+      "plan_m": {"x_m": 972.41, "z_m": 2794.328},
+      "source_ref": "C6",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "the-market",
+      "name": "The Market",
+      "ward": "Castle Ward",
+      "role": "trade-square",
+      "pixel": {"x": 1548, "y": 2719},
+      "plan_m": {"x_m": 1522.034, "z_m": 2673.391},
+      "source_ref": null,
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "harborwatch-tower",
+      "name": "Harborwatch Tower",
+      "ward": null,
+      "role": "coastal-landmark",
+      "pixel": {"x": 540, "y": 5198},
+      "plan_m": {"x_m": 530.942, "z_m": 5110.808},
+      "source_ref": "H1",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"],
+      "ward_note": "coastal point; outside the ward bounding boxes"
+    },
+    {
+      "id": "city-of-the-dead-center",
+      "name": "City of the Dead",
+      "ward": "City of the Dead",
+      "role": "ward-zone-centroid",
+      "pixel": {"x": 2675, "y": 3483},
+      "plan_m": {"x_m": 2630.129, "z_m": 3424.575},
+      "source_ref": null,
+      "provenance": ["aidedd-zone-centroid", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "new-olamn",
+      "name": "New Olamn",
+      "source_name": "New Olamn's academy of music and other arts",
+      "ward": "Castle Ward",
+      "role": "bard-college",
+      "pixel": {"x": 712, "y": 2701},
+      "plan_m": {"x_m": 700.057, "z_m": 2655.693},
+      "source_ref": "C72",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "south-gate",
+      "name": "South Gate",
+      "ward": "Southern Ward",
+      "role": "city-gate",
+      "pixel": {"x": 3041, "y": 5994},
+      "plan_m": {"x_m": 2989.99, "z_m": 5893.455},
+      "source_ref": "S52",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"]
+    },
+    {
+      "id": "deepwater-beacon",
+      "name": "Deepwater Beacon",
+      "ward": null,
+      "role": "coastal-landmark",
+      "pixel": {"x": 3078, "y": 6644},
+      "plan_m": {"x_m": 3026.369, "z_m": 6532.552},
+      "source_ref": "H7",
+      "provenance": ["aidedd-dataW-marker", "visual-cross-check-2026-10-18"],
+      "ward_note": "coastal point; outside the ward bounding boxes"
+    }
+  ],
+  "doubts": [
+    "The base plan is the Jason Engle Waterdeep artwork used by AideDD. It was not independently dated to a specific printing or campaign year.",
+    "The marker database is community-maintained and mixes periods. It includes entries from different editions and media, so it is not a single-era snapshot.",
+    "The 768 marker entries are not 768 unique places: 2 names are duplicated and 2 coordinate pairs are shared by aliases or spelling variants.",
+    "The scale comes from AideDD's factorDist constant and its '310 px = 1000 ft' comment. No scale bar was found on the artwork, and no external georeferencing was performed.",
+    "The gate-to-gate distance (3.36 mi) is calculated from the source scale. No independent comparable extent has been established, so this does not corroborate the scale.",
+    "Ward boundaries are AideDD overlay zones. Only bounding boxes and centroids are stored; the original paths and any boundary errors are not reproduced.",
+    "The plan is an illustration, not a survey. Marker centers and hand-drawn buildings can differ by tens of pixels; no per-point positional error is claimed.",
+    "There is no official JSON API, street graph, terrain mesh, building height, or latitude/longitude in the observed source.",
+    "The shoreline is described visually and is not vectorized. Coast geometry for the 3D scene must be interpreted and reviewed separately.",
+    "Place ids here are local to this package. D13 assigns contract ids when it imports them as Place records with a PlaceAnchor on the Waterdeep map version."
+  ]
+}

@@ -4,17 +4,30 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.11.2",
-  "engines": { "node": "^22.13.0 || >=24.0.0" },
+  "engines": { "node": ">=24.0.0" },
+  "imports": {
+    "#routing-wasm": {
+      "types": "./src/generated/desire_wasm.d.ts",
+      "default": "./src/generated/wasm/desire_wasm.js"
+    }
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "dev:api": "cargo run -p desire-api",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
-    "build": "pnpm run check && vite build",
+    "build": "pnpm run build:wasm && pnpm run check && vite build",
     "build:api": "cargo build -p desire-api --release",
-    "build:wasm": "wasm-pack build crates/wasm --target web --out-dir ../../src/generated/wasm",
+    "build:wasm": "wasm-pack build crates/wasm --target web --out-dir ../../src/generated/wasm && node tools/routing/check-wasm-types.mjs",
     "preview": "vite preview --host 127.0.0.1",
+    "test": "pnpm run test:frontend && pnpm run test:rust",
+    "test:frontend": "node --test \"tests/*.test.ts\"",
+    "test:holdout": "node --test \"tests/holdout/*.test.ts\"",
     "test:rust": "cargo test --workspace",
+    "test:quality": "python3 -m unittest discover -s tools/quality/tests -p 'test_*.py'",
+    "check:tests": "tsc -p tsconfig.tests.json",
+    "quality:gate": "python3 tools/quality/gate.py",
+    "verify:waterdeep": "node --test \"docs/maps/waterdeep/*.test.mjs\" && node docs/maps/waterdeep/verify-waterdeep-reference.mjs",
     "db:up": "docker compose up -d db",
     "db:stop": "docker compose stop db"
   },
