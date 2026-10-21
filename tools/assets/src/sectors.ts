@@ -1,8 +1,8 @@
 /**
  * Cuts the map's features into sectors of 1024 × 1024 source pixels (docs/waterdeep-3d/
- * sector-format.md). A feature belongs to the sector holding its point. Each house gets a stable
- * id from its block and its lot within the block, so its look never depends on which other houses
- * are loaded. Pure.
+ * sector-format.md). A feature belongs to the sector holding its point. Houses keep the stable
+ * id their layer gave them (block × 4096 + lot), so a house's look never depends on which other
+ * houses are loaded or exported. Pure.
  */
 import type {
   CentredHouse, Sector, SectorBerth, SectorHouse, SectorTree,
@@ -21,9 +21,13 @@ export interface SectorGrid {
   metres_per_pixel: number;
 }
 
-/** A house as generate-houses writes it: its block, then the shared house fields. */
+/**
+ * A house as generate-houses writes it: its block and stable id (given from the lot index when
+ * the lot is placed, before any region filter), then the shared house fields.
+ */
 export type LayerHouse = CentredHouse & {
   block: number;
+  id: number;
 };
 
 export interface SectorInput {
@@ -56,18 +60,8 @@ function sectorOf(grid: SectorGrid, x: number, z: number): number {
   return row * grid.columns + column;
 }
 
-/** Numbers lots per block in input order and gives each house its stable id. O(houses). */
-export function withHouseIds<T extends { block: number }>(houses: T[]): (T & { id: number })[] {
-  const lots = new Map<number, number>();
-  return houses.map((house) => {
-    const lot = lots.get(house.block) ?? 0;
-    lots.set(house.block, lot + 1);
-    return { ...house, id: houseId(house.block, lot) };
-  });
-}
-
 function toSectorHouses(houses: LayerHouse[]): SectorHouse[] {
-  return withHouseIds(houses).map((house) => ({
+  return houses.map((house) => ({
     id: house.id,
     x_m: house.center.x_m,
     z_m: house.center.z_m,

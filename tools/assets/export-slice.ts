@@ -14,7 +14,6 @@ import { readFlags } from './src/flags.ts';
 import {
   CARAVEL_Z18, findBerths, ORCHARD_Z18, plantTrees, type Berth, type Tree,
 } from './src/features.ts';
-import { withHouseIds } from './src/sectors.ts';
 import { heightField, paintAlbedo } from './src/slice.ts';
 
 const EXIT_FAIL = 2;
@@ -75,7 +74,7 @@ async function main(argv: string[]) {
   const layer = JSON.parse(fs.readFileSync(options.houses, 'utf8'));
   const mpp: number = layer.metres_per_pixel;
   const origin = { x_m: left * mpp, z_m: top * mpp };
-  const houses = withHouseIds(layer.houses as House[]).map((house) => ({
+  const houses = (layer.houses as House[]).map((house) => ({
     ...house,
     center: { x_m: house.center.x_m - origin.x_m, z_m: house.center.z_m - origin.z_m },
   }));

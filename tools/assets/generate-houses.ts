@@ -14,6 +14,7 @@ import { placeHouses, type House } from './src/lots.ts';
 import { between, mulberry32 } from './src/random.ts';
 import { simplifyRing } from './src/raster/simplify.ts';
 import { Surface } from './src/raster/surface.ts';
+import { houseId } from './src/sectors.ts';
 import type { Plan } from './src/types.ts';
 
 const EXIT_FAIL = 2;
@@ -126,11 +127,13 @@ function housesOf(raster: Raster, block: BlockJson, options: Options) {
   const seed = SEED_BASE + block.id;
   const rules = { frontage: FRONTAGE_M, depth: DEPTH_M, seed, isBuilt: isBuilt(raster) };
   const random = mulberry32(SEED_BASE ^ block.id);
-  return placeHouses(shape, rules).map((house) => ({
+  // The id comes from the lot's place in its block, before the region filter drops any lot.
+  return placeHouses(shape, rules).map((house, lot) => ({
     ...house,
     height_m: Math.round(between(random, options.heights) * 10) / 10,
     roof_rgb: roofColour(raster, house),
     block: block.id,
+    id: houseId(block.id, lot),
   }));
 }
 
