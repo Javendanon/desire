@@ -18,7 +18,11 @@ interface ProbeStats {
   mainCopyMs: number;
 }
 interface ProbedResponse extends RouteResponse { probe: ProbeStats }
-interface Ready { ready: boolean; wasmLoadMs: number; bootMs: number }
+interface Ready {
+  ready: boolean;
+  wasmLoadMs: number;
+  bootMs: number;
+}
 
 const clock = () => performance.timeOrigin + performance.now();
 const ENDPOINTS = { start: { x: 0, y: 0 }, goal: { x: 63, y: 63 } };

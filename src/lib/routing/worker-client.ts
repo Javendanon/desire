@@ -32,7 +32,7 @@ export type WorkerFactory = () => WorkerLike;
 export type ResultHandler = (result: RouteResponse) => void;
 export type FailureHandler = (failure: RouteFailure) => void;
 
-/** Vite bundles this worker entry; call it from the main thread. */
+/** Vite bundles this worker entry. Call it from the main thread. */
 export function spawnRoutingWorker(): WorkerLike {
   return new Worker(new URL('./routing.worker.ts', import.meta.url), {
     type: 'module',

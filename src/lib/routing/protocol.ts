@@ -32,7 +32,7 @@ export type RouteStatus = 'ok' | 'error';
 export interface RouteResponse extends RouteIdentity {
   status: RouteStatus;
   cost: number;
-  /** Flat [x0, y0, x1, y1, ...] path; empty on failure. */
+  /** Flat [x0, y0, x1, y1, ...] path, empty on failure. */
   path: number[];
   error?: string;
 }
@@ -44,7 +44,7 @@ export interface RouteMessage {
 
 export const ROUTING_WORKER_PROTOCOL_VERSION = 1;
 const U32_MAX = 0xffff_ffff;
-/** Mirrors the Rust core allocation/transfer bound; checked before any input copy. */
+/** Mirrors the Rust core allocation/transfer bound, checked before any input copy. */
 export const MAX_GRID_CELLS = 1_048_576;
 
 function isU32(value: unknown): value is number {
