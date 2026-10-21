@@ -1,6 +1,6 @@
 // The diorama scene: slice terrain, town, sea, dusk light and the D11 post-processing stack.
-// Fog and the shadow range follow the camera distance, so the city view keeps its depth and the
-// street view keeps crisp shadows.
+// Fog and the shadow range follow the camera distance: the fog starts past the subject at every
+// zoom and closes before the horizon, and the street view keeps crisp shadows.
 
 import * as pc from 'playcanvas';
 
@@ -9,7 +9,7 @@ import { cloneRig, dampRig, rigPosition, type Rig } from '../engine/math/camera-
 import { buildSun, createFrame } from '../engine/render/atmosphere.ts';
 import { paintTextures } from '../engine/render/textures.ts';
 import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
-import { buildEdgeHaze } from './edge-haze.ts';
+import { buildEdgeHaze, tiltEdgeHaze, type EdgeHaze } from './edge-haze.ts';
 import { bindOrbit, ZOOM } from './orbit.ts';
 import { animateSea, buildSea } from './sea.ts';
 import { animateFleet, buildFleet, type Fleet } from './ships.ts';
@@ -21,8 +21,11 @@ import { buildTown } from './town.ts';
 const FIELD_OF_VIEW = 34;
 const FAR_CLIP_M = 4000;
 const CAMERA_HALF_LIFE_S = 0.35;
-/** Fog density times the camera distance: the same haze share at every zoom. */
-const FOG_PER_RADIUS = 0.55;
+/** Linear fog starts this many camera distances plus metres out, past what the camera frames. */
+const FOG_START_PER_RADIUS = 2;
+const FOG_START_M = 400;
+/** ...and is opaque here, inside the far clip, so the sea melts into the horizon colour. */
+const FOG_END_M = 3200;
 const SHADOW_PER_RADIUS = 1.6;
 const MIN_SHADOW_DISTANCE_M = 120;
 const TEXTURE_SEED = 7;
@@ -68,6 +71,7 @@ type Live = {
   sea: ReturnType<typeof buildSea>;
   ambience: Ambience;
   fleet: Fleet;
+  edge: EdgeHaze;
   orbit: { goal: Rig };
   rig: Rig;
   frames: number;
@@ -80,11 +84,13 @@ function tick(live: Live, dt: number) {
   live.rig = dampRig(live.rig, live.orbit.goal, dt, CAMERA_HALF_LIFE_S);
   placeCamera(live.camera, live.rig);
   live.sky.setPosition(live.camera.getPosition());
-  live.app.scene.fog.density = FOG_PER_RADIUS / Math.max(live.rig.radius, 1) / 100;
+  live.app.scene.fog.start = live.rig.radius * FOG_START_PER_RADIUS + FOG_START_M;
+  live.app.scene.fog.end = FOG_END_M;
   const shadowRange = Math.max(MIN_SHADOW_DISTANCE_M, live.rig.radius * SHADOW_PER_RADIUS);
   if (live.sun.light) live.sun.light.shadowDistance = shadowRange;
   animateSea(live.sea, live.time);
   animateFleet(live.fleet, live.time);
+  tiltEdgeHaze(live.edge, live.rig.polar);
   animateAmbience(live.ambience, { time: live.time, facing: live.camera.getRotation() });
 }
 
@@ -112,7 +118,8 @@ export async function createDiorama(
   app.root.addChild(fleet.root);
   const ambience = buildAmbience(app, { slice, town });
   app.root.addChild(ambience.root);
-  app.root.addChild(buildEdgeHaze(app, slice.meta));
+  const edge = buildEdgeHaze(app, slice);
+  app.root.addChild(edge.root);
   const centre = sceneCentre(slice);
   const extent = Math.max(slice.meta.width_m, slice.meta.depth_m);
   const sea = buildSea(app.graphicsDevice, extent, centre);
@@ -130,7 +137,8 @@ export async function createDiorama(
     polar: 0.92, azimuth: 0.7 };
   const orbit = { goal };
   const live: Live = {
-    app, camera, sun, sky, sea, ambience, fleet, orbit, rig: cloneRig(goal), frames: 0, time: 0,
+    app, camera, sun, sky, sea, ambience, fleet, edge, orbit, rig: cloneRig(goal), frames: 0,
+    time: 0,
   };
   const unbind = bindOrbit(canvas, orbit);
   app.on('update', (dt: number) => tick(live, dt));

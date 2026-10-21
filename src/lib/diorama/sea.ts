@@ -3,12 +3,20 @@
 
 import * as pc from 'playcanvas';
 
-import { material } from '../engine/render/kit.ts';
+import { geometryMesh, material } from '../engine/render/kit.ts';
 
-const SEGMENTS = 96;
-const MARGIN = 1.8;
+const SEGMENTS = 128;
+const MARGIN = 3.5;
 const SWELL_M = 0.25;
 const WATER_COLOUR = '#3d7480';
+/**
+ * The open ocean past the swell grid: one opaque plane just under the seabed, wide enough for
+ * the fog to close before its edge. Its tone is the swell (60 %) blended over it, so the
+ * swell grid's edge leaves no seam.
+ */
+const OCEAN_M = 9000;
+const OCEAN_Y = -2.6;
+const OCEAN_COLOUR = '#366c77';
 /** Translucent enough that the shallows and foam painted on the seabed show through. */
 const WATER_OPACITY = 0.6;
 const WATER_GLOSS = 0.9;
@@ -63,7 +71,21 @@ export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.V
     receiveShadows: true,
     castShadows: false,
   });
+  entity.addChild(buildOcean(device, centre));
   return { entity, mesh, base: positions.slice(), positions, indices };
+}
+
+function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
+  const ocean = new pc.Entity('ocean');
+  ocean.addComponent('render', {
+    meshInstances: [new pc.MeshInstance(geometryMesh(device, new pc.PlaneGeometry()),
+      material({ color: OCEAN_COLOUR, gloss: WATER_GLOSS }))],
+    castShadows: false,
+    receiveShadows: false,
+  });
+  ocean.setPosition(centre.x, OCEAN_Y, centre.z);
+  ocean.setLocalScale(OCEAN_M, 1, OCEAN_M);
+  return ocean;
 }
 
 export function animateSea(sea: Sea, time: number): void {
