@@ -53,6 +53,8 @@ export interface DioramaStats {
 
 export interface Diorama {
   app: pc.AppBase;
+  /** The post-processing stack, for quality settings and performance work. */
+  frame: pc.CameraFrame;
   orbit: { goal: Rig };
   stats(): DioramaStats;
   destroy(): void;
@@ -133,7 +135,7 @@ export async function createDiorama(
   const town = buildTown(app, slice.houses, textures);
   app.root.addChild(buildGround(app, layout, textures.cobble));
   app.root.addChild(town.root);
-  const fleet = buildFleet(slice.features.berths, textures);
+  const fleet = buildFleet(app, slice.features.berths, textures);
   app.root.addChild(fleet.root);
   const ambience = buildAmbience(app, { slice, town });
   app.root.addChild(ambience.root);
@@ -165,6 +167,7 @@ export async function createDiorama(
   app.start();
   return {
     app,
+    frame,
     orbit,
     stats: () => ({ frames: live.frames, houses: slice.houses.length, radius: live.rig.radius,
       backend: app.graphicsDevice.deviceType }),

@@ -107,6 +107,41 @@ export function instancedEntity(
   return entity;
 }
 
+export interface MovingBatchSpec {
+  mesh: pc.Mesh;
+  material: pc.StandardMaterial;
+  count: number;
+  castShadows: boolean;
+  /** World bounds every instance stays inside while it moves. */
+  bounds: pc.BoundingBox;
+}
+
+export interface MovingBatch {
+  entity: pc.Entity;
+  buffer: pc.VertexBuffer;
+  /** Instance matrices, column-major, 16 floats each: write, then `buffer.setData(data)`. */
+  data: Float32Array;
+}
+
+/** An instanced batch whose matrices the caller rewrites while its copies move in `bounds`. */
+export function movingBatch(app: pc.AppBase, spec: MovingBatchSpec): MovingBatch {
+  const device = app.graphicsDevice;
+  const data = new Float32Array(spec.count * 16);
+  const format = pc.VertexFormat.getDefaultInstancingFormat(device);
+  const buffer = new pc.VertexBuffer(device, format, Math.max(1, spec.count),
+    { usage: pc.BUFFER_DYNAMIC, data });
+  const instance = new pc.MeshInstance(spec.mesh, spec.material);
+  instance.setInstancing(buffer, true);
+  const entity = new pc.Entity('moving');
+  entity.addComponent('render', {
+    meshInstances: [instance],
+    castShadows: spec.castShadows,
+    receiveShadows: true,
+  });
+  if (entity.render) entity.render.customAabb = spec.bounds;
+  return { entity, buffer, data };
+}
+
 export type Triple = readonly [number, number, number];
 
 /** Transform matrix from a position, a rotation around Y in radians and a scale. */
