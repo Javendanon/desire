@@ -1,7 +1,7 @@
 // Performance HUD (`?hud`): real frame intervals from requestAnimationFrame on the viewer's own
-// display, so a judder can be measured where it is felt. Shows the display's refresh rate
-// (the median frame of a scene that keeps up; the shortest frames jitter short), fps, median and p95 frame times, the share of dropped
-// frames, draw calls and the quality preset.
+// display, so a judder can be measured where it is felt. Shows the display's refresh rate (the
+// median frame of a scene that keeps up, since the shortest frames jitter short), fps, median
+// and p95 frame times, the share of dropped frames, draw calls and the quality preset.
 
 import type * as pc from 'playcanvas';
 
