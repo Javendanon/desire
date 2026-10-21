@@ -53,7 +53,17 @@ test('the default scene renders only ground and LOD0; auxiliary scenes are expli
   assert.deepEqual(collision.nodes.map((index) => json.nodes[index].name), ['collision']);
   const lod1 = sceneByName(json, 'lod1');
   assert.deepEqual(lod1.nodes.map((index) => json.nodes[index].name),
-    ['render/ground', 'render/lod1']);
+    ['render/lod1/ground', 'render/lod1']);
+});
+
+// Loaders such as three.js build one object per node, so a node shared by two scenes
+// ends up in only one of them: the default scene lost its ground this way.
+test('each scene owns its root nodes and the LOD1 ground reuses the ground mesh', () => {
+  const { json } = build().gltf;
+  const roots = json.scenes.flatMap((scene) => scene.nodes);
+  assert.equal(new Set(roots).size, roots.length, 'no node is shared between scenes');
+  const ground = nodeByName(json, 'render/ground');
+  assert.equal(nodeByName(json, 'render/lod1/ground').mesh, ground.mesh);
 });
 
 test('LOD0 and LOD1 apply the same base color exactly once', () => {

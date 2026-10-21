@@ -66,6 +66,14 @@ test('--out produces a portable textured artifact without source sidecars', () =
   assert.ok(json.materials[0].pbrMetallicRoughness.baseColorTexture);
 });
 
+test('the report checks that every scene owns its root nodes', () => {
+  const result = build();
+  const report = checkedReport(result);
+  const disjoint = report.checks.find((check) => check.id === 'render.scenes_disjoint');
+  assert.ok(disjoint, 'the report checks scene ownership');
+  assert.equal(disjoint.pass, true, disjoint.detail);
+});
+
 test('a failing rebuild quarantines the previous artifact', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
   fs.cpSync(path.join(path.dirname(sampleManifestPath()), 'textures'),
