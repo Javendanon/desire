@@ -17,7 +17,7 @@ const SKY_SEGMENTS = 48;
 
 export function lightScene(app: pc.AppBase, sun: pc.Entity): pc.Entity {
   app.scene.ambientLight = new pc.Color().fromString(AMBIENT);
-  app.scene.fog.type = pc.FOG_EXP2;
+  app.scene.fog.type = pc.FOG_LINEAR;
   app.scene.fog.color = new pc.Color().fromString(HORIZON);
   sun.setEulerAngles(SUN_ANGLES[0], SUN_ANGLES[1], 0);
   if (sun.light) {
@@ -48,6 +48,15 @@ function skyColour(direction: pc.Vec3, toSun: pc.Vec3): number[] {
   });
 }
 
+const BYTE_MAX = 255;
+const GAMMA = 2.2;
+/**
+ * `Mesh.fromGeometry` stores colours with `setColors32`: bytes, not 0–1 floats. Vertex colours
+ * are linear while the palette is sRGB (as the fog colour is read), so they are linearised to
+ * meet the fog at the horizon without a seam.
+ */
+const toByte = (channel: number) => Math.round(channel ** GAMMA * BYTE_MAX);
+
 /** An unlit dome with per-vertex colours, drawn behind everything and ignoring fog. */
 export function buildSky(app: pc.AppBase, sun: pc.Entity, radius: number): pc.Entity {
   const bands = { latitudeBands: SKY_SEGMENTS, longitudeBands: SKY_SEGMENTS };
@@ -58,7 +67,7 @@ export function buildSky(app: pc.AppBase, sun: pc.Entity, radius: number): pc.En
   for (let index = 0; index < positions.length; index += 3) {
     const [x, y, z] = [positions[index], positions[index + 1], positions[index + 2]];
     const direction = new pc.Vec3(x, y, z).normalize();
-    colours.push(...skyColour(direction, toSun), 1);
+    colours.push(...skyColour(direction, toSun).map(toByte), BYTE_MAX);
   }
   sphere.colors = colours;
   const mesh = pc.Mesh.fromGeometry(app.graphicsDevice, sphere);
