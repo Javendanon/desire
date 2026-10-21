@@ -1,5 +1,5 @@
 // Ships moored at the slice's berths (features.json): a caravel about 22 m long with a pointed
-// bow, a sterncastle, two masts with furled sails and a stern lantern. They rock on the swell.
+// bow, a sterncastle, two masts with furled sails and a stern lantern. They ride the swell.
 // A ship is a list of parts; each mesh and paint pair is one instanced batch for the whole
 // fleet, so draw calls stay constant however many ships moor.
 
@@ -7,6 +7,7 @@ import * as pc from 'playcanvas';
 
 import { geometryMesh, material, movingBatch, type MovingBatch } from '../engine/render/kit.ts';
 import type { Textures } from '../engine/render/textures.ts';
+import { swellHeight } from './sea-swell.ts';
 import type { SliceBerth } from './slice-data.ts';
 
 const LENGTH_M = 22;
@@ -15,7 +16,6 @@ const HULL_HEIGHT_M = 2.8;
 /** Hull centre above the water plane: about a third of the hull sits below the waterline. */
 const WATERLINE_Y = 0.5;
 const BOW_SHARE = 0.22;
-const BOB_M = 0.18;
 const ROLL_DEGREES = 2.2;
 /** A moored ship, masts included, stays within this distance of its berth. */
 const SHIP_REACH_M = 24;
@@ -165,9 +165,9 @@ const scratch = {
 
 function placeShip(fleet: Fleet, ship: number, time: number) {
   const berth = fleet.berths[ship];
-  const bob = Math.sin(time * 0.9 + ship * 1.7) * BOB_M;
   const roll = Math.sin(time * 0.7 + ship) * ROLL_DEGREES;
-  scratch.position.set(berth.x_m, WATERLINE_Y + bob, berth.z_m);
+  const swell = swellHeight(berth.x_m, berth.z_m, time);
+  scratch.position.set(berth.x_m, WATERLINE_Y + swell, berth.z_m);
   scratch.rotation.setFromEulerAngles(0, (berth.heading_radians * 180) / Math.PI, roll);
   scratch.ship.setTRS(scratch.position, scratch.rotation, scratch.unit);
   for (const batch of fleet.batches) {
@@ -179,7 +179,7 @@ function placeShip(fleet: Fleet, ship: number, time: number) {
   }
 }
 
-/** Each ship bobs and rolls on its own phase. Called every frame. O(ships · parts). */
+/** Each ship rides the swell at its berth and rolls on its own phase. O(ships · parts). */
 export function animateFleet(fleet: Fleet, time: number) {
   for (let ship = 0; ship < fleet.berths.length; ship += 1) placeShip(fleet, ship, time);
   for (const batch of fleet.batches) batch.buffer.setData(batch.data);

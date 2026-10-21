@@ -1,24 +1,28 @@
 // Life in the slice: lanterns at the doors, chimney smoke, low fog banks over the water. Smoke
-// puffs and lantern halos are soft camera-facing billboards, fog banks soft sheets, each kind one
-// instanced batch whose matrices are rewritten every frame. Placement is in ambience-plan.ts.
+// puffs and lantern halos are soft camera-facing billboards moved on the GPU (shaders.ts): their
+// instance data is written once and each frame only sets a clock and the camera axes. The few
+// fog banks sway on the CPU. Each kind is one culled instanced batch. Placement is in
+// ambience-plan.ts.
 
 import * as pc from 'playcanvas';
 
 import { between, createRandom } from '../engine/math/rng.ts';
-import { geometryMesh, instancedEntity, material, trs } from '../engine/render/kit.ts';
-import { everyNth, puffAt, waterSpots, type Spot } from './ambience-plan.ts';
+import {
+  geometryMesh, instancedEntity, material, movingBatch, trs, type MovingBatch,
+} from '../engine/render/kit.ts';
+import { everyNth, HALO, PUFF, waterSpots, type Spot } from './ambience-plan.ts';
+import { boundsAround, useInstanceChunks } from './gpu-instancing.ts';
+import { haloChunks, smokeChunks } from './shaders.ts';
 import type { Slice } from './slice-data.ts';
 import type { Town } from './town.ts';
 
 const LANTERN_EVERY = 3;
 const LANTERN_SIZE: [number, number, number] = [0.3, 0.4, 0.3];
 const LANTERN_GLOW = 8;
-/** Halo billboard around each lantern: it reads as light from the ward view. */
-const HALO_M = 2.2;
+/** Halo billboard around each lantern (sized in ambience-plan.ts): it reads as light from afar. */
 const HALO_OPACITY = 0.55;
 const SMOKE_SHARE = 0.3;
 const PUFFS_PER_CHIMNEY = 7;
-const PUFF_LIFE_S = 9;
 const SMOKE_OPACITY = 0.26;
 const FOG_BANKS = 14;
 const FOG_OPACITY = 0.3;
@@ -27,37 +31,24 @@ const FOG_HEIGHT_M: [number, number] = [2.5, 7];
 /** Fog banks sway this far back and forth across a slow cycle. */
 const FOG_SWAY_M = 25;
 const FOG_SWAY_RATE = 0.025;
-/** Onshore breeze, from the sea in the west. */
-const WIND = new pc.Vec3(1, 0, -0.35).normalize();
 const SOFT_TEXTURE_PX = 64;
 const SEED = 0x5e7;
 
-type Batch = {
-  buffer: pc.VertexBuffer;
-  data: Float32Array;
-};
-type Smoke = Batch & {
-  tops: pc.Vec3[];
-  offsets: number[];
-};
 type Bank = Spot & {
   y: number;
   width: number;
   depth: number;
   phase: number;
 };
-type Fog = Batch & {
+type Fog = MovingBatch & {
   banks: Bank[];
-};
-type Halos = Batch & {
-  lamps: pc.Vec3[];
 };
 
 export interface Ambience {
   root: pc.Entity;
-  smoke: Smoke;
   fog: Fog;
-  halos: Halos;
+  /** Materials whose motion runs on the GPU, fed the clock and camera axes. */
+  moving: pc.StandardMaterial[];
 }
 
 export interface AmbienceScene {
@@ -67,8 +58,9 @@ export interface AmbienceScene {
 
 export interface AmbienceFrame {
   time: number;
-  /** Camera rotation, so smoke billboards face the viewer. */
-  facing: pc.Quat;
+  /** Camera axes in world space, so billboards face the viewer. */
+  right: pc.Vec3;
+  up: pc.Vec3;
 }
 
 /** White disc fading to transparent at its rim, for smoke and fog. */
@@ -115,26 +107,27 @@ function hazeMaterial(disc: pc.Texture, spec: Haze): pc.StandardMaterial {
   return haze;
 }
 
-const UPRIGHT = new pc.Quat().setFromEulerAngles(90, 0, 0);
-const scratch = {
-  matrix: new pc.Mat4(),
-  position: new pc.Vec3(),
-  scale: new pc.Vec3(),
-  turn: new pc.Quat(),
-};
+const FLOATS_PER_INSTANCE = 16;
+/** Largest puff reach from its chimney: drift plus its widest half-size. */
+const PUFF_REACH_M = PUFF.riseM * PUFF.windSlant + PUFF.sizeM * (PUFF.birthShare + 1);
 
-/** A plane batch whose instance matrices the caller rewrites each frame. Never culled. */
-function dynamicBatch(app: pc.AppBase, haze: pc.StandardMaterial, count: number) {
-  const device = app.graphicsDevice;
-  const data = new Float32Array(count * 16);
-  const format = pc.VertexFormat.getDefaultInstancingFormat(device);
-  const buffer = new pc.VertexBuffer(device, format, Math.max(1, count),
-    { usage: pc.BUFFER_DYNAMIC, data });
-  const instance = new pc.MeshInstance(geometryMesh(device, new pc.PlaneGeometry()), haze);
-  instance.setInstancing(buffer, false);
-  const entity = new pc.Entity('haze');
-  entity.addComponent('render', { meshInstances: [instance], castShadows: false });
-  return { entity, batch: { buffer, data } };
+/** A plane batch over `count` instances inside `bounds`, its data written by the caller. */
+function planeBatch(app: pc.AppBase, haze: pc.StandardMaterial, count: number,
+  bounds: pc.BoundingBox): MovingBatch {
+  const mesh = geometryMesh(app.graphicsDevice, new pc.PlaneGeometry());
+  return movingBatch(app, { mesh, material: haze, count, castShadows: false, bounds });
+}
+
+/** Per puff: chimney top and phase in line 1, the puff's share of the cycle in line 2. */
+function smokeData(tops: pc.Vec3[], offsets: number[]): Float32Array {
+  const data = new Float32Array(tops.length * PUFFS_PER_CHIMNEY * FLOATS_PER_INSTANCE);
+  tops.forEach((top, chimney) => {
+    for (let puff = 0; puff < PUFFS_PER_CHIMNEY; puff += 1) {
+      const at = (chimney * PUFFS_PER_CHIMNEY + puff) * FLOATS_PER_INSTANCE;
+      data.set([top.x, top.y, top.z, offsets[chimney], puff / PUFFS_PER_CHIMNEY], at);
+    }
+  });
+  return data;
 }
 
 function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: pc.Vec3[]) {
@@ -142,8 +135,13 @@ function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: pc.Vec3[]) {
   const chosen = tops.filter(() => random() < SMOKE_SHARE);
   const offsets = chosen.map(() => random());
   const haze = hazeMaterial(disc, { colour: '#bdb5ae', opacity: SMOKE_OPACITY });
-  const { entity, batch } = dynamicBatch(app, haze, chosen.length * PUFFS_PER_CHIMNEY);
-  return { entity, smoke: { ...batch, tops: chosen, offsets } };
+  useInstanceChunks(haze, smokeChunks());
+  const bounds = boundsAround(chosen,
+    { side: PUFF_REACH_M, below: PUFF.sizeM, above: PUFF.riseM + PUFF.sizeM });
+  const batch = planeBatch(app, haze, chosen.length * PUFFS_PER_CHIMNEY, bounds);
+  batch.data.set(smokeData(chosen, offsets));
+  batch.buffer.setData(batch.data);
+  return { entity: batch.entity, material: haze };
 }
 
 function buildFog(app: pc.AppBase, disc: pc.Texture, slice: Slice) {
@@ -158,8 +156,19 @@ function buildFog(app: pc.AppBase, disc: pc.Texture, slice: Slice) {
     phase: random() * Math.PI * 2,
   }));
   const haze = hazeMaterial(disc, { colour: '#e2cfc2', opacity: FOG_OPACITY });
-  const { entity, batch } = dynamicBatch(app, haze, banks.length);
-  return { entity, fog: { ...batch, banks } };
+  const centres = banks.map((bank) => new pc.Vec3(bank.x, bank.y, bank.z));
+  const bounds = boundsAround(centres,
+    { side: FOG_SIZE_M[1] / 2 + FOG_SWAY_M, below: 1, above: 1 });
+  const batch = planeBatch(app, haze, banks.length, bounds);
+  return { entity: batch.entity, fog: { ...batch, banks } };
+}
+
+/** Per lantern: its position and index (the flicker phase) in line 1. */
+function haloData(lamps: pc.Vec3[]): Float32Array {
+  const data = new Float32Array(lamps.length * FLOATS_PER_INSTANCE);
+  lamps.forEach((lamp, index) =>
+    data.set([lamp.x, lamp.y, lamp.z, index], index * FLOATS_PER_INSTANCE));
+  return data;
 }
 
 function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: pc.Vec3[]) {
@@ -168,10 +177,16 @@ function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: pc.Vec3[]) {
     emissiveIntensity: LANTERN_GLOW });
   const cube = geometryMesh(app.graphicsDevice, new pc.BoxGeometry());
   const matrices = lamps.map((front) => trs([front.x, front.y, front.z], 0, LANTERN_SIZE));
-  const glow = { colour: '#ffb35a', opacity: HALO_OPACITY, blend: pc.BLEND_ADDITIVEALPHA };
-  const { entity, batch } = dynamicBatch(app, hazeMaterial(disc, glow), lamps.length);
-  entity.addChild(instancedEntity(app, cube, lamp, matrices));
-  return { entity, halos: { ...batch, lamps } };
+  const glow = hazeMaterial(disc,
+    { colour: '#ffb35a', opacity: HALO_OPACITY, blend: pc.BLEND_ADDITIVEALPHA });
+  useInstanceChunks(glow, haloChunks());
+  const reach = HALO.sizeM * (1 + HALO.flicker);
+  const halos = planeBatch(app, glow, lamps.length,
+    boundsAround(lamps, { side: reach, below: reach, above: reach }));
+  halos.data.set(haloData(lamps));
+  halos.buffer.setData(halos.data);
+  halos.entity.addChild(instancedEntity(app, cube, lamp, matrices));
+  return { entity: halos.entity, material: glow };
 }
 
 export function buildAmbience(app: pc.AppBase, scene: AmbienceScene): Ambience {
@@ -183,50 +198,39 @@ export function buildAmbience(app: pc.AppBase, scene: AmbienceScene): Ambience {
   root.addChild(lanterns.entity);
   root.addChild(smoke.entity);
   root.addChild(fog.entity);
-  return { root, smoke: smoke.smoke, fog: fog.fog, halos: lanterns.halos };
+  return { root, fog: fog.fog, moving: [smoke.material, lanterns.material] };
 }
 
-function writeSmoke(smoke: Smoke, frame: AmbienceFrame) {
-  scratch.turn.mul2(frame.facing, UPRIGHT);
-  let slot = 0;
-  smoke.tops.forEach((top, chimney) => {
-    for (let puff = 0; puff < PUFFS_PER_CHIMNEY; puff += 1) {
-      const cycle = frame.time / PUFF_LIFE_S + smoke.offsets[chimney] + puff / PUFFS_PER_CHIMNEY;
-      const { rise, drift, size } = puffAt(cycle % 1);
-      scratch.position.set(top.x + WIND.x * drift, top.y + rise, top.z + WIND.z * drift);
-      scratch.scale.set(size, size, size);
-      scratch.matrix.setTRS(scratch.position, scratch.turn, scratch.scale);
-      smoke.data.set(scratch.matrix.data, slot * 16);
-      slot += 1;
-    }
-  });
-  smoke.buffer.setData(smoke.data);
-}
+const scratch = {
+  matrix: new pc.Mat4(),
+  position: new pc.Vec3(),
+  scale: new pc.Vec3(),
+  right: new Float32Array(3),
+  up: new Float32Array(3),
+};
+const WIND_X = PUFF.windX;
+const WIND_Z = PUFF.windZ;
 
+/** Fog banks: a handful of matrices, rewritten on the CPU. */
 function writeFog(fog: Fog, time: number) {
   fog.banks.forEach((bank, index) => {
     const sway = Math.sin(time * FOG_SWAY_RATE * Math.PI * 2 + bank.phase) * FOG_SWAY_M;
-    scratch.position.set(bank.x + WIND.x * sway, bank.y, bank.z + WIND.z * sway);
+    scratch.position.set(bank.x + WIND_X * sway, bank.y, bank.z + WIND_Z * sway);
     scratch.scale.set(bank.width, 1, bank.depth);
     scratch.matrix.setTRS(scratch.position, pc.Quat.IDENTITY, scratch.scale);
-    fog.data.set(scratch.matrix.data, index * 16);
+    fog.data.set(scratch.matrix.data, index * FLOATS_PER_INSTANCE);
   });
   fog.buffer.setData(fog.data);
 }
 
-function writeHalos(halos: Halos, frame: AmbienceFrame) {
-  halos.lamps.forEach((lamp, index) => {
-    const flicker = 1 + Math.sin(frame.time * 7 + index * 3) * 0.06;
-    scratch.scale.set(HALO_M * flicker, HALO_M * flicker, HALO_M * flicker);
-    scratch.matrix.setTRS(lamp, scratch.turn, scratch.scale);
-    halos.data.set(scratch.matrix.data, index * 16);
-  });
-  halos.buffer.setData(halos.data);
-}
-
-/** Smoke rises and drifts, fog banks sway, lanterns flicker. Called every frame. */
+/** Smoke rises and lanterns flicker on the GPU, and fog banks sway. Called every frame. */
 export function animateAmbience(ambience: Ambience, frame: AmbienceFrame) {
-  writeSmoke(ambience.smoke, frame);
-  writeHalos(ambience.halos, frame);
+  scratch.right.set([frame.right.x, frame.right.y, frame.right.z]);
+  scratch.up.set([frame.up.x, frame.up.y, frame.up.z]);
+  for (const moving of ambience.moving) {
+    moving.setParameter('ambience_time', frame.time);
+    moving.setParameter('view_right', scratch.right);
+    moving.setParameter('view_up', scratch.up);
+  }
   writeFog(ambience.fog, frame.time);
 }

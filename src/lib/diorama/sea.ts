@@ -1,10 +1,14 @@
-// Water plane of the slice at y = 0, larger than the slice so the horizon is never bare.
-// Vertices swell with two slow crossing waves (sea-swell.ts), shaded by their exact normals.
+// Water plane of the slice at y = 0, larger than the slice so the horizon is never bare. The
+// flat grid is uploaded once; the vertex shader lifts every vertex onto two slow crossing waves
+// and tilts its normal by their exact slope (shaders.ts, reference in sea-swell.ts). Each frame
+// sets one clock uniform.
 
 import * as pc from 'playcanvas';
 
-import { geometryMesh, material } from '../engine/render/kit.ts';
-import { writeSwell, type SwellGrid } from './sea-swell.ts';
+import { geometryMesh, material, movingBatch } from '../engine/render/kit.ts';
+import { useInstanceChunks } from './gpu-instancing.ts';
+import { SWELL } from './sea-swell.ts';
+import { seaChunks } from './shaders.ts';
 
 const SEGMENTS = 128;
 const MARGIN = 3.5;
@@ -28,12 +32,12 @@ const WATER_SPECULARITY = 0.2;
 
 export interface Sea {
   entity: pc.Entity;
-  mesh: pc.Mesh;
-  grid: SwellGrid;
-  normals: Float32Array;
-  positions: Float32Array;
-  indices: number[];
+  water: pc.StandardMaterial;
 }
+
+/** The swell never leaves this band around the water plane. */
+const SWELL_BAND_M = SWELL.heightM * (1 + SWELL.crossShare);
+const IDENTITY = new pc.Mat4();
 
 function grid(size: number, centre: pc.Vec3) {
   const side = SEGMENTS + 1;
@@ -53,34 +57,36 @@ function grid(size: number, centre: pc.Vec3) {
   return { positions, indices };
 }
 
-export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.Vec3): Sea {
-  const size = extent * MARGIN;
-  const { positions, indices } = grid(size, centre);
-  const mesh = new pc.Mesh(device);
-  mesh.setPositions(positions);
-  mesh.setNormals(pc.calculateNormals(Array.from(positions), indices));
-  mesh.setIndices(indices);
-  mesh.update(pc.PRIMITIVE_TRIANGLES);
+function waterMaterial(): pc.StandardMaterial {
   const water = material({ color: WATER_COLOUR, gloss: WATER_GLOSS, metalness: 0 });
   water.opacity = WATER_OPACITY;
   water.useMetalnessSpecularColor = true;
   water.specularityFactor = WATER_SPECULARITY;
   water.blendType = pc.BLEND_NORMAL;
-  water.update();
-  const entity = new pc.Entity('sea');
-  entity.addComponent('render', {
-    meshInstances: [new pc.MeshInstance(mesh, water)],
-    receiveShadows: true,
-    castShadows: false,
-  });
-  entity.addChild(buildOcean(device, centre));
-  const normals = new Float32Array(positions.length);
-  const steps = Array.from({ length: SEGMENTS + 1 }, (_, step) => (step / SEGMENTS - 0.5) * size);
-  const swell = {
-    xs: Float32Array.from(steps, (step) => centre.x + step),
-    zs: Float32Array.from(steps, (step) => centre.z + step),
-  };
-  return { entity, mesh, grid: swell, positions, normals, indices };
+  useInstanceChunks(water, seaChunks());
+  return water;
+}
+
+/** The flat grid, drawn as one instance so the swell chunk can move its vertices. */
+export function buildSea(app: pc.AppBase, extent: number, centre: pc.Vec3): Sea {
+  const size = extent * MARGIN;
+  const { positions, indices } = grid(size, centre);
+  const mesh = new pc.Mesh(app.graphicsDevice);
+  mesh.setPositions(positions);
+  mesh.setNormals(Float32Array.from({ length: positions.length }, (_, i) => (i % 3 === 1 ? 1 : 0)));
+  mesh.setIndices(indices);
+  mesh.update(pc.PRIMITIVE_TRIANGLES);
+  const water = waterMaterial();
+  const half = size / 2;
+  const bounds = new pc.BoundingBox();
+  bounds.setMinMax(new pc.Vec3(centre.x - half, -SWELL_BAND_M, centre.z - half),
+    new pc.Vec3(centre.x + half, SWELL_BAND_M, centre.z + half));
+  const sea = movingBatch(app, { mesh, material: water, count: 1, castShadows: false, bounds });
+  sea.data.set(IDENTITY.data);
+  sea.buffer.setData(sea.data);
+  sea.entity.name = 'sea';
+  sea.entity.addChild(buildOcean(app.graphicsDevice, centre));
+  return { entity: sea.entity, water };
 }
 
 function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
@@ -96,11 +102,7 @@ function buildOcean(device: pc.GraphicsDevice, centre: pc.Vec3): pc.Entity {
   return ocean;
 }
 
-/** Heights and exact normals from the swell formula, written in place (sea-swell.ts). */
+/** The swell runs on the GPU: only its clock moves here. */
 export function animateSea(sea: Sea, time: number): void {
-  writeSwell(sea.grid, time, sea);
-  sea.mesh.setPositions(sea.positions);
-  sea.mesh.setNormals(sea.normals);
-  // The swell stays within a fixed band: the bounds need no recomputing each frame.
-  sea.mesh.update(pc.PRIMITIVE_TRIANGLES, false);
+  sea.water.setParameter('swell_time', time);
 }

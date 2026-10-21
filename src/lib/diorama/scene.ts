@@ -101,7 +101,7 @@ function tick(live: Live, dt: number) {
   animateSea(live.sea, live.time);
   animateFleet(live.fleet, live.time);
   tiltEdgeHaze(live.edge, live.rig.polar);
-  animateAmbience(live.ambience, { time: live.time, facing: live.camera.getRotation() });
+  animateAmbience(live.ambience, { time: live.time, right: live.camera.right, up: live.camera.up });
 }
 
 function buildCamera(app: pc.AppBase): pc.Entity {
@@ -156,7 +156,7 @@ export async function createDiorama(
   app.root.addChild(edge.root);
   const centre = sceneCentre(slice);
   const extent = Math.max(slice.meta.width_m, slice.meta.depth_m);
-  const sea = buildSea(app.graphicsDevice, extent, centre);
+  const sea = buildSea(app, extent, centre);
   app.root.addChild(sea.entity);
   lightScene(app, sun);
   const sky = buildSky(app, sun, SKY_RADIUS_M);
