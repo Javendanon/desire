@@ -31,7 +31,7 @@ illustration + calibration + places (JSON manifest)
 metric scene: ground extents, solid footprints, unknown places, fidelity tally
         │  geometry: flat-shaded boxes, ground quad
         ▼
-scene-<id>.glb: render/ground, render/lod0/<place>, render/lod1, collision
+scene-<id>.glb: render/ground, render/lod0/<place>, render/lod1(/ground), collision
         │  read the written artifact back
         ▼
 report.json: scale, fidelity, collision, LOD, textures, navigation, provenance

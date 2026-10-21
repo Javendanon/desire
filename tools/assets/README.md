@@ -44,7 +44,10 @@ owned by the caller and not modified concurrently by another writer.
 ## Consumer contract
 
 - Load the glTF default scene (`scene: 0`) for **ground and LOD0 only**.
-- The auxiliary scene `lod1` selects ground and a merged mesh with material-grouped primitives.
+- The auxiliary scene `lod1` selects its own ground node (`render/lod1/ground`, same mesh) and a
+  merged mesh with material-grouped primitives. Scenes never share root nodes: loaders such as
+  three.js build one object per node, so a shared root renders in only one scene
+  (`render.scenes_disjoint` checks it).
   Switch scenes, do not append it to LOD0. It reduces draw calls, not triangles.
 - The auxiliary scene `collision` contains collision geometry only. Do not render it; absence
   of a material does **not** make it invisible. Physics reads it separately.

@@ -161,3 +161,34 @@ and how each item was resolved:
   lines, the lossless `VP8L` branch and the aggregate-budget invariant.
 - `Cargo.lock` and `pnpm-lock.yaml` are untracked in this worktree from environment setup; they are
   not part of this change and were not committed.
+
+## 8. Round 3: CI gate, TypeScript tests and visual review
+
+Base: `47a31e7`, merged with `main` (87 commits, no conflicts). The 15:36Z automated review did
+not run (reviewer quota). Findings of the 15:15Z review already fixed by `ad682da`/`47a31e7`:
+the missing rework report, the `dwebp` stdout limit and the machine-bound report path.
+
+| Item | Resolution |
+| --- | --- |
+| Human request: TypeScript instead of plain JS | The eight test files are now `.ts` and type-check under the same strict `tsconfig` as the sources (122 errors resolved, no `any`). Malformed-input fixtures are passed as `unknown`, the type `validateManifest` already accepts. Source types were corrected where tests exposed them: `AssetExtras` listed 4 of the 9 fields the writer records, and calibration/accessor checks now take only the fields they read. `pnpm test:assets` / `pnpm check:assets` added. |
+| CLI exit contract untested (LOW) | `tests/cli.test.ts` spawns the CLI: exit 0 with artifact and report, exit 2 with `FAIL` lines and a report, exit 2 with usage. RED: a missing manifest file crashed with a stack trace and exit 1. It now writes a failing report with `cannot read manifest <path>`. |
+| `collision.triangles` counted quads (suspicion) | RED test expected 80 and got 40. It now counts index triangles like the LOD metrics; the sample report was regenerated (the GLB stayed byte-identical). |
+| CI `quality-gate` failed: 57 F16 floor blocks | The gate counts any mid-line `;`, including JSDoc clauses and inline type literals. Comments became sentences and type fields one per line; two lines over 100 columns were wrapped. No rule relaxed. |
+| Visual review (new) | Rendering the sample GLB with three.js `GLTFLoader` in headless Chrome showed **the default scene without ground**: `render/ground` was a root of both the default and `lod1` scenes, and the loader builds one object per node, so only `lod1` kept it. RED test, fix (`render/lod1/ground` reuses the mesh) and a new acceptance check `render.scenes_disjoint`. After the fix the default scene renders 9 meshes over 256 × 192 m; every footprint lies inside the ground. |
+
+Evidence run on the final tree (Node 24.18, kimün 0.26.0):
+
+| Command | Result |
+| --- | --- |
+| `pnpm test:assets` | 80 pass, 0 fail |
+| `pnpm check:assets` | strict `tsc`, 0 errors, tests included |
+| `node --test --experimental-test-coverage "tools/assets/tests/*.test.ts"` | all files 96.69 % lines, 86.31 % branches, 99.07 % functions; CLI 100 % |
+| `python3 tools/quality/gate.py --root .` | 94.92 A+, 0 floor blocks; in `tools/assets` only 9 magic-number reviews (fixture constants) |
+| `km score tools/assets` | 93.5 A+ at `47a31e7` → 93.9 A+ |
+| `km dups tools/assets` | 1.0 % |
+| `python3 tools/ci/tamper_check.py origin/main HEAD` | 0 findings |
+
+Visual limits that remain: the 16 × 16 `paving.webp` is stretched over the whole 256 × 192 m
+ground (normalized per-quad UVs, documented as placeholder tiling), so it reads as blurred blocks
+rather than paving. The sample is synthetic massing (flat boxes); it validates the pipeline, not
+art quality.
