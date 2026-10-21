@@ -11,5 +11,15 @@
       "Pier": 0,
       "Garden": 1639524
     }
+  },
+  "raster_ops": {
+    "majority_r2": 910506640,
+    "majority_r5": 1689959511,
+    "dilate_r3": 939959087,
+    "dilate_r40": 210648514,
+    "erode_r2": 4289868755,
+    "components_labels": 1030454457,
+    "components_count": 1854,
+    "components_largest": 666
   }
 }
