@@ -1,0 +1,24 @@
+[
+  {
+    "origin": "km-smells",
+    "rule": "F2",
+    "path": "vite.config.ts",
+    "contains": "defineConfig",
+    "justification": "defineConfig takes a single configuration object; it does not declare a 6-parameter function. km uses text heuristics, not an AST. F2 is not relaxed globally, only this line."
+  },
+  {
+    "origin": "km-smells",
+    "rule": "Review",
+    "path": "vite.config.ts",
+    "line": 7,
+    "contains": "",
+    "justification": "The literal 5173 is network port configuration, not a D&D domain magic number (F8). It is documented; the rule stays active."
+  },
+  {
+    "origin": "km-smells",
+    "rule": "F2",
+    "path": "src/App.svelte",
+    "contains": "onMount",
+    "justification": "onMount takes a single callback; km adds up the parameters of nested callbacks (.then/.catch) and reports 4. The real callback declares no parameters. Documented per occurrence; F2 stays active."
+  }
+]

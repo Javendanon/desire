@@ -5,6 +5,9 @@ cuando hay dudas. Leerlas antes de escribir o modificar código en cualquier len
 Para tomar o entregar tarjetas, seguir [desarrollo paralelo](docs/desarrollo-paralelo.md).
 
 - Usar pnpm para el frontend y Cargo para Rust.
+- El tooling de build/CI en `tools/` se escribe en Python 3 con la biblioteca estándar,
+  incluido `unittest`; es la convención que ya usan `tools/contracts`, `tools/quality`,
+  `tools/ci` y `tools/knowledge`.
 - Apuntar al objetivo A- (87), no solo al piso B- (77).
 - Aplicar F1–F16 y el flujo RED → implementación → gate → tests → advisor → reporte.
 - El advisor independiente es obligatorio para cambios de más de 50 líneas o archivos
