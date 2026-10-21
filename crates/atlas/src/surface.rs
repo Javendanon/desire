@@ -63,26 +63,61 @@ const GARDEN_BLUE_BELOW_GREEN: i32 = 35;
 const STREET_MIN_CHANNEL: i32 = 100;
 const RGB: usize = 3;
 
-/// Ordered rules: the first match wins, anything else is ground.
-pub fn classify_pixel(r: u8, g: u8, b: u8) -> Surface {
-    let (r, g, b) = (i32::from(r), i32::from(g), i32::from(b));
-    let max = r.max(g).max(b);
-    let saturation = max - r.min(g).min(b);
-    if max < OUTLINE_MAX_CHANNEL {
-        Surface::Outline
-    } else if g > r + WATER_GREEN_OVER_RED && b >= r - WATER_BLUE_BELOW_RED {
-        Surface::Water
-    } else if r > g + RED_ROOF_RED_OVER_GREEN && r > b + RED_ROOF_RED_OVER_BLUE {
-        Surface::RedRoof
-    } else if r > b + ROOF_RED_OVER_BLUE && r > g + ROOF_RED_OVER_GREEN && max < ROOF_MAX_CHANNEL {
-        Surface::Roof
-    } else if r > GARDEN_MIN_RED && g > GARDEN_MIN_GREEN && b < g - GARDEN_BLUE_BELOW_GREEN {
-        Surface::Garden
-    } else if saturation < STREET_MAX_SATURATION && max > STREET_MIN_CHANNEL {
-        Surface::Street
-    } else {
-        Surface::Ground
+/// The channel measurements every rule reads, computed once per colour.
+struct Pixel {
+    r: i32,
+    g: i32,
+    b: i32,
+    max: i32,
+    saturation: i32,
+}
+
+impl Pixel {
+    fn new(r: u8, g: u8, b: u8) -> Self {
+        let (r, g, b) = (i32::from(r), i32::from(g), i32::from(b));
+        let max = r.max(g).max(b);
+        Pixel {
+            r,
+            g,
+            b,
+            max,
+            saturation: max - r.min(g).min(b),
+        }
     }
+}
+
+/// One classification rule: the surface it names when its test holds.
+type Rule = (Surface, fn(&Pixel) -> bool);
+
+/// Ordered rules: the first one that holds names the surface. Anything else is ground.
+const RULES: [Rule; 6] = [
+    (Surface::Outline, |p| p.max < OUTLINE_MAX_CHANNEL),
+    (Surface::Water, |p| {
+        p.g > p.r + WATER_GREEN_OVER_RED && p.b >= p.r - WATER_BLUE_BELOW_RED
+    }),
+    (Surface::RedRoof, |p| {
+        p.r > p.g + RED_ROOF_RED_OVER_GREEN && p.r > p.b + RED_ROOF_RED_OVER_BLUE
+    }),
+    (Surface::Roof, |p| {
+        let warm = p.r > p.b + ROOF_RED_OVER_BLUE && p.r > p.g + ROOF_RED_OVER_GREEN;
+        warm && p.max < ROOF_MAX_CHANNEL
+    }),
+    (Surface::Garden, |p| {
+        let bright = p.r > GARDEN_MIN_RED && p.g > GARDEN_MIN_GREEN;
+        bright && p.b < p.g - GARDEN_BLUE_BELOW_GREEN
+    }),
+    (Surface::Street, |p| {
+        p.saturation < STREET_MAX_SATURATION && p.max > STREET_MIN_CHANNEL
+    }),
+];
+
+/// The surface of one colour: the first rule that holds.
+pub fn classify_pixel(r: u8, g: u8, b: u8) -> Surface {
+    let pixel = Pixel::new(r, g, b);
+    RULES
+        .iter()
+        .find(|(_, holds)| holds(&pixel))
+        .map_or(Surface::Ground, |&(surface, _)| surface)
 }
 
 /// The class of every 24-bit colour, indexed by `r << 16 | g << 8 | b`. 16 MiB, built in
