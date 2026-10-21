@@ -1,0 +1,234 @@
+{
+  "catalog": {
+    "140fec29-95f8-5b36-8ed5-f58d6f40e190": {
+      "kind": "spell",
+      "license": "CC-BY-4.0",
+      "references": [
+        {
+          "relation": "available_to_class",
+          "target": "dnd_2014:wizard"
+        }
+      ],
+      "slug": "fireball",
+      "source_id": "srd-5.1",
+      "source_locator": "SRD 5.1, Spell Descriptions: Fireball",
+      "translation_status": "translated"
+    },
+    "2881dc0c-cef8-5177-a18a-2866c58a549b": {
+      "kind": "spell",
+      "license": "CC-BY-4.0",
+      "references": [
+        {
+          "relation": "available_to_class",
+          "target": "dnd_2014:wizard"
+        },
+        {
+          "relation": "applies_condition",
+          "target": "dnd_2014:prone"
+        }
+      ],
+      "slug": "grease",
+      "source_id": "srd-5.1",
+      "source_locator": "SRD 5.1, Spell Descriptions: Grease",
+      "translation_status": "translated"
+    },
+    "3c3a4001-6f68-5a76-861b-e9ac6538b541": {
+      "kind": "spell",
+      "license": "CC-BY-4.0",
+      "references": [
+        {
+          "relation": "available_to_class",
+          "target": "dnd_2024:wizard"
+        },
+        {
+          "relation": "applies_condition",
+          "target": "dnd_2024:prone"
+        },
+        {
+          "relation": "previous_edition",
+          "target": "dnd_2014:grease"
+        }
+      ],
+      "slug": "grease",
+      "source_id": "srd-5.2",
+      "source_locator": "SRD 5.2, Spell Descriptions: Grease",
+      "translation_status": "translated"
+    },
+    "83a05738-27b3-5a79-a6f9-12488126d206": {
+      "kind": "spell",
+      "license": "CC-BY-4.0",
+      "references": [
+        {
+          "relation": "available_to_class",
+          "target": "dnd_2024:wizard"
+        },
+        {
+          "relation": "previous_edition",
+          "target": "dnd_2014:fireball"
+        }
+      ],
+      "slug": "fireball",
+      "source_id": "srd-5.2",
+      "source_locator": "SRD 5.2, Spell Descriptions: Fireball",
+      "translation_status": "translated"
+    },
+    "895aa639-5a48-58f8-9ab8-9d0e83391086": {
+      "kind": "condition",
+      "license": "CC-BY-4.0",
+      "references": [],
+      "slug": "prone",
+      "source_id": "srd-5.1",
+      "source_locator": "SRD 5.1, Conditions: Prone",
+      "translation_status": "translated"
+    },
+    "948e47bd-a97b-5577-ba4c-93cf0a405dcf": {
+      "kind": "class",
+      "license": "CC-BY-4.0",
+      "references": [
+        {
+          "relation": "previous_edition",
+          "target": "dnd_2014:wizard"
+        }
+      ],
+      "slug": "wizard",
+      "source_id": "srd-5.2",
+      "source_locator": "SRD 5.2, Classes: Wizard",
+      "translation_status": "translated"
+    },
+    "af775fbc-c3e7-5d34-ae2b-fa70759156f5": {
+      "kind": "condition",
+      "license": "CC-BY-4.0",
+      "references": [
+        {
+          "relation": "previous_edition",
+          "target": "dnd_2014:prone"
+        }
+      ],
+      "slug": "prone",
+      "source_id": "srd-5.2",
+      "source_locator": "SRD 5.2, Conditions: Prone",
+      "translation_status": "translated"
+    },
+    "c4effe1d-c5ee-567e-bccf-3bc068f76c30": {
+      "kind": "class",
+      "license": "CC-BY-4.0",
+      "references": [],
+      "slug": "wizard",
+      "source_id": "srd-5.1",
+      "source_locator": "SRD 5.1, Classes: Wizard",
+      "translation_status": "translated"
+    }
+  },
+  "knowledge_entries": [
+    {
+      "body": "Clase. Dado de golpe: d6. Aptitud principal: Inteligencia. Competencias con tiradas de salvación: Inteligencia y Sabiduría. Competencias con armas: dagas, dardos, hondas, bastones y ballestas ligeras. Sin competencia con armaduras. Elige dos habilidades entre Arcanos, Historia, Perspicacia, Investigación, Medicina y Religión. Lanzamiento de conjuros: usa Inteligencia; puede lanzar rituales y registra sus conjuros en un libro de conjuros. La lista de conjuros del mago incluye bola de fuego y grasa.",
+      "id": "c4effe1d-c5ee-567e-bccf-3bc068f76c30",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.1"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2014",
+      "title": "Mago"
+    },
+    {
+      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse, a menos que se ponga de pie y termine así la condición. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
+      "id": "895aa639-5a48-58f8-9ab8-9d0e83391086",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.1"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2014",
+      "title": "Derribado"
+    },
+    {
+      "body": "Conjuro de evocación de nivel 3. Tiempo de lanzamiento: 1 acción. Alcance: 150 pies. Componentes: V, S, M (una bolita de guano de murciélago y un poco de azufre). Duración: instantánea. Cada criatura en una esfera de 20 pies de radio centrada en un punto dentro del alcance debe hacer una tirada de salvación de Destreza. Si falla, recibe 8d6 de daño de fuego; si tiene éxito, recibe la mitad. Los objetos inflamables que no se lleven puestos ni se transporten prenden fuego. A niveles superiores: el daño aumenta en 1d6 por cada nivel de espacio por encima del 3.º.",
+      "id": "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.1"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2014",
+      "title": "Bola de fuego"
+    },
+    {
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa resbaladiza cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "id": "2881dc0c-cef8-5177-a18a-2866c58a549b",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.1"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2014",
+      "title": "Grasa"
+    },
+    {
+      "body": "Clase. Dado de golpe: d6. Aptitud principal: Inteligencia. Competencias con tiradas de salvación: Inteligencia y Sabiduría. Competencias con armas: armas simples. Sin competencia con armaduras. Elige dos habilidades entre Arcanos, Historia, Perspicacia, Investigación, Medicina, Naturaleza y Religión. Lanzamiento de conjuros: usa Inteligencia; puede lanzar rituales y registra sus conjuros en un libro de conjuros. La lista de conjuros del mago incluye bola de fuego y grasa.",
+      "id": "948e47bd-a97b-5577-ba4c-93cf0a405dcf",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.2"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2024",
+      "title": "Mago"
+    },
+    {
+      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse, a menos que se ponga de pie y termine así la condición. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
+      "id": "af775fbc-c3e7-5d34-ae2b-fa70759156f5",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.2"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2024",
+      "title": "Derribado"
+    },
+    {
+      "body": "Conjuro de evocación de nivel 3. Tiempo de lanzamiento: 1 acción. Alcance: 150 pies. Componentes: V, S, M (una bolita de guano de murciélago y un poco de azufre). Duración: instantánea. Cada criatura en una esfera de 20 pies de radio centrada en un punto dentro del alcance debe hacer una tirada de salvación de Destreza. Si falla, recibe 8d6 de daño de fuego; si tiene éxito, recibe la mitad. Los objetos inflamables que no se lleven puestos ni se transporten prenden fuego. A niveles superiores: el daño aumenta en 1d6 por cada nivel de espacio por encima del 3.º.",
+      "id": "83a05738-27b3-5a79-a6f9-12488126d206",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.2"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2024",
+      "title": "Bola de fuego"
+    },
+    {
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa resbaladiza cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "id": "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+      "language": "es",
+      "provenance": {
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation",
+        "source": "Systems Reference Document 5.2"
+      },
+      "revision": 1,
+      "rules_edition": "dnd_2024",
+      "title": "Grasa"
+    }
+  ],
+  "language": "es",
+  "rules_editions": [
+    "dnd_2014",
+    "dnd_2024"
+  ],
+  "schema_version": 1
+}

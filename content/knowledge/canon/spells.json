@@ -1,0 +1,121 @@
+{
+  "kind": "spell",
+  "entries": [
+    {
+      "id": "140fec29-95f8-5b36-8ed5-f58d6f40e190",
+      "slug": "fireball",
+      "revision": 1,
+      "kind": "spell",
+      "rules_edition": "dnd_2014",
+      "language": "es",
+      "title": "Bola de fuego",
+      "body": "Conjuro de evocación de nivel 3. Tiempo de lanzamiento: 1 acción. Alcance: 150 pies. Componentes: V, S, M (una bolita de guano de murciélago y un poco de azufre). Duración: instantánea. Cada criatura en una esfera de 20 pies de radio centrada en un punto dentro del alcance debe hacer una tirada de salvación de Destreza. Si falla, recibe 8d6 de daño de fuego; si tiene éxito, recibe la mitad. Los objetos inflamables que no se lleven puestos ni se transporten prenden fuego. A niveles superiores: el daño aumenta en 1d6 por cada nivel de espacio por encima del 3.º.",
+      "translation_status": "translated",
+      "source_id": "srd-5.1",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.1, Spell Descriptions: Fireball",
+      "provenance": {
+        "source": "Systems Reference Document 5.1",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": [
+        {
+          "target": "dnd_2014:wizard",
+          "relation": "available_to_class"
+        }
+      ]
+    },
+    {
+      "id": "83a05738-27b3-5a79-a6f9-12488126d206",
+      "slug": "fireball",
+      "revision": 1,
+      "kind": "spell",
+      "rules_edition": "dnd_2024",
+      "language": "es",
+      "title": "Bola de fuego",
+      "body": "Conjuro de evocación de nivel 3. Tiempo de lanzamiento: 1 acción. Alcance: 150 pies. Componentes: V, S, M (una bolita de guano de murciélago y un poco de azufre). Duración: instantánea. Cada criatura en una esfera de 20 pies de radio centrada en un punto dentro del alcance debe hacer una tirada de salvación de Destreza. Si falla, recibe 8d6 de daño de fuego; si tiene éxito, recibe la mitad. Los objetos inflamables que no se lleven puestos ni se transporten prenden fuego. A niveles superiores: el daño aumenta en 1d6 por cada nivel de espacio por encima del 3.º.",
+      "translation_status": "translated",
+      "source_id": "srd-5.2",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.2, Spell Descriptions: Fireball",
+      "provenance": {
+        "source": "Systems Reference Document 5.2",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": [
+        {
+          "target": "dnd_2024:wizard",
+          "relation": "available_to_class"
+        },
+        {
+          "target": "dnd_2014:fireball",
+          "relation": "previous_edition"
+        }
+      ]
+    },
+    {
+      "id": "2881dc0c-cef8-5177-a18a-2866c58a549b",
+      "slug": "grease",
+      "revision": 1,
+      "kind": "spell",
+      "rules_edition": "dnd_2014",
+      "language": "es",
+      "title": "Grasa",
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa resbaladiza cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "translation_status": "translated",
+      "source_id": "srd-5.1",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.1, Spell Descriptions: Grease",
+      "provenance": {
+        "source": "Systems Reference Document 5.1",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": [
+        {
+          "target": "dnd_2014:wizard",
+          "relation": "available_to_class"
+        },
+        {
+          "target": "dnd_2014:prone",
+          "relation": "applies_condition"
+        }
+      ]
+    },
+    {
+      "id": "3c3a4001-6f68-5a76-861b-e9ac6538b541",
+      "slug": "grease",
+      "revision": 1,
+      "kind": "spell",
+      "rules_edition": "dnd_2024",
+      "language": "es",
+      "title": "Grasa",
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa resbaladiza cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "translation_status": "translated",
+      "source_id": "srd-5.2",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.2, Spell Descriptions: Grease",
+      "provenance": {
+        "source": "Systems Reference Document 5.2",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": [
+        {
+          "target": "dnd_2024:wizard",
+          "relation": "available_to_class"
+        },
+        {
+          "target": "dnd_2024:prone",
+          "relation": "applies_condition"
+        },
+        {
+          "target": "dnd_2014:grease",
+          "relation": "previous_edition"
+        }
+      ]
+    }
+  ]
+}

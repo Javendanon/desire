@@ -1,0 +1,50 @@
+{
+  "kind": "class",
+  "entries": [
+    {
+      "id": "c4effe1d-c5ee-567e-bccf-3bc068f76c30",
+      "slug": "wizard",
+      "revision": 1,
+      "kind": "class",
+      "rules_edition": "dnd_2014",
+      "language": "es",
+      "title": "Mago",
+      "body": "Clase. Dado de golpe: d6. Aptitud principal: Inteligencia. Competencias con tiradas de salvación: Inteligencia y Sabiduría. Competencias con armas: dagas, dardos, hondas, bastones y ballestas ligeras. Sin competencia con armaduras. Elige dos habilidades entre Arcanos, Historia, Perspicacia, Investigación, Medicina y Religión. Lanzamiento de conjuros: usa Inteligencia; puede lanzar rituales y registra sus conjuros en un libro de conjuros. La lista de conjuros del mago incluye bola de fuego y grasa.",
+      "translation_status": "translated",
+      "source_id": "srd-5.1",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.1, Classes: Wizard",
+      "provenance": {
+        "source": "Systems Reference Document 5.1",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": []
+    },
+    {
+      "id": "948e47bd-a97b-5577-ba4c-93cf0a405dcf",
+      "slug": "wizard",
+      "revision": 1,
+      "kind": "class",
+      "rules_edition": "dnd_2024",
+      "language": "es",
+      "title": "Mago",
+      "body": "Clase. Dado de golpe: d6. Aptitud principal: Inteligencia. Competencias con tiradas de salvación: Inteligencia y Sabiduría. Competencias con armas: armas simples. Sin competencia con armaduras. Elige dos habilidades entre Arcanos, Historia, Perspicacia, Investigación, Medicina, Naturaleza y Religión. Lanzamiento de conjuros: usa Inteligencia; puede lanzar rituales y registra sus conjuros en un libro de conjuros. La lista de conjuros del mago incluye bola de fuego y grasa.",
+      "translation_status": "translated",
+      "source_id": "srd-5.2",
+      "license": "CC-BY-4.0",
+      "source_locator": "SRD 5.2, Classes: Wizard",
+      "provenance": {
+        "source": "Systems Reference Document 5.2",
+        "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
+        "evidence": "interpretation"
+      },
+      "references": [
+        {
+          "target": "dnd_2014:wizard",
+          "relation": "previous_edition"
+        }
+      ]
+    }
+  ]
+}

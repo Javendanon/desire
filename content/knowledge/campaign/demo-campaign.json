@@ -1,0 +1,54 @@
+{
+  "notice": "Synthetic D07 demo campaign. This lore is not canon and must not be attributed to the real campaign.",
+  "campaign": {
+    "id": "ed74d0e0-76d8-5fa5-932f-bc45c1ddb6db",
+    "owner_id": "59abfb01-d922-52d0-8f8a-f8720bf6db24",
+    "city_id": null,
+    "name": "Synthetic D07 demo campaign",
+    "rules_edition": "dnd_2014",
+    "revision": 1
+  },
+  "knowledge": [
+    {
+      "id": "851247a3-4366-56c5-af22-48d42e0fec54",
+      "campaign_id": "ed74d0e0-76d8-5fa5-932f-bc45c1ddb6db",
+      "title": "Rumor del puerto",
+      "body": "Los pescadores dicen que una linterna azul aparece sobre el muelle cuando la marea sube. Es un rumor de ejemplo, no lore de la campaña real.",
+      "visibility": "players",
+      "revision": 1,
+      "provenance": {
+        "source": "D07 synthetic demo",
+        "attribution": "Synthetic example created for Desire tests",
+        "evidence": "synthetic"
+      }
+    },
+    {
+      "id": "d301d75c-8fb3-561a-a97f-130d646840bd",
+      "campaign_id": "ed74d0e0-76d8-5fa5-932f-bc45c1ddb6db",
+      "title": "Nota privada del DM",
+      "body": "La linterna azul es una señal de ejemplo para el DM. No debe publicarse en la vista de jugadores ni atribuirse a la campaña real.",
+      "visibility": "dm",
+      "revision": 1,
+      "provenance": {
+        "source": "D07 synthetic demo",
+        "attribution": "Synthetic example created for Desire tests",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "secrets": [
+    {
+      "id": "edeb6b3f-eef0-57ff-b28f-4478d7e17bad",
+      "campaign_id": "ed74d0e0-76d8-5fa5-932f-bc45c1ddb6db",
+      "subject_id": "6dc2830b-87eb-55a6-b9ad-823888d4e7bc",
+      "body": "Secreto sintético de ejemplo: la linterna azul no tiene relación con la campaña real.",
+      "visibility": "dm",
+      "revision": 1,
+      "provenance": {
+        "source": "D07 synthetic demo",
+        "attribution": "Synthetic example created for Desire tests",
+        "evidence": "synthetic"
+      }
+    }
+  ]
+}
