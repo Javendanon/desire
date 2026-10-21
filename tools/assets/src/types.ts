@@ -42,20 +42,17 @@ export type ScaleCheck = {
   expected_m: number;
   tolerance_m?: number;
 };
-export type Material = {
+/** The D04 map version the package belongs to. Ids are UUIDs, the revision is positive. */
+export type MapVersionRef = {
   id: string;
-  base_color: number[];
-  metallic: number;
-  roughness: number;
-  texture?: string;
+  map_id: string;
+  revision: number;
 };
-export type Texture = {
-  id: string;
-  path: string;
-  mime: string;
-  max_bytes: number;
-  width_px: number;
-  height_px: number;
+/** How the engine kit draws a building: roof tint, ward tone and wall material. */
+export type BuildingStyle = {
+  roof: number;
+  tone: number;
+  stone: boolean;
 };
 export type Place = {
   id: string;
@@ -65,11 +62,13 @@ export type Place = {
     width_m: number;
     depth_m: number;
   };
+  /** Building rotation around Y; not a calibration rotation. */
+  rotation_radians?: number;
   height_m: number | null;
   height_evidence?: Evidence;
   source_ref?: string;
   rationale?: string;
-  material: string;
+  style: BuildingStyle;
   provenance: string[];
 };
 export type Manifest = {
@@ -77,14 +76,14 @@ export type Manifest = {
   id: string;
   label: string;
   network_allowed: boolean;
+  map_version: MapVersionRef;
   illustration: Illustration;
   calibration: Calibration;
   scale_checks: ScaleCheck[];
-  ground: { material: string };
+  sector_size_m: number;
+  nav_cell_m?: number;
   spawn: Plan;
   waypoints: Anchor[];
-  materials: Material[];
-  textures: Texture[];
   places: Place[];
 };
 export type Ground = {
@@ -99,23 +98,11 @@ export type Solid = {
   center: Plan;
   width_m: number;
   depth_m: number;
+  rotation_radians: number;
   height_m: number;
   height_evidence: Evidence;
-  material: string;
+  style: BuildingStyle;
   provenance: string[];
-};
-export type Blocker = {
-  min_x: number;
-  max_x: number;
-  min_z: number;
-  max_z: number;
-};
-export type Mesh = {
-  positions: number[];
-  normals: number[];
-  colors: number[];
-  uvs: number[];
-  indices: number[];
 };
 export type Finding = {
   id: string;
