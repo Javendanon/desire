@@ -17,6 +17,11 @@ export type RefineSpec = {
   minWaterShareOfSea: number;
   /** 1 inside the city. Outside it, roof browns are fields and terrain. Omitted: all urban. */
   urban?: Uint8Array;
+  /**
+   * Street-coloured areas off the centrelines are squares only when at least this large and
+   * touching the painted streets. Smaller or detached ones are pale roof facets.
+   */
+  minSquarePx?: number;
   majorityRadius?: number;
   /** Land narrower than twice this radius is a pier candidate (morphological opening). */
   pierRadius?: number;
@@ -27,6 +32,8 @@ export type RefineSpec = {
 };
 
 const DEFAULT_MAJORITY_RADIUS = 2;
+/** About 180 m² at z18: smaller open paved areas are drawn as streets, not squares. */
+const DEFAULT_MIN_SQUARE_PX = 800;
 const DEFAULT_PIER_RADIUS = 20;
 const DEFAULT_PIER_GAP = 3;
 const DEFAULT_PIER_WET_SHARE = 0.4;
@@ -124,12 +131,28 @@ function settleLand(classes: Uint8Array, index: number, urban: boolean) {
   else if (!urban && ROOFS.has(classes[index])) classes[index] = Surface.Ground;
 }
 
-/** Refines raw classes. Order: speckle filter, open water, land, forced streets, piers. */
+/** Street colour away from the centrelines: keep squares, demote roof facets to ground. */
+function keepSquares(classes: Uint8Array, spec: RefineSpec, painted: Uint8Array) {
+  const { labels, sizes } = components(maskOf(classes, Surface.Street), spec.size);
+  const touching = new Uint8Array(sizes.length);
+  const reach = dilate(painted, spec.size, 1);
+  labels.forEach((label, index) => {
+    if (label >= 0 && reach[index] === 1) touching[label] = 1;
+  });
+  const minimum = spec.minSquarePx ?? DEFAULT_MIN_SQUARE_PX;
+  labels.forEach((label, index) => {
+    const facet = label >= 0 && (touching[label] === 0 || sizes[label] < minimum);
+    if (facet) classes[index] = Surface.Ground;
+  });
+}
+
+/** Refines raw classes. Order: speckle filter, open water, squares, land, streets, piers. */
 export function refineSurfaces(spec: RefineSpec): Uint8Array {
   const { size } = spec;
   const classes = majority(spec.classes, size, spec.majorityRadius ?? DEFAULT_MAJORITY_RADIUS);
   const water = openWater(classes, size, spec.minWaterShareOfSea);
   const streets = paintPolylines(new Uint8Array(classes.length), size, spec.streets);
+  keepSquares(classes, spec, streets);
   for (let index = 0; index < classes.length; index += 1) {
     if (water[index] === 1) classes[index] = Surface.Water;
     else settleLand(classes, index, (spec.urban?.[index] ?? 1) === 1);

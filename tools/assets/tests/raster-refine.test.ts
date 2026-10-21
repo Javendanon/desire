@@ -145,3 +145,21 @@ test('a large green forest outside the city and away from the sea is terrain', (
   assert.equal(refined[1 * 30 + 24], G, 'eight green pixels against an 80-pixel sea');
   assert.equal(refined[0], W);
 });
+
+test('street-coloured roof facets are block land; a square touching the streets stays street', () => {
+  const { classes, size } = grid([
+    'RRRRRRRRRRRR',
+    'RSSRRRRSSSSR',
+    'RSSRRRRSSSSR',
+    'RRRRRRRSSSSR',
+    'RRRRRRRRRRRR',
+    'RRRRRRRRRRRR',
+  ]);
+  const streets = [{ points: [[0, 4.5], [12, 4.5]] as [number, number][], width: 1 }];
+  const refined = refineSurfaces({
+    classes, size, streets, minWaterShareOfSea: 0.1, majorityRadius: 0, pierRadius: 1,
+    minSquarePx: 6,
+  });
+  assert.equal(refined[1 * 12 + 1], Surface.Ground, 'a 4-pixel facet away from any street');
+  assert.equal(refined[2 * 12 + 9], Surface.Street, 'a 10-pixel square that reaches the street');
+});
