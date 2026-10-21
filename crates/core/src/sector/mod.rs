@@ -1,10 +1,12 @@
 //! `desire.sector-render/1`: what the diorama draws for one map sector, in a typed binary layout
-//! a browser Worker can hand to the GPU without parsing. The contract, with the reasons for each
-//! choice, is `docs/waterdeep-3d/sector-format.md`; the TypeScript twin is
-//! `src/lib/map/sector-format.ts`. Both are tested against one fixture built from the spec.
+//! a browser Worker can hand to the GPU without parsing. The normative layout is
+//! `contracts/sector-render.json`, which generates `layout.rs` and the shared fixture
+//! (`tools/contracts/sector.py`). The reasons are in `docs/waterdeep-3d/sector-format.md`, and the
+//! TypeScript twin is `src/lib/map/sector-format.ts`.
 
 mod error;
 mod format;
+pub mod layout;
 
 pub use error::SectorFormatError;
 pub use format::{read_sector, write_sector};

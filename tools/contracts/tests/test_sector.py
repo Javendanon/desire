@@ -3,6 +3,7 @@
 import copy
 import json
 import math
+import re
 from pathlib import Path
 import struct
 import sys
@@ -99,7 +100,7 @@ class PayloadTests(unittest.TestCase):
             + self.payload[first_house + 32:],
         }
         for reason, payload in cases.items():
-            with self.subTest(reason), self.assertRaisesRegex(ValueError, reason):
+            with self.subTest(reason), self.assertRaisesRegex(ValueError, re.escape(reason)):
                 validate_payload(CONTRACT, payload)
 
     def test_unknown_kinds_and_wider_strides_are_accepted(self):

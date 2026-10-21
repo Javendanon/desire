@@ -1,7 +1,10 @@
 // `desire.sector-render/1`: what the diorama draws for one map sector, in a typed binary layout.
-// The contract is docs/waterdeep-3d/sector-format.md and the Rust twin is crates/core/src/sector.
-// Both are tested against one fixture built from the spec. Pure: no DOM, no Node APIs, so the
-// viewer's Worker and the asset pipeline share it.
+// Offsets, strides and kinds come from ../../generated/sector-layout.ts, generated from the
+// normative contracts/sector-render.json (tools/contracts/sector.py), as are the Rust twin's
+// (crates/core/src/sector). Pure: no DOM, no Node APIs, so the viewer's Worker and the asset
+// pipeline share it.
+
+import * as L from '../../generated/sector-layout.ts';
 
 export interface SectorHouse {
   /** Block index × 4096 + lot index: stable for one source raster and pipeline version. */
@@ -60,16 +63,8 @@ export class SectorFormatError extends Error {
   }
 }
 
-const MAGIC = [0x44, 0x53, 0x45, 0x43]; // "DSEC"
-const VERSION = 1;
-const HEADER_BYTES = 32;
-const TABLE_ENTRY_BYTES = 16;
-const ALIGNMENT = 4;
-const KIND = { houses: 1, berths: 2, trees: 3 } as const;
-const HOUSE_STRIDE = 32;
-const POINT_STRIDE = 12;
-const FRONTAGE_FLAG = 1;
 const LITTLE = true;
+const MAGIC_BYTES = [...L.MAGIC].map((letter) => letter.charCodeAt(0));
 
 type Section = {
   kind: number;
@@ -81,11 +76,11 @@ type Section = {
 /** Serialises a sector, sections in kind order with their known strides. O(records). */
 export function writeSector(sector: Sector): Uint8Array {
   const sections: Section[] = [
-    { kind: KIND.houses, count: sector.houses.length, stride: HOUSE_STRIDE, offset: 0 },
-    { kind: KIND.berths, count: sector.berths.length, stride: POINT_STRIDE, offset: 0 },
-    { kind: KIND.trees, count: sector.trees.length, stride: POINT_STRIDE, offset: 0 },
+    { kind: L.HOUSES_KIND, count: sector.houses.length, stride: L.HOUSES_STRIDE, offset: 0 },
+    { kind: L.BERTHS_KIND, count: sector.berths.length, stride: L.BERTHS_STRIDE, offset: 0 },
+    { kind: L.TREES_KIND, count: sector.trees.length, stride: L.TREES_STRIDE, offset: 0 },
   ];
-  let offset = HEADER_BYTES + sections.length * TABLE_ENTRY_BYTES;
+  let offset = L.HEADER_BYTES + sections.length * L.ENTRY_BYTES;
   for (const section of sections) {
     section.offset = offset;
     offset += section.count * section.stride;
@@ -93,56 +88,69 @@ export function writeSector(sector: Sector): Uint8Array {
   const bytes = new Uint8Array(offset);
   const view = new DataView(bytes.buffer);
   writeHeader(view, sector, sections);
+  const [houses, berths, trees] = sections;
   sector.houses.forEach((house, record) =>
-    writeHouse(view, house, sections[0].offset + record * HOUSE_STRIDE));
-  writePoints(view, sections[1].offset,
-    sector.berths.map((berth) => [berth.x_m, berth.z_m, berth.heading_radians]));
-  writePoints(view, sections[2].offset,
-    sector.trees.map((tree) => [tree.x_m, tree.z_m, tree.scale]));
+    writeHouse(view, house, houses.offset + record * houses.stride));
+  sector.berths.forEach((berth, record) => {
+    const at = berths.offset + record * berths.stride;
+    view.setFloat32(at + L.BERTHS_X_M, berth.x_m, LITTLE);
+    view.setFloat32(at + L.BERTHS_Z_M, berth.z_m, LITTLE);
+    view.setFloat32(at + L.BERTHS_HEADING_RADIANS, berth.heading_radians, LITTLE);
+  });
+  sector.trees.forEach((tree, record) => {
+    const at = trees.offset + record * trees.stride;
+    view.setFloat32(at + L.TREES_X_M, tree.x_m, LITTLE);
+    view.setFloat32(at + L.TREES_Z_M, tree.z_m, LITTLE);
+    view.setFloat32(at + L.TREES_SCALE, tree.scale, LITTLE);
+  });
   return bytes;
 }
 
 function writeHeader(view: DataView, sector: Sector, sections: Section[]) {
-  MAGIC.forEach((byte, at) => view.setUint8(at, byte));
-  view.setUint16(4, VERSION, LITTLE);
-  view.setUint16(6, sections.length, LITTLE);
-  view.setUint32(8, sector.index, LITTLE);
-  view.setFloat32(12, sector.origin_x_m, LITTLE);
-  view.setFloat32(16, sector.origin_z_m, LITTLE);
-  view.setFloat32(20, sector.size_m, LITTLE);
+  MAGIC_BYTES.forEach((byte, at) => view.setUint8(L.HEADER_MAGIC + at, byte));
+  view.setUint16(L.HEADER_VERSION, L.VERSION, LITTLE);
+  view.setUint16(L.HEADER_SECTION_COUNT, sections.length, LITTLE);
+  view.setUint32(L.HEADER_INDEX, sector.index, LITTLE);
+  view.setFloat32(L.HEADER_ORIGIN_X_M, sector.origin_x_m, LITTLE);
+  view.setFloat32(L.HEADER_ORIGIN_Z_M, sector.origin_z_m, LITTLE);
+  view.setFloat32(L.HEADER_SIZE_M, sector.size_m, LITTLE);
   sections.forEach((section, entry) => {
-    const at = HEADER_BYTES + entry * TABLE_ENTRY_BYTES;
-    [section.kind, section.count, section.stride, section.offset].forEach((value, field) =>
-      view.setUint32(at + field * 4, value, LITTLE));
+    const at = L.HEADER_BYTES + entry * L.ENTRY_BYTES;
+    view.setUint32(at + L.ENTRY_KIND, section.kind, LITTLE);
+    view.setUint32(at + L.ENTRY_COUNT, section.count, LITTLE);
+    view.setUint32(at + L.ENTRY_STRIDE, section.stride, LITTLE);
+    view.setUint32(at + L.ENTRY_OFFSET, section.offset, LITTLE);
   });
 }
 
 function writeHouse(view: DataView, house: SectorHouse, at: number) {
-  view.setUint32(at, house.id, LITTLE);
-  [house.x_m, house.z_m, house.width_m, house.depth_m, house.rotation_radians, house.height_m]
-    .forEach((value, field) => view.setFloat32(at + 4 + field * 4, value, LITTLE));
-  house.roof_rgb.forEach((channel, field) => view.setUint8(at + 28 + field, channel));
-  view.setUint8(at + 31, house.frontage ? FRONTAGE_FLAG : 0);
-}
-
-function writePoints(view: DataView, offset: number, points: number[][]) {
-  points.forEach((values, record) => values.forEach((value, field) =>
-    view.setFloat32(offset + record * POINT_STRIDE + field * 4, value, LITTLE)));
+  view.setUint32(at + L.HOUSES_ID, house.id, LITTLE);
+  view.setFloat32(at + L.HOUSES_X_M, house.x_m, LITTLE);
+  view.setFloat32(at + L.HOUSES_Z_M, house.z_m, LITTLE);
+  view.setFloat32(at + L.HOUSES_WIDTH_M, house.width_m, LITTLE);
+  view.setFloat32(at + L.HOUSES_DEPTH_M, house.depth_m, LITTLE);
+  view.setFloat32(at + L.HOUSES_ROTATION_RADIANS, house.rotation_radians, LITTLE);
+  view.setFloat32(at + L.HOUSES_HEIGHT_M, house.height_m, LITTLE);
+  house.roof_rgb.forEach((channel, field) =>
+    view.setUint8(at + L.HOUSES_ROOF_RGB + field, channel));
+  view.setUint8(at + L.HOUSES_FLAGS, house.frontage ? L.HOUSES_FRONTAGE_BIT : 0);
 }
 
 /** Parses and validates a sector payload. Throws SectorFormatError. O(bytes). */
 export function readSector(bytes: Uint8Array): Sector {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (bytes.length < MAGIC.length + 2) throw new SectorFormatError('truncated');
-  if (MAGIC.some((byte, at) => bytes[at] !== byte)) throw new SectorFormatError('bad magic');
-  const version = view.getUint16(4, LITTLE);
-  if (version !== VERSION) throw new SectorFormatError(`unsupported version ${version}`);
-  if (bytes.length < HEADER_BYTES) throw new SectorFormatError('truncated');
+  if (bytes.length < L.HEADER_VERSION + 2) throw new SectorFormatError('truncated');
+  if (MAGIC_BYTES.some((byte, at) => bytes[L.HEADER_MAGIC + at] !== byte)) {
+    throw new SectorFormatError('bad magic');
+  }
+  const version = view.getUint16(L.HEADER_VERSION, LITTLE);
+  if (version !== L.VERSION) throw new SectorFormatError(`unsupported version ${version}`);
+  if (bytes.length < L.HEADER_BYTES) throw new SectorFormatError('truncated');
   const sector: Sector = {
-    index: view.getUint32(8, LITTLE),
-    origin_x_m: view.getFloat32(12, LITTLE),
-    origin_z_m: view.getFloat32(16, LITTLE),
-    size_m: view.getFloat32(20, LITTLE),
+    index: view.getUint32(L.HEADER_INDEX, LITTLE),
+    origin_x_m: view.getFloat32(L.HEADER_ORIGIN_X_M, LITTLE),
+    origin_z_m: view.getFloat32(L.HEADER_ORIGIN_Z_M, LITTLE),
+    size_m: view.getFloat32(L.HEADER_SIZE_M, LITTLE),
     houses: [],
     berths: [],
     trees: [],
@@ -152,27 +160,35 @@ export function readSector(bytes: Uint8Array): Sector {
 }
 
 function sectionTable(view: DataView): Section[] {
-  const count = view.getUint16(6, LITTLE);
-  if (view.byteLength < HEADER_BYTES + count * TABLE_ENTRY_BYTES) {
+  const count = view.getUint16(L.HEADER_SECTION_COUNT, LITTLE);
+  if (view.byteLength < L.HEADER_BYTES + count * L.ENTRY_BYTES) {
     throw new SectorFormatError('truncated');
   }
   return Array.from({ length: count }, (_, entry) => {
-    const at = HEADER_BYTES + entry * TABLE_ENTRY_BYTES;
-    const [kind, records, stride, offset] = [0, 1, 2, 3].map((field) =>
-      view.getUint32(at + field * 4, LITTLE));
-    const section = { kind, count: records, stride, offset };
+    const at = L.HEADER_BYTES + entry * L.ENTRY_BYTES;
+    const section = {
+      kind: view.getUint32(at + L.ENTRY_KIND, LITTLE),
+      count: view.getUint32(at + L.ENTRY_COUNT, LITTLE),
+      stride: view.getUint32(at + L.ENTRY_STRIDE, LITTLE),
+      offset: view.getUint32(at + L.ENTRY_OFFSET, LITTLE),
+    };
     validate(view, section);
     return section;
   });
 }
 
-const knownStride = (kind: number) =>
-  ({ [KIND.houses]: HOUSE_STRIDE, [KIND.berths]: POINT_STRIDE, [KIND.trees]: POINT_STRIDE })[kind];
+const KNOWN_STRIDES = new Map<number, number>([
+  [L.HOUSES_KIND, L.HOUSES_STRIDE],
+  [L.BERTHS_KIND, L.BERTHS_STRIDE],
+  [L.TREES_KIND, L.TREES_STRIDE],
+]);
 
 function validate(view: DataView, section: Section) {
   const { kind } = section;
-  if (section.offset % ALIGNMENT !== 0) throw new SectorFormatError(`section ${kind} misaligned`);
-  const minimum = knownStride(kind);
+  if (section.offset % L.ALIGNMENT !== 0) {
+    throw new SectorFormatError(`section ${kind} misaligned`);
+  }
+  const minimum = KNOWN_STRIDES.get(kind);
   if (minimum !== undefined && section.stride < minimum) {
     throw new SectorFormatError(`section ${kind} stride too small`);
   }
@@ -185,28 +201,31 @@ function validate(view: DataView, section: Section) {
 function readSection(view: DataView, section: Section, sector: Sector) {
   for (let record = 0; record < section.count; record += 1) {
     const at = section.offset + record * section.stride;
-    const float = (field: number) => view.getFloat32(at + field * 4, LITTLE);
-    if (section.kind === KIND.houses) sector.houses.push(readHouse(view, at));
-    if (section.kind === KIND.berths) {
-      sector.berths.push({ x_m: float(0), z_m: float(1), heading_radians: float(2) });
+    const float = (field: number) => view.getFloat32(at + field, LITTLE);
+    if (section.kind === L.HOUSES_KIND) sector.houses.push(readHouse(view, at));
+    if (section.kind === L.BERTHS_KIND) {
+      sector.berths.push({ x_m: float(L.BERTHS_X_M), z_m: float(L.BERTHS_Z_M),
+        heading_radians: float(L.BERTHS_HEADING_RADIANS) });
     }
-    if (section.kind === KIND.trees) {
-      sector.trees.push({ x_m: float(0), z_m: float(1), scale: float(2) });
+    if (section.kind === L.TREES_KIND) {
+      sector.trees.push({ x_m: float(L.TREES_X_M), z_m: float(L.TREES_Z_M),
+        scale: float(L.TREES_SCALE) });
     }
   }
 }
 
 function readHouse(view: DataView, at: number): SectorHouse {
-  const float = (field: number) => view.getFloat32(at + 4 + field * 4, LITTLE);
+  const float = (field: number) => view.getFloat32(at + field, LITTLE);
+  const rgb = at + L.HOUSES_ROOF_RGB;
   return {
-    id: view.getUint32(at, LITTLE),
-    x_m: float(0),
-    z_m: float(1),
-    width_m: float(2),
-    depth_m: float(3),
-    rotation_radians: float(4),
-    height_m: float(5),
-    roof_rgb: [view.getUint8(at + 28), view.getUint8(at + 29), view.getUint8(at + 30)],
-    frontage: (view.getUint8(at + 31) & FRONTAGE_FLAG) !== 0,
+    id: view.getUint32(at + L.HOUSES_ID, LITTLE),
+    x_m: float(L.HOUSES_X_M),
+    z_m: float(L.HOUSES_Z_M),
+    width_m: float(L.HOUSES_WIDTH_M),
+    depth_m: float(L.HOUSES_DEPTH_M),
+    rotation_radians: float(L.HOUSES_ROTATION_RADIANS),
+    height_m: float(L.HOUSES_HEIGHT_M),
+    roof_rgb: [view.getUint8(rgb), view.getUint8(rgb + 1), view.getUint8(rgb + 2)],
+    frontage: (view.getUint8(at + L.HOUSES_FLAGS) & L.HOUSES_FRONTAGE_BIT) !== 0,
   };
 }
