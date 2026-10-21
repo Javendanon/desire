@@ -12,5 +12,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["asset-pipeline.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "include": ["asset-pipeline.ts", "extract-surfaces.ts", "generate-houses.ts", "export-slice.ts", "src/**/*.ts", "tests/**/*.ts"]
 }

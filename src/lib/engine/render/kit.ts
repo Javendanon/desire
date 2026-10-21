@@ -2,6 +2,8 @@
 
 import * as pc from 'playcanvas';
 
+import { instanceBounds } from '../math/instance-bounds.ts';
+
 export interface MaterialSpec {
   color?: string;
   map?: pc.Texture;
@@ -75,7 +77,8 @@ export function geometryMesh(device: pc.GraphicsDevice, geometry: pc.Geometry): 
 
 /**
  * One draw call for many copies of a mesh. Hardware instancing culls the batch as a whole,
- * so callers group copies by area or by material.
+ * so callers group copies by area or by material. The batch carries the bounds of its
+ * instances: camera culling and the directional shadow fit both read them.
  */
 export function instancedEntity(
   app: pc.AppBase,
@@ -90,13 +93,53 @@ export function instancedEntity(
   const format = pc.VertexFormat.getDefaultInstancingFormat(app.graphicsDevice);
   const buffer = new pc.VertexBuffer(app.graphicsDevice, format, matrices.length, { data });
   const instance = new pc.MeshInstance(mesh, mat);
-  instance.setInstancing(buffer, false);
+  const { min, max } = instanceBounds(data);
+  const box = new pc.BoundingBox();
+  box.setMinMax(new pc.Vec3(...min), new pc.Vec3(...max));
+  instance.setInstancing(buffer, true);
   entity.addComponent('render', {
     meshInstances: [instance],
     castShadows: true,
     receiveShadows: true,
   });
+  // The component hands its own bounds to its mesh instances, so they are set here.
+  if (entity.render) entity.render.customAabb = box;
   return entity;
+}
+
+export interface MovingBatchSpec {
+  mesh: pc.Mesh;
+  material: pc.StandardMaterial;
+  count: number;
+  castShadows: boolean;
+  /** World bounds every instance stays inside while it moves. */
+  bounds: pc.BoundingBox;
+}
+
+export interface MovingBatch {
+  entity: pc.Entity;
+  buffer: pc.VertexBuffer;
+  /** Instance matrices, column-major, 16 floats each: write, then `buffer.setData(data)`. */
+  data: Float32Array;
+}
+
+/** An instanced batch whose matrices the caller rewrites while its copies move in `bounds`. */
+export function movingBatch(app: pc.AppBase, spec: MovingBatchSpec): MovingBatch {
+  const device = app.graphicsDevice;
+  const data = new Float32Array(spec.count * 16);
+  const format = pc.VertexFormat.getDefaultInstancingFormat(device);
+  const buffer = new pc.VertexBuffer(device, format, Math.max(1, spec.count),
+    { usage: pc.BUFFER_DYNAMIC, data });
+  const instance = new pc.MeshInstance(spec.mesh, spec.material);
+  instance.setInstancing(buffer, true);
+  const entity = new pc.Entity('moving');
+  entity.addComponent('render', {
+    meshInstances: [instance],
+    castShadows: spec.castShadows,
+    receiveShadows: true,
+  });
+  if (entity.render) entity.render.customAabb = spec.bounds;
+  return { entity, buffer, data };
 }
 
 export type Triple = readonly [number, number, number];

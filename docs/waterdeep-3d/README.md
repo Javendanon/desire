@@ -1,0 +1,116 @@
+# Waterdeep 3D diorama
+
+Branch `task/waterdeep-3d-diorama`. Goal set by the project owner on 2026-10-20: turn the Waterdeep
+city map into a navigable 3D diorama with the visual quality of the design canvas
+(<https://claude.ai/artifact/7g4jHdGAfSRdwYTMst4ZVg>, "Farol en la niebla") or better. It should
+look like a game without being one, support animated movement and smooth zoom between city, ward
+and scene, and never read as low-poly "PS2" graphics.
+
+Licence position, decided by the owner: personal, non-commercial project. Source rasters and
+downloaded data stay under ignored `outputs/` or outside the repository and are never
+redistributed. Only derived, attributed layers enter the repository.
+
+## Sources
+
+| Source | What it gives | Where it lives |
+| --- | --- | --- |
+| AideDD atlas, map art by Jason Engle | 3560 × 7256 px raster (building-level painting, street names printed on it); 768 markers in `dataW.js` | `outputs/waterdeep-sources/aidedd/`, verified against the D05 SHA-256 values |
+| Tych Maps (<https://tychmaps.com/waterdeep/>) | Battle-map-scale painting of the whole city on a 5 ft grid, no printed labels; z18 stitch is 6319 × 9136 px. Vector layers: 312 named street centrelines, 8 ward polygons, about 580 named points of interest, the 5 ft grid | Owner's local copy `~/dev/waterdeep-map/` (not in the repository) |
+| Official art (Dragon Heist) | Mood reference: golden-hour backlight, layered haze, steep slate roofs, chimney smoke, the castle's many spires, tall ships, the lighthouse | Visual reference only |
+
+No navigable 3D Waterdeep was found: existing work is 2D interactive maps (AideDD, Tych Maps,
+Forgotten Maps, the Fandom wiki), a 2.5D animated map on Sketchfab and a Minecraft build.
+
+## Registration: Tych into the D05 frame
+
+- Tych geometry is authored in UTM metres: grid lines are exactly 1.524 m (5 ft) apart.
+- Eleven names appear in both D05 and Tych. A similarity fit over the nine point-like ones
+  (gates and small landmarks; the Market and the Castle are areas) gives rotation ≈ 0° and a median
+  residual of 14 m, about one building.
+- **Scale conflict.** Every gate-to-gate distance is 1.84 ± 0.01 times longer in D05 than in Tych
+  (ten pairs). The geometry agrees; the scales do not. D05 takes AideDD's `310 px = 1000 ft`;
+  Tych draws on a 5 ft battle grid. North Gate to South Gate is 5,414 m in D05 and 2,934 m in Tych.
+  The choice changes building sizes, travel times (D12/D14) and the D05/D13 frame; it is open
+  below.
+
+## Plan
+
+1. **Layers from the sources** (D18's "semantic interpretation" step): water and shore, city wall
+   and towers, street network (Tych centrelines), blocks, building footprints (segmented from the
+   label-free Tych raster), parks and the City of the Dead, piers, relief. Each layer carries
+   provenance and a review state.
+2. **Vertical slice: Dock Ward and the Market.** Diorama at target quality: dense blocks with varied
+   silhouettes, chimney smoke, shaded water and ships, golden-hour light with layered haze, smooth
+   city → ward → scene zoom. Measured (frame time, memory) and compared side by side with the design
+   canvas and the reference art.
+3. **Whole city**, with the castle and landmarks as authored pieces.
+
+## Decisions
+
+- **World scale: Tych's 5 ft grid** (owner, 2026-10-21). Buildings and streets are drawn for that
+  grid, so houses get credible medieval sizes and the tactical scene's 5 ft cells need no
+  conversion. Consequence: D05's calibration (`meters_per_pixel` 0.983, from AideDD's
+  `310 px = 1000 ft`) is replaced by a new D04 map-version revision scaled by 1 / 1.84, and D13's
+  Waterdeep content is rescaled with it. Until that revision lands, layers are produced in the
+  Tych frame and converted through one documented transform.
+
+## Layer extraction: first pass (Dock Ward)
+
+An exploratory per-pixel classifier on the label-free Tych raster (hue and saturation rules,
+5 × 5 majority filter) already separates roof masses, paved streets, red landmark roofs and open
+water. Known errors to fix before building footprints: shallow shore water reads as street or
+ground (same colour, but smooth and connected to open water); piers read as roofs (they touch
+water and lie outside the land mask); narrow dirt lanes merge adjacent blocks (Tych's street
+centrelines, rasterised at their width, force them open).
+
+## Layer extraction: what the whole city showed
+
+`extract-surfaces.ts` (commit `1a6e0aa`) runs on the whole 6319 × 9136 raster in 82 s and 2.2 GB.
+Dock Ward comes out clean: open water, coastline, every pier including the cross-pier junction,
+streets cutting the blocks, landmark roofs. The whole city exposes two limits of colour rules:
+
+- Fields and terrain outside the walls share the roof browns, so they read as roofs.
+- North and Sea Ward invert the palette: slate-blue roofs, dark brown streets, yellow courtyards
+  with trees. Their buildings read as ground.
+
+Next approach, structural rather than colour-only:
+
+1. Urban mask from Tych's ward polygons; browns outside it are terrain.
+2. Real street widths measured on the raster: from each Tych centreline, walk the normal until the
+   colour leaves the street's own colour (works for any palette).
+3. Courtyards and gardens by colour (yellow and green are consistent across wards).
+4. Built-up area = urban land − streets − courtyards − water − piers; its components are blocks.
+5. Houses: lots subdivided along each block's street frontage, roof colour sampled from the map
+   underneath. Red landmark roofs keep their real footprint.
+6. City wall and towers: the landward edge of the ward union plus Tych's 20 fortification and
+   6 gate points.
+
+The diorama does not need every house traced. Blocks, streets, courtyards and roof colours must
+match the map; houses must have the ward's density and look.
+
+## Vertical slice: Dock Ward diorama
+
+`pnpm dev`, then `/diorama.html`. The slice comes from `tools/assets/export-slice.ts` and is written
+to `outputs/waterdeep-layers/slice-dock/`. That folder is ignored, because it is derived from the
+source map. The slice holds the albedo, the heights, 1065 houses, 18 berths and meta.
+
+What the slice shows, and the decisions behind it:
+
+- **Houses** are planned from their data plus a seed (`house-plan.ts`): storeys from the measured
+  height and jettied timber upper floors. The map's red roofs mark notable buildings, which become
+  stone houses with hip roofs. Roof tones come from k-means over the map colours, mixed with the
+  design canvas tints and lifted 1.3×.
+- **Ground**: a neutral stone and earth palette with tiled cobble detail. Water has foam within
+  2 px of land and fades from shallows to deep over 40 px. The sea is translucent over it.
+- **Life**: lanterns with halos on every third street door, smoke from a third of the chimneys,
+  fog banks over the water, and caravels moored alongside the piers. Berths follow each pier
+  edge's normal, so diagonal piers take ships on both sides.
+- **Edge**: a haze ring hides the straight cut where the data ends. It is clear 70 m inside the
+  edge and opaque 30 m outside.
+- **Light**: the sun is at 38°, not 18°. Once instanced batches carried real bounds, house
+  shadows rendered fully, and at 18° they ran three heights long and darkened the streets. Masts
+  cast no shadow. The sea is a dielectric with its specular scaled to 0.2.
+
+Still to do: city walls (anchored least-cost tracing), the remaining wards and the D04/D05
+rescale. The whole city is planned in sectors built by a Rust pipeline:
+[rust-chunk-pipeline.md](rust-chunk-pipeline.md).
