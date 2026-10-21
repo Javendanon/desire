@@ -10,7 +10,8 @@ function crossings(ring: PixelRing, y: number): number[] {
   for (let index = 0; index < ring.length; index += 1) {
     const [ax, ay] = ring[index];
     const [bx, by] = ring[(index + 1) % ring.length];
-    if ((ay <= y && by > y) || (by <= y && ay > y)) xs.push(ax + ((y - ay) / (by - ay)) * (bx - ax));
+    const crosses = (ay <= y && by > y) || (by <= y && ay > y);
+    if (crosses) xs.push(ax + ((y - ay) / (by - ay)) * (bx - ax));
   }
   return xs;
 }

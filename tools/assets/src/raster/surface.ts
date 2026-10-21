@@ -33,20 +33,32 @@ const GARDEN_BLUE_BELOW_GREEN = 35;
 const STREET_MIN_CHANNEL = 100;
 const RGB = 3;
 
+type Pixel = {
+  r: number;
+  g: number;
+  b: number;
+  max: number;
+  saturation: number;
+};
+
+/** Ordered rules: the first match wins, anything else is ground. */
+const RULES: [SurfaceClass, (pixel: Pixel) => boolean][] = [
+  [Surface.Outline, ({ max }) => max < OUTLINE_MAX_CHANNEL],
+  [Surface.Water, ({ r, g, b }) => g > r + WATER_GREEN_OVER_RED && b >= r - WATER_BLUE_BELOW_RED],
+  [Surface.RedRoof, ({ r, g, b }) =>
+    r > g + RED_ROOF_RED_OVER_GREEN && r > b + RED_ROOF_RED_OVER_BLUE],
+  [Surface.Roof, ({ r, g, b, max }) =>
+    r > b + ROOF_RED_OVER_BLUE && r > g + ROOF_RED_OVER_GREEN && max < ROOF_MAX_CHANNEL],
+  [Surface.Garden, ({ r, g, b }) =>
+    r > GARDEN_MIN_RED && g > GARDEN_MIN_GREEN && b < g - GARDEN_BLUE_BELOW_GREEN],
+  [Surface.Street, ({ max, saturation }) =>
+    saturation < STREET_MAX_SATURATION && max > STREET_MIN_CHANNEL],
+];
+
 export function classifyPixel(r: number, g: number, b: number): SurfaceClass {
   const max = Math.max(r, g, b);
-  const saturation = max - Math.min(r, g, b);
-  if (max < OUTLINE_MAX_CHANNEL) return Surface.Outline;
-  if (g > r + WATER_GREEN_OVER_RED && b >= r - WATER_BLUE_BELOW_RED) return Surface.Water;
-  if (r > g + RED_ROOF_RED_OVER_GREEN && r > b + RED_ROOF_RED_OVER_BLUE) return Surface.RedRoof;
-  if (r > b + ROOF_RED_OVER_BLUE && r > g + ROOF_RED_OVER_GREEN && max < ROOF_MAX_CHANNEL) {
-    return Surface.Roof;
-  }
-  if (r > GARDEN_MIN_RED && g > GARDEN_MIN_GREEN && b < g - GARDEN_BLUE_BELOW_GREEN) {
-    return Surface.Garden;
-  }
-  if (saturation < STREET_MAX_SATURATION && max > STREET_MIN_CHANNEL) return Surface.Street;
-  return Surface.Ground;
+  const pixel = { r, g, b, max, saturation: max - Math.min(r, g, b) };
+  return RULES.find(([, matches]) => matches(pixel))?.[0] ?? Surface.Ground;
 }
 
 /** Classifies a row-major RGB buffer of `pixels` pixels. O(pixels). */

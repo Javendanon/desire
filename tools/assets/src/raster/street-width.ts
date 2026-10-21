@@ -2,7 +2,7 @@
  * Measures the drawn width of a street on the raster from its vector centreline.
  *
  * At samples along the line, the street's own colour is the median of a 3 × 3 window on the
- * centreline; the walk along the normal stops when the colour leaves it for a few pixels in a
+ * centreline. The walk along the normal stops when the colour leaves it for a few pixels in a
  * row. Comparing against the street's own colour works for any palette (light dirt lanes in Dock
  * Ward, dark brown streets in North Ward). The median over samples ignores junctions and squares.
  */
@@ -40,7 +40,8 @@ function colourAt(raster: RgbRaster, x: number, y: number): Colour | null {
   return [raster.rgb[offset], raster.rgb[offset + 1], raster.rgb[offset + 2]];
 }
 
-const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+const median = (values: number[]) =>
+  [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 
 function referenceColour(raster: RgbRaster, [x, y]: PixelPoint): Colour | null {
   const window: Colour[] = [];

@@ -10,8 +10,11 @@ export type RefineSpec = {
   classes: Uint8Array;
   size: RasterSize;
   streets: PixelPolyline[];
-  /** Water components smaller than this fraction of the image are inland noise. */
-  minWaterFraction: number;
+  /**
+   * Water components smaller than this share of the largest one (the sea) are not water:
+   * puddles, and green forests and parks whose colour matches shallow water.
+   */
+  minWaterShareOfSea: number;
   /** 1 inside the city. Outside it, roof browns are fields and terrain. Omitted: all urban. */
   urban?: Uint8Array;
   majorityRadius?: number;
@@ -37,10 +40,10 @@ const PIER_SOURCES = new Set<number>([Surface.Roof, Surface.Outline, Surface.Gro
 const maskOf = (classes: Uint8Array, wanted: number) =>
   Uint8Array.from(classes, (value) => (value === wanted ? 1 : 0));
 
-/** Keeps only water components large enough to be sea. The rest becomes ground. O(pixels). */
-function openWater(classes: Uint8Array, size: RasterSize, minFraction: number): Uint8Array {
+/** Keeps the sea and water bodies comparable to it. The rest becomes land. O(pixels). */
+function openWater(classes: Uint8Array, size: RasterSize, minShare: number): Uint8Array {
   const { labels, sizes } = components(maskOf(classes, Surface.Water), size);
-  const minimum = minFraction * classes.length;
+  const minimum = minShare * Math.max(0, ...sizes);
   return Uint8Array.from(labels, (label) => (label >= 0 && sizes[label] >= minimum ? 1 : 0));
 }
 
@@ -125,7 +128,7 @@ function settleLand(classes: Uint8Array, index: number, urban: boolean) {
 export function refineSurfaces(spec: RefineSpec): Uint8Array {
   const { size } = spec;
   const classes = majority(spec.classes, size, spec.majorityRadius ?? DEFAULT_MAJORITY_RADIUS);
-  const water = openWater(classes, size, spec.minWaterFraction);
+  const water = openWater(classes, size, spec.minWaterShareOfSea);
   const streets = paintPolylines(new Uint8Array(classes.length), size, spec.streets);
   for (let index = 0; index < classes.length; index += 1) {
     if (water[index] === 1) classes[index] = Surface.Water;
