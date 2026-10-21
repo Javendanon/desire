@@ -1,11 +1,14 @@
-/** Manifest loading and validation boundary; the only file access of the pipeline. */
+/** Manifest loading and validation boundary. The only file access of the pipeline. */
 import fs from 'node:fs';
 
 import { validateManifest } from './manifest.ts';
 import type { Manifest } from './types.ts';
 
 /** Reads a manifest file and returns its parsed data together with validation errors. */
-type ManifestRead = { manifest: Manifest | null; errors: string[] };
+type ManifestRead = {
+  manifest: Manifest | null;
+  errors: string[];
+};
 
 export function readManifest(manifestPath: string): ManifestRead {
   let raw: string;

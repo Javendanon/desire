@@ -19,12 +19,30 @@ const WEBP = {
   extendedWidth: 24, extendedHeight: 27, frameHeader: 30,
   dimensionMask: 0x3fff, dimensionBits: 14, losslessMagic: 0x2f,
 };
-type TextureFile = { file: string; bytes: number; error?: string };
-export type TextureCheck = {
-  id: string; mime: string; bytes: number; max_bytes: number; pass: boolean; detail: string;
-  width_px: number; height_px: number;
+type TextureFile = {
+  file: string;
+  bytes: number;
+  error?: string;
 };
-type TextureFileSize = { width_px: number; height_px: number };
+export type TextureCheck = {
+  id: string;
+  mime: string;
+  bytes: number;
+  max_bytes: number;
+  pass: boolean;
+  detail: string;
+  width_px: number;
+  height_px: number;
+};
+type TextureFileSize = {
+  width_px: number;
+  height_px: number;
+};
+/** A decoded raster size, or why it could not be produced. */
+type RasterRead = {
+  raster?: TextureFileSize | null;
+  problem?: string;
+};
 
 function probeTexture(texture: Texture, baseDir: string): TextureFile {
   let bytes = 0;
@@ -84,7 +102,7 @@ function decodeError(error: Error & { code?: string }) {
   return `dwebp decoder unavailable or failed: ${error.message}`;
 }
 
-function readRaster(file: string): { raster?: TextureFileSize | null; problem?: string } {
+function readRaster(file: string): RasterRead {
   try {
     return { raster: pngDimensions(file) };
   } catch (cause) {
@@ -96,7 +114,7 @@ function readRaster(file: string): { raster?: TextureFileSize | null; problem?: 
  * Decode stdin to a temporary PNG. A file target keeps large rasters away from the child
  * stdout buffer, so a 4096x4096 texture cannot be mistaken for an unavailable decoder.
  */
-function decodeRaster(data: Buffer): { raster?: TextureFileSize | null; problem?: string } {
+function decodeRaster(data: Buffer): RasterRead {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-webp-'));
   try {
     const file = path.join(directory, 'decoded.png');
@@ -149,7 +167,7 @@ function inspect(texture: Texture, data: Buffer, file: TextureFile): TextureChec
   };
 }
 
-/** O(textures + bytes); preflight all file sizes before any reads, then decode each buffer once. */
+/** O(textures + bytes). Preflight all file sizes before any reads, then decode each buffer once. */
 export function prepareTextures(manifest: Pick<Manifest, 'textures'>, baseDir: string) {
   const files = manifest.textures.map((texture) => probeTexture(texture, baseDir));
   const total = files.reduce((sum, file) => sum + file.bytes, 0);

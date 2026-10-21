@@ -29,7 +29,7 @@ function validateHeightEvidence(place: Place, errors: string[]) {
   }
 }
 
-/** Validates one declared height; unknown heights pass and stay unknown. */
+/** Validates one declared height. Unknown heights pass and stay unknown. */
 export function validateHeight(place: Place, errors: string[]) {
   if (validateHeightPresence(place, errors)) validateHeightEvidence(place, errors);
 }

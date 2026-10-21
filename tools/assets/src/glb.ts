@@ -6,10 +6,17 @@ import type {
   Accessor, AssetExtras, Builder, GltfJson, GltfMaterial, GltfMesh, GltfNode, Primitive,
 } from './gltf-types.ts';
 
-type MeshSpec = { builder: Builder; scene: Scene; manifest: Manifest;
-  materialById: Map<string, number> };
+type MeshSpec = {
+  builder: Builder;
+  scene: Scene;
+  manifest: Manifest;
+  materialById: Map<string, number>;
+};
 type Writer = ReturnType<typeof createNodeWriter>;
-type NodeOptions = { material?: number; extras?: Record<string, unknown> };
+type NodeOptions = {
+  material?: number;
+  extras?: Record<string, unknown>;
+};
 type NumericArray = Float32Array | Uint32Array;
 
 const GLB_MAGIC = 0x46546c67;
@@ -58,7 +65,10 @@ function boundsOf(values: NumericArray, itemSize: number) {
 }
 
 function pushAccessor(builder: Builder, values: NumericArray, spec: {
-  itemSize: number; componentType: number; target: number; withBounds?: boolean;
+  itemSize: number;
+  componentType: number;
+  target: number;
+  withBounds?: boolean;
 }) {
   const { itemSize, componentType, target, withBounds = false } = spec;
   const view = writeBufferView(builder, values, target);
@@ -259,7 +269,7 @@ function binaryChunk(builder: Builder) {
   return Buffer.concat(builder.chunks.map((chunk) => padTo(chunk, 0)));
 }
 
-/** Encodes geometry and compressed images; consumers must support the required extensions. */
+/** Encodes geometry and compressed images. Consumers must support the required extensions. */
 export function encodeGlb(scene: Scene, manifest: Manifest, images: Buffer[] = []): Buffer {
   const builder = createBuilder();
   const materials = buildMaterials(manifest);

@@ -10,10 +10,20 @@ import type { Scene } from './scene.ts';
 import type { TextureCheck } from './textures.ts';
 
 export type Artifact = {
-  path: string; bytes: number; generator: string; written: boolean; stale_path?: string;
+  path: string;
+  bytes: number;
+  generator: string;
+  written: boolean;
+  stale_path?: string;
 };
-type ReportSpec = { manifest: Manifest; scene: Scene; gltf: Gltf; textures: TextureCheck[];
-  bytes: number; artifactPath: string };
+type ReportSpec = {
+  manifest: Manifest;
+  scene: Scene;
+  gltf: Gltf;
+  textures: TextureCheck[];
+  bytes: number;
+  artifactPath: string;
+};
 type Context = ReturnType<typeof buildContext>;
 type Collision = ReturnType<typeof collisionState>;
 export type BuildReport = ReturnType<typeof buildReport>;
@@ -82,7 +92,7 @@ function blockerContains(blocker: Blocker, solid: Solid) {
     && blocker.min_z <= north && blocker.max_z >= south;
 }
 
-/** O(solids × blockers); returns footprints not covered by any collision quad. */
+/** O(solids × blockers). Returns footprints not covered by any collision quad. */
 // ponytail: bounded to 1024 authored places; use a spatial index for larger scene chunks.
 export function uncoveredSolids(blockers: Blocker[], solids: Solid[]): string[] {
   const missing = solids.filter((solid) => {
@@ -106,7 +116,12 @@ function collisionFindings(collision: Collision, scene: Scene) {
 
 /** The accessor fields the layout check reads. */
 type AccessorShape = Pick<Accessor, 'type' | 'count'>;
-type AccessorLayout = { json: { accessors: AccessorShape[]; meshes: { primitives: Primitive[] }[] } };
+type AccessorLayout = {
+  json: {
+    accessors: AccessorShape[];
+    meshes: { primitives: Primitive[] }[];
+  };
+};
 
 function attributeProblem(
   accessors: AccessorShape[], attributes: Record<string, number>, position: AccessorShape
@@ -128,7 +143,7 @@ function indicesProblem(accessors: AccessorShape[], primitive: Primitive) {
   return null;
 }
 
-/** Structural check of the written accessors; exported so tests can feed broken input. */
+/** Structural check of the written accessors. Exported so tests can feed broken input. */
 export function accessorFinding(gltf: AccessorLayout): Finding {
   const broken: string[] = [];
   for (const mesh of gltf.json.meshes) {
@@ -240,7 +255,7 @@ function reportSections(context: Context) {
   };
 }
 
-/** Builds the acceptance report; `pass` is true only when every check passes. */
+/** Builds the acceptance report. `pass` is true only when every check passes. */
 export function buildReport(spec: ReportSpec) {
   const { manifest, artifactPath, bytes } = spec;
   const context = buildContext(spec);

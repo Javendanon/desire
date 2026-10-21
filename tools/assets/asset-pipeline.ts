@@ -7,7 +7,10 @@ import { buildAsset } from './src/pipeline.ts';
 const EXIT_FAIL = 2;
 
 function parseArgs(argv: string[]) {
-  const args: { manifestPath: string | null; outDir: string | null } = {
+  const args: {
+    manifestPath: string | null;
+    outDir: string | null;
+  } = {
     manifestPath: null, outDir: null,
   };
   for (let index = 0; index < argv.length; index += 1) {

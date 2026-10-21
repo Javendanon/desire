@@ -1,4 +1,4 @@
-/** Validation of the offline asset scene manifest; pure, no file or network access. */
+/** Validation of the offline asset scene manifest. Pure, no file or network access. */
 import { planGround } from './calibration.ts';
 import { EVIDENCE, validateHeight } from './heights.ts';
 import { filled, finite, positive } from './values.ts';
@@ -145,7 +145,10 @@ function validatePixel(place: Place, frame: Illustration, errors: string[]) {
 }
 
 type PlaceContext = {
-  materialIds: Set<string>; frame: Illustration; seen: Set<string>; errors: string[];
+  materialIds: Set<string>;
+  frame: Illustration;
+  seen: Set<string>;
+  errors: string[];
 };
 
 function validatePlace(place: Place, context: PlaceContext) {
@@ -178,7 +181,10 @@ function groundExtent(manifest: Manifest) {
 }
 
 function validateAnchor(spec: {
-  where: string; point: Plan; extent: Ground | null; errors: string[];
+  where: string;
+  point: Plan;
+  extent: Ground | null;
+  errors: string[];
 }) {
   const { where, point, extent, errors } = spec;
   const { x_m: x, z_m: z } = point ?? {};
@@ -208,7 +214,7 @@ function validateAnchors(manifest: Manifest, errors: string[]) {
   }
 }
 
-/** Returns every contract violation; an empty list means the manifest can build. */
+/** Returns every contract violation. An empty list means the manifest can build. */
 export function validateManifest(value: unknown): { errors: string[] } {
   const errors: string[] = [];
   if (value === null || typeof value !== 'object') {

@@ -14,9 +14,20 @@ import type { BuildReport } from './check.ts';
 import type { Scene } from './scene.ts';
 import type { Finding, Manifest } from './types.ts';
 
-type ArtifactSpec = { manifest: Manifest; scene: Scene; artifactPath: string; sourceDir: string };
-type FailureReport = { id: string | null; pass: false; checks: Finding[];
-  error?: string; stale_path?: string; artifact?: never };
+type ArtifactSpec = {
+  manifest: Manifest;
+  scene: Scene;
+  artifactPath: string;
+  sourceDir: string;
+};
+type FailureReport = {
+  id: string | null;
+  pass: false;
+  checks: Finding[];
+  error?: string;
+  stale_path?: string;
+  artifact?: never;
+};
 type Report = BuildReport | FailureReport;
 
 const REPORT_NAME = 'report.json';
@@ -104,7 +115,10 @@ function rejectManifest(manifest: Manifest | null, errors: string[], targetDir: 
   return report;
 }
 
-type BuildOptions = { manifestPath: string; outDir?: string | null };
+type BuildOptions = {
+  manifestPath: string;
+  outDir?: string | null;
+};
 
 /** Validates, builds, writes report.json and keeps the .glb only when every check passes. */
 export function buildAsset({ manifestPath, outDir }: BuildOptions) {

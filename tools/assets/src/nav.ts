@@ -1,11 +1,20 @@
-/** Conservative walkability check over the scene ground; conservative means over-blocking. */
+/** Conservative walkability check over the scene ground. Conservative means over-blocking. */
 
 import type { Anchor, Blocker, Ground, Plan } from './types.ts';
 
 type Grid = ReturnType<typeof gridOf>;
-type Walk = { blocked: Uint8Array; grid: Grid; reached: Uint8Array };
-type Navigation = { ground: Ground; blockers: Blocker[]; spawn: Plan;
-  waypoints: Anchor[]; cell_m?: number };
+type Walk = {
+  blocked: Uint8Array;
+  grid: Grid;
+  reached: Uint8Array;
+};
+type Navigation = {
+  ground: Ground;
+  blockers: Blocker[];
+  spawn: Plan;
+  waypoints: Anchor[];
+  cell_m?: number;
+};
 
 export const DEFAULT_CELL_M = 1;
 export const MAX_NAV_CELLS = 1_000_000;
@@ -37,7 +46,10 @@ function gridOf(ground: Ground, cell: number) {
 }
 
 function markBlocker(spec: {
-  blocked: Uint8Array; grid: Grid; blocker: Blocker; cell: number;
+  blocked: Uint8Array;
+  grid: Grid;
+  blocker: Blocker;
+  cell: number;
 }) {
   const { blocked, grid, blocker, cell } = spec;
   const originX = grid.origin_x_m;
@@ -101,7 +113,10 @@ function waypointReached(spec: Pick<Walk, 'reached' | 'grid'> & { point: Plan; c
   return pointInGrid(point, grid) && reached[spawnIndex(point, grid, cell)] === 1;
 }
 
-type WaypointSpec = Pick<Walk, 'reached' | 'grid'> & { waypoints: Anchor[]; cell: number };
+type WaypointSpec = Pick<Walk, 'reached' | 'grid'> & {
+  waypoints: Anchor[];
+  cell: number;
+};
 
 function waypointResults(spec: WaypointSpec) {
   return spec.waypoints.map((waypoint) => ({

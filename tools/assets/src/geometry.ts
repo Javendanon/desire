@@ -1,4 +1,4 @@
-/** Flat-shaded box and ground meshes for the export; pure geometry, no engine. */
+/** Flat-shaded box and ground meshes for the export. Pure geometry, no engine. */
 
 import type { Ground, Mesh, Solid } from './types.ts';
 

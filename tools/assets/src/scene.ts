@@ -4,7 +4,10 @@ import type { Calibration, Manifest, Place, Solid } from './types.ts';
 
 export type Scene = ReturnType<typeof buildScene>;
 
-type SolidPlace = Place & { height_m: number; height_evidence: Solid['height_evidence'] };
+type SolidPlace = Place & {
+  height_m: number;
+  height_evidence: Solid['height_evidence'];
+};
 const hasHeight = (place: Place): place is SolidPlace => typeof place.height_m === 'number';
 
 function toSolid(place: SolidPlace, calibration: Calibration): Solid {

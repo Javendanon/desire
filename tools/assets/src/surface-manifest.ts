@@ -43,8 +43,10 @@ function validateMaterial(material: Material, textureIds: Set<string>, errors: s
   }
 }
 
-/** O(materials); malformed entries fail without interrupting remaining diagnostics. */
-export function validateMaterials(materials: Material[], textureIds: Set<string>, errors: string[]) {
+/** O(materials). Malformed entries fail without interrupting remaining diagnostics. */
+export function validateMaterials(
+  materials: Material[], textureIds: Set<string>, errors: string[],
+) {
   const ids = new Set<string>();
   for (const material of materials) {
     if (material === null || typeof material !== 'object') {
@@ -61,7 +63,8 @@ export function validateMaterials(materials: Material[], textureIds: Set<string>
 function validateTextureResolution(texture: Texture, errors: string[]) {
   if (!Number.isInteger(texture.width_px) || !positive(texture.width_px)
     || !Number.isInteger(texture.height_px) || !positive(texture.height_px)) {
-    errors.push(`texture ${texture.id}: width_px and height_px require positive integer dimensions`);
+    const detail = 'width_px and height_px require positive integer dimensions';
+    errors.push(`texture ${texture.id}: ${detail}`);
   }
   if (texture.width_px * texture.height_px > MAX_TEXTURE_PIXELS) {
     errors.push(`texture ${texture.id}: resolution exceeds the pixel budget`);
@@ -92,7 +95,7 @@ function validateTexture(texture: Texture, errors: string[]) {
   }
 }
 
-/** O(textures); bytes, containment and decoding are checked separately by the I/O stage. */
+/** O(textures). Bytes, containment and decoding are checked separately by the I/O stage. */
 export function validateTextures(textures: Texture[], errors: string[]) {
   const ids = new Set<string>();
   for (const texture of textures) {

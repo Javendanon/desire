@@ -1,9 +1,19 @@
-/** Authored manifest contract; runtime validation is still required for untrusted JSON. */
+/** Authored manifest contract. Runtime validation is still required for untrusted JSON. */
 export type Evidence = 'verified' | 'interpretation' | 'synthetic';
-export type Pixel = { u: number; v: number };
-export type Plan = { x_m: number; z_m: number };
+export type Pixel = {
+  u: number;
+  v: number;
+};
+export type Plan = {
+  x_m: number;
+  z_m: number;
+};
 export type Anchor = Plan & { id: string };
-export type Provenance = { source: string; attribution: string; evidence: Evidence };
+export type Provenance = {
+  source: string;
+  attribution: string;
+  evidence: Evidence;
+};
 /** The geometric part of a calibration: what the D04 transform reads. */
 export type PixelTransform = {
   origin_px_x: number;
@@ -51,7 +61,10 @@ export type Place = {
   id: string;
   name: string;
   pixel: Pixel;
-  footprint_m: { width_m: number; depth_m: number };
+  footprint_m: {
+    width_m: number;
+    depth_m: number;
+  };
   height_m: number | null;
   height_evidence?: Evidence;
   source_ref?: string;
@@ -91,7 +104,12 @@ export type Solid = {
   material: string;
   provenance: string[];
 };
-export type Blocker = { min_x: number; max_x: number; min_z: number; max_z: number };
+export type Blocker = {
+  min_x: number;
+  max_x: number;
+  min_z: number;
+  max_z: number;
+};
 export type Mesh = {
   positions: number[];
   normals: number[];
@@ -99,4 +117,8 @@ export type Mesh = {
   uvs: number[];
   indices: number[];
 };
-export type Finding = { id: string; pass: boolean; detail: string };
+export type Finding = {
+  id: string;
+  pass: boolean;
+  detail: string;
+};
