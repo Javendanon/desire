@@ -1,0 +1,238 @@
+{
+  "schema": "desire.map-package/1",
+  "id": "sample-harbor",
+  "label": "Synthetic sample scene for the asset pipeline. It is not Waterdeep cartography.",
+  "map_version": {
+    "id": "d1800000-0000-4000-8000-000000000001",
+    "map_id": "d1800000-0000-4000-8000-000000000002",
+    "revision": 1,
+    "calibration_provenance": {
+      "source": "synthetic:sample-harbor-scale",
+      "attribution": "Desire project, synthetic sample.",
+      "evidence": "synthetic"
+    }
+  },
+  "grid": {
+    "sizeM": 64,
+    "originX": 0,
+    "originZ": 0,
+    "columns": 4,
+    "rows": 3
+  },
+  "chunks": [
+    {
+      "id": "7572715e-a5bd-51a0-b45a-beb1809fe568",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 0,
+        "y_m": 0,
+        "z_m": 0
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/0.json"
+    },
+    {
+      "id": "2e2b505d-d1d8-5811-ad74-f9a23f01ceb0",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 128,
+        "y_m": 0,
+        "z_m": 0
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/2.json"
+    },
+    {
+      "id": "be7b5f61-1566-5148-9704-905b149391d5",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 192,
+        "y_m": 0,
+        "z_m": 0
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/3.json"
+    },
+    {
+      "id": "6232a52e-af9b-5707-beb6-396e31d1045d",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 128,
+        "y_m": 0,
+        "z_m": 64
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/6.json"
+    },
+    {
+      "id": "d0f7d64c-0b30-5e2a-b9ec-151c9a96cb4e",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 192,
+        "y_m": 0,
+        "z_m": 64
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/7.json"
+    },
+    {
+      "id": "b7d775f2-d92d-59f7-b2d4-c653c5c19027",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 128,
+        "y_m": 0,
+        "z_m": 128
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/10.json"
+    },
+    {
+      "id": "9694fc5f-8ed2-591c-b4d9-dfb781050daa",
+      "map_version_id": "d1800000-0000-4000-8000-000000000001",
+      "origin": {
+        "x_m": 192,
+        "y_m": 0,
+        "z_m": 128
+      },
+      "size_m": 64,
+      "asset_uri": "sectors/11.json"
+    }
+  ],
+  "places": [
+    {
+      "id": "quay-gate",
+      "name": "Quay gate",
+      "at": {
+        "x_m": 235,
+        "z_m": 175
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "fish-market",
+      "name": "Fish market",
+      "at": {
+        "x_m": 130,
+        "z_m": 115
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "net-menders-hut",
+      "name": "Net mender's hut",
+      "at": {
+        "x_m": 175,
+        "z_m": 155
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "watch-tower",
+      "name": "Watch tower",
+      "at": {
+        "x_m": 37.5,
+        "z_m": 45
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "customs-house",
+      "name": "Customs house",
+      "at": {
+        "x_m": 190,
+        "z_m": 60
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "ropewalk",
+      "name": "Ropewalk",
+      "at": {
+        "x_m": 155,
+        "z_m": 75
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "salt-store",
+      "name": "Salt store",
+      "at": {
+        "x_m": 220,
+        "z_m": 125
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "lighthouse",
+      "name": "Lighthouse",
+      "at": {
+        "x_m": 245,
+        "z_m": 30
+      },
+      "height_known": true,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "chandlers-row",
+      "name": "Chandler's row",
+      "at": {
+        "x_m": 75,
+        "z_m": 95
+      },
+      "height_known": false,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "id": "tide-stairs",
+      "name": "Tide stairs",
+      "at": {
+        "x_m": 15,
+        "z_m": 130
+      },
+      "height_known": false,
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ],
+  "unknown_places": [
+    "chandlers-row",
+    "tide-stairs"
+  ],
+  "nav": {
+    "asset_uri": "nav-costs.bin",
+    "cell_m": 1,
+    "origin_x_m": 0,
+    "origin_z_m": 0,
+    "width": 256,
+    "height": 192,
+    "blocked_cell": 4294967295,
+    "free_cost": 1
+  },
+  "network_allowed": false
+}

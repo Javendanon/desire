@@ -1,25 +1,16 @@
-/** Offline pipeline: manifest to .glb plus an acceptance report. No network, no inference. */
+/** Offline pipeline: manifest to a map package plus an acceptance report. No network. */
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildReport, reportedArtifactName } from './check.ts';
-import { encodeGlb } from './glb.ts';
-import { parseGlb } from './gltf-read.ts';
+import { buildReport, type BuildReport } from './check.ts';
 import { readManifest } from './io.ts';
 import { safeAssetId } from './manifest.ts';
 import { outputPath } from './output.ts';
+import { buildPackage } from './package.ts';
+import { readPackage, writePackage } from './package-io.ts';
 import { buildScene } from './scene.ts';
-import { prepareTextures } from './textures.ts';
-import type { BuildReport } from './check.ts';
-import type { Scene } from './scene.ts';
 import type { Finding, Manifest } from './types.ts';
 
-type ArtifactSpec = {
-  manifest: Manifest;
-  scene: Scene;
-  artifactPath: string;
-  sourceDir: string;
-};
 type FailureReport = {
   id: string | null;
   pass: false;
@@ -29,17 +20,20 @@ type FailureReport = {
   artifact?: never;
 };
 type Report = BuildReport | FailureReport;
+type BuildOptions = {
+  manifestPath: string;
+  outDir?: string | null;
+};
 
 const REPORT_NAME = 'report.json';
 const PENDING_SUFFIX = '.pending';
 const STALE_SUFFIX = '.stale';
 
-function checkedPath(file: string) {
-  return outputPath(path.dirname(file), path.basename(file));
-}
+export const packageName = (id: string) => `map-${id}`;
 
 function writeJson(file: string, value: unknown) {
-  fs.writeFileSync(checkedPath(file), `${JSON.stringify(value, null, 2)}\n`);
+  fs.writeFileSync(outputPath(path.dirname(file), path.basename(file)),
+    `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function failureReport(id: string | null, checks: Finding[], error?: string): FailureReport {
@@ -53,54 +47,44 @@ function invalidReport(manifest: Manifest | null, errors: string[]) {
   return failureReport(manifest?.id ?? null, checks);
 }
 
-function quarantine(artifactPath: string) {
-  checkedPath(artifactPath);
-  if (!fs.existsSync(artifactPath)) return null;
-  const stalePath = checkedPath(`${artifactPath}${STALE_SUFFIX}`);
-  fs.rmSync(stalePath, { force: true });
-  fs.renameSync(artifactPath, stalePath);
-  return stalePath;
+/** Moves a published package aside so a consumer can never load a failed build's predecessor. */
+function quarantine(targetDir: string, name: string) {
+  const published = outputPath(targetDir, name);
+  if (!fs.existsSync(published)) return null;
+  const stale = outputPath(targetDir, `${name}${STALE_SUFFIX}`);
+  fs.rmSync(stale, { recursive: true, force: true });
+  fs.renameSync(published, stale);
+  return path.basename(stale);
 }
 
-function stage(spec: ArtifactSpec) {
-  const { manifest, scene, artifactPath, sourceDir } = spec;
-  const pendingPath = checkedPath(`${artifactPath}${PENDING_SUFFIX}`);
-  fs.rmSync(pendingPath, { force: true });
-  const { images, checks: textures } = prepareTextures(manifest, sourceDir);
-  const failed = textures.filter((texture) => !texture.pass);
-  if (failed.length > 0) throw new Error(failed.map((texture) => texture.detail).join('; '));
-  fs.writeFileSync(pendingPath, encodeGlb(scene, manifest, images));
-  const gltf = parseGlb(fs.readFileSync(pendingPath));
-  const bytes = fs.statSync(pendingPath).size;
-  return { pendingPath, gltf, textures, bytes };
+function publish(targetDir: string, name: string, pending: string) {
+  const published = outputPath(targetDir, name);
+  fs.rmSync(published, { recursive: true, force: true });
+  fs.renameSync(pending, published);
 }
 
-function finishArtifact(spec: { pendingPath: string; report: BuildReport; artifactPath: string }) {
-  const { pendingPath, report, artifactPath } = spec;
-  report.artifact.written = report.pass;
-  if (report.pass) {
-    fs.renameSync(checkedPath(pendingPath), checkedPath(artifactPath));
-    return report;
-  }
-  fs.rmSync(pendingPath, { force: true });
-  const stale = quarantine(artifactPath);
-  if (stale) report.artifact.stale_path = reportedArtifactName(stale);
-  return report;
-}
-
-function buildArtifact(spec: ArtifactSpec): Report {
-  const { manifest, scene, artifactPath, sourceDir } = spec;
-  const pendingPath = checkedPath(`${artifactPath}${PENDING_SUFFIX}`);
+function buildPackageDir(manifest: Manifest, targetDir: string): Report {
+  const name = packageName(manifest.id);
+  const pending = outputPath(targetDir, `${name}${PENDING_SUFFIX}`);
+  fs.rmSync(pending, { recursive: true, force: true });
   try {
-    const staged = stage({ manifest, scene, artifactPath, sourceDir });
-    const report = buildReport({ manifest, scene, gltf: staged.gltf, textures: staged.textures,
-      bytes: staged.bytes, artifactPath });
-    return finishArtifact({ pendingPath: staged.pendingPath, report, artifactPath });
+    const scene = buildScene(manifest);
+    const artifact = writePackage(pending, buildPackage(scene, manifest));
+    const written = readPackage(pending);
+    const report = buildReport({ manifest, scene, written, artifact: { ...artifact, path: name } });
+    report.artifact.written = report.pass;
+    if (report.pass) publish(targetDir, name, pending);
+    else {
+      fs.rmSync(pending, { recursive: true, force: true });
+      const stale = quarantine(targetDir, name);
+      if (stale) report.artifact.stale_path = stale;
+    }
+    return report;
   } catch (cause) {
-    fs.rmSync(pendingPath, { force: true });
-    const report = failureReport(scene.id, [], String(cause));
-    const stale = quarantine(artifactPath);
-    if (stale) report.stale_path = reportedArtifactName(stale);
+    fs.rmSync(pending, { recursive: true, force: true });
+    const report = failureReport(manifest.id, [], String(cause));
+    const stale = quarantine(targetDir, name);
+    if (stale) report.stale_path = stale;
     return report;
   }
 }
@@ -108,39 +92,26 @@ function buildArtifact(spec: ArtifactSpec): Report {
 function rejectManifest(manifest: Manifest | null, errors: string[], targetDir: string) {
   const report = invalidReport(manifest, errors);
   if (safeAssetId(manifest?.id)) {
-    const artifact = outputPath(targetDir, `scene-${manifest.id}.glb`);
-    const stale = quarantine(artifact);
-    if (stale) report.stale_path = reportedArtifactName(stale);
+    const stale = quarantine(targetDir, packageName(manifest.id));
+    if (stale) report.stale_path = stale;
   }
   return report;
 }
 
-type BuildOptions = {
-  manifestPath: string;
-  outDir?: string | null;
-};
-
-/** Validates, builds, writes report.json and keeps the .glb only when every check passes. */
+/** Validates, builds, writes report.json and keeps the package only when every check passes. */
 export function buildAsset({ manifestPath, outDir }: BuildOptions) {
   const targetDir = outDir ?? path.dirname(manifestPath);
   fs.mkdirSync(targetDir, { recursive: true });
   const reportPath = outputPath(targetDir, REPORT_NAME);
   const { manifest, errors } = readManifest(manifestPath);
-  if (errors.length > 0) {
-    const report = rejectManifest(manifest, errors, targetDir);
-    writeJson(reportPath, report);
-    return { report, artifactPath: null, reportPath, bytes: 0 };
-  }
-  if (!manifest) throw new Error('validated manifest is missing');
-  const scene = buildScene(manifest);
-  const artifactPath = outputPath(targetDir, `scene-${scene.id}.glb`);
-  const sourceDir = path.dirname(manifestPath);
-  const report = buildArtifact({ manifest, scene, artifactPath, sourceDir });
+  const report = errors.length > 0 || !manifest
+    ? rejectManifest(manifest, errors, targetDir)
+    : buildPackageDir(manifest, targetDir);
   writeJson(reportPath, report);
   const written = report.artifact?.written === true;
   return {
     report,
-    artifactPath: written ? artifactPath : null,
+    packagePath: written ? outputPath(targetDir, report.artifact!.path) : null,
     reportPath,
     bytes: written ? report.artifact!.bytes : 0,
   };

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** CLI: build one illustration manifest into a .glb scene and its acceptance report. */
+/** CLI: build one illustration manifest into a map package and its acceptance report. */
 import path from 'node:path';
 
 import { buildAsset } from './src/pipeline.ts';
@@ -32,11 +32,11 @@ function main(argv: string[]) {
     process.exitCode = EXIT_FAIL;
     return;
   }
-  const { report, artifactPath, reportPath } = buildAsset({ manifestPath, outDir });
+  const { report, packagePath, reportPath } = buildAsset({ manifestPath, outDir });
   const failed = report.checks.filter((check) => !check.pass);
   const status = report.pass ? 'PASS' : 'FAIL';
   console.log(`${report.id ?? manifestPath}: ${status} (${path.basename(reportPath)})`);
-  if (artifactPath) console.log(`artifact ${artifactPath}`);
+  if (packagePath) console.log(`package ${packagePath}`);
   for (const check of failed) console.error(`  FAIL ${check.id}: ${check.detail}`);
   process.exitCode = report.pass ? 0 : EXIT_FAIL;
 }

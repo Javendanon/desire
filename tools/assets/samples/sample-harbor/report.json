@@ -14,64 +14,29 @@
       "detail": "verified 0, interpretation 1, synthetic 7, unknown 2"
     },
     {
-      "id": "collision.separate",
+      "id": "package.buildings",
       "pass": true,
-      "detail": "collision node apart from render LODs"
+      "detail": "8 buildings in 7 sectors"
     },
     {
-      "id": "collision.materialless",
+      "id": "package.chunks",
       "pass": true,
-      "detail": "collision has no material"
+      "detail": "7 D04 chunks of map version d1800000-0000-4000-8000-000000000001"
     },
     {
-      "id": "collision.covers_solids",
+      "id": "nav.costs",
       "pass": true,
-      "detail": "8 solid footprints covered"
+      "detail": "256x192 u32 cells at 1 m, every footprint blocked"
     },
     {
-      "id": "lod.levels",
+      "id": "package.provenance",
       "pass": true,
-      "detail": "lod0 8/8, lod1 true"
-    },
-    {
-      "id": "artifact.accessors",
-      "pass": true,
-      "detail": "attribute layout matches POSITION"
-    },
-    {
-      "id": "render.default_scene",
-      "pass": true,
-      "detail": "default scene contains only ground and LOD0"
-    },
-    {
-      "id": "render.scenes_disjoint",
-      "pass": true,
-      "detail": "every scene owns its root nodes"
-    },
-    {
-      "id": "artifact.embedded",
-      "pass": true,
-      "detail": "geometry and compressed images are embedded"
-    },
-    {
-      "id": "artifact.provenance",
-      "pass": true,
-      "detail": "source synthetic:sample-harbor, network false"
-    },
-    {
-      "id": "artifact.unknown_places",
-      "pass": true,
-      "detail": "listed chandlers-row, tide-stairs"
-    },
-    {
-      "id": "textures.compressed",
-      "pass": true,
-      "detail": "paving-webp: image/webp, 52 B, resolution matches; dwebp decoded PNG"
+      "detail": "calibration synthetic:sample-harbor-scale, unknown places chandlers-row, tide-stairs"
     },
     {
       "id": "navigation.waypoints",
       "pass": true,
-      "detail": "47624/49152 reached"
+      "detail": "47718/49152 reached"
     }
   ],
   "scale": {
@@ -98,40 +63,32 @@
     "chandlers-row",
     "tide-stairs"
   ],
-  "collision": {
-    "separate": true,
-    "materialless": true,
-    "triangles": 80
-  },
-  "lod": {
-    "lod0_nodes": 8,
-    "lod1_nodes": 1,
-    "lod0_triangles": 80,
-    "lod1_triangles": 80
-  },
-  "textures": [
-    {
-      "id": "paving-webp",
-      "mime": "image/webp",
-      "bytes": 52,
-      "max_bytes": 262144,
-      "width_px": 16,
-      "height_px": 16,
-      "pass": true,
-      "detail": "image/webp, 52 B, resolution matches; dwebp decoded PNG"
+  "package": {
+    "sectors": 7,
+    "chunks": 7,
+    "buildings": 8,
+    "grid": {
+      "sizeM": 64,
+      "originX": 0,
+      "originZ": 0,
+      "columns": 4,
+      "rows": 3
     }
-  ],
+  },
   "navigation": {
+    "asset_uri": "nav-costs.bin",
     "cell_m": 1,
-    "columns": 256,
-    "rows": 192,
     "origin_x_m": 0,
     "origin_z_m": 0,
+    "width": 256,
+    "height": 192,
+    "blocked_cell": 4294967295,
+    "free_cost": 1,
     "total_cells": 49152,
-    "free_cells": 47624,
-    "blocked_cells": 1528,
-    "reachable_cells": 47624,
-    "reachable_ratio": 0.969,
+    "free_cells": 47718,
+    "blocked_cells": 1434,
+    "reachable_cells": 47718,
+    "reachable_ratio": 0.971,
     "spawn": {
       "x_m": 16,
       "z_m": 16,
@@ -154,9 +111,9 @@
     "pass": true
   },
   "artifact": {
-    "path": "scene-sample-harbor.glb",
-    "bytes": 38068,
-    "generator": "desire-asset-pipeline/1",
+    "bytes": 204518,
+    "files": 9,
+    "path": "map-sample-harbor",
     "written": true
   },
   "provenance": {

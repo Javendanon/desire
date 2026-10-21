@@ -20,13 +20,13 @@ function runCli(args: string[]) {
   return spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
 }
 
-test('the CLI exits 0 and writes the artifact and report for the sample', (context) => {
+test('the CLI exits 0 and writes the package and report for the sample', (context) => {
   const out = outDir(context);
   const run = runCli(['--manifest', sampleManifestPath(), '--out', out]);
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /sample-harbor: PASS \(report\.json\)/);
   assert.ok(fs.existsSync(path.join(out, 'report.json')));
-  assert.ok(fs.existsSync(path.join(out, 'scene-sample-harbor.glb')));
+  assert.ok(fs.existsSync(path.join(out, 'map-sample-harbor', 'map.json')));
 });
 
 test('the CLI exits 2, names the failing check and still writes the report', (context) => {

@@ -1,12 +1,8 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import test from 'node:test';
 
 import { validateManifest } from '../src/manifest.ts';
-import { checkTextures } from '../src/textures.ts';
-import { sampleManifest, sampleManifestPath } from './helpers.ts';
+import { sampleManifest } from './helpers.ts';
 
 const base = sampleManifest;
 
@@ -16,7 +12,7 @@ const errorsOf = (manifest: unknown) => validateManifest(manifest).errors;
 test('the committed sample manifest is valid', () => {
   const manifest = base();
   assert.deepEqual(errorsOf(manifest), []);
-  assert.equal(manifest.schema, 'desire.asset-scene/1');
+  assert.equal(manifest.schema, 'desire.asset-scene/2');
 });
 
 test('a verified height needs a source reference', () => {
@@ -65,9 +61,9 @@ test('a manifest without a reachable anchor or a solid cannot build', () => {
 
 test('malformed sections return errors instead of throwing', () => {
   const manifest = base();
-  const errors = errorsOf({ ...manifest, places: {}, ground: undefined }).join('\n');
-  assert.match(errors, /places/);
-  assert.match(errors, /ground/);
+  const errors = errorsOf({ ...manifest, places: {}, map_version: 'v1' }).join('\n');
+  assert.match(errors, /places must be an array/);
+  assert.match(errors, /map_version is required/);
 });
 
 test('an unknown height is allowed and invents nothing', () => {
@@ -83,12 +79,6 @@ test('an impossible height is rejected instead of becoming a tower', () => {
   assert.match(errorsOf(manifest).join('\n'), /height_m/);
 });
 
-test('a manifest without a textures section is rejected', () => {
-  const manifest = base();
-  const { textures: _omitted, ...withoutTextures } = manifest;
-  assert.match(errorsOf(withoutTextures).join('\n'), /textures must be an array/);
-});
-
 test('an anchor outside a shifted calibrated ground is rejected', () => {
   const manifest = base();
   manifest.calibration.origin_px_x = 2000;
@@ -102,20 +92,12 @@ test('malformed entries are reported instead of thrown', () => {
   const errors = errorsOf({
     ...manifest,
     places: [null],
-    materials: [null, { id: 'bad-color', base_color: 'abcd' }],
-    textures: [null],
+    waypoints: [null],
     scale_checks: [null],
   }).join('\n');
   assert.match(errors, /place: every entry must be an object/);
-  assert.match(errors, /material: every entry must be an object/);
-  assert.match(errors, /texture: every entry must be an object/);
+  assert.match(errors, /waypoint: every entry must be an object/);
   assert.match(errors, /scale_check: every entry must be an object/);
-});
-
-test('an uncompressed texture is rejected', () => {
-  const manifest = base();
-  manifest.textures[0].mime = 'image/png';
-  assert.match(errorsOf(manifest).join('\n'), /compressed/);
 });
 
 test('a manifest that allows the network is rejected without authorization', () => {
@@ -133,20 +115,6 @@ test('duplicate place ids and impossible footprints are rejected', () => {
   assert.match(errors, /footprint_m/);
 });
 
-test('the sample texture passes the magic-byte and budget check', () => {
-  const [texture] = checkTextures(base(), path.dirname(sampleManifestPath()));
-  assert.equal(texture.id, 'paving-webp');
-  assert.equal(texture.pass, true, texture.detail);
-});
-
-test('texture resolution metadata must match the compressed image', () => {
-  const manifest = base();
-  manifest.textures[0].width_px = 32;
-  const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
-  assert.equal(texture.pass, false);
-  assert.match(texture.detail, /resolution mismatch/);
-});
-
 test('unsafe or oversized asset identities are rejected', () => {
   for (const id of ['../victim', 'x/../../victim', 'x\\\\victim', '', 'a'.repeat(65)]) {
     const manifest = base();
@@ -155,20 +123,42 @@ test('unsafe or oversized asset identities are rejected', () => {
   }
 });
 
-test('a texture over its byte budget fails the check', () => {
+test('a package needs a D04 map version with UUID ids and a positive revision', () => {
   const manifest = base();
-  manifest.textures[0].max_bytes = 10;
-  const [texture] = checkTextures(manifest, path.dirname(sampleManifestPath()));
-  assert.equal(texture.pass, false);
-  assert.equal(texture.bytes, 52);
+  const errors = (version: unknown) => errorsOf({ ...manifest, map_version: version }).join('\n');
+  assert.match(errors(undefined), /map_version is required/);
+  assert.match(errors({ ...manifest.map_version, id: 'not-a-uuid' }), /id must be a lowercase UUID/);
+  assert.match(errors({ ...manifest.map_version, revision: 0 }), /revision must be a positive u32/);
 });
 
-test('a renamed file does not pass as compressed', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-texture-'));
-  fs.writeFileSync(path.join(dir, 'fake.webp'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-  const fake = { id: 'fake', path: 'fake.webp', mime: 'image/webp', max_bytes: 1024 };
-  const textures = [{ ...fake, width_px: 1, height_px: 1 }];
-  const [texture] = checkTextures({ textures }, dir);
-  assert.equal(texture.pass, false);
-  assert.match(texture.detail, /not image\/webp/);
+test('building style follows the engine kit: five roof tints, a tone and a wall material', () => {
+  const manifest = base();
+  const place = (style: unknown) => ({ ...manifest.places[0], style });
+  const errors = (style: unknown) =>
+    errorsOf({ ...manifest, places: [place(style)] }).join('\n');
+  assert.match(errors(undefined), /style with roof, tone and stone is required/);
+  assert.match(errors({ roof: 5, tone: 0, stone: true }), /style.roof must be an integer from 0 to 4/);
+  assert.match(errors({ roof: 0, tone: -1, stone: true }), /style.tone/);
+  assert.match(errors({ roof: 0, tone: 0, stone: 'yes' }), /style.stone must be boolean/);
+});
+
+test('building rotation must be a finite angle within one half turn', () => {
+  const manifest = base();
+  for (const rotation of [Number.NaN, 4, '0.3']) {
+    const place = { ...manifest.places[0], rotation_radians: rotation };
+    assert.match(errorsOf({ ...manifest, places: [place] }).join('\n'), /rotation_radians/);
+  }
+});
+
+test('sector size and navigation cell size are bounded before allocation', () => {
+  const manifest = base();
+  assert.match(errorsOf({ ...manifest, sector_size_m: 0 }).join('\n'), /sector_size_m must be positive/);
+  assert.match(errorsOf({ ...manifest, sector_size_m: 0.5 }).join('\n'), /over the budget/);
+  assert.match(errorsOf({ ...manifest, nav_cell_m: 0.1 }).join('\n'), /raise nav_cell_m/);
+});
+
+test('version 1 manifests are rejected instead of being read as version 2', () => {
+  const manifest = base();
+  assert.match(errorsOf({ ...manifest, schema: 'desire.asset-scene/1' }).join('\n'),
+    /schema must be desire.asset-scene\/2/);
 });

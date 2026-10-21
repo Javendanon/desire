@@ -1,0 +1,38 @@
+{
+  "schema": "desire.map-sector/1",
+  "index": 6,
+  "buildings": [
+    {
+      "x": 130,
+      "z": 115,
+      "width": 24,
+      "depth": 14,
+      "height": 7,
+      "rotation": 0,
+      "roof": 3,
+      "tone": 1,
+      "stone": false,
+      "place_id": "fish-market",
+      "height_evidence": "synthetic",
+      "provenance": [
+        "synthetic-sample"
+      ]
+    },
+    {
+      "x": 155,
+      "z": 75,
+      "width": 30,
+      "depth": 8,
+      "height": 6,
+      "rotation": 0.3,
+      "roof": 3,
+      "tone": 1,
+      "stone": false,
+      "place_id": "ropewalk",
+      "height_evidence": "synthetic",
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ]
+}

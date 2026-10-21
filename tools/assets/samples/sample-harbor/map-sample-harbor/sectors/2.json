@@ -1,0 +1,22 @@
+{
+  "schema": "desire.map-sector/1",
+  "index": 2,
+  "buildings": [
+    {
+      "x": 190,
+      "z": 60,
+      "width": 20,
+      "depth": 16,
+      "height": 12,
+      "rotation": -0.2,
+      "roof": 0,
+      "tone": 0,
+      "stone": true,
+      "place_id": "customs-house",
+      "height_evidence": "synthetic",
+      "provenance": [
+        "synthetic-sample"
+      ]
+    }
+  ]
+}

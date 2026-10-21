@@ -1,92 +1,120 @@
-/** Conservative walkability check over the scene ground. Conservative means over-blocking. */
-
-import type { Anchor, Blocker, Ground, Plan } from './types.ts';
-
-type Grid = ReturnType<typeof gridOf>;
-type Walk = {
-  blocked: Uint8Array;
-  grid: Grid;
-  reached: Uint8Array;
-};
-type Navigation = {
-  ground: Ground;
-  blockers: Blocker[];
-  spawn: Plan;
-  waypoints: Anchor[];
-  cell_m?: number;
-};
+/**
+ * Walkability as a D12 routing cost buffer over the scene ground, and the acceptance walk on it.
+ *
+ * A cell is blocked when any building footprint overlaps it (separating-axis test), so blocking
+ * follows the real rotated footprint and never leaks through a thin wall.
+ */
+import { footprintBounds, footprintCorners, overlapsCell } from './footprint.ts';
+import { BLOCKED_CELL, FREE_CELL_COST } from './map-types.ts';
+import type { Anchor, Ground, Plan, Solid } from './types.ts';
 
 export const DEFAULT_CELL_M = 1;
-export const MAX_NAV_CELLS = 1_000_000;
+/** D12 `MAX_GRID_CELLS`: the largest grid the router accepts. Pinned by a parity test. */
+export const MAX_NAV_CELLS = 1_048_576;
+
+export type NavDims = {
+  cell_m: number;
+  origin_x_m: number;
+  origin_z_m: number;
+  width: number;
+  height: number;
+};
+export type CostGrid = {
+  dims: NavDims;
+  costs: Uint32Array;
+};
+type CostSpec = {
+  ground: Ground;
+  solids: Solid[];
+  cell_m?: number;
+};
+type WalkSpec = CostGrid & {
+  spawn: Plan;
+  waypoints: Anchor[];
+};
+
+const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const PER_MILLE = 1000;
 
 /** Finite allocation budget, shared by manifest preflight and direct callers. */
 export function gridFitsBudget(ground: Ground, cell = DEFAULT_CELL_M): boolean {
   const count = Math.ceil(ground.width_m / cell) * Math.ceil(ground.height_m / cell);
   return Number.isFinite(count) && count > 0 && count <= MAX_NAV_CELLS;
 }
-const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const PER_MILLE = 1000;
 
-const cellColumn = (x: number, cell: number, origin: number) => Math.floor((x - origin) / cell);
-const cellRow = (z: number, cell: number, origin: number) => Math.floor((z - origin) / cell);
-
-function clamp(value: number, limit: number) {
-  return Math.min(Math.max(value, 0), limit - 1);
-}
-
-function gridOf(ground: Ground, cell: number) {
+function dimsOf(ground: Ground, cell: number): NavDims {
   return {
-    columns: Math.ceil(ground.width_m / cell),
-    rows: Math.ceil(ground.height_m / cell),
+    cell_m: cell,
     origin_x_m: ground.origin_x_m,
     origin_z_m: ground.origin_z_m,
-    max_x_m: ground.origin_x_m + ground.width_m,
-    max_z_m: ground.origin_z_m + ground.height_m,
+    width: Math.ceil(ground.width_m / cell),
+    height: Math.ceil(ground.height_m / cell),
   };
 }
 
-function markBlocker(spec: {
-  blocked: Uint8Array;
-  grid: Grid;
-  blocker: Blocker;
-  cell: number;
-}) {
-  const { blocked, grid, blocker, cell } = spec;
-  const originX = grid.origin_x_m;
-  const originZ = grid.origin_z_m;
-  const firstColumn = clamp(cellColumn(blocker.min_x, cell, originX), grid.columns);
-  const lastColumn = clamp(cellColumn(blocker.max_x, cell, originX), grid.columns);
-  const firstRow = clamp(cellRow(blocker.min_z, cell, originZ), grid.rows);
-  const lastRow = clamp(cellRow(blocker.max_z, cell, originZ), grid.rows);
-  for (let row = firstRow; row <= lastRow; row += 1) {
-    for (let column = firstColumn; column <= lastColumn; column += 1) {
-      blocked[row * grid.columns + column] = 1;
+const clamp = (value: number, limit: number) => Math.min(Math.max(value, 0), limit - 1);
+
+/** Cell index holding a plan point. Boundary points select the last interior cell. */
+export function cellIndex(dims: NavDims, point: Plan): number {
+  const column = clamp(Math.floor((point.x_m - dims.origin_x_m) / dims.cell_m), dims.width);
+  const row = clamp(Math.floor((point.z_m - dims.origin_z_m) / dims.cell_m), dims.height);
+  return row * dims.width + column;
+}
+
+function cellBounds(dims: NavDims, column: number, row: number) {
+  const min_x = dims.origin_x_m + column * dims.cell_m;
+  const min_z = dims.origin_z_m + row * dims.cell_m;
+  return { min_x, max_x: min_x + dims.cell_m, min_z, max_z: min_z + dims.cell_m };
+}
+
+/** Blocks the cells one footprint overlaps. O(cells in its bounding box). */
+function blockSolid(costs: Uint32Array, dims: NavDims, solid: Solid) {
+  const corners = footprintCorners(solid);
+  const bounds = footprintBounds(corners);
+  const first = cellIndex(dims, { x_m: bounds.min_x, z_m: bounds.min_z });
+  const last = cellIndex(dims, { x_m: bounds.max_x, z_m: bounds.max_z });
+  for (let row = Math.floor(first / dims.width); row <= Math.floor(last / dims.width); row += 1) {
+    for (let column = first % dims.width; column <= last % dims.width; column += 1) {
+      if (overlapsCell(corners, cellBounds(dims, column, row))) {
+        costs[row * dims.width + column] = BLOCKED_CELL;
+      }
     }
   }
 }
 
-function markBlocked(blockers: Blocker[], grid: Grid, cell: number) {
-  const blocked = new Uint8Array(grid.columns * grid.rows);
-  for (const blocker of blockers) markBlocker({ blocked, grid, blocker, cell });
-  return blocked;
+/** Builds the D12 cost buffer: row-major, `FREE_CELL_COST` or `BLOCKED_CELL` per cell. */
+export function buildCostGrid({ ground, solids, cell_m = DEFAULT_CELL_M }: CostSpec): CostGrid {
+  if (!(ground.width_m > 0 && ground.height_m > 0)) {
+    throw new Error('ground must have a positive size');
+  }
+  if (!Number.isFinite(cell_m) || cell_m <= 0 || !gridFitsBudget(ground, cell_m)) {
+    throw new Error(`navigation grid exceeds its cell budget of ${MAX_NAV_CELLS} or has `
+      + 'an invalid cell size');
+  }
+  const dims = dimsOf(ground, cell_m);
+  const costs = new Uint32Array(dims.width * dims.height).fill(FREE_CELL_COST);
+  for (const solid of solids) blockSolid(costs, dims, solid);
+  return { dims, costs };
 }
 
-function nextCell(spec: Walk & { from: number; step: number[] }) {
-  const { blocked, grid, reached, from, step } = spec;
-  const column = (from % grid.columns) + step[0];
-  const row = Math.floor(from / grid.columns) + step[1];
-  if (column < 0 || row < 0 || column >= grid.columns || row >= grid.rows) return null;
-  const next = row * grid.columns + column;
-  if (blocked[next] === 1 || reached[next] === 1) return null;
-  return next;
+function neighbourCells(dims: NavDims, index: number): number[] {
+  const column = index % dims.width;
+  const row = Math.floor(index / dims.width);
+  return NEIGHBOURS
+    .map(([dx, dz]) => [column + dx, row + dz])
+    .filter(([x, z]) => x >= 0 && z >= 0 && x < dims.width && z < dims.height)
+    .map(([x, z]) => z * dims.width + x);
 }
 
-function spread(spec: Walk & { queue: number[] }) {
-  const { blocked, grid, queue, reached } = spec;
+/** Breadth-first reach over free cells. O(cells). */
+function flood(costs: Uint32Array, dims: NavDims, start: number) {
+  const reached = new Uint8Array(costs.length);
+  if (costs[start] === BLOCKED_CELL) return reached;
+  reached[start] = 1;
+  const queue = [start];
   for (let head = 0; head < queue.length; head += 1) {
-    for (const step of NEIGHBOURS) {
-      const next = nextCell({ blocked, grid, reached, from: queue[head], step });
-      if (next === null) continue;
+    for (const next of neighbourCells(dims, queue[head])) {
+      if (reached[next] === 1 || costs[next] === BLOCKED_CELL) continue;
       reached[next] = 1;
       queue.push(next);
     }
@@ -94,84 +122,41 @@ function spread(spec: Walk & { queue: number[] }) {
   return reached;
 }
 
-type FloodSpec = Omit<Walk, 'reached'> & { start: number };
-
-function flood({ blocked, grid, start }: FloodSpec) {
-  const reached = new Uint8Array(grid.columns * grid.rows);
-  if (blocked[start] === 1) return reached;
-  reached[start] = 1;
-  return spread({ blocked, grid, queue: [start], reached });
+function inside(dims: NavDims, point: Plan) {
+  return point.x_m >= dims.origin_x_m && point.z_m >= dims.origin_z_m
+    && point.x_m <= dims.origin_x_m + dims.width * dims.cell_m
+    && point.z_m <= dims.origin_z_m + dims.height * dims.cell_m;
 }
 
-function pointInGrid(point: Plan, grid: Grid) {
-  return point.x_m >= grid.origin_x_m && point.x_m <= grid.max_x_m
-    && point.z_m >= grid.origin_z_m && point.z_m <= grid.max_z_m;
+function countWhere(values: ArrayLike<number>, wanted: number): number {
+  let total = 0;
+  for (let index = 0; index < values.length; index += 1) {
+    if (values[index] === wanted) total += 1;
+  }
+  return total;
 }
 
-function waypointReached(spec: Pick<Walk, 'reached' | 'grid'> & { point: Plan; cell: number }) {
-  const { reached, point, grid, cell } = spec;
-  return pointInGrid(point, grid) && reached[spawnIndex(point, grid, cell)] === 1;
-}
-
-type WaypointSpec = Pick<Walk, 'reached' | 'grid'> & {
-  waypoints: Anchor[];
-  cell: number;
-};
-
-function waypointResults(spec: WaypointSpec) {
-  return spec.waypoints.map((waypoint) => ({
+/** Four-neighbour walk from the spawn over the cost buffer. O(cells). */
+export function walkCostGrid({ dims, costs, spawn, waypoints }: WalkSpec) {
+  if (!inside(dims, spawn)) throw new Error('spawn is outside the navigation ground');
+  const start = cellIndex(dims, spawn);
+  const reached = flood(costs, dims, start);
+  const results = waypoints.map((waypoint) => ({
     id: waypoint.id,
-    reachable: waypointReached({
-      reached: spec.reached,
-      point: waypoint,
-      grid: spec.grid,
-      cell: spec.cell,
-    }),
+    reachable: inside(dims, waypoint) && reached[cellIndex(dims, waypoint)] === 1,
   }));
-}
-
-function spawnIndex(spawn: Plan, grid: Grid, cell: number) {
-  const column = clamp(cellColumn(spawn.x_m, cell, grid.origin_x_m), grid.columns);
-  const row = clamp(cellRow(spawn.z_m, cell, grid.origin_z_m), grid.rows);
-  return row * grid.columns + column;
-}
-
-function summarize(spec: Walk & { start: number; spawn: Plan; cell: number; waypoints: Anchor[] }) {
-  const { grid, blocked, reached, start, spawn, cell, waypoints } = spec;
-  const total = grid.columns * grid.rows;
-  const blockedCount = blocked.reduce((sum, value) => sum + value, 0);
-  const reachedCount = reached.reduce((sum, value) => sum + value, 0);
-  const results = waypointResults({ reached, grid, cell, waypoints });
+  const blocked = countWhere(costs, BLOCKED_CELL);
+  const reachable = countWhere(reached, 1);
+  const spawnFree = costs[start] !== BLOCKED_CELL;
   return {
-    cell_m: cell,
-    columns: grid.columns,
-    rows: grid.rows,
-    origin_x_m: grid.origin_x_m,
-    origin_z_m: grid.origin_z_m,
-    total_cells: total,
-    free_cells: total - blockedCount,
-    blocked_cells: blockedCount,
-    reachable_cells: reachedCount,
-    reachable_ratio: total === 0 ? 0 : Math.round((reachedCount / total) * PER_MILLE) / PER_MILLE,
-    spawn: { x_m: spawn.x_m, z_m: spawn.z_m, spawn_free: blocked[start] === 0 },
+    ...dims,
+    total_cells: costs.length,
+    free_cells: costs.length - blocked,
+    blocked_cells: blocked,
+    reachable_cells: reachable,
+    reachable_ratio: Math.round((reachable / costs.length) * PER_MILLE) / PER_MILLE,
+    spawn: { x_m: spawn.x_m, z_m: spawn.z_m, spawn_free: spawnFree },
     waypoints: results,
-    pass: blocked[start] === 0 && results.every((entry) => entry.reachable),
+    pass: spawnFree && results.every((entry) => entry.reachable),
   };
-}
-
-/** Walks the free cells from the spawn and reports whether each waypoint is reachable. */
-export function navigate(spec: Navigation) {
-  const { ground, blockers, spawn, waypoints, cell_m = DEFAULT_CELL_M } = spec;
-  if (!(ground.width_m > 0 && ground.height_m > 0)) {
-    throw new Error('ground must have a positive size');
-  }
-  if (!Number.isFinite(cell_m) || cell_m <= 0 || !gridFitsBudget(ground, cell_m)) {
-    throw new Error('navigation grid exceeds its cell budget or has invalid cell size');
-  }
-  const grid = gridOf(ground, cell_m);
-  if (!pointInGrid(spawn, grid)) throw new Error('spawn is outside the navigation ground');
-  const blocked = markBlocked(blockers, grid, cell_m);
-  const start = spawnIndex(spawn, grid, cell_m);
-  const reached = flood({ blocked, grid, start });
-  return summarize({ grid, blocked, reached, start, spawn, cell: cell_m, waypoints });
 }

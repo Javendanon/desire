@@ -2,16 +2,14 @@
 import { planGround } from './calibration.ts';
 import { EVIDENCE, validateHeight } from './heights.ts';
 import { filled, finite, positive } from './values.ts';
-import { gridFitsBudget } from './nav.ts';
-import { validateMaterials, validateTextures } from './surface-manifest.ts';
+import { DEFAULT_CELL_M, gridFitsBudget } from './nav.ts';
+import { validateMapVersion, validateSectorSize, validateStyle } from './map-manifest.ts';
 import type {
   Calibration, Ground, Illustration, Manifest, Pixel, Place, Plan, Provenance, ScaleCheck,
 } from './types.ts';
 
-export const SCHEMA = 'desire.asset-scene/1';
+export const SCHEMA = 'desire.asset-scene/2';
 export const MAX_PLACES = 1024;
-const MAX_MATERIALS = 256;
-const MAX_TEXTURES = 64;
 const MAX_WAYPOINTS = 1024;
 export const MAX_FOOTPRINT_M = 200;
 const SUPPORTED_ROTATION_RAD = 0;
@@ -34,17 +32,15 @@ function validateProvenance(provenance: Provenance, where: string, errors: strin
 }
 
 function validateSections(manifest: Manifest, errors: string[]) {
-  const limits = { places: MAX_PLACES, materials: MAX_MATERIALS,
-    textures: MAX_TEXTURES, waypoints: MAX_WAYPOINTS };
+  const limits = { places: MAX_PLACES, waypoints: MAX_WAYPOINTS };
   let withinBudget = true;
-  for (const key of ['places', 'materials', 'textures', 'waypoints'] as const) {
+  for (const key of ['places', 'waypoints'] as const) {
     if (!Array.isArray(manifest[key])) errors.push(`${key} must be an array`);
     else if (manifest[key].length > limits[key]) {
       errors.push(`${key} exceeds its count budget`);
       withinBudget = false;
     }
   }
-  if (!filled(manifest.ground?.material)) errors.push('ground: material is required');
   return withinBudget;
 }
 
@@ -125,10 +121,15 @@ function validateFootprint(place: Place, errors: string[]) {
   }
 }
 
-function validatePlaceLinks(place: Place, materialIds: Set<string>, errors: string[]) {
-  if (!materialIds.has(place.material)) {
-    errors.push(`place ${place.id}: unknown material ${place.material}`);
+function validateRotation(place: Place, errors: string[]) {
+  const rotation = place.rotation_radians;
+  if (rotation === undefined) return;
+  if (!finite(rotation) || Math.abs(rotation) > Math.PI) {
+    errors.push(`place ${place.id}: rotation_radians must be finite and within [-π, π]`);
   }
+}
+
+function validateProvenanceTags(place: Place, errors: string[]) {
   if (!Array.isArray(place.provenance) || place.provenance.length === 0) {
     errors.push(`place ${place.id}: provenance tags are required`);
   }
@@ -145,14 +146,13 @@ function validatePixel(place: Place, frame: Illustration, errors: string[]) {
 }
 
 type PlaceContext = {
-  materialIds: Set<string>;
   frame: Illustration;
   seen: Set<string>;
   errors: string[];
 };
 
 function validatePlace(place: Place, context: PlaceContext) {
-  const { materialIds, frame, seen, errors } = context;
+  const { frame, seen, errors } = context;
   if (place === null || typeof place !== 'object') {
     errors.push('place: every entry must be an object');
     return;
@@ -166,7 +166,9 @@ function validatePlace(place: Place, context: PlaceContext) {
   if (!filled(place.name)) errors.push(`place ${place.id}: name is required`);
   validatePixel(place, frame, errors);
   validateFootprint(place, errors);
-  validatePlaceLinks(place, materialIds, errors);
+  validateRotation(place, errors);
+  validateStyle(place, errors);
+  validateProvenanceTags(place, errors);
   validateHeight(place, errors);
 }
 
@@ -203,7 +205,12 @@ function validateAnchors(manifest: Manifest, errors: string[]) {
   const waypoints = Array.isArray(manifest.waypoints) ? manifest.waypoints : [];
   if (waypoints.length === 0) errors.push('waypoints: at least one navigation anchor is required');
   const extent = groundExtent(manifest);
-  if (extent && !gridFitsBudget(extent)) errors.push('navigation grid exceeds its cell budget');
+  const cell = manifest.nav_cell_m ?? DEFAULT_CELL_M;
+  if (!positive(cell)) errors.push('nav_cell_m must be positive');
+  else if (extent && !gridFitsBudget(extent, cell)) {
+    errors.push('navigation grid exceeds its cell budget; raise nav_cell_m or split the map');
+  }
+  if (extent) validateSectorSize(manifest.sector_size_m, extent, errors);
   validateAnchor({ where: 'spawn', point: manifest.spawn, extent, errors });
   for (const waypoint of waypoints) {
     if (!waypoint || typeof waypoint !== 'object') {
@@ -223,24 +230,18 @@ export function validateManifest(value: unknown): { errors: string[] } {
   // This cast permits defensive field checks; callers must reject any returned errors.
   const manifest = value as Manifest;
   if (!validateHeader(manifest, errors)) return { errors };
+  validateMapVersion(manifest.map_version, errors);
   validateIllustration(manifest.illustration, errors);
   validateCalibration(manifest.calibration, errors);
   validateScaleChecks(manifest.scale_checks, errors);
   validateAnchors(manifest, errors);
-  const textures = Array.isArray(manifest.textures) ? manifest.textures : [];
-  const materials = Array.isArray(manifest.materials) ? manifest.materials : [];
-  const textureIds = validateTextures(textures, errors);
-  const materialIds = validateMaterials(materials, textureIds, errors);
-  if (manifest.ground?.material && !materialIds.has(manifest.ground.material)) {
-    errors.push(`ground: unknown material ${manifest.ground.material}`);
-  }
   const places = Array.isArray(manifest.places) ? manifest.places : [];
   const hasHeight = places.some((place) => typeof place?.height_m === 'number');
   if (places.length > 0 && !hasHeight) {
-    errors.push('places: at least one declared height is required to build geometry');
+    errors.push('places: at least one declared height is required to build a building');
   }
   const frame = manifest.illustration ?? {};
-  const context = { materialIds, frame, seen: new Set<string>(), errors };
+  const context = { frame, seen: new Set<string>(), errors };
   for (const place of places) validatePlace(place, context);
   return { errors };
 }
