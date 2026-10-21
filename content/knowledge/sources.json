@@ -7,6 +7,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "url": "https://www.dndbeyond.com/srd",
+      "document_url": "https://media.dndbeyond.com/compendium-images/srd/5.1/SRD_CC_v5.1.pdf",
+      "document_sha256": "2504d2a0abb0a4d491a939be4f17910a2dde0312570ab8d208080225ccf0a1f0",
       "synthetic": false
     },
     {
@@ -16,6 +18,8 @@
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "url": "https://www.dndbeyond.com/srd",
+      "document_url": "https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.pdf",
+      "document_sha256": "cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa",
       "synthetic": false
     }
   ]

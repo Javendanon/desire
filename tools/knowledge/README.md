@@ -1,9 +1,9 @@
 # Knowledge import and search tooling
 
 The tooling projects canonical content into the D04 `KnowledgeEntry` DTO and keeps
-D07 metadata (`slug`, `kind`, `translation_status`, `license`, references) in a
-catalog sidecar. It reuses `tools/contracts/validate.py` instead of duplicating the
-contract rules.
+D07 metadata (`slug`, `kind`, `translation_status`, `license`, `edition_verification`,
+references) in a catalog sidecar. It reuses `tools/contracts/validate.py` instead of
+duplicating the contract rules.
 
 ## Modules
 
@@ -49,6 +49,10 @@ languages. Use `--verify-fixtures` to reproduce every case in the artifact.
   keys, known filter names, closed-vocabulary filter values, UUID expectations, no
   duplicate fixture or expected id and no empty fixture list.
 - Campaign demo lore and DM secrets stay outside canon and keep explicit visibility.
+- Every entry declares an edition verification state; missing, unknown or citation-less
+  `verified` records fail, and a `verified` citation must contain the digest of the
+  entry's registered source document. The catalog sidecar projects the state, so
+  consumers can tell verified content from content pending review.
 - Import and search run with the network socket disabled.
 
 ## Commands

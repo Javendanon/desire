@@ -1,6 +1,10 @@
 {
   "catalog": {
     "140fec29-95f8-5b36-8ed5-f58d6f40e190": {
+      "edition_verification": {
+        "citation": "",
+        "status": "pending_review"
+      },
       "kind": "spell",
       "license": "CC-BY-4.0",
       "references": [
@@ -15,6 +19,10 @@
       "translation_status": "translated"
     },
     "2881dc0c-cef8-5177-a18a-2866c58a549b": {
+      "edition_verification": {
+        "citation": "",
+        "status": "pending_review"
+      },
       "kind": "spell",
       "license": "CC-BY-4.0",
       "references": [
@@ -33,6 +41,10 @@
       "translation_status": "translated"
     },
     "3c3a4001-6f68-5a76-861b-e9ac6538b541": {
+      "edition_verification": {
+        "citation": "SRD 5.2, Spell Descriptions: Grease, p. 137 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
+        "status": "verified"
+      },
       "kind": "spell",
       "license": "CC-BY-4.0",
       "references": [
@@ -55,6 +67,10 @@
       "translation_status": "translated"
     },
     "83a05738-27b3-5a79-a6f9-12488126d206": {
+      "edition_verification": {
+        "citation": "SRD 5.2, Spell Descriptions: Fireball, p. 131 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
+        "status": "verified"
+      },
       "kind": "spell",
       "license": "CC-BY-4.0",
       "references": [
@@ -73,6 +89,10 @@
       "translation_status": "translated"
     },
     "895aa639-5a48-58f8-9ab8-9d0e83391086": {
+      "edition_verification": {
+        "citation": "",
+        "status": "pending_review"
+      },
       "kind": "condition",
       "license": "CC-BY-4.0",
       "references": [],
@@ -82,6 +102,10 @@
       "translation_status": "translated"
     },
     "948e47bd-a97b-5577-ba4c-93cf0a405dcf": {
+      "edition_verification": {
+        "citation": "",
+        "status": "pending_review"
+      },
       "kind": "class",
       "license": "CC-BY-4.0",
       "references": [
@@ -96,6 +120,10 @@
       "translation_status": "translated"
     },
     "af775fbc-c3e7-5d34-ae2b-fa70759156f5": {
+      "edition_verification": {
+        "citation": "SRD 5.2, Rules Glossary: Prone [Condition], p. 186 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)",
+        "status": "verified"
+      },
       "kind": "condition",
       "license": "CC-BY-4.0",
       "references": [
@@ -106,10 +134,14 @@
       ],
       "slug": "prone",
       "source_id": "srd-5.2",
-      "source_locator": "SRD 5.2, Conditions: Prone",
+      "source_locator": "SRD 5.2, Rules Glossary: Prone [Condition]",
       "translation_status": "translated"
     },
     "c4effe1d-c5ee-567e-bccf-3bc068f76c30": {
+      "edition_verification": {
+        "citation": "",
+        "status": "pending_review"
+      },
       "kind": "class",
       "license": "CC-BY-4.0",
       "references": [],
@@ -186,7 +218,7 @@
       "title": "Mago"
     },
     {
-      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse, a menos que se ponga de pie y termine así la condición. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
+      "body": "Condición. La única opción de movimiento de una criatura derribada es arrastrarse o gastar movimiento igual a la mitad de su velocidad (redondeado hacia abajo) para ponerse de pie y terminar así la condición; si su velocidad es 0, no puede ponerse de pie. La criatura tiene desventaja en las tiradas de ataque. Una tirada de ataque contra la criatura tiene ventaja si el atacante está a 5 pies o menos; de lo contrario, tiene desventaja.",
       "id": "af775fbc-c3e7-5d34-ae2b-fa70759156f5",
       "language": "es",
       "provenance": {
@@ -212,7 +244,7 @@
       "title": "Bola de fuego"
     },
     {
-      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa resbaladiza cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa no inflamable cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil durante la duración. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
       "id": "3c3a4001-6f68-5a76-861b-e9ac6538b541",
       "language": "es",
       "provenance": {

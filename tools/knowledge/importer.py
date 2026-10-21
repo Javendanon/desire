@@ -22,6 +22,7 @@ def catalog_record(entry: Entry) -> dict:
         "source_id": entry.source_id,
         "license": entry.license,
         "source_locator": entry.source_locator,
+        "edition_verification": entry.edition_verification.catalog(),
         "references": [
             {"target": reference.target, "relation": reference.relation}
             for reference in entry.references

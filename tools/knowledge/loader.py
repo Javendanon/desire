@@ -14,10 +14,14 @@ from .model import (
     PREVIOUS_EDITION,
     RELATIONS,
     RULES_EDITIONS,
+    SHA256_PATTERN,
     SLUG_PATTERN,
     SYNTHETIC_EVIDENCE,
     TRANSLATION_STATUSES,
     UUID_PATTERN,
+    VERIFICATION_STATUSES,
+    VERIFIED,
+    EditionVerification,
     Entry,
     Provenance,
     Reference,
@@ -112,6 +116,20 @@ def parse_provenance(raw: object, location: str) -> Provenance:
     )
 
 
+def parse_verification(raw: dict, location: str) -> EditionVerification:
+    """A verified entry must name the cited section; review may stay pending."""
+    where = f"{location}.edition_verification"
+    verification = raw.get("edition_verification")
+    require(isinstance(verification, dict), f"{where}: expected object")
+    status = choice(verification.get("status"), VERIFICATION_STATUSES, f"{where}.status")
+    citation = optional_text(verification, "citation", where)
+    require(
+        status != VERIFIED or bool(citation.strip()),
+        f"{where}.citation: verified entry needs a citation",
+    )
+    return EditionVerification(status=status, citation=citation)
+
+
 def parse_entry(raw: object, kind: str, location: str) -> Entry:
     require(isinstance(raw, dict), f"{location}: expected object")
     entry_kind = choice(raw.get("kind"), KINDS, f"{location}.kind")
@@ -134,6 +152,7 @@ def parse_entry(raw: object, kind: str, location: str) -> Entry:
         license=text(raw, "license", location),
         source_locator=text(raw, "source_locator", location),
         provenance=parse_provenance(raw.get("provenance"), f"{location}.provenance"),
+        edition_verification=parse_verification(raw, location),
         references=parse_references(raw.get("references", []), f"{location}.references"),
     )
 
@@ -150,7 +169,28 @@ def parse_source(raw: object, location: str) -> Source:
         license_url=optional_text(raw, "license_url", location),
         url=optional_text(raw, "url", location),
         synthetic=flag(raw, "synthetic", location),
+        document_url=document_link(raw, location),
+        document_sha256=document_digest(raw, location),
     )
+
+
+def document_link(raw: dict, location: str) -> str:
+    url = optional_text(raw, "document_url", location)
+    require(
+        not url or url.startswith(("http://", "https://")),
+        f"{location}.document_url: http(s) URL",
+    )
+    return url
+
+
+def document_digest(raw: dict, location: str) -> str:
+    """The retrieved document hash makes a verified citation repeatable."""
+    digest = optional_text(raw, "document_sha256", location)
+    require(
+        not digest or SHA256_PATTERN.fullmatch(digest) is not None,
+        f"{location}.document_sha256: 64 lowercase hex characters",
+    )
+    return digest
 
 
 def load_sources(content_dir: Path = CONTENT_DIR) -> dict[str, Source]:
@@ -178,7 +218,9 @@ def load_entries(content_dir: Path = CONTENT_DIR) -> list[Entry]:
         entries.extend(
             parse_entry(raw, kind, f"{path.name}[{index}]") for index, raw in enumerate(raw_entries)
         )
-    check_sources(entries, load_sources(content_dir))
+    sources = load_sources(content_dir)
+    check_sources(entries, sources)
+    check_verification(entries, sources)
     check_references(entries)
     return entries
 
@@ -212,6 +254,27 @@ def check_sources(entries: list[Entry], sources: dict[str, Source]) -> None:
         require(
             entry.provenance.evidence != SYNTHETIC_EVIDENCE,
             f"{entry.key}: synthetic provenance cannot be canon",
+        )
+
+
+def check_verification(entries: list[Entry], sources: dict[str, Source]) -> None:
+    """A verified entry must name the registered document and its digest."""
+    for entry in entries:
+        verification = entry.edition_verification
+        if verification.status != VERIFIED:
+            continue
+        source = sources[entry.source_id]
+        require(
+            source.document_url != "" and source.document_sha256 != "",
+            f"{entry.key}: verified entry needs a registered document",
+        )
+        require(
+            source.document_sha256 in verification.citation,
+            f"{entry.key}: citation does not name the registered document",
+        )
+        require(
+            entry.source_locator in verification.citation,
+            f"{entry.key}: citation does not name the source section",
         )
 
 

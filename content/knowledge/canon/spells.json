@@ -19,6 +19,10 @@
         "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
         "evidence": "interpretation"
       },
+      "edition_verification": {
+        "status": "pending_review",
+        "citation": ""
+      },
       "references": [
         {
           "target": "dnd_2014:wizard",
@@ -43,6 +47,10 @@
         "source": "Systems Reference Document 5.2",
         "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
         "evidence": "interpretation"
+      },
+      "edition_verification": {
+        "status": "verified",
+        "citation": "SRD 5.2, Spell Descriptions: Fireball, p. 131 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)"
       },
       "references": [
         {
@@ -73,6 +81,10 @@
         "attribution": "Wizards of the Coast, Systems Reference Document 5.1, CC BY 4.0",
         "evidence": "interpretation"
       },
+      "edition_verification": {
+        "status": "pending_review",
+        "citation": ""
+      },
       "references": [
         {
           "target": "dnd_2014:wizard",
@@ -92,7 +104,7 @@
       "rules_edition": "dnd_2024",
       "language": "es",
       "title": "Grasa",
-      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa resbaladiza cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
+      "body": "Conjuro de conjuración de nivel 1. Tiempo de lanzamiento: 1 acción. Alcance: 60 pies. Componentes: V, S, M (un trozo de corteza de cerdo o un poco de mantequilla). Duración: 1 minuto. Una capa de grasa no inflamable cubre el suelo en un cuadrado de 10 pies de lado centrado en un punto dentro del alcance y lo convierte en terreno difícil durante la duración. Cuando aparece la grasa, cada criatura que esté de pie en el área debe superar una tirada de salvación de Destreza o quedar derribada. Una criatura que entre en el área o termine su turno allí también debe superar la salvación o quedar derribada.",
       "translation_status": "translated",
       "source_id": "srd-5.2",
       "license": "CC-BY-4.0",
@@ -101,6 +113,10 @@
         "source": "Systems Reference Document 5.2",
         "attribution": "Wizards of the Coast, Systems Reference Document 5.2, CC BY 4.0",
         "evidence": "interpretation"
+      },
+      "edition_verification": {
+        "status": "verified",
+        "citation": "SRD 5.2, Spell Descriptions: Grease, p. 137 (SRD_CC_v5.2.pdf, sha256 cf18e1f88a360646940b6fada63fd1bd04c1c02581ca668a9115c2f4577bf8aa)"
       },
       "references": [
         {

@@ -18,6 +18,7 @@ RULES_EDITIONS = ("dnd_2014", "dnd_2024")
 LANGUAGES = ("es",)
 TRANSLATION_STATUSES = ("translated", "reviewed", "pending", "source_language")
 EVIDENCE_VALUES = ("verified", "interpretation", "synthetic")
+VERIFICATION_STATUSES = ("verified", "pending_review")
 VISIBILITIES = ("players", "dm")
 RELATIONS = ("available_to_class", "applies_condition", "previous_edition")
 
@@ -25,9 +26,11 @@ DEFAULT_LANGUAGE = LANGUAGES[0]
 PREVIOUS_EDITION = RULES_EDITIONS[0]
 CURRENT_EDITION = RULES_EDITIONS[1]
 SYNTHETIC_EVIDENCE = EVIDENCE_VALUES[2]
+VERIFIED = VERIFICATION_STATUSES[0]
 
 UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,19 @@ class Source:
     license_url: str
     url: str
     synthetic: bool = False
+    document_url: str = ""
+    document_sha256: str = ""
+
+
+@dataclass(frozen=True)
+class EditionVerification:
+    """How far an entry's body was checked against the source of its rules edition."""
+
+    status: str
+    citation: str = ""
+
+    def catalog(self) -> dict[str, str]:
+        return {"status": self.status, "citation": self.citation}
 
 
 @dataclass(frozen=True)
@@ -84,6 +100,7 @@ class Entry:
     license: str
     source_locator: str
     provenance: Provenance
+    edition_verification: EditionVerification
     references: tuple[Reference, ...] = ()
 
     @property
