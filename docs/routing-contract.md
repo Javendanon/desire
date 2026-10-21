@@ -30,6 +30,9 @@ busy GPU is not fixed by this worker.
   charged; a route from a cell to itself costs `0`.
 - A total cost above `u32` is an explicit `CostOverflow` error, not a wrap.
 
+The cell limit is declared once in Rust (`MAX_GRID_CELLS` in
+`crates/core/src/routing/grid.rs`); `tests/routing-limits.test.ts` fails if the
+TypeScript copy in `protocol.ts` drifts from it.
 The client validates the dimensions, buffer length and cell limit **before**
 `slice()` or worker creation. Invalid inputs throw a contextual `TypeError`.
 The worker repeats validation before Wasm loading or `RoutingGrid` construction.
@@ -62,7 +65,9 @@ interface RouteResponse {
 
 - `requestId` is monotonic per `RoutingWorkerClient` instance, within positive
   `u32`. Identity values outside `1..0xFFFF_FFFF` throw a `RangeError` before
-  transfer. After ID exhaustion, create a new client. IDs never wrap.
+  transfer. After ID exhaustion, create a new client. IDs never wrap. The
+  Rust core enforces the same rule for native callers: `request_id == 0` is
+  `InvalidRequestId` and `revision == 0` is `InvalidRevision`.
 - `revision` is the map revision that produced the cost buffer.
 - A response is current only when both `requestId` and `revision` match the
   latest request. Everything else is discarded without calling the result
@@ -95,14 +100,16 @@ bytes, before JavaScript object overhead.
 At the 1,048,576-cell limit the search also allocates about 8.4 MB of `u64`
 distances, 4.2 MB of `u32` parents, 1 MB of expanded flags and a frontier heap
 whose size depends on duplicate entries. Termination of the worker releases the
-Wasm memory. D14 should keep per-cell costs in a practical range (for example
+Wasm memory. After a result the client keeps the idle worker, and its grown Wasm
+memory (about 19 MB after a maximum-size search), for reuse until the next
+request, `cancel()` or `dispose()`. D14 should keep per-cell costs in a practical range (for example
 `<= 1000`); the core enforces only non-negative `u32` and the total-cost bound.
 
 ## Errors
 
 The Rust core returns typed variants instead of panicking:
 
-`EmptyGrid`, `GridTooLarge`, `BufferLengthMismatch`, `InvalidRevision`,
+`EmptyGrid`, `GridTooLarge`, `BufferLengthMismatch`, `InvalidRequestId`, `InvalidRevision`,
 `StartOutOfBounds`, `GoalOutOfBounds`, `StartBlocked`, `GoalBlocked`, `NoPath`,
 `CostOverflow`, `InvalidSearchState`.
 
@@ -136,12 +143,25 @@ policy. For each routing request D14 must:
    distance/time separate from route cost.
 4. Ignore any response that does not match the active scene, request and map
    revision. On map change, call `cancel()` before issuing a new request.
-5. Keep the renderer loop running while the worker runs. Whether to show a
+5. Call `dispose()` when the map view unmounts, or the idle worker and its
+   Wasm memory stay resident for the page lifetime.
+6. Keep the renderer loop running while the worker runs. Whether to show a
    busy indicator belongs to D14's UI, not to this calculation contract. This
    worker does not own the frame loop or GPU resources.
 
 D14 must not infer that a successful route authorizes movement. It must still
 validate the command against session state on the server.
+
+## Build and types
+
+The worker imports the Wasm glue as `#routing-wasm` (`package.json` `imports`).
+TypeScript resolves it to the checked-in `src/generated/desire_wasm.d.ts`, so
+`pnpm check` type-checks the worker on a clean checkout without building Wasm.
+Vite resolves it to the wasm-pack output under the ignored `src/generated/wasm/`,
+so `pnpm build` runs `pnpm build:wasm` first. `build:wasm` ends with
+`tools/routing/check-wasm-types.mjs`, which fails when the generated
+declarations differ from the checked-in copy; after reviewing an intended API
+change, refresh it with `node tools/routing/check-wasm-types.mjs --write`.
 
 ## Browser verification
 
