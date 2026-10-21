@@ -18,17 +18,26 @@ export type SliceSpec = {
 /** Heights in metres above the water plane. */
 export const HEIGHT_M = { land: 1, pier: 0.8, seabed: -2.5 } as const;
 
-/** Ground palette, warm dusk tones from the "Farol en la niebla" design canvas. */
+/**
+ * Ground palette: muted stone and earth. The golden-hour sun warms everything already, so the
+ * albedo stays close to neutral (warm albedo under a warm sun reads orange).
+ */
 const ALBEDO: Record<number, Rgb> = {
-  [Surface.Street]: [122, 112, 98],
-  [Surface.Ground]: [104, 88, 70],
-  [Surface.Roof]: [86, 74, 62],
-  [Surface.RedRoof]: [86, 74, 62],
-  [Surface.Outline]: [86, 74, 62],
-  [Surface.Garden]: [92, 112, 70],
-  [Surface.Pier]: [96, 70, 48],
-  [Surface.Water]: [24, 52, 60],
+  [Surface.Street]: [118, 114, 106],
+  [Surface.Ground]: [100, 92, 80],
+  [Surface.Roof]: [88, 80, 70],
+  [Surface.RedRoof]: [88, 80, 70],
+  [Surface.Outline]: [88, 80, 70],
+  [Surface.Garden]: [86, 104, 66],
+  [Surface.Pier]: [94, 72, 52],
+  [Surface.Water]: [22, 50, 58],
 };
+const SHALLOW: Rgb = [62, 120, 118];
+const FOAM: Rgb = [186, 204, 206];
+/** Shallows fade over this many source pixels (about 19 m at z18). */
+const SHALLOW_PX = 40;
+const FOAM_PX = 2;
+const UNREACHED = 0xffff;
 /** ± variation of the value noise on every channel. */
 const NOISE_AMPLITUDE = 14;
 const NOISE_CELL_PX = 6;
@@ -63,16 +72,52 @@ function valueNoise(point: Point, lattice: Lattice): number {
   return top + (bottom - top) * smooth(fy);
 }
 
+/** One sweep of a two-pass city-block distance transform. */
+function sweep(distance: Uint16Array, size: RasterSize, forward: boolean) {
+  const { width } = size;
+  const order = forward ? 1 : -1;
+  const start = forward ? 0 : distance.length - 1;
+  for (let step = 0; step < distance.length; step += 1) {
+    const index = start + step * order;
+    const x = index % width;
+    const behindX = x - order >= 0 && x - order < width ? distance[index - order] : UNREACHED;
+    const behindY = index - order * width;
+    const above = behindY >= 0 && behindY < distance.length ? distance[behindY] : UNREACHED;
+    distance[index] = Math.min(distance[index], behindX + 1, above + 1);
+  }
+}
+
+/** City-block pixels from each water pixel to the nearest non-water pixel, 0 on land. O(pixels). */
+export function shoreDistance(classes: Uint8Array, size: RasterSize): Uint16Array {
+  const distance = Uint16Array.from(classes, (value) => (value === Surface.Water ? UNREACHED : 0));
+  sweep(distance, size, true);
+  sweep(distance, size, false);
+  return distance;
+}
+
+const mix = (a: Rgb, b: Rgb, t: number): Rgb => a.map((value, index) =>
+  value + (b[index] - value) * t) as Rgb;
+
+/** Deep water, shallows toward the shore, foam at the waterline. */
+function waterColour(distance: number): Rgb {
+  if (distance <= FOAM_PX) return FOAM;
+  const shallow = Math.max(0, 1 - distance / SHALLOW_PX);
+  return mix(ALBEDO[Surface.Water], SHALLOW, shallow * shallow);
+}
+
 /** Stylised RGB albedo at the source resolution. O(pixels). */
 export function paintAlbedo(spec: SliceSpec): Uint8Array {
   const { classes, size, seed } = spec;
+  const shore = shoreDistance(classes, size);
   const rgb = new Uint8Array(classes.length * 3);
   for (let index = 0; index < classes.length; index += 1) {
     const x = index % size.width;
     const y = Math.floor(index / size.width);
     const noise = valueNoise({ x, y }, { cell: NOISE_CELL_PX, seed });
     const shade = (noise - 0.5) * 2 * NOISE_AMPLITUDE;
-    const base = ALBEDO[classes[index]] ?? ALBEDO[Surface.Ground];
+    const water = classes[index] === Surface.Water;
+    const land = ALBEDO[classes[index]] ?? ALBEDO[Surface.Ground];
+    const base = water ? waterColour(shore[index]) : land;
     for (let channel = 0; channel < 3; channel += 1) {
       rgb[index * 3 + channel] = Math.max(0, Math.min(255, Math.round(base[channel] + shade)));
     }
