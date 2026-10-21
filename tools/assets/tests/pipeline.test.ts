@@ -50,6 +50,7 @@ test('the report records scale, fidelity, collision, textures and navigation', (
   assert.ok(report.lod.lod1_triangles > 0);
   assert.equal(report.collision.separate, true);
   assert.equal(report.collision.materialless, true);
+  assert.equal(report.collision.triangles, 80, '8 boxes x 5 faces x 2 triangles');
   assert.deepEqual(report.textures.map((texture) => texture.pass), [true]);
   assert.equal(report.navigation.pass, true);
   assert.equal(report.navigation.waypoints.length, 3);
