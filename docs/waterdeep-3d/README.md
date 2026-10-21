@@ -62,3 +62,28 @@ water. Known errors to fix before building footprints: shallow shore water reads
 ground (same colour, but smooth and connected to open water); piers read as roofs (they touch
 water and lie outside the land mask); narrow dirt lanes merge adjacent blocks (Tych's street
 centrelines, rasterised at their width, force them open).
+
+## Layer extraction: what the whole city showed
+
+`extract-surfaces.ts` (commit `1a6e0aa`) runs on the whole 6319 × 9136 raster in 82 s and 2.2 GB.
+Dock Ward comes out clean: open water, coastline, every pier including the cross-pier junction,
+streets cutting the blocks, landmark roofs. The whole city exposes two limits of colour rules:
+
+- Fields and terrain outside the walls share the roof browns, so they read as roofs.
+- North and Sea Ward invert the palette: slate-blue roofs, dark brown streets, yellow courtyards
+  with trees. Their buildings read as ground.
+
+Next approach, structural rather than colour-only:
+
+1. Urban mask from Tych's ward polygons; browns outside it are terrain.
+2. Real street widths measured on the raster: from each Tych centreline, walk the normal until the
+   colour leaves the street's own colour (works for any palette).
+3. Courtyards and gardens by colour (yellow and green are consistent across wards).
+4. Built-up area = urban land − streets − courtyards − water − piers; its components are blocks.
+5. Houses: lots subdivided along each block's street frontage, roof colour sampled from the map
+   underneath. Red landmark roofs keep their real footprint.
+6. City wall and towers: the landward edge of the ward union plus Tych's 20 fortification and
+   6 gate points.
+
+The diorama does not need every house traced. Blocks, streets, courtyards and roof colours must
+match the map; houses must have the ward's density and look.
