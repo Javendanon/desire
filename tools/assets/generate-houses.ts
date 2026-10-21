@@ -8,6 +8,7 @@ import fs from 'node:fs';
 
 import sharp from 'sharp';
 
+import { readFlags } from './src/flags.ts';
 import { footprintCorners, footprintPoint } from './src/footprint.ts';
 import { placeHouses, type House } from './src/lots.ts';
 import { between, mulberry32 } from './src/random.ts';
@@ -51,20 +52,7 @@ type Raster = {
 };
 
 function parseOptions(argv: string[]): Options {
-  const values = new Map<string, string>();
-  for (let index = 0; index + 1 < argv.length; index += 2) values.set(argv[index], argv[index + 1]);
-  const need = (flag: string) => {
-    const value = values.get(flag);
-    if (value === undefined) throw new Error(`missing ${flag}`);
-    return value;
-  };
-  const numbers = (flag: string, count: number) => {
-    const list = need(flag).split(',').map(Number);
-    if (list.length !== count || list.some((value) => !Number.isFinite(value))) {
-      throw new Error(`${flag} needs ${count} comma-separated numbers`);
-    }
-    return list;
-  };
+  const { need, numbers } = readFlags(argv);
   return {
     blocks: need('--blocks'), classes: need('--classes'), map: need('--map'),
     region: numbers('--region', 4) as Region, heights: numbers('--heights', 2) as [number, number],

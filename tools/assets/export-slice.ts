@@ -10,17 +10,18 @@ import path from 'node:path';
 
 import sharp from 'sharp';
 
-import { findBerths, plantTrees, type Berth, type Tree } from './src/features.ts';
+import { readFlags } from './src/flags.ts';
+import {
+  CARAVEL_Z18, findBerths, ORCHARD_Z18, plantTrees, type Berth, type Tree,
+} from './src/features.ts';
 import { heightField, paintAlbedo } from './src/slice.ts';
 
 const EXIT_FAIL = 2;
 /** Height-field cell: 4 source pixels, about 1.9 m at z18. */
 const CELL_PX = 4;
 const SEED = 0xd0c4;
-/** A caravel at z18: about 22 m long and 6.5 m in the beam, 26 m between moored bows. */
-const SHIP = { lengthPx: 48, beamPx: 14, spacingPx: 56, seed: SEED };
-/** One tree per 12 px (about 5.6 m) square of garden at most. */
-const TREES = { spacingPx: 12, seed: SEED };
+const SHIP = { ...CARAVEL_Z18, seed: SEED };
+const TREES = { ...ORCHARD_Z18, seed: SEED };
 
 type Region = [number, number, number, number];
 type House = {
@@ -32,15 +33,9 @@ type House = {
 };
 
 function parseOptions(argv: string[]) {
-  const values = new Map<string, string>();
-  for (let index = 0; index + 1 < argv.length; index += 2) values.set(argv[index], argv[index + 1]);
-  const need = (flag: string) => {
-    const value = values.get(flag);
-    if (value === undefined) throw new Error(`missing ${flag}`);
-    return value;
-  };
-  const region = need('--region').split(',').map(Number);
-  if (region.length !== 4 || region.some((value) => !Number.isInteger(value))) {
+  const { need, numbers } = readFlags(argv);
+  const region = numbers('--region', 4);
+  if (region.some((value) => !Number.isInteger(value))) {
     throw new Error('--region must be left,top,width,height in source pixels');
   }
   return {
