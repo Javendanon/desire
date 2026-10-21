@@ -45,6 +45,20 @@ Forgotten Maps, the Fandom wiki), a 2.5D animated map on Sketchfab and a Minecra
    canvas and the reference art.
 3. **Whole city**, with the castle and landmarks as authored pieces.
 
-## Open decisions
+## Decisions
 
-- World scale: D05/AideDD (current contract) or Tych's 5 ft grid (1.84× smaller).
+- **World scale: Tych's 5 ft grid** (owner, 2026-10-21). Buildings and streets are drawn for that
+  grid, so houses get credible medieval sizes and the tactical scene's 5 ft cells need no
+  conversion. Consequence: D05's calibration (`meters_per_pixel` 0.983, from AideDD's
+  `310 px = 1000 ft`) is replaced by a new D04 map-version revision scaled by 1 / 1.84, and D13's
+  Waterdeep content is rescaled with it. Until that revision lands, layers are produced in the
+  Tych frame and converted through one documented transform.
+
+## Layer extraction: first pass (Dock Ward)
+
+An exploratory per-pixel classifier on the label-free Tych raster (hue and saturation rules,
+5 × 5 majority filter) already separates roof masses, paved streets, red landmark roofs and open
+water. Known errors to fix before building footprints: shallow shore water reads as street or
+ground (same colour, but smooth and connected to open water); piers read as roofs (they touch
+water and lie outside the land mask); narrow dirt lanes merge adjacent blocks (Tych's street
+centrelines, rasterised at their width, force them open).
