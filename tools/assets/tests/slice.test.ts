@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { Surface } from '../src/raster/surface.ts';
-import { HEIGHT_M, heightField, paintAlbedo } from '../src/slice.ts';
+import { HEIGHT_M, heightField, paintAlbedo, shoreDistance } from '../src/slice.ts';
 
 const size = { width: 4, height: 2 };
 const classes = Uint8Array.from([
@@ -28,4 +28,20 @@ test('the albedo is painted from classes, with noise but within the palette rang
 test('the same seed paints the same ground', () => {
   const first = paintAlbedo({ classes, size, cellPx: 2, seed: 9 });
   assert.deepEqual(paintAlbedo({ classes, size, cellPx: 2, seed: 9 }), first);
+});
+
+test('shore distance counts pixels from water to the nearest land, zero on land', () => {
+  const W = Surface.Water;
+  const L = Surface.Street;
+  const strip = Uint8Array.from([L, W, W, W, W, W]);
+  assert.deepEqual([...shoreDistance(strip, { width: 6, height: 1 })], [0, 1, 2, 3, 4, 5]);
+});
+
+test('water is lighter near the shore than far from it: shallows and foam', () => {
+  const W = Surface.Water;
+  const classes = Uint8Array.from([Surface.Street, ...new Array(59).fill(W)]);
+  const rgb = paintAlbedo({ classes, size: { width: 60, height: 1 }, cellPx: 2, seed: 3 });
+  const brightness = (index: number) => rgb[index * 3] + rgb[index * 3 + 1] + rgb[index * 3 + 2];
+  assert.ok(brightness(1) > brightness(30), 'foam at the waterline');
+  assert.ok(brightness(10) > brightness(55), 'shallows lighter than deep water');
 });
