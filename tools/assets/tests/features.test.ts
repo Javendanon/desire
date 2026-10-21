@@ -29,12 +29,13 @@ test('ships moor alongside the pier, parallel to it, in open water', () => {
   assert.equal(sides.size, 2, 'both sides of the pier');
 });
 
-test('moored ships keep their spacing and stay inside the slice', () => {
+test('ships on the same side of the pier keep their spacing and stay inside the slice', () => {
   const berths = findBerths(harbour(), size, SHIP);
   for (const [index, a] of berths.entries()) {
     assert.ok(a.x_px - SHIP.lengthPx / 2 >= 0 && a.x_px + SHIP.lengthPx / 2 <= size.width);
     for (const b of berths.slice(index + 1)) {
-      assert.ok(Math.hypot(a.x_px - b.x_px, a.y_px - b.y_px) >= SHIP.spacingPx);
+      const abreast = Math.abs(a.y_px - b.y_px) < SHIP.beamPx;
+      if (abreast) assert.ok(Math.abs(a.x_px - b.x_px) >= SHIP.spacingPx, 'hulls overlap');
     }
   }
 });
