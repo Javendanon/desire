@@ -2,12 +2,14 @@
 /**
  * CLI: cut the whole map into sector payloads (docs/waterdeep-3d/sector-format.md). Writes
  * `<out>/<index>.render.bin` for every sector holding a house, berth or tree, and
- * `<out>/index.json` with the grid and per-sector counts. Berths and trees are found over the
- * full class raster. Output goes to an ignored directory: it is derived from the source map.
+ * `<out>/index.json` with the grid, the city-wide roof tone centres and per-sector counts.
+ * Berths and trees are found over the full class raster. Output goes to an ignored directory:
+ * it is derived from the source map.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { roofCentres } from '../../src/lib/diorama/roof-palette.ts';
 import { writeSector } from '../../src/lib/map/sector-format.ts';
 import { CARAVEL_Z18, findBerths, ORCHARD_Z18, plantTrees } from './src/features.ts';
 import { readFlags } from './src/flags.ts';
@@ -50,7 +52,10 @@ function main(argv: string[]) {
     return { index, houses: houses.length, berths: berths.length, trees: trees.length,
       bytes: bytes.length };
   });
-  const index = { format: FORMAT, grid, sectors: entries };
+  // One palette for the whole city: a house's roof tone then depends on its own colour only.
+  const roof_centres = roofCentres((layer.houses as LayerHouse[]).map((house) => house.roof_rgb))
+    .map((centre) => centre.map((channel) => Math.round(channel)));
+  const index = { format: FORMAT, grid, roof_centres, sectors: entries };
   fs.writeFileSync(path.join(options.out, 'index.json'), `${JSON.stringify(index, null, 2)}\n`);
   const houses = entries.reduce((sum, entry) => sum + entry.houses, 0);
   console.log(`${options.out}: ${entries.length} sectors, ${houses} houses, `

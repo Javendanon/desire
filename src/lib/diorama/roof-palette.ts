@@ -2,8 +2,6 @@
 // its nearest tint from the design canvas. A painted map colour is far darker than a daylight
 // albedo; the mix keeps the ward's identity with the design's brightness. Pure.
 
-import type { SliceHouse } from './slice-data.ts';
-
 export type Rgb = [number, number, number];
 
 const ROOF_TONES = 6;
@@ -74,7 +72,7 @@ export function roofCentres(colours: Rgb[]): Rgb[] {
  * slice). O(houses · tones).
  */
 export function roofTones(
-  houses: Pick<SliceHouse, 'roof_rgb'>[],
+  houses: { roof_rgb: Rgb }[],
   centres: Rgb[] = roofCentres(houses.map((house) => house.roof_rgb)),
 ): RoofPalette {
   return {
