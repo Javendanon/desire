@@ -10,7 +10,8 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sector import artifacts, check_layout, decode, encode, validate_payload
+from sector import artifacts
+from sector_codec import check_layout, decode, encode, validate_payload
 
 ROOT = Path(__file__).resolve().parents[3]
 CONTRACT = json.loads((ROOT / 'contracts/sector-render.json').read_text())
