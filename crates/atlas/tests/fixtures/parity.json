@@ -1,0 +1,15 @@
+{
+  "classify_all_colours": {
+    "fnv1a": 1902461041,
+    "counts": {
+      "Ground": 5620283,
+      "Water": 5638838,
+      "Roof": 265725,
+      "Street": 157341,
+      "Outline": 125000,
+      "RedRoof": 3330505,
+      "Pier": 0,
+      "Garden": 1639524
+    }
+  }
+}

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/core", "crates/api", "crates/wasm"]
+members = ["crates/core", "crates/api", "crates/wasm", "crates/atlas"]
 resolver = "3"
 
 [workspace.package]
@@ -14,6 +14,8 @@ axum = "=0.8.9"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
 wasm-bindgen = "=0.2.128"
+image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
+rayon = "=1.12.0"
 
 [profile.release]
 lto = "thin"
