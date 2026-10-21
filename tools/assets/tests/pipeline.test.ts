@@ -7,23 +7,36 @@ import test from 'node:test';
 import { outputPath } from '../src/output.ts';
 import { parseGlb } from '../src/gltf-read.ts';
 import { buildAsset } from '../src/pipeline.ts';
-import { sampleManifestPath } from './helpers.js';
+import { sampleManifestPath } from './helpers.ts';
 
-const build = async () => {
+type BuildResult = ReturnType<typeof buildAsset>;
+
+const build = () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
-  const result = await buildAsset({ manifestPath: sampleManifestPath(), outDir });
-  return result;
+  return buildAsset({ manifestPath: sampleManifestPath(), outDir });
 };
 
-test('the sample scene builds into a navigable artifact with all checks green', async () => {
-  const { report } = await build();
+/** Narrows to a report that reached the acceptance checks, so it carries every section. */
+function checkedReport(result: BuildResult) {
+  const { report } = result;
+  assert.ok('lod' in report, `report ${report.id} stopped before the acceptance checks`);
+  return report;
+}
+
+function writtenArtifact(result: BuildResult): string {
+  assert.ok(result.artifactPath, 'the build wrote an artifact');
+  return result.artifactPath;
+}
+
+test('the sample scene builds into a navigable artifact with all checks green', () => {
+  const { report } = build();
   const failed = report.checks.filter((check) => !check.pass);
   assert.deepEqual(failed, [], 'no failing acceptance check');
   assert.equal(report.pass, true);
 });
 
-test('the report records scale, fidelity, collision, textures and navigation', async () => {
-  const { report } = await build();
+test('the report records scale, fidelity, collision, textures and navigation', () => {
+  const report = checkedReport(build());
   assert.equal(report.scale.checks.length, 1);
   assert.equal(report.scale.checks[0].pass, true);
   assert.deepEqual(report.fidelity, {
@@ -43,36 +56,37 @@ test('the report records scale, fidelity, collision, textures and navigation', a
   assert.deepEqual(report.unknown_places.sort(), ['chandlers-row', 'tide-stairs']);
 });
 
-test('--out produces a portable textured artifact without source sidecars', async () => {
-  const { artifactPath } = await build();
-  const json = parseGlb(fs.readFileSync(artifactPath)).json;
-  assert.ok(json.images.length > 0);
-  assert.ok(json.images.every((image) => image.bufferView !== undefined && !image.uri));
-  assert.ok(json.images.every((image) => image.extras.width_px > 0 && image.extras.height_px > 0));
+test('--out produces a portable textured artifact without source sidecars', () => {
+  const json = parseGlb(fs.readFileSync(writtenArtifact(build()))).json;
+  const images = json.images ?? [];
+  assert.ok(images.length > 0);
+  assert.ok(images.every((image) => image.bufferView !== undefined && !image.uri));
+  assert.ok(images.every((image) => image.extras.width_px > 0 && image.extras.height_px > 0));
   assert.ok(json.materials[0].pbrMetallicRoughness.baseColorTexture);
 });
 
-test('a failing rebuild quarantines the previous artifact', async () => {
+test('a failing rebuild quarantines the previous artifact', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
   fs.cpSync(path.join(path.dirname(sampleManifestPath()), 'textures'),
     path.join(outDir, 'textures'), { recursive: true });
-  const first = await buildAsset({ manifestPath: sampleManifestPath(), outDir });
+  const first = buildAsset({ manifestPath: sampleManifestPath(), outDir });
   assert.equal(first.artifactPath !== null, true);
   const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
   manifest.scale_checks[0].expected_m = 300;
   const brokenPath = path.join(outDir, 'broken.json');
   fs.writeFileSync(brokenPath, JSON.stringify(manifest));
-  const second = await buildAsset({ manifestPath: brokenPath, outDir });
+  const second = buildAsset({ manifestPath: brokenPath, outDir });
   assert.equal(second.report.pass, false);
   const names = fs.readdirSync(outDir);
   assert.deepEqual(names.filter((name) => name.endsWith('.glb')), []);
   assert.ok(names.some((name) => name.endsWith('.glb.stale')), names.join(', '));
-  assert.equal(second.report.artifact.stale_path !== undefined, true);
+  assert.equal(checkedReport(second).artifact.stale_path !== undefined, true);
 });
 
-test('the artifact and its report are written next to each other', async () => {
-  const { artifactPath, reportPath, bytes } = await build();
-  assert.ok(fs.existsSync(artifactPath));
+test('the artifact and its report are written next to each other', () => {
+  const result = build();
+  const { reportPath, bytes } = result;
+  assert.ok(fs.existsSync(writtenArtifact(result)));
   assert.ok(fs.existsSync(reportPath));
   assert.ok(bytes > 1000, `artifact bytes ${bytes}`);
   const written = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
@@ -114,30 +128,29 @@ test('output containment rejects traversal and symlinks, including staging and q
 
 test('invalid-manifest rebuilds quarantine the previous valid artifact', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-invalid-'));
-  const first = buildAsset({ manifestPath: sampleManifestPath(), outDir });
-  assert.ok(first.artifactPath);
+  const firstArtifact = writtenArtifact(buildAsset({ manifestPath: sampleManifestPath(), outDir }));
   const manifest = JSON.parse(fs.readFileSync(sampleManifestPath(), 'utf8'));
   delete manifest.calibration;
   const manifestPath = path.join(outDir, 'invalid.json');
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   const second = buildAsset({ manifestPath, outDir });
   assert.equal(second.report.pass, false);
-  assert.equal(fs.existsSync(first.artifactPath), false);
-  assert.ok(fs.existsSync(`${first.artifactPath}.stale`));
+  assert.equal(fs.existsSync(firstArtifact), false);
+  assert.ok(fs.existsSync(`${firstArtifact}.stale`));
 });
 
-test('a malformed manifest writes a failing report and leaves no artifact', async () => {
+test('a malformed manifest writes a failing report and leaves no artifact', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
   const brokenPath = path.join(outDir, 'broken.json');
   fs.writeFileSync(brokenPath, JSON.stringify({ schema: 'desire.asset-scene/1', places: {} }));
-  const { report, artifactPath } = await buildAsset({ manifestPath: brokenPath, outDir });
+  const { report, artifactPath } = buildAsset({ manifestPath: brokenPath, outDir });
   assert.equal(report.pass, false);
   assert.equal(artifactPath, null);
   assert.ok(fs.existsSync(path.join(outDir, 'report.json')));
   assert.deepEqual(fs.readdirSync(outDir).filter((name) => name.endsWith('.glb')), []);
 });
 
-test('a manifest with a broken scale check fails the build instead of shipping', async () => {
+test('a manifest with a broken scale check fails the build instead of shipping', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-asset-'));
   fs.cpSync(path.join(path.dirname(sampleManifestPath()), 'textures'),
     path.join(outDir, 'textures'), { recursive: true });
@@ -145,9 +158,10 @@ test('a manifest with a broken scale check fails the build instead of shipping',
   manifest.scale_checks[0].expected_m = 300;
   const brokenPath = path.join(outDir, 'broken.json');
   fs.writeFileSync(brokenPath, JSON.stringify(manifest));
-  const { report, artifactPath } = await buildAsset({ manifestPath: brokenPath, outDir });
+  const result = buildAsset({ manifestPath: brokenPath, outDir });
+  const report = checkedReport(result);
   assert.equal(report.pass, false);
   assert.match(JSON.stringify(report.checks), /scale/);
-  assert.equal(artifactPath, null);
+  assert.equal(result.artifactPath, null);
   assert.equal(report.artifact.written, false);
 });

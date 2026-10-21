@@ -3,7 +3,7 @@ import { buildBox, buildGround, mergeMeshes } from './geometry.ts';
 import type { Manifest, Mesh } from './types.ts';
 import type { Scene } from './scene.ts';
 import type {
-  Accessor, Builder, GltfJson, GltfMaterial, GltfMesh, GltfNode, Primitive,
+  Accessor, AssetExtras, Builder, GltfJson, GltfMaterial, GltfMesh, GltfNode, Primitive,
 } from './gltf-types.ts';
 
 type MeshSpec = { builder: Builder; scene: Scene; manifest: Manifest;
@@ -125,7 +125,7 @@ function buildMaterials(manifest: Manifest): GltfMaterial[] {
   return materials;
 }
 
-function assetExtras(scene: Scene, manifest: Manifest) {
+function assetExtras(scene: Scene, manifest: Manifest): AssetExtras {
   return {
     id: scene.id,
     label: scene.label,

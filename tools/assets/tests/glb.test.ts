@@ -6,25 +6,41 @@ import test from 'node:test';
 import { accessorFinding, uncoveredSolids } from '../src/check.ts';
 import { encodeGlb } from '../src/glb.ts';
 import { collisionBlockers, parseGlb, readAccessor } from '../src/gltf-read.ts';
-import { readManifest } from '../src/io.ts';
 import { buildScene } from '../src/scene.ts';
-import { sampleManifestPath } from './helpers.js';
+import type { GltfJson } from '../src/gltf-types.ts';
+import { sampleManifest, sampleManifestPath } from './helpers.ts';
 
 const build = () => {
-  const { manifest } = readManifest(sampleManifestPath());
+  const manifest = sampleManifest();
   const images = manifest.textures.map((texture) =>
     fs.readFileSync(path.join(path.dirname(sampleManifestPath()), texture.path)));
   return { manifest, gltf: parseGlb(encodeGlb(buildScene(manifest), manifest, images)) };
 };
 
-const nodeByName = (json, name) => json.nodes.find((node) => node.name === name);
+function nodeByName(json: GltfJson, name: string) {
+  const node = json.nodes.find((entry) => entry.name === name);
+  assert.ok(node, `node ${name} exists`);
+  return node;
+}
+
+function sceneByName(json: GltfJson, name: string) {
+  const scene = json.scenes.find((entry) => entry.name === name);
+  assert.ok(scene, `scene ${name} exists`);
+  return scene;
+}
+
+/** Narrows an optional glTF field that the sample must contain. */
+function present<T>(value: T | undefined, label: string): T {
+  assert.ok(value !== undefined, `${label} is present`);
+  return value;
+}
 
 test('the artifact is a glTF 2.0 binary with an embedded buffer', () => {
   const { gltf } = build();
   assert.equal(gltf.json.asset.version, '2.0');
   assert.equal(gltf.json.buffers[0].uri, undefined, 'no external buffer download');
   assert.ok(gltf.bin.length > 0);
-  assert.ok(gltf.json.images.every((image) => image.bufferView !== undefined && !image.uri));
+  assert.ok(present(gltf.json.images, 'images').every((image) => image.bufferView !== undefined && !image.uri));
 });
 
 test('the default scene renders only ground and LOD0; auxiliary scenes are explicit', () => {
@@ -33,9 +49,9 @@ test('the default scene renders only ground and LOD0; auxiliary scenes are expli
   const names = json.scenes[json.scene].nodes.map((index) => json.nodes[index].name);
   assert.equal(names.length, 9);
   assert.ok(names.every((name) => name === 'render/ground' || name.startsWith('render/lod0/')));
-  const collision = json.scenes.find((scene) => scene.name === 'collision');
+  const collision = sceneByName(json, 'collision');
   assert.deepEqual(collision.nodes.map((index) => json.nodes[index].name), ['collision']);
-  const lod1 = json.scenes.find((scene) => scene.name === 'lod1');
+  const lod1 = sceneByName(json, 'lod1');
   assert.deepEqual(lod1.nodes.map((index) => json.nodes[index].name),
     ['render/ground', 'render/lod1']);
 });
@@ -44,7 +60,7 @@ test('LOD0 and LOD1 apply the same base color exactly once', () => {
   const { manifest, gltf } = build();
   for (const mesh of gltf.json.meshes.filter((mesh) => mesh.name.startsWith('render/'))) {
     for (const primitive of mesh.primitives) {
-      const material = gltf.json.materials[primitive.material];
+      const material = gltf.json.materials[present(primitive.material, 'LOD material')];
       const input = manifest.materials.find((entry) => entry.id === material.name);
       assert.ok(input, `LOD material ${material.name} preserves its source factors`);
       assert.deepEqual(material.pbrMetallicRoughness.baseColorFactor, input.base_color);
@@ -57,11 +73,13 @@ test('LOD0 and LOD1 apply the same base color exactly once', () => {
 test('compressed textures have embedded images, real bindings, UVs and resolution metadata', () => {
   const { gltf } = build();
   const json = gltf.json;
-  assert.ok(json.extensionsRequired.includes('EXT_texture_webp'));
+  assert.ok(present(json.extensionsRequired, 'extensionsRequired').includes('EXT_texture_webp'));
   const material = json.materials.find((entry) => entry.name === 'paving');
-  const binding = material.pbrMetallicRoughness.baseColorTexture;
-  const imageIndex = json.textures[binding.index].extensions.EXT_texture_webp.source;
-  const image = json.images[imageIndex];
+  assert.ok(material, 'paving material exists');
+  const binding = present(material.pbrMetallicRoughness.baseColorTexture, 'texture binding');
+  const texture = present(json.textures, 'textures')[binding.index];
+  const imageIndex = texture.extensions.EXT_texture_webp.source;
+  const image = present(json.images, 'images')[imageIndex];
   assert.equal(image.mimeType, 'image/webp');
   assert.deepEqual(image.extras, { width_px: 16, height_px: 16 });
   const view = json.bufferViews[image.bufferView];
@@ -91,7 +109,7 @@ test('collision geometry carries no material and no render children', () => {
       assert.equal(primitive.material, undefined, 'collision must not be shaded');
     }
   }
-  assert.equal(collision.children, undefined);
+  assert.equal('children' in collision, false);
 });
 
 test('collision bounds cover every solid footprint', () => {

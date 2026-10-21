@@ -12,5 +12,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["asset-pipeline.ts", "src/**/*.ts"]
+  "include": ["asset-pipeline.ts", "src/**/*.ts", "tests/**/*.ts"]
 }

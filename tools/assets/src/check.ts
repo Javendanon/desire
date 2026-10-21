@@ -5,7 +5,7 @@ import { evaluateScaleChecks } from './calibration.ts';
 import { collisionBlockers } from './gltf-read.ts';
 import { navigate } from './nav.ts';
 import type { Blocker, Finding, Manifest, Solid } from './types.ts';
-import type { Accessor, Gltf, GltfJson, Primitive } from './gltf-types.ts';
+import type { Accessor, AssetExtras, Gltf, GltfJson, Primitive } from './gltf-types.ts';
 import type { Scene } from './scene.ts';
 import type { TextureCheck } from './textures.ts';
 
@@ -103,8 +103,12 @@ function collisionFindings(collision: Collision, scene: Scene) {
   ];
 }
 
+/** The accessor fields the layout check reads. */
+type AccessorShape = Pick<Accessor, 'type' | 'count'>;
+type AccessorLayout = { json: { accessors: AccessorShape[]; meshes: { primitives: Primitive[] }[] } };
+
 function attributeProblem(
-  accessors: Accessor[], attributes: Record<string, number>, position: Accessor
+  accessors: AccessorShape[], attributes: Record<string, number>, position: AccessorShape
 ) {
   for (const [name, index] of Object.entries(attributes)) {
     const accessor = accessors[index];
@@ -115,7 +119,7 @@ function attributeProblem(
   return null;
 }
 
-function indicesProblem(accessors: Accessor[], primitive: Primitive) {
+function indicesProblem(accessors: AccessorShape[], primitive: Primitive) {
   if (primitive.indices === undefined) return null;
   const indices = accessors[primitive.indices];
   if (indices.type !== 'SCALAR') return `indices type ${indices.type}`;
@@ -124,7 +128,7 @@ function indicesProblem(accessors: Accessor[], primitive: Primitive) {
 }
 
 /** Structural check of the written accessors; exported so tests can feed broken input. */
-export function accessorFinding(gltf: Gltf): Finding {
+export function accessorFinding(gltf: AccessorLayout): Finding {
   const broken: string[] = [];
   for (const mesh of gltf.json.meshes) {
     for (const primitive of mesh.primitives) {
@@ -153,7 +157,8 @@ function renderSelectionFinding(json: GltfJson, scene: Scene) {
 
 function artifactFindings(gltf: Gltf, scene: Scene) {
   const json = gltf.json;
-  const extras = json.asset.extras?.desire ?? {};
+  // A parsed artifact is untrusted: any recorded field may be missing.
+  const extras: Partial<AssetExtras> = json.asset.extras?.desire ?? {};
   const externalBuffers = (json.buffers ?? []).filter((buffer) => buffer.uri !== undefined);
   const listed = extras.unknown_places ?? [];
   const expected = scene.unknown.map((place) => place.id);

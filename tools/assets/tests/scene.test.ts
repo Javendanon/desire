@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readManifest } from '../src/io.ts';
 import { buildScene } from '../src/scene.ts';
-import { sampleManifestPath } from './helpers.js';
+import { sampleManifest } from './helpers.ts';
 
-const scene = () => buildScene(readManifest(sampleManifestPath()).manifest);
+const scene = () => buildScene(sampleManifest());
 
 test('the scene size comes from the calibrated illustration frame', () => {
   const built = scene();

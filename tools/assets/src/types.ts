@@ -4,17 +4,23 @@ export type Pixel = { u: number; v: number };
 export type Plan = { x_m: number; z_m: number };
 export type Anchor = Plan & { id: string };
 export type Provenance = { source: string; attribution: string; evidence: Evidence };
-export type Calibration = {
+/** The geometric part of a calibration: what the D04 transform reads. */
+export type PixelTransform = {
   origin_px_x: number;
   origin_px_y: number;
   meters_per_pixel: number;
   rotation_radians: number;
+};
+export type Calibration = PixelTransform & {
   provenance: Provenance;
 };
-export type Illustration = {
-  title: string;
+/** Raster extent of an illustration in pixels. */
+export type Frame = {
   width_px: number;
   height_px: number;
+};
+export type Illustration = Frame & {
+  title: string;
   license: string;
   attribution: string;
   provenance: Provenance;

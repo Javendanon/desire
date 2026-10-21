@@ -1,5 +1,6 @@
 /** glTF subset emitted by this converter; binary resources are always embedded. */
-import type { Manifest } from './types.ts';
+import type { Provenance, Texture } from './types.ts';
+import type { Scene } from './scene.ts';
 
 export type Accessor = {
   bufferView: number;
@@ -35,11 +36,17 @@ export type GltfImage = {
   uri?: string;
   extras: { width_px: number; height_px: number };
 };
+/** Everything the writer records under `asset.extras.desire`. */
 export type AssetExtras = {
   id: string;
-  provenance: Manifest['illustration']['provenance'];
-  network_allowed: boolean;
+  label: string;
+  provenance: Provenance;
+  calibration: Provenance & { meters_per_pixel: number; rotation_radians: number };
+  fidelity: Scene['fidelity'];
   unknown_places: string[];
+  textures: Pick<Texture, 'id' | 'mime' | 'max_bytes' | 'width_px' | 'height_px'>[];
+  license: string;
+  network_allowed: boolean;
 };
 export type GltfJson = {
   asset: { version: string; generator: string; extras: { desire: AssetExtras } };

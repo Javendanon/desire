@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { evaluateScaleChecks, pixelToPlan, planGround } from '../src/calibration.ts';
+import type { PixelTransform } from '../src/types.ts';
 
-const calibration = (overrides = {}) => ({
+const calibration = (overrides: Partial<PixelTransform> = {}): PixelTransform => ({
   origin_px_x: 0,
   origin_px_y: 0,
   meters_per_pixel: 0.25,

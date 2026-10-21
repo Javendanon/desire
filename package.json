@@ -24,6 +24,8 @@
     "test:frontend": "node --test \"tests/*.test.ts\"",
     "test:holdout": "node --test \"tests/holdout/*.test.ts\"",
     "test:rust": "cargo test --workspace",
+    "test:assets": "node --test \"tools/assets/tests/*.test.ts\"",
+    "check:assets": "tsc -p tools/assets/tsconfig.json",
     "test:quality": "python3 -m unittest discover -s tools/quality/tests -p 'test_*.py'",
     "check:tests": "tsc -p tsconfig.tests.json",
     "quality:gate": "python3 tools/quality/gate.py",

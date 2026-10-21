@@ -2,19 +2,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 
 import { evaluateScaleChecks } from '../src/calibration.ts';
-import { readManifest } from '../src/io.ts';
 import { validateManifest } from '../src/manifest.ts';
 import { navigate } from '../src/nav.ts';
 import { buildAsset } from '../src/pipeline.ts';
 import { checkTextures } from '../src/textures.ts';
-import { fixturePath, sampleManifestPath, samplePath } from './helpers.js';
+import {
+  fixturePath, sampleManifest, sampleManifestPath, samplePath,
+} from './helpers.ts';
 
-const base = () => readManifest(sampleManifestPath()).manifest;
+const base = sampleManifest;
 
-function fixture(context) {
+function fixture(context: TestContext) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-review-'));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const source = path.join(root, 'source');
@@ -68,9 +69,8 @@ test('texture symlinks cannot embed outside material', (context) => {
 test('invalid PBR factors are rejected at the JSON boundary', () => {
   for (const value of ['not-a-number', -0.1, 1.1, null]) {
     const manifest = base();
-    manifest.materials[0].metallic = value;
-    manifest.materials[0].roughness = value;
-    const errors = validateManifest(manifest).errors.join('\n');
+    const material = { ...manifest.materials[0], metallic: value, roughness: value };
+    const errors = validateManifest({ ...manifest, materials: [material] }).errors.join('\n');
     assert.match(errors, /metallic/);
     assert.match(errors, /roughness/);
   }
@@ -119,7 +119,7 @@ const WRITE_TARGET = 'out=""; prev=""; for arg in "$@"; do if [ "$prev" = "-o" ]
   ' then out="$arg"; fi; prev="$arg"; done';
 
 /** Put a scripted dwebp first on PATH, or an empty PATH to simulate a missing decoder. */
-function scriptedDecoder(context, body) {
+function scriptedDecoder(context: TestContext, body: string | null) {
   const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'desire-fake-dwebp-'));
   const previous = process.env.PATH;
   if (body !== null) {
@@ -134,7 +134,7 @@ function scriptedDecoder(context, body) {
 }
 
 /** A valid WebP plus the manifest that declares its real resolution. */
-function decodedFixture(context) {
+function decodedFixture(context: TestContext) {
   const { source, manifest } = fixture(context);
   fs.copyFileSync(fixturePath('detail-640.webp'), path.join(source, 'detail.webp'));
   manifest.textures[0] = { ...manifest.textures[0], path: 'detail.webp', width_px: 640,
@@ -142,7 +142,7 @@ function decodedFixture(context) {
   return { source, manifest };
 }
 
-function checkWithScript(context, body) {
+function checkWithScript(context: TestContext, body: string | null) {
   scriptedDecoder(context, body);
   const { source, manifest } = decodedFixture(context);
   return checkTextures(manifest, source)[0];

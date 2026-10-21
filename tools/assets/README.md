@@ -23,7 +23,7 @@ node --experimental-strip-types tools/assets/asset-pipeline.ts \
   --manifest tools/assets/samples/sample-harbor/asset.json --out /tmp/asset-out
 
 # Regression tests; JS deliberately permits malformed input fixtures
-node --experimental-strip-types --test --experimental-test-coverage tools/assets/tests/*.test.js
+pnpm test:assets   # or: node --test --experimental-test-coverage "tools/assets/tests/*.test.ts"
 
 # Quality metrics (kimun 0.26.0; tests excluded by its default filter)
 km score tools/assets
@@ -55,7 +55,7 @@ owned by the caller and not modified concurrently by another writer.
 - GLB and `report.json` are the output package; no source manifest or texture sidecars are
   needed at load time. Keep the source manifest as the authoring record. The report names the
   artifact by file name (no absolute path), so a committed report reproduces on any machine;
-  `tests/review-regressions.test.js` rebuilds the sample and compares the whole report.
+  `tests/review-regressions.test.ts` rebuilds the sample and compares the whole report.
 
 ## Adding an asset
 
