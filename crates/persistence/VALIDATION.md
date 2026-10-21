@@ -309,3 +309,23 @@ prove PostgreSQL 17 compatibility: local evidence remains 14.19. Remote checks f
 this correction, final owner review of the migration/previous manifest and CI
 changes, and integration into main remain pending. No existing database, Docker
 service, volume or production data was touched.
+
+### Rebase onto current main
+
+Rebased onto `f87e1e2` at the user's request. The two conflicts were CI and package
+scripts: the resolution retains main's asset checks/tests and adds this PR's
+frontend suites and PostgreSQL harness. Merge policy remains `enforce`.
+
+Post-rebase validation: **64** Rust workspace tests pass; **89** frontend tests,
+**137** asset tests and **6** Waterdeep tests pass. Svelte/type checks (including
+assets and test types), Rust fmt/Clippy, generator drift, **29** contract tests,
+**42** quality tests and **13** anti-tamper tests pass. The complete diff against
+main has **0** anti-tamper findings. All SQL assertions still run in the harness.
+
+km 0.26.0: persistence stays **97.9/A++**, 10 files/749 LOC; the expanded project
+scope after main's merged work measures **95.20/A+**, 124 files/10140 LOC, with
+**0** floor blocks and 25 target warnings. This project score has a different scope
+from the pre-rebase 95.48 and is not a like-for-like regression measurement.
+The project gate remains `OK (partial)`, with integral approval pending manual
+coverage. The local Wasm gate is blocked because Homebrew Rust lacks the wasm32
+standard library and rustup; the remote `wasm-build` check must confirm it.

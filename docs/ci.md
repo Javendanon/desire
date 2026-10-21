@@ -11,7 +11,7 @@ name. Renaming a job is a policy change.
 
 | Job | What it runs | Toolchain |
 | --- | --- | --- |
-| `frontend-check` | install from lockfile, `pnpm check`, `test:frontend`, `check:tests`, `verify:waterdeep` | Node from `.nvmrc` (its bundled corepack), pnpm from `packageManager` |
+| `frontend-check` | install from lockfile, `pnpm check`, `check:assets`, `test:assets`, `test:frontend`, `check:tests`, `verify:waterdeep` | Node from `.nvmrc` (its bundled corepack), pnpm from `packageManager` |
 | `rust-fmt` | `cargo fmt --all --check` | `rust-toolchain.toml` |
 | `rust-clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` | `rust-toolchain.toml` |
 | `rust-test` | `bash crates/persistence/test-postgres.sh` (isolated cluster, then workspace tests) | `rust-toolchain.toml` + PostgreSQL server binaries |
