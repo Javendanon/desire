@@ -2,264 +2,220 @@
 
 Status: **implemented as an offline build step**. Card `2409bc23-1cf7-4e2b-b285-7b9440bf411a`.
 Code: [`tools/assets/`](../tools/assets/README.md).
-Current rework evidence: [`reports/d18-rework.md`](reports/d18-rework.md).
+Current evidence: [`reports/d18-rework.md`](reports/d18-rework.md) (§9 covers this redesign).
 Original delivery history: [`reports/d18.md`](reports/d18.md).
 
-This document describes how a fantasy illustration or map becomes a scene artifact, what is
-measured and what is interpreted, and which tools were rejected after a small-sample
-evaluation. It does not describe the runtime viewer (D11) or the Waterdeep content package
-(D13); both consume the artifact described here.
+This document describes how a fantasy illustration or map becomes data the app consumes, what is
+measured and what is interpreted, and why the output is a sector map package rather than a 3D
+model file.
+
+## 0. Decision: a sector map package, not a GLB
+
+Decided on 2026-10-20 in the review of PR #16, by the project owner.
+
+**Context.** The first version of this pipeline exported a self-contained GLB: one box mesh per
+building, a merged LOD1 mesh and a separate collision mesh. An architecture review found that
+nothing in the app could use it:
+
+- The engine never loads GLB. D11 builds the city procedurally, and D13 (PR #18) renders a map from
+  a `MapDefinition`: a sector grid whose sectors hold `MapBuilding` records
+  (`x, z, width, depth, height, rotation, roof, tone, stone`). It draws them with hardware
+  instancing and its own building kit (walls, flat or gable roofs, facade textures), and streams
+  detail per sector (`DetailLevel` 0 to 2).
+- D04 models map content as `MapVersion` + `Chunk { map_version_id, origin, size_m, asset_uri }`,
+  and names D18 for the chunk assets.
+- D12 routes over a row-major `u32` cost buffer with `BLOCKED_CELL`. The GLB had no routing data,
+  and the pipeline kept a second, private walkability grid.
+
+**Measurements** (sample scene, 8 buildings):
+
+| | GLB (removed) | Map package |
+| --- | --- | --- |
+| Bytes per building | about 3 KB of geometry (LOD0, LOD1 and collision, 1,000 B each) plus about 1 KB of node JSON | 182 B compact JSON including evidence, 93 B for the `MapBuilding` fields alone; 371 B as committed (indented) |
+| Draw calls per building | one per building in LOD0 | none of its own: the engine instances every building of a roof tone in one draw call (D13 measured about 34 for Waterdeep's 13,607 lots) |
+| Streaming | one scene | one chunk per sector |
+| Appearance | flat boxes, own materials | the engine kit, consistent with the rest of the app |
+| Routing | not included | `nav-costs.bin` for D12, 49,152 cells, 192 KiB raw, 436 B gzipped |
+
+Extrapolated linearly to Waterdeep's 13,607 lots, the GLB route would weigh about 40 MB of
+geometry and need one draw call per lot at full detail; the package needs about 2.5 MB of
+compact JSON (5 MB indented) before compression.
+
+**Decision.**
+
+1. The pipeline output is a **map package**: `map.json` (D04 map version, D13 sector grid, one
+   D04 `Chunk` per non-empty sector), `sectors/<index>.json` with D13 `MapBuilding` records plus
+   per-building evidence, and `nav-costs.bin`, the D12 cost buffer.
+2. The GLB exporter, the hand-written glTF writer and reader, materials, textures and the WebP
+   decode path are **removed**. They only served the GLB.
+3. Unique authored pieces (a landmark, a ship) may need a 3D model file later. That is a
+   separate path, to be chosen by measuring `gltf-transform` or Blender on a real piece, not this
+   pipeline's job today.
+
+**Consequences.**
+
+- The pipeline produces data the engine and the router already know how to use, and the city's
+  look comes from one place: the engine kit.
+- Three card acceptance items change meaning; §10 maps each one. Compressed textures are no
+  longer produced here because materials are the engine kit's (`roof`, `tone`, `stone`). LOD is
+  the engine's per-sector `DetailLevel`, fed by the same records. Collision for movement is the
+  blocked cells of the cost grid.
+- `MapBuilding` and `SectorGrid` are mirrored from D13, which is not on `main` yet. A test pins
+  their exact keys. When D13 merges, import its types and add the 30-line adapter
+  (`map.json` + sector files → `MapDefinition`) in D13's loader.
 
 ## 1. Scope
 
 In scope: the manifest contract, the offline converter, the acceptance checks, one synthetic
-sample scene, and this documentation.
+sample, and this documentation.
 
-Out of scope and deliberately untouched:
-
-- `content/maps/waterdeep/` (D13) and `src/lib/engine/` (D11).
-- The calibrated Waterdeep package (D05). This pipeline can consume a manifest derived from
-  it, but must never fabricate a city labelled Waterdeep.
-- Display assets, splats and runtime streaming. No runtime code was changed.
+Out of scope and untouched: `content/maps/waterdeep/` (D13), `src/lib/engine/` (D11/D13) and the
+calibrated Waterdeep package (D05). This pipeline can consume a manifest derived from D05, but
+never fabricates a city labelled Waterdeep. D13 already owns Waterdeep's scene content.
 
 ## 2. Stages
 
 ```text
-illustration + calibration + places (JSON manifest)
-        │  validate: schema, provenance, heights, textures, no network
+illustration + calibration + places (JSON manifest, schema 2)
+        │  validate: schema, map version, provenance, heights, style, budgets, no network
         ▼
-metric scene: ground extents, solid footprints, unknown places, fidelity tally
-        │  geometry: flat-shaded boxes, ground quad
+metric scene: ground extent, building footprints with rotation, unknown places, fidelity tally
+        │  sector grid, chunks, D12 cost grid
         ▼
-scene-<id>.glb: render/ground, render/lod0/<place>, render/lod1(/ground), collision
-        │  read the written artifact back
+map-<id>/map.json, sectors/<index>.json, nav-costs.bin   (staged in map-<id>.pending)
+        │  read back from disk through map.json and its chunk URIs
         ▼
-report.json: scale, fidelity, collision, LOD, textures, navigation, provenance
+report.json: scale, fidelity, package, navigation, provenance  →  publish or quarantine
 ```
 
-Every stage is a pure function except `src/io.ts`, `src/textures.ts`, `src/output.ts` and
-`src/pipeline.ts`,
-which touch the filesystem. Nothing fetches, nothing renders, nothing infers geometry.
-Running the sample takes about 0.1 s.
+Every stage is a pure function except `src/io.ts` (manifest), `src/package-io.ts` (package),
+`src/output.ts` (path containment) and `src/pipeline.ts` (staging, publish, quarantine). Nothing
+fetches, renders or infers geometry.
 
-## 3. Manifest contract
+## 3. Manifest contract (`desire.asset-scene/2`)
 
-The manifest reuses D04's vocabulary so a D05-derived calibration needs no translation:
+- `map_version`: `id` and `map_id` (lowercase UUIDs) and a positive u32 `revision`: the D04
+  `MapVersion` the package belongs to.
+- `calibration`: exactly D04's `Calibration`. `x` grows east, `z` south, and `y` is never derived
+  from the raster. `rotation_radians` must be 0: the ground, sector grid and cost grid are
+  axis-aligned. Building rotation is a separate, supported field.
+- `sector_size_m`: square sector size, as in D13 (`SECTOR_SIZE_M = 250` for Waterdeep). At most
+  65,536 sectors.
+- `nav_cell_m` (default 1): cost-grid cell size. The grid must fit D12's 1,048,576-cell limit.
+- `places[]`: pixel anchor, `footprint_m` (≤ 200 m per side), optional `rotation_radians`
+  (|θ| ≤ π), height policy fields (§4), `style { roof: 0–4, tone: ≥ 0, stone: boolean }` and
+  provenance tags.
+- `spawn` and `waypoints`: plan-metre anchors inside the calibrated ground.
 
-- `calibration` has exactly D04's `Calibration` shape: `origin_px_x`, `origin_px_y`,
-  `meters_per_pixel`, `rotation_radians`, and a `provenance` with `source`, `attribution`
-  and `evidence` (`verified` | `interpretation` | `synthetic`).
-- The transform is D04's: `x` grows east, `z` grows south, and `y` is **never** derived
-  from the raster. The ground rectangle covers the illustration under the same transform, so a
-  non-zero pixel origin shifts both anchors and ground together.
-- Places carry a pixel anchor and a footprint in meters. Positions become `plan_m` values in
-  meters, rounded to millimetres only in the report.
-
-Validation is strict on purpose. A manifest is rejected when: the schema or label is missing, the asset ID is not filename-safe (1–64 ASCII letters,
-digits, `_` or `-`, starting with a letter or digit),
-the illustration has no license, the calibration is absent or non-positive, `places`,
-`materials`, `textures` or `waypoints` are not arrays, a section entry is not an object,
-`ground.material` is missing, there is no
-`scale_check` reference distance, a place id repeats, a footprint exceeds 200 m, a place
-pixel falls outside the illustration frame, the spawn or a waypoint falls outside the
-calibrated ground, there is no waypoint, no place declares a height, a place references an
-unknown material, a texture is not compressed, a texture budget exceeds 256 KiB, a texture
-path escapes the asset directory, `rotation_radians` is not 0, or heights violate the policy
-in §4.
-
-`rotation_radians` is rejected while non-zero because the ground quad and the navigation grid
-are axis-aligned. Anchor rotation alone would place the scene off its own ground. Supporting
-rotation means rotating the ground, the collision quads and the nav grid together; that is a
-contract change, not a hidden correction in the renderer.
+Validation is strict and reports every violation; a manifest with any error builds nothing.
 
 ## 4. Fidelity versus interpretation
 
-The pipeline is built so that an interpretation cannot silently become a measurement.
-
 | Height label | Required evidence | Meaning |
 | --- | --- | --- |
-| `verified` | `source_ref` | A source states the height (survey, plan, authored asset) |
-| `interpretation` | `rationale` | Derived from the illustration with an explicit argument |
+| `verified` | `source_ref` | A source states the height |
+| `interpretation` | `rationale` | Read from the illustration with an explicit argument |
 | `synthetic` | `rationale` | Invented sample or placeholder data |
-| `null` (absent) | — | Unknown. No solid geometry is emitted |
+| `null` (absent) | — | Unknown. No building is emitted |
 
-Rules enforced in `src/heights.ts`, not in prose:
+- An unknown height is never replaced by a default. The place stays in `places` with
+  `height_known: false`, is listed in `unknown_places`, and is absent from buildings and blocked
+  cells.
+- Heights above 400 m are rejected.
+- Every building record carries `place_id`, `height_evidence` and provenance tags, so the engine
+  can show what is measured and what is interpreted without opening the manifest.
+- An LLM may help a person read an illustration. It is not part of the build: a proposal becomes
+  data only after a person writes `height_m` plus evidence into the manifest.
 
-- An unknown height is never replaced by a default, an average, or a guess. The place is
-  recorded in `unknown_places`, excluded from render and collision geometry, and counted in
-  the report.
-- `height_evidence` without `height_m`, or `height_m` without evidence, is a validation error.
-- Heights above 400 m are rejected: an illustration cannot justify a skyscraper, and a
-  hallucinated landmark should fail loudly.
-- Every solid node in the GLB carries `extras.desire.height_evidence`, and `asset.extras`
-  carries the whole fidelity tally.
+## 5. The map package (`desire.map-package/1`)
 
-An LLM may help a human read an illustration, name candidate places, or propose a rationale.
-It is not part of the build: no model is called, and a proposal only becomes geometry after a
-human writes `height_m` plus evidence into the manifest. Spatial facts the illustration does
-not show (heights, interiors, hidden alleys) stay unknown by construction.
+- **Sector grid**: D13's `SectorGrid` semantics. Origin at the ground's north-west corner,
+  `columns = ceil(width / size)`, index `row * columns + column`. A building belongs to the
+  sector containing its centre (a centre on the far edge stays in the last sector).
+- **Chunks**: one D04 `Chunk` per non-empty sector: `origin` is the sector corner with `y_m: 0`,
+  `size_m` the sector size, `asset_uri` `sectors/<index>.json`. Chunk ids are name-based UUIDs
+  (v5, RFC 9562) of the map version id and `chunk:<index>`, so a rebuild keeps every id. The
+  algorithm is checked against Python's `uuid.uuid5`.
+- **Buildings**: D13 `MapBuilding` fields (`x`, `z` = footprint centre in plan metres; `width`,
+  `depth`, `height`, `rotation`, `roof`, `tone`, `stone`) plus `place_id`, `height_evidence` and
+  `provenance`.
+- **Rotation** follows the engine: D13's `trs` uses PlayCanvas `setFromEulerAngles(0, θ, 0)`, so
+  local +x (width) points to (cos θ, −sin θ) in plan and local +z (depth) to (sin θ, cos θ).
 
-## 5. Geometry, LOD, collision and navigation
+## 6. Navigation: the D12 cost grid
 
-- **Render LOD0**: one flat-shaded box per solid place, one node each, one material each.
-  Per-place nodes keep picking and per-place highlighting possible.
-- **Render LOD1**: the same boxes merged into one mesh and one node. This reduces draw calls
-  (9 draw calls to 4 including the ground, with one primitive per material), not triangles:
-  the report records
-  `lod0_triangles` and `lod1_triangles` side by side, and the sample shows 80 and 80.
-  Triangle decimation is deferred until a real authored mesh exists to measure.
-- **Scene selection**: the default glTF scene selects ground and LOD0 only. The auxiliary
-  `lod1` scene selects ground and the merged mesh; consumers switch scenes, not append them.
-- **Collision**: a separate `collision` node in the auxiliary `collision` scene only, never
-  selected by the default scene. It has no material or children. A material-less mesh is still
-  visible in glTF, so separation is enforced through scene selection, not missing shading.
-- **Navigation**: a 1 m grid over the ground, blockers taken from the collision quads, and a
-  4-neighbour flood fill from the spawn. A waypoint counts as reachable only if its own free
-  cell belongs to the reached component. There is no proximity shortcut through walls.
-  Blocking is conservative: a cell is blocked when a collision quad overlaps it. The
-  sample reaches 47 624 of 49 152 ground cells (96.9%, free cells are 47 624) and all three
-  waypoints.
-- **Coverage**: the check recomputes, from the artifact's collision quads, that every solid
-  footprint lies inside some collision quad. A collision mesh that covers one building out of
-  eight fails the build.
-- **Accessors**: the artifact check requires every vertex attribute to be an integer count
-  equal to POSITION and of the expected type (`VEC3` for position, normal and color), and the
-  index accessor to be `SCALAR` with a count divisible by three.
+- `nav-costs.bin`: row-major `u32` little-endian, one value per cell: `1` free,
+  `0xFFFFFFFF` (`BLOCKED_CELL`) blocked. `map.json` → `nav` carries origin, `cell_m`, width and
+  height. This is exactly D12's `RoutingGrid` input. Cell `(column, row)` is D12's `(x, y)`.
+- A cell is blocked when a building footprint overlaps it, by a separating-axis test between the
+  rotated footprint and the cell. Edge contact does not block. A thin wall still blocks every
+  cell it crosses, and a diagonal building leaves its bounding-box corners free.
+- The budget is D12's `MAX_GRID_CELLS` (1,048,576), pinned by a test that reads the Rust
+  constant. Waterdeep at 1 m would need about 25 million cells: a city-scale grid needs
+  `nav_cell_m` of about 5 m or per-sector grids. D14 owns that choice when it routes on real maps.
+- Costs are uniform. Terrain costs (roads cheaper, rough ground dearer) are a later manifest
+  field, not inferred.
 
-The artifact is glTF 2.0 binary with embedded geometry and compressed images, so a consumer
-needs no second download or source manifest. Materials have real `baseColorTexture` bindings;
-meshes carry normalized per-quad `TEXCOORD_0`. This mapping is placeholder interpretation,
-not reconstructed illustration detail. Vertex colors contain shading only; base color, alpha,
-metallic and roughness factors are applied once and preserved across both LODs.
+## 7. Acceptance checks (read back from disk)
 
-## 6. Textures and materials
+The package is written to `map-<id>.pending`, read back through `map.json` and each chunk's
+`asset_uri` exactly as a consumer would, then checked:
 
-- Only `image/webp` is currently accepted. KTX2 is rejected until a genuine BasisU
-  encoder/decoder fixture proves the `KHR_texture_basisu` contract; a KTX2 header alone is
-  not evidence of a usable compressed image. PNG and JPEG are rejected at validation.
-- Checks canonicalize source paths, preflight file sizes before reads, and decode the exact
-  exported buffers through installed `dwebp`. The decode target is a temporary PNG file, not the
-  child's stdout, so a 4096×4096 raster cannot collide with a pipe buffer limit; the decoded
-  PNG header must match the declared `width_px` / `height_px` before the temporary file is
-  removed. Declared dimensions must also match the WebP header. Resolution metadata travels in
-  report and image extras. Failures stay distinct: a missing binary reads as a missing decoder, an
-  exceeded budget as a timeout, and an unreadable output names its filesystem cause. Truncated
-  images and symlink escapes fail before GLB publication.
-- The sample ships a 52-byte WebP ground texture; a synthetic 16×16 pattern produced once with
-  `cwebp`. The pipeline itself does not depend on `cwebp`.
-- WebP uses the locally installed libwebp tools: `cwebp` for one-off sample authoring and
-  `dwebp` for build-time decode verification. No npm dependency was added. Decoding is offline
-  and mandatory; KTX2 support remains deferred instead of accepting arbitrary KTX2 containers.
-- Images are embedded buffer views with real `EXT_texture_webp` bindings. This extension is
-  listed in both `extensionsUsed` and `extensionsRequired`: consumers must support it because
-  there is no PNG/JPEG fallback. `--out` produces a portable GLB without source-side textures.
+| Check | What it proves |
+| --- | --- |
+| `scale.checks` | Every reference distance recomputed from the pixel frame, unrounded, within tolerance |
+| `fidelity.tally` | Every place counted once by height evidence |
+| `package.buildings` | Every building written once, in the sector containing its centre, with the scene's numbers |
+| `package.chunks` | One chunk per written sector, UUID ids, unique, aligned to the grid, URI matching its sector |
+| `nav.costs` | Buffer matches its header and the D12 encoding; every cell any written footprint overlaps is blocked (recomputed from the written buildings, not from the scene) |
+| `package.provenance` | Calibration provenance present, unknown places listed, no network |
+| `navigation.waypoints` | Spawn free and every waypoint in the free component reached from it, walking the written cost grid |
 
-## 7. Tool evaluation (small sample, measured)
+`pass` is true only when every check passes. Then the pending directory replaces `map-<id>`.
+Otherwise it is removed and any previously published `map-<id>` is renamed `map-<id>.stale`, so a
+consumer cannot load the predecessor of a failed build. Output names are flat and
+containment-checked, and symlinks are rejected before any write, rename or removal.
 
-The card requires evaluating tools before choosing. The sample is one synthetic illustration,
-10 places, 8 solids, one texture.
+## 8. Tool evaluation
 
-| Option | Evidence | Verdict |
-| --- | --- | --- |
-| Blender headless + export scripts | `blender` is not installed on the development machine; adopting it adds a large external binary and a Python bridge | Not chosen now. Revisit when authored meshes must be decimated or animated |
-| `@gltf-transform` / Draco CLI | Needs an npm install and vendored versions; dependency ownership belongs to D01, and the sample needs no decimation, quantization or merging beyond one `Buffer.concat` | Not chosen now. Revisit when triangle budgets require compression |
-| libwebp `cwebp` / `dwebp` | Both installed locally; `cwebp` generated the 52-byte sample and `dwebp` 1.6.0 verifies full decode | Author with `cwebp`; require `dwebp` during offline builds |
-| Hand-written glTF 2.0 GLB writer | No added npm dependency; deterministic export. The original sample measured 0.08 s / 30 KB; current rework measurements are in the report | **Chosen**, with local `dwebp` decode verification |
-| Splats (Gaussian) | No measured benefit, no collision representation, no streaming budget, and no way to derive metric scale from an illustration today | Rejected for now, see §8 |
-
-The small sample also produced the budgets this pipeline enforces: a 30 KB scene artifact, a
-52-byte texture, and a build plus full check suite under a second. Numbers measured on the
-development machine, not project invariants.
-
-## 8. Splats and streaming
-
-Splats are not implemented and no splat path exists in the code. They add value only if all of
-these are measured first, otherwise they are expensive decoration:
-
-1. a collision or navigation representation derived from the same data;
-2. a streaming budget with measured cold-load time and peak memory, per D21;
-3. a scale calibration that ties the splat cloud to D04 meters.
-
-Until then the artifact stays a compact mesh scene. The card's instruction — "splats only if
-they add value and with measured collision/streaming" — is therefore answered with a documented
-rejection, not a stub.
+| Option | Verdict |
+| --- | --- |
+| Hand-written glTF/GLB writer | **Removed** with the GLB output (§0) |
+| `@gltf-transform` / Blender | Not needed for data output. Revisit, measured on a real piece, if unique authored models are required |
+| Splats (Gaussian) | Rejected: no collision or routing representation, no streaming budget, no metric scale from an illustration |
+| TypeScript + `node:test`, no dependencies | **Chosen**: the package mirrors TypeScript engine contracts, and tests run in CI (`pnpm check:assets`, `pnpm test:assets`) |
 
 ## 9. Provenance, privacy and cost
 
-- Every manifest declares illustration provenance (source, attribution, evidence) and a license.
-  Both are copied into `asset.extras.desire` and the report. Each solid node also carries its
-  place id, height evidence and provenance tags, so a place can be traced back from the artifact
-  without opening the input manifest.
-- `network_allowed: true` is rejected. The pipeline has no network code, and texture URLs are
-  rejected by validation. Nothing leaves the machine, so no private material is uploaded.
-- No paid service is used and no API key is required. The only external binary used during
-  authoring was the locally installed `cwebp`; builds now require local `dwebp` for decoding.
-- The sample illustration is synthetic and generated for this repository: no third-party map
-  artwork is redistributed.
+- The manifest declares illustration provenance and license, and the map version records the
+  calibration provenance. Building records carry their own evidence and provenance tags.
+- `network_allowed: true` is rejected; the pipeline has no network code and no paid service.
+- The sample illustration is synthetic; no third-party artwork is redistributed.
 
-## 10. Relationship with Waterdeep and future cities
-
-- D05 provides the calibrated pixel frame, scale provenance and place anchors. A Waterdeep
-  manifest is a copy of the calibration block plus per-place heights that must be marked
-  `interpretation` or left `null`; the AideDD plan does not state building heights.
-- D13 owns the Waterdeep scene content. This pipeline provides the format and the checks; it
-  does not ship a Waterdeep scene, and the sample label says explicitly that it is not Waterdeep.
-- Other cities use the same manifest. City identity lives in content files, never in the
-  converter, so a second city needs no engine change.
-
-## 11. Acceptance mapping
+## 10. Acceptance mapping
 
 | Card requirement | Evidence |
 | --- | --- |
-| Sample scene is navigable | `report.json` → `navigation`: spawn free, 3/3 waypoints reachable, 96.9% of free cells reached |
-| Collision is separate | GLB node `collision` with no material, no children; `collision.separate` and `collision.materialless` checks |
-| Scale is validated | `calibration` matches D04; `scale.checks` recomputes a 224 m reference distance from the pixel frame with 1 m tolerance |
-| Materials/textures are compressed | decoded WebP only; containment, byte/pixel budgets, resolution and real glTF bindings; sample texture 52 B |
-| Provenance is recorded | `asset.extras.desire.provenance`, per-place provenance tags, report `provenance` and `unknown_places` |
-| Fidelity versus interpretation is marked | height evidence per solid, node extras, `fidelity.tally` and `unknown_places` |
-| Inference outside the interactive loop | build step only; no runtime code touched; no model called |
-| Splats only if measured | documented rejection with the conditions to revisit (§8) |
-| No paid services, no private uploads | no network code, `network_allowed` guard, local-only build |
-| Tools evaluated on a small sample | §7 with the measured sample |
+| Navigable sample scene | `navigation.waypoints` over the written D12 cost grid: spawn free, 3/3 waypoints, 97.1% of cells reached |
+| Separate collision | The cost grid is separate from render data; `nav.costs` recomputes coverage from the written footprints |
+| Validated scale | `scale.checks` recomputes a 224 m reference from the pixel frame |
+| Compressed materials/textures | **Changed by decision §0**: materials are the engine kit's; a building carries style indices only. No textures are produced or shipped |
+| LOD | **Changed by decision §0**: the engine's per-sector `DetailLevel` 0–2 renders the same records |
+| Recorded provenance | Map version calibration provenance, per-building evidence and tags, report `provenance` |
+| Fidelity versus interpretation | `height_evidence` per building, `unknown_places`, `height_known`, `fidelity.tally` |
+| Inference outside the interactive loop | Build step only; no model is called; no runtime code touched |
+| Splats only if measured | Documented rejection (§8) |
+| Tools evaluated on a small sample | §0 measurements and §8 |
 
-## 12. Limits and debt
+## 11. Limits and debt
 
-- Count/allocation limits are checked before expensive work: 1024 places, 256 materials,
-  64 textures, 1024 waypoints, 1,000,000 grid cells, 256 KiB per image, 16 MiB aggregate
-  compressed bytes, and 4096×4096 pixels per image. Larger scenes require measured chunking.
-- Ground boundaries are closed for spawn and waypoints; boundary points select the final
-  interior cell. Scale acceptance compares unrounded distances; rounding is presentation only.
-- The nav grid is conservative and axis-aligned: a rotated wall over-blocks. This can hide a
-  reachable waypoint but never claim a blocked one. Upgrade path: rasterize triangles exactly.
-- Rotation is rejected, not implemented (see §3). Circular or north-rotated plans need the
-  ground, collision and grid to rotate together.
-- Some checks are structural invariants rather than evidence: `artifact.embedded` can only fail
-  if the writer starts emitting URIs or images, and `fidelity.tally` compares the tally against
-  the same manifest it was built from. They guard against regressions, not against a bad input.
-- Source and CLI are strict TypeScript, checked with `pnpm exec tsc -p tools/assets/tsconfig.json`.
-  The local configuration avoids changing D01's shared package manifests. Runtime validation
-  remains mandatory for untrusted JSON; JS tests deliberately exercise malformed input.
-- `reachable_ratio` divides reached cells by all ground cells, not by free cells; blocked cells
-  are reported separately as `blocked_cells`.
-- A failing build, including manifest validation failure with a safe ID, renames a previous
-  artifact to `scene-<id>.glb.stale`, so a consumer globbing `*.glb` cannot load the old scene.
-  Output paths are flat, containment-checked and reject symlinks before mutation. Unsafe or
-  missing IDs cannot identify an old artifact for quarantine. Output is single-writer only. Staging files
-  are cleaned at the start of the next build, so a killed build leaves at most one `.pending`.
-- The accessor check verifies counts and types but not that every buffer view stays inside the
-  binary chunk; the reader's tests cover alignment and bounds for the shapes this writer emits.
-- LOD1 does not reduce triangles yet. It is a draw-call LOD, measured as such.
-- `report.json` records the artifact as a bare file name, never an absolute path, so the
-  committed sample report is machine-independent. A test rebuilds the sample in a temporary
-  directory and compares the whole report against the committed one; drift fails the suite.
-  Because the report is byte-identical across directories, a rebuilt artifact's size cannot
-  silently diverge from the committed evidence.
-- Footprints are axis-aligned boxes. Arbitrary silhouettes need an authored mesh path (Blender
-  or `gltf-transform`) that this sample did not justify.
-- Heights and shapes are still authored by a person. The pipeline cannot recover what the
-  illustration does not show, by design.
-- The GLB is not validated by an external glTF validator in CI. The container, accessors and
-  buffer views are checked by the local reader and its tests; a standards validator should be
-  added with network access or a vendored binary (D02/D21).
-- `package.json` has no script for these commands: manifest changes belong to D01. The commands
-  are documented in `tools/assets/README.md`.
+- `MapBuilding` and `SectorGrid` are copies of D13 types until D13 merges; the adapter to
+  `MapDefinition` is not written yet.
+- Footprints are rectangles. Arbitrary silhouettes would need a polygon field in D13's contract
+  first.
+- The sample is synthetic. No real illustration has gone through the pipeline, and D05 records no
+  heights or footprints, so a D05-derived manifest would produce places only.
+- City-scale routing needs a coarser `nav_cell_m` or per-sector grids (§6).
+- Costs are uniform; no terrain cost model yet.
+- Output is single-writer. Publishing removes the old directory and then renames the new one,
+  so a reader can briefly see neither.

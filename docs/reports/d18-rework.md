@@ -4,6 +4,10 @@ Card `2409bc23-1cf7-4e2b-b285-7b9440bf411a`, branch
 `task/d18-preparar-el-pipeline-de-arte-y-escenario`. Base of this round: commit `3c57ad4`
 (`fix(assets): validate decoded inputs and bound offline resource use`).
 
+> **Superseded design.** Sections 1–8 describe the GLB pipeline. §9 records the redesign decided
+> on 2026-10-20: the output is now a sector map package and the GLB path was removed. Read §9 and
+> [`docs/asset-pipeline.md`](../asset-pipeline.md) §0 first.
+
 This is the current approval evidence for D18. [`d18.md`](d18.md) is the historical delivery
 record and does not carry current numbers; [`docs/asset-pipeline.md`](../asset-pipeline.md) holds
 the design and [`tools/assets/README.md`](../../tools/assets/README.md) the operational guide.
@@ -192,3 +196,61 @@ Visual limits that remain: the 16 × 16 `paving.webp` is stretched over the whol
 ground (normalized per-quad UVs, documented as placeholder tiling), so it reads as blurred blocks
 rather than paving. The sample is synthetic massing (flat boxes); it validates the pipeline, not
 art quality.
+
+## 9. Round 4: sector map package instead of GLB (decision 2026-10-20)
+
+**Why.** The round 3 architecture review found that no part of the app consumes a GLB: D11 and
+D13 build scenes procedurally from `MapDefinition` / `MapBuilding` data with instancing and
+per-sector detail, D04 models map content as `MapVersion` + `Chunk`, and D12 routes over a `u32`
+cost buffer. Measured on the sample, the GLB cost about 4 KB per building (3 × 1,000 B of
+geometry plus node JSON) against 182 B compact JSON per building record, and one draw call per
+building at full detail against instanced batches. The project owner chose to emit data and to
+drop the GLB. The decision, with its numbers and consequences, is `docs/asset-pipeline.md` §0.
+
+**What changed.**
+
+| Area | Before | After |
+| --- | --- | --- |
+| Output | `scene-<id>.glb` (LOD0, LOD1, collision, embedded WebP) | `map-<id>/map.json`, `sectors/<index>.json`, `nav-costs.bin` |
+| Engine contract | none | D13 `MapBuilding` per sector, D13 `SectorGrid` |
+| Catalog contract | none | one D04 `Chunk` per non-empty sector, UUID v5 ids |
+| Routing | private 1 m grid, axis-aligned blockers | D12 `u32` LE cost buffer, `BLOCKED_CELL`, D12 cell limit |
+| Building rotation | rejected | supported, engine (PlayCanvas) convention, separating-axis rasterization |
+| Materials/textures | manifest materials, WebP + `dwebp` | engine kit style per building (`roof`, `tone`, `stone`) |
+| Manifest | `desire.asset-scene/1` | `desire.asset-scene/2`: adds `map_version`, `sector_size_m`, `nav_cell_m`, `style`, `rotation_radians` |
+| Removed code | | glTF writer/reader, geometry, textures and surface materials: 1,126 lines in 7 files including their tests. Net change in `tools/assets` code and tests: +1,273 / −1,998 |
+| CI | asset tests not run | `pnpm check:assets` and `pnpm test:assets` in `frontend-check` |
+| `AGENTS.md` | "all of `tools/` in Python" | corrected with the owner: TypeScript for tooling that shares types with the app; existing Python tools unchanged |
+
+**RED evidence.** `7fc8030` adds the contract types and the footprint, cost-grid and package tests,
+which fail with `ERR_MODULE_NOT_FOUND` and a missing `buildCostGrid` export. `cecf3a5` makes them
+pass. `dd0ff64` adds tests that damage a valid package in each way a check must catch; all pass,
+so every package check has been seen failing.
+
+**Evidence run on the final tree** (Node 24.18, kimün 0.26.0):
+
+| Command | Result |
+| --- | --- |
+| `pnpm test:assets` | 78 pass, 0 fail |
+| `pnpm check:assets` | strict `tsc`, 0 errors, tests included |
+| `node --test --experimental-test-coverage "tools/assets/tests/*.test.ts"` | all files 97.17% lines, 91.40% branches, 99.37% functions; `package-check.ts` branches 72% → 96.8% after the negative tests |
+| `node tools/assets/asset-pipeline.ts --manifest tools/assets/samples/sample-harbor/asset.json` | PASS: 8 buildings in 7 sectors, 7 chunks, 256 × 192 cost grid, 1,434 blocked cells, 3/3 waypoints, 97.1% of cells reached |
+| `python3 tools/quality/gate.py --root .` | 95.25 A+, 0 floor blocks, no finding in `tools/assets` |
+| `km score tools/assets` | 93.9 A+ (round 3, `eff8efe`) → 94.9 A+; TypeScript code lines 1,916 → 1,310 |
+| `km dups tools/assets --exclude-ext json` | 0.0% (16.4% without the exclusion is all JSON sample data) |
+| `python3 tools/ci/tamper_check.py origin/main HEAD` | 0 findings |
+| Python `uuid.uuid5` | equals `chunkId` for the sample map version, pinned in `tests/package.test.ts` |
+
+**Card acceptance changes, decided with the owner.** Compressed textures and LOD are no longer
+produced by this pipeline: the engine kit owns materials and renders the per-sector `DetailLevel`
+from the same records. Collision for movement is the blocked cells of the cost grid. See
+`docs/asset-pipeline.md` §10.
+
+**Open items.**
+
+- D13 is not on `main`: `MapBuilding` and `SectorGrid` are mirrored, and the adapter from a map
+  package to `MapDefinition` belongs in D13's loader once it merges.
+- No real illustration has been processed; D05 has no heights or footprints.
+- City-scale routing needs `nav_cell_m` of about 5 m or per-sector grids (D14).
+- Independent advisor: pending. The automated PR review runs on push; its findings will be
+  answered here.
