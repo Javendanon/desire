@@ -125,7 +125,7 @@ test('small green patches inside the city are gardens, not water', () => {
   ]);
   const urban = new Uint8Array(42).fill(1);
   const refined = refineSurfaces({
-    classes, size, streets: [], minWaterFraction: 0.3, urban, pierRadius: 1,
+    classes, size, streets: [], minWaterFraction: 0.3, urban, pierRadius: 1, majorityRadius: 0,
   });
   assert.equal(refined[1 * 14 + 11], Surface.Garden);
   assert.equal(refined[0], W);

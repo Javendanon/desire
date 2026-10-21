@@ -13,6 +13,7 @@ export const Surface = {
   Outline: 4,
   RedRoof: 5,
   Pier: 6,
+  Garden: 7,
 } as const;
 export type SurfaceClass = (typeof Surface)[keyof typeof Surface];
 
@@ -25,6 +26,10 @@ const ROOF_RED_OVER_BLUE = 18;
 const ROOF_RED_OVER_GREEN = 4;
 const ROOF_MAX_CHANNEL = 125;
 const STREET_MAX_SATURATION = 22;
+/** Yellow courtyards (North Ward): warm and bright, blue well below green. */
+const GARDEN_MIN_RED = 140;
+const GARDEN_MIN_GREEN = 130;
+const GARDEN_BLUE_BELOW_GREEN = 35;
 const STREET_MIN_CHANNEL = 100;
 const RGB = 3;
 
@@ -36,6 +41,9 @@ export function classifyPixel(r: number, g: number, b: number): SurfaceClass {
   if (r > g + RED_ROOF_RED_OVER_GREEN && r > b + RED_ROOF_RED_OVER_BLUE) return Surface.RedRoof;
   if (r > b + ROOF_RED_OVER_BLUE && r > g + ROOF_RED_OVER_GREEN && max < ROOF_MAX_CHANNEL) {
     return Surface.Roof;
+  }
+  if (r > GARDEN_MIN_RED && g > GARDEN_MIN_GREEN && b < g - GARDEN_BLUE_BELOW_GREEN) {
+    return Surface.Garden;
   }
   if (saturation < STREET_MAX_SATURATION && max > STREET_MIN_CHANNEL) return Surface.Street;
   return Surface.Ground;

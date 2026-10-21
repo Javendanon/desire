@@ -12,6 +12,8 @@ export type RefineSpec = {
   streets: PixelPolyline[];
   /** Water components smaller than this fraction of the image are inland noise. */
   minWaterFraction: number;
+  /** 1 inside the city. Outside it, roof browns are fields and terrain. Omitted: all urban. */
+  urban?: Uint8Array;
   majorityRadius?: number;
   /** Land narrower than twice this radius is a pier candidate (morphological opening). */
   pierRadius?: number;
@@ -111,7 +113,15 @@ function markPierJunctions(classes: Uint8Array, spec: RefineSpec, water: Uint8Ar
   }
 }
 
-/** Refines raw classes. Order: speckle filter, open water, forced streets, piers. */
+const ROOFS = new Set<number>([Surface.Roof, Surface.RedRoof]);
+
+/** Green that is not open water is vegetation: a garden in the city, terrain outside. */
+function settleLand(classes: Uint8Array, index: number, urban: boolean) {
+  if (classes[index] === Surface.Water) classes[index] = urban ? Surface.Garden : Surface.Ground;
+  else if (!urban && ROOFS.has(classes[index])) classes[index] = Surface.Ground;
+}
+
+/** Refines raw classes. Order: speckle filter, open water, land, forced streets, piers. */
 export function refineSurfaces(spec: RefineSpec): Uint8Array {
   const { size } = spec;
   const classes = majority(spec.classes, size, spec.majorityRadius ?? DEFAULT_MAJORITY_RADIUS);
@@ -119,7 +129,7 @@ export function refineSurfaces(spec: RefineSpec): Uint8Array {
   const streets = paintPolylines(new Uint8Array(classes.length), size, spec.streets);
   for (let index = 0; index < classes.length; index += 1) {
     if (water[index] === 1) classes[index] = Surface.Water;
-    else if (classes[index] === Surface.Water) classes[index] = Surface.Ground;
+    else settleLand(classes, index, (spec.urban?.[index] ?? 1) === 1);
     if (streets[index] === 1 && water[index] === 0) classes[index] = Surface.Street;
   }
   markPiers(classes, spec, water);

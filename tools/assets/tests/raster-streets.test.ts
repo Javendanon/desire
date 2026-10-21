@@ -4,15 +4,23 @@ import test from 'node:test';
 import { fillPolygons } from '../src/raster/polygon-fill.ts';
 import { measureStreetWidth, type RgbRaster } from '../src/raster/street-width.ts';
 
-/** A synthetic raster: a horizontal street band of `band` rows centred on row `centre`. */
+const STREET: [number, number, number] = [88, 78, 69];
+const SLATE: [number, number, number] = [64, 67, 73];
+const OUTLINE: [number, number, number] = [26, 7, 2];
+
+/**
+ * A synthetic North Ward raster: a horizontal street band of `band` rows centred vertically,
+ * then the 2 px black outline Tych draws around every building, then slate roofs. Street and
+ * slate are only 27 apart in RGB, so the outline is what ends the walk, as on the real map.
+ */
 function streetRaster(width: number, height: number, band: number): RgbRaster {
   const rgb = new Uint8Array(width * height * 3);
   const top = Math.floor(height / 2 - band / 2);
+  const bottom = top + band;
   for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const inStreet = y >= top && y < top + band;
-      rgb.set(inStreet ? [88, 78, 69] : [64, 67, 73], (y * width + x) * 3);
-    }
+    const outline = (y >= top - 2 && y < top) || (y >= bottom && y < bottom + 2);
+    const colour = y >= top && y < bottom ? STREET : outline ? OUTLINE : SLATE;
+    for (let x = 0; x < width; x += 1) rgb.set(colour, (y * width + x) * 3);
   }
   return { rgb, width, height };
 }
@@ -33,7 +41,7 @@ test('pebble noise inside the street does not stop the walk', () => {
 test('the median ignores a junction where one side opens onto a square', () => {
   const raster = streetRaster(80, 60, 12);
   for (let y = 0; y < 60; y += 1) {
-    for (let x = 30; x < 40; x += 1) raster.rgb.set([88, 78, 69], (y * 80 + x) * 3);
+    for (let x = 30; x < 40; x += 1) raster.rgb.set(STREET, (y * 80 + x) * 3);
   }
   const width = measureStreetWidth(raster, [[5, 30], [75, 30]]);
   assert.ok(Math.abs(width - 12) <= 2, `measured ${width}`);
