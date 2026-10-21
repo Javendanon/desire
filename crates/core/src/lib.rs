@@ -2,6 +2,7 @@
 
 pub mod flags;
 pub mod routing;
+pub mod sector;
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
