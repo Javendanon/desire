@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { findBerths, plantTrees } from '../src/features.ts';
+import { CARAVEL_Z18, featuresInMetres, findBerths, plantTrees } from '../src/features.ts';
 import { Surface } from '../src/raster/surface.ts';
 
 const size = { width: 160, height: 80 };
@@ -59,4 +59,16 @@ test('trees grow on garden pixels only, about one per spacing square', () => {
     assert.ok(tree.scale >= 0.8 && tree.scale <= 1.3);
   }
   assert.deepEqual(plantTrees(classes, size, { spacingPx: 10, seed: 2 }), trees);
+});
+
+test('features in metres scale berth and tree points by the map scale, keeping the rest', () => {
+  const classes = harbour();
+  const metres = featuresInMetres({ classes, size }, 0.5, 5);
+  const pixels = findBerths(classes, size, { ...CARAVEL_Z18, seed: 5 });
+  assert.equal(metres.berths.length, pixels.length);
+  metres.berths.forEach((berth, index) => {
+    assert.deepEqual(berth, { x_m: pixels[index].x_px * 0.5, z_m: pixels[index].y_px * 0.5,
+      heading_radians: pixels[index].heading_radians });
+  });
+  assert.deepEqual(metres.trees, []);
 });

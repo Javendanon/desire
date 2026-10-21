@@ -11,7 +11,7 @@ import path from 'node:path';
 
 import { roofCentres } from '../../src/lib/diorama/roof-palette.ts';
 import { writeSector } from '../../src/lib/map/sector-format.ts';
-import { CARAVEL_Z18, findBerths, ORCHARD_Z18, plantTrees } from './src/features.ts';
+import { featuresInMetres } from './src/features.ts';
 import { readFlags } from './src/flags.ts';
 import { partitionSectors, sectorGrid, type LayerHouse } from './src/sectors.ts';
 
@@ -26,14 +26,6 @@ function parseOptions(argv: string[]) {
   return { houses: need('--houses'), classes: need('--classes'), width, out: need('--out') };
 }
 
-function features(classes: Uint8Array, size: { width: number, height: number }, mpp: number) {
-  const berths = findBerths(classes, size, { ...CARAVEL_Z18, seed: SEED }).map((berth) =>
-    ({ x_m: berth.x_px * mpp, z_m: berth.y_px * mpp, heading_radians: berth.heading_radians }));
-  const trees = plantTrees(classes, size, { ...ORCHARD_Z18, seed: SEED }).map((tree) =>
-    ({ x_m: tree.x_px * mpp, z_m: tree.y_px * mpp, scale: tree.scale }));
-  return { berths, trees };
-}
-
 function main(argv: string[]) {
   const options = parseOptions(argv);
   const classes = new Uint8Array(fs.readFileSync(options.classes));
@@ -42,7 +34,7 @@ function main(argv: string[]) {
   const layer = JSON.parse(fs.readFileSync(options.houses, 'utf8'));
   const mpp: number = layer.metres_per_pixel;
   const grid = sectorGrid(size, mpp);
-  const found = features(classes, size, mpp);
+  const found = featuresInMetres({ classes, size }, mpp, SEED);
   const sectors = partitionSectors({ grid, houses: layer.houses as LayerHouse[], ...found });
   fs.mkdirSync(options.out, { recursive: true });
   const entries = sectors.map((sector) => {

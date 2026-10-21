@@ -177,3 +177,27 @@ export function plantTrees(classes: Uint8Array, size: RasterSize, spec: TreeSpec
   }
   return trees;
 }
+
+export type ClassRaster = {
+  classes: Uint8Array;
+  size: RasterSize;
+};
+
+/**
+ * Berths for z18 caravels and garden trees, in map metres. Both exporters write features this
+ * way, so a slice and the city's sectors agree. O(pier edge · hull samples + pixels / spacing²).
+ */
+export function featuresInMetres(raster: ClassRaster, metresPerPixel: number, seed: number) {
+  const { classes, size } = raster;
+  const berths = findBerths(classes, size, { ...CARAVEL_Z18, seed }).map((berth) => ({
+    x_m: berth.x_px * metresPerPixel,
+    z_m: berth.y_px * metresPerPixel,
+    heading_radians: berth.heading_radians,
+  }));
+  const trees = plantTrees(classes, size, { ...ORCHARD_Z18, seed }).map((tree) => ({
+    x_m: tree.x_px * metresPerPixel,
+    z_m: tree.y_px * metresPerPixel,
+    scale: tree.scale,
+  }));
+  return { berths, trees };
+}
