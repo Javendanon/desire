@@ -19,6 +19,11 @@ export type Tree = {
   scale: number;
 };
 
+/** A caravel at z18: about 22 m long and 6.5 m in the beam, 26 m between moored bows. */
+export const CARAVEL_Z18 = { lengthPx: 48, beamPx: 14, spacingPx: 56 } as const;
+/** One tree per 12 px (about 5.6 m) square of garden at most. */
+export const ORCHARD_Z18 = { spacingPx: 12 } as const;
+
 export type ShipSpec = {
   lengthPx: number;
   beamPx: number;

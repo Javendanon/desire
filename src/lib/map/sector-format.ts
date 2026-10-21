@@ -16,6 +16,17 @@ export interface SectorHouse {
   frontage: boolean;
 }
 
+/** A house's shape and look without its id and position: what every house record shares. */
+export type HouseBody = Omit<SectorHouse, 'id' | 'x_m' | 'z_m'>;
+
+/** Houses positioned by a `center` point, as the layer and slice JSON files store them. */
+export type CentredHouse = HouseBody & {
+  center: {
+    x_m: number;
+    z_m: number;
+  };
+};
+
 export interface SectorBerth {
   x_m: number;
   z_m: number;

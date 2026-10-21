@@ -1,6 +1,8 @@
 // Loads a diorama slice exported by tools/assets/export-slice.ts: meta, height field, houses,
 // berths, trees and the stylised ground albedo. Metres, x east and z south from the slice corner.
 
+import type { CentredHouse } from '../map/sector-format.ts';
+
 export interface SliceMeta {
   width_m: number;
   depth_m: number;
@@ -9,18 +11,8 @@ export interface SliceMeta {
   rows: number;
 }
 
-export interface SliceHouse {
-  center: {
-    x_m: number;
-    z_m: number;
-  };
-  width_m: number;
-  depth_m: number;
-  rotation_radians: number;
-  height_m: number;
-  roof_rgb: [number, number, number];
-  frontage: boolean;
-}
+/** A house of the slice, centred in slice metres. */
+export type SliceHouse = CentredHouse;
 
 /** A ship moored alongside a pier, keel along local +Z after a turn of `heading_radians`. */
 export interface SliceBerth {
