@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { builtUpMask, traceBlocks } from '../src/raster/blocks.ts';
+import { blockMask, traceBlocks } from '../src/raster/blocks.ts';
 import { simplifyRing } from '../src/raster/simplify.ts';
 import { Surface } from '../src/raster/surface.ts';
 
@@ -19,13 +19,25 @@ const signedArea = (ring: [number, number][]) =>
     return sum + x * ny - nx * y;
   }, 0) / 2;
 
-test('built-up land excludes streets, water, piers and gardens, and the outside of the city', () => {
+test('block land is the city between streets: courtyards stay inside their block', () => {
   const classes = Uint8Array.from([
     Surface.Roof, Surface.Ground, Surface.Street, Surface.Water,
     Surface.Pier, Surface.Garden, Surface.RedRoof, Surface.Outline,
   ]);
   const urban = Uint8Array.from([1, 1, 1, 1, 1, 1, 1, 0]);
-  assert.deepEqual([...builtUpMask(classes, urban)], [1, 1, 0, 0, 0, 0, 1, 0]);
+  assert.deepEqual([...blockMask(classes, urban)], [1, 1, 0, 0, 0, 1, 1, 0]);
+});
+
+test('holes smaller than the threshold are noise and join their block', () => {
+  const { data, size } = mask([
+    '#######',
+    '#.###.#',
+    '###.###',
+    '#######',
+  ]);
+  const options = { minAreaPx: 1, tolerancePx: 0.5, minHoleAreaPx: 2 };
+  const [block] = traceBlocks(data, size, options);
+  assert.deepEqual(block.holes, [], 'three one-pixel holes are dropped');
 });
 
 test('a rectangle becomes one block with a four-corner outer ring and no holes', () => {
