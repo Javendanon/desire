@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { swellHeight, swellNormal } from '../src/lib/diorama/sea-swell.ts';
+import { swellHeight, swellNormal, writeSwell } from '../src/lib/diorama/sea-swell.ts';
 
 test('the swell normal is a unit vector pointing up', () => {
   for (const [x, z, t] of [[0, 0, 0], [13.5, -40, 2.2], [500, 800, 31]]) {
@@ -20,4 +20,20 @@ test('the swell normal is perpendicular to the surface it shades', () => {
     assert.ok(Math.abs(nx + slopeX * ny) < 1e-6, 'tangent along x');
     assert.ok(Math.abs(nz + slopeZ * ny) < 1e-6, 'tangent along z');
   }
+});
+
+test('writing the whole swell grid at once matches the formula at every vertex', () => {
+  const xs = Float32Array.from([-40, 0, 12.5, 300]);
+  const zs = Float32Array.from([-7, 55, 900]);
+  const positions = new Float32Array(xs.length * zs.length * 3);
+  const normals = new Float32Array(positions.length);
+  writeSwell({ xs, zs }, 4.2, { positions, normals });
+  zs.forEach((z, row) => xs.forEach((x, column) => {
+    const index = (row * xs.length + column) * 3;
+    assert.ok(Math.abs(positions[index + 1] - swellHeight(x, z, 4.2)) < 1e-5);
+    const normal = swellNormal(x, z, 4.2);
+    for (let axis = 0; axis < 3; axis += 1) {
+      assert.ok(Math.abs(normals[index + axis] - normal[axis]) < 1e-5);
+    }
+  }));
 });
