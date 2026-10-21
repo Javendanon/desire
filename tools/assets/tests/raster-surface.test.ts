@@ -13,6 +13,8 @@ const SAMPLES: [string, [number, number, number], number][] = [
   ['red landmark roof', [190, 70, 50], Surface.RedRoof],
   ['drawn outline', [26, 7, 2], Surface.Outline],
   ['vegetation is green but not water', [90, 120, 60], Surface.Ground],
+  ['yellow courtyard (North Ward)', [168, 155, 101], Surface.Garden],
+  ['slate roof (North Ward)', [64, 67, 73], Surface.Ground],
 ];
 
 for (const [name, [r, g, b], expected] of SAMPLES) {

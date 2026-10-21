@@ -106,3 +106,27 @@ test('a wide crossing of two piers is a pier junction, not a building', () => {
   assert.equal(refined[2 * 14 + 6], Surface.Pier, 'the junction');
   assert.equal(refined[2 * 14 + 1], Surface.Pier, 'an arm');
 });
+
+test('outside the urban mask, roof-coloured fields are terrain', () => {
+  const { classes, size } = grid([
+    'RRRRRR',
+    'RRRRRR',
+  ]);
+  const urban = Uint8Array.from([1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0]);
+  const refined = refineSurfaces({ classes, size, streets: [], minWaterFraction: 0.5, urban });
+  assert.deepEqual([...refined.subarray(0, 6)], [R, R, R, G, G, G]);
+});
+
+test('small green patches inside the city are gardens, not water', () => {
+  const { classes, size } = grid([
+    'WWWWWWWWWWGGGG',
+    'WWWWWWWWWWGWGG',
+    'WWWWWWWWWWGGGG',
+  ]);
+  const urban = new Uint8Array(42).fill(1);
+  const refined = refineSurfaces({
+    classes, size, streets: [], minWaterFraction: 0.3, urban, pierRadius: 1,
+  });
+  assert.equal(refined[1 * 14 + 11], Surface.Garden);
+  assert.equal(refined[0], W);
+});
