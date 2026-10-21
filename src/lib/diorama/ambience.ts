@@ -10,18 +10,18 @@ import { between, createRandom } from '../engine/math/rng.ts';
 import {
   geometryMesh, instancedEntity, material, movingBatch, trs, type MovingBatch,
 } from '../engine/render/kit.ts';
-import { everyNth, HALO, PUFF, waterSpots, type Spot } from './ambience-plan.ts';
+import {
+  chimneySmoke, HALO, hasLantern, PUFF, waterSpots, type Spot,
+} from './ambience-plan.ts';
 import { boundsAround, useInstanceChunks } from './gpu-instancing.ts';
 import { haloChunks, smokeChunks } from './shaders.ts';
 import type { Slice } from './slice-data.ts';
-import type { Town } from './town.ts';
+import type { Marker, Town } from './town.ts';
 
-const LANTERN_EVERY = 3;
 const LANTERN_SIZE: [number, number, number] = [0.3, 0.4, 0.3];
 const LANTERN_GLOW = 8;
 /** Halo billboard around each lantern (sized in ambience-plan.ts): it reads as light from afar. */
 const HALO_OPACITY = 0.55;
-const SMOKE_SHARE = 0.3;
 const PUFFS_PER_CHIMNEY = 7;
 const SMOKE_OPACITY = 0.26;
 const FOG_BANKS = 14;
@@ -130,10 +130,10 @@ function smokeData(tops: pc.Vec3[], offsets: number[]): Float32Array {
   return data;
 }
 
-function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: pc.Vec3[]) {
-  const random = createRandom(SEED);
-  const chosen = tops.filter(() => random() < SMOKE_SHARE);
-  const offsets = chosen.map(() => random());
+function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: Marker[]) {
+  const smoking = tops.filter((top) => chimneySmoke(top.id).smokes);
+  const chosen = smoking.map((top) => top.at);
+  const offsets = smoking.map((top) => chimneySmoke(top.id).phase);
   const haze = hazeMaterial(disc, { colour: '#bdb5ae', opacity: SMOKE_OPACITY });
   useInstanceChunks(haze, smokeChunks());
   const bounds = boundsAround(chosen,
@@ -171,8 +171,8 @@ function haloData(lamps: pc.Vec3[]): Float32Array {
   return data;
 }
 
-function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: pc.Vec3[]) {
-  const lamps = everyNth(fronts, LANTERN_EVERY);
+function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: Marker[]) {
+  const lamps = fronts.filter((front) => hasLantern(front.id)).map((front) => front.at);
   const lamp = material({ color: '#ffcf86', emissive: '#ffb35a',
     emissiveIntensity: LANTERN_GLOW });
   const cube = geometryMesh(app.graphicsDevice, new pc.BoxGeometry());

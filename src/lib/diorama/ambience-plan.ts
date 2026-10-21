@@ -1,7 +1,8 @@
 // Where and how the slice's ambience moves, without a GPU: the life of a chimney smoke puff, the
-// doors that carry a lantern, and the water cells that host drifting fog banks.
+// doors that carry a lantern and the chimneys that smoke (by house id, so the choice never
+// depends on what else is loaded), and the water cells that host drifting fog banks.
 
-import { createRandom } from '../engine/math/rng.ts';
+import { createRandom, shareOf } from '../engine/math/rng.ts';
 
 /** The life of a chimney smoke puff. The vertex shader (shaders.ts) uses these same values. */
 export const PUFF = {
@@ -57,8 +58,18 @@ export function puffAt(age: number): Puff {
   return { rise, drift: rise * PUFF.windSlant, size: PUFF.sizeM * (PUFF.birthShare + age) * swell };
 }
 
-export function everyNth<T>(items: readonly T[], step: number): T[] {
-  return items.filter((_, index) => index % step === 0);
+/** Share of street doors that carry a lantern, and of chimneys that smoke. */
+const LANTERN_SHARE = 1 / 3;
+const SMOKE_SHARE = 0.3;
+/** Salts that keep each per-house choice independent of the others. */
+const SALT = { lantern: 0x1a73, smoke: 0x5e07, phase: 0x9a5e } as const;
+
+/** Whether a house's street door carries a lantern, chosen by its id. */
+export const hasLantern = (id: number) => shareOf(id, SALT.lantern) < LANTERN_SHARE;
+
+/** Whether a house's chimney smokes, and the phase of its puffs in [0, 1), by its id. */
+export function chimneySmoke(id: number) {
+  return { smokes: shareOf(id, SALT.smoke) < SMOKE_SHARE, phase: shareOf(id, SALT.phase) };
 }
 
 /** Random points inside cells below the waterline (negative height). Empty when none. */

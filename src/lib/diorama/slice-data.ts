@@ -11,8 +11,10 @@ export interface SliceMeta {
   rows: number;
 }
 
-/** A house of the slice, centred in slice metres. */
-export type SliceHouse = CentredHouse;
+/** A house of the slice, centred in slice metres, with its stable id (block × 4096 + lot). */
+export type SliceHouse = CentredHouse & {
+  id: number;
+};
 
 /** A ship moored alongside a pier, keel along local +Z after a turn of `heading_radians`. */
 export interface SliceBerth {
@@ -34,6 +36,8 @@ export interface SliceFeatures {
 
 export interface Slice {
   meta: SliceMeta;
+  /** City-wide roof tone centres, when the houses come from sectors (index.json). */
+  roofCentres?: [number, number, number][];
   heights: Float32Array;
   houses: SliceHouse[];
   features: SliceFeatures;

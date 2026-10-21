@@ -20,3 +20,17 @@ export function between(random: Random, min: number, max: number): number {
 export function pick<T>(random: Random, items: readonly T[]): T {
   return items[Math.floor(random() * items.length)];
 }
+
+/**
+ * A well-mixed unsigned 32-bit hash of an integer id and a salt (a splitmix-style finaliser).
+ * Per-item choices that must not depend on list order, such as a house's look, draw from it.
+ */
+export function hashId(id: number, salt: number): number {
+  let h = (Math.imul(id | 0, 0x9e3779b1) ^ Math.imul(salt | 0, 0x85ebca77)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** `hashId` as a share in [0, 1). */
+export const shareOf = (id: number, salt: number) => hashId(id, salt) / 4294967296;

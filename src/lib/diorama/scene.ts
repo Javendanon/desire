@@ -145,7 +145,7 @@ export async function createDiorama(
   const camera = buildCamera(app);
   const sun = buildSun('high');
   app.root.addChild(sun);
-  const town = buildTown(app, slice.houses, textures);
+  const town = buildTown(app, { houses: slice.houses, roofCentres: slice.roofCentres }, textures);
   app.root.addChild(buildGround(app, layout, textures.cobble));
   app.root.addChild(town.root);
   const fleet = buildFleet(app, slice.features.berths, textures);

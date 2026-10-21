@@ -56,23 +56,28 @@ function sectorOf(grid: SectorGrid, x: number, z: number): number {
   return row * grid.columns + column;
 }
 
-function toSectorHouses(houses: LayerHouse[]): SectorHouse[] {
+/** Numbers lots per block in input order and gives each house its stable id. O(houses). */
+export function withHouseIds<T extends { block: number }>(houses: T[]): (T & { id: number })[] {
   const lots = new Map<number, number>();
   return houses.map((house) => {
     const lot = lots.get(house.block) ?? 0;
     lots.set(house.block, lot + 1);
-    return {
-      id: houseId(house.block, lot),
-      x_m: house.center.x_m,
-      z_m: house.center.z_m,
-      width_m: house.width_m,
-      depth_m: house.depth_m,
-      rotation_radians: house.rotation_radians,
-      height_m: house.height_m,
-      roof_rgb: house.roof_rgb,
-      frontage: house.frontage,
-    };
+    return { ...house, id: houseId(house.block, lot) };
   });
+}
+
+function toSectorHouses(houses: LayerHouse[]): SectorHouse[] {
+  return withHouseIds(houses).map((house) => ({
+    id: house.id,
+    x_m: house.center.x_m,
+    z_m: house.center.z_m,
+    width_m: house.width_m,
+    depth_m: house.depth_m,
+    rotation_radians: house.rotation_radians,
+    height_m: house.height_m,
+    roof_rgb: house.roof_rgb,
+    frontage: house.frontage,
+  }));
 }
 
 /** Non-empty sectors in index order. O(features + sectors). */
