@@ -1,6 +1,6 @@
 // Performance HUD (`?hud`): real frame intervals from requestAnimationFrame on the viewer's own
 // display, so a judder can be measured where it is felt. Shows the display's refresh rate
-// (detected from the shortest frames), fps, median and p95 frame times, the share of dropped
+// (the median frame of a scene that keeps up; the shortest frames jitter short), fps, median and p95 frame times, the share of dropped
 // frames, draw calls and the quality preset.
 
 import type * as pc from 'playcanvas';
@@ -27,7 +27,7 @@ export function mountHud(element: HTMLElement, app: pc.AppBase, quality: string)
     frame = requestAnimationFrame(step);
   };
   const render = () => {
-    const interval = meterSummary(meter, Infinity).p05;
+    const interval = meterSummary(meter, Infinity).p50;
     const frames = meterSummary(meter, interval * DROPPED_INTERVALS);
     const hertz = interval > 0 ? 1000 / interval : 0;
     element.textContent = [
