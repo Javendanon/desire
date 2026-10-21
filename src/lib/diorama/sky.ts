@@ -4,7 +4,7 @@
 import * as pc from 'playcanvas';
 
 /** Sun direction as yaw/pitch of the light entity (a directional light shines along −Y). */
-export const SUN_ANGLES: [number, number] = [72, -125];
+export const SUN_ANGLES: [number, number] = [52, -125];
 const SUN_COLOUR = '#ffc994';
 const SUN_INTENSITY = 3.1;
 const FILL_COLOUR = '#7d93b8';

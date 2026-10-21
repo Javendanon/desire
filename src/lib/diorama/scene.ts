@@ -12,6 +12,7 @@ import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
 import { buildEdgeHaze } from './edge-haze.ts';
 import { bindOrbit, ZOOM } from './orbit.ts';
 import { animateSea, buildSea } from './sea.ts';
+import { animateFleet, buildFleet, type Fleet } from './ships.ts';
 import type { Slice } from './slice-data.ts';
 import { buildSky, lightScene } from './sky.ts';
 import { buildTerrain } from './terrain.ts';
@@ -66,6 +67,7 @@ type Live = {
   sky: pc.Entity;
   sea: ReturnType<typeof buildSea>;
   ambience: Ambience;
+  fleet: Fleet;
   orbit: { goal: Rig };
   rig: Rig;
   frames: number;
@@ -82,6 +84,7 @@ function tick(live: Live, dt: number) {
   const shadowRange = Math.max(MIN_SHADOW_DISTANCE_M, live.rig.radius * SHADOW_PER_RADIUS);
   if (live.sun.light) live.sun.light.shadowDistance = shadowRange;
   animateSea(live.sea, live.time);
+  animateFleet(live.fleet, live.time);
   animateAmbience(live.ambience, { time: live.time, facing: live.camera.getRotation() });
 }
 
@@ -105,6 +108,8 @@ export async function createDiorama(
   const town = buildTown(app, slice.houses, textures);
   app.root.addChild(buildTerrain(app, slice, textures.cobble));
   app.root.addChild(town.root);
+  const fleet = buildFleet(slice.features.berths, textures);
+  app.root.addChild(fleet.root);
   const ambience = buildAmbience(app, { slice, town });
   app.root.addChild(ambience.root);
   app.root.addChild(buildEdgeHaze(app, slice.meta));
@@ -125,7 +130,7 @@ export async function createDiorama(
     polar: 0.92, azimuth: 0.7 };
   const orbit = { goal };
   const live: Live = {
-    app, camera, sun, sky, sea, ambience, orbit, rig: cloneRig(goal), frames: 0, time: 0,
+    app, camera, sun, sky, sea, ambience, fleet, orbit, rig: cloneRig(goal), frames: 0, time: 0,
   };
   const unbind = bindOrbit(canvas, orbit);
   app.on('update', (dt: number) => tick(live, dt));

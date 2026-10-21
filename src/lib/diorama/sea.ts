@@ -11,6 +11,12 @@ const SWELL_M = 0.25;
 const WATER_COLOUR = '#3d7480';
 /** Translucent enough that the shallows and foam painted on the seabed show through. */
 const WATER_OPACITY = 0.6;
+const WATER_GLOSS = 0.9;
+/**
+ * Water is a dielectric (no metalness) and its glint is scaled down: under the golden-hour
+ * sun, Fresnel at the city view's grazing angle otherwise whitens the whole harbour.
+ */
+const WATER_SPECULARITY = 0.2;
 
 export interface Sea {
   entity: pc.Entity;
@@ -45,8 +51,10 @@ export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.V
   mesh.setNormals(pc.calculateNormals(Array.from(positions), indices));
   mesh.setIndices(indices);
   mesh.update(pc.PRIMITIVE_TRIANGLES);
-  const water = material({ color: WATER_COLOUR, gloss: 0.9, metalness: 0.35 });
+  const water = material({ color: WATER_COLOUR, gloss: WATER_GLOSS, metalness: 0 });
   water.opacity = WATER_OPACITY;
+  water.useMetalnessSpecularColor = true;
+  water.specularityFactor = WATER_SPECULARITY;
   water.blendType = pc.BLEND_NORMAL;
   water.update();
   const entity = new pc.Entity('sea');
