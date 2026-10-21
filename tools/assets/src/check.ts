@@ -171,6 +171,19 @@ function renderSelectionFinding(json: GltfJson, scene: Scene) {
   return finding('render.default_scene', pass, 'default scene contains only ground and LOD0');
 }
 
+/** A node listed by two scenes renders in only one of them in common loaders. O(nodes). */
+function scenesDisjointFinding(json: GltfJson) {
+  const seen = new Set<number>();
+  const shared = new Set<number>();
+  for (const index of json.scenes.flatMap((entry) => entry.nodes)) {
+    if (seen.has(index)) shared.add(index);
+    seen.add(index);
+  }
+  const names = [...shared].map((index) => json.nodes[index]?.name ?? `#${index}`);
+  return finding('render.scenes_disjoint', shared.size === 0,
+    names.length ? `shared roots: ${names.join(', ')}` : 'every scene owns its root nodes');
+}
+
 function artifactFindings(gltf: Gltf, scene: Scene) {
   const json = gltf.json;
   // A parsed artifact is untrusted: any recorded field may be missing.
@@ -181,6 +194,7 @@ function artifactFindings(gltf: Gltf, scene: Scene) {
   return [
     accessorFinding(gltf),
     renderSelectionFinding(json, scene),
+    scenesDisjointFinding(json),
     finding('artifact.embedded', externalBuffers.length === 0
       && (json.images ?? []).every((image) => image.uri === undefined
         && Number.isInteger(image.bufferView)), 'geometry and compressed images are embedded'),

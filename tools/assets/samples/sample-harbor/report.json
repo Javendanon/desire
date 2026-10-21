@@ -44,6 +44,11 @@
       "detail": "default scene contains only ground and LOD0"
     },
     {
+      "id": "render.scenes_disjoint",
+      "pass": true,
+      "detail": "every scene owns its root nodes"
+    },
+    {
       "id": "artifact.embedded",
       "pass": true,
       "detail": "geometry and compressed images are embedded"
@@ -150,7 +155,7 @@
   },
   "artifact": {
     "path": "scene-sample-harbor.glb",
-    "bytes": 38028,
+    "bytes": 38068,
     "generator": "desire-asset-pipeline/1",
     "written": true
   },

@@ -190,6 +190,9 @@ function addMergedNodes(spec: Omit<MeshSpec, 'manifest'> & { writer: Writer }) {
     const mesh = mergeMeshes(solids.map((solid) => buildBox(solid, WHITE)));
     return addPrimitive(builder, mesh, materialById.get(id));
   });
+  // Same mesh, own node: loaders build one object per node, so scenes must not share roots.
+  const ground = writer.nodes.find((node) => node.name === 'render/ground');
+  if (ground) writer.nodes.push({ name: 'render/lod1/ground', mesh: ground.mesh });
   writer.meshes.push({ name: 'render/lod1', primitives });
   writer.nodes.push({ name: 'render/lod1', mesh: writer.meshes.length - 1 });
   const collision = scene.solids.map((solid) => buildBox(solid, WHITE));
@@ -237,7 +240,7 @@ function sceneSelections(id: string, nodes: GltfNode[]) {
   return [
     { name: id, nodes: indices.filter((index) => nodes[index].name === 'render/ground'
       || nodes[index].name.startsWith('render/lod0/')) },
-    { name: 'lod1', nodes: indices.filter((index) => ['render/ground', 'render/lod1']
+    { name: 'lod1', nodes: indices.filter((index) => ['render/lod1/ground', 'render/lod1']
       .includes(nodes[index].name)) },
     { name: 'collision', nodes: indices.filter((index) => nodes[index].name === 'collision') },
   ];
