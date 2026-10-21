@@ -11,12 +11,15 @@ name. Renaming a job is a policy change.
 
 | Job | What it runs | Toolchain |
 | --- | --- | --- |
-| `frontend-check` | `corepack pnpm install --frozen-lockfile`, `corepack pnpm check` | Node from `.nvmrc` (its bundled corepack), pnpm from `packageManager` |
+| `frontend-check` | install from lockfile, `pnpm check`, `test:frontend`, `check:tests`, `verify:waterdeep` | Node from `.nvmrc` (its bundled corepack), pnpm from `packageManager` |
 | `rust-fmt` | `cargo fmt --all --check` | `rust-toolchain.toml` |
 | `rust-clippy` | `cargo clippy --workspace --all-targets --locked -- -D warnings` | `rust-toolchain.toml` |
-| `rust-test` | `cargo test --workspace --locked` | `rust-toolchain.toml` |
+| `rust-test` | `bash crates/persistence/test-postgres.sh` (isolated cluster, then workspace tests) | `rust-toolchain.toml` + PostgreSQL server binaries |
 | `wasm-build` | `cargo build -p desire-wasm --target wasm32-unknown-unknown --release --locked` | `rust-toolchain.toml` (wasm32 target) |
-| `quality-gate` | anti-tamper check, its own tests, then `python3 tools/quality/gate.py --root .` | `rust-toolchain.toml` + `kimun` 0.26.0 |
+| `quality-gate` | anti-tamper and its tests, contract generator drift and contract tests, quality gate | `rust-toolchain.toml` + `kimun` 0.26.0 |
+
+The `rust-test` job discovers the runner's PostgreSQL binaries and adds them to `PATH`
+before running the harness. Local runs require `initdb` and `pg_ctl` on `PATH`.
 
 ## Fail-closed, on purpose
 

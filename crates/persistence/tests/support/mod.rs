@@ -47,7 +47,9 @@ pub fn catalog() -> desire_persistence::CatalogSeed {
         "places": [{"id": id(5), "city_id": id(3), "district_id": null,
             "name": "Synthetic place", "provenance": provenance, "anchors": []}],
         "map_versions": [{"id": id(6), "map_id": id(60), "city_id": id(3),
-            "revision": 1, "calibration": null, "provenance": provenance}],
+            "revision": 1, "calibration": {"origin_px_x": 0, "origin_px_y": 0,
+                "meters_per_pixel": 2, "rotation_radians": 0, "provenance": provenance},
+            "provenance": provenance}],
         "knowledge_entries": [{"id": id(50), "revision": 1, "rules_edition": "dnd_2014",
             "language": "en", "title": "Synthetic condition", "body": "Not official rules",
             "provenance": provenance}]

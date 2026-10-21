@@ -50,14 +50,15 @@ fn seed_rows<T: Serialize>(tx: &mut Transaction<'_>, table: &str, rows: &[T]) ->
 
 // Table names are private constants supplied only by this module, never user input.
 fn seed_row(tx: &mut Transaction<'_>, table: &str, data: Value) -> Result<(), Error> {
+    let columns = seed_columns(&data);
     let insert = format!(
-        "INSERT INTO catalog.{table} SELECT * FROM \
+        "INSERT INTO catalog.{table} ({columns}) SELECT {columns} FROM \
         jsonb_populate_record(NULL::catalog.{table}, $1) ON CONFLICT DO NOTHING"
     );
     tx.execute(&insert, &[&data])
         .context(format!("seed {table} {}", data["id"]))?;
     let query = format!(
-        "SELECT to_jsonb(t) = $1 FROM catalog.{table} t \
+        "SELECT t = jsonb_populate_record(t, $1) FROM catalog.{table} t \
         WHERE id = ($1->>'id')::uuid"
     );
     let row = tx
@@ -73,6 +74,16 @@ fn seed_row(tx: &mut Transaction<'_>, table: &str, data: Value) -> Result<(), Er
         ));
     }
     Ok(())
+}
+
+/// Select serialized fields in O(fields); generated/default columns belong to the database.
+fn seed_columns(data: &Value) -> String {
+    data.as_object()
+        .expect("catalog records serialize as objects")
+        .keys()
+        .map(|name| format!("\"{}\"", name.replace('"', "\"\"")))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Seed logical map IDs before their immutable versions, O(n).
@@ -127,7 +138,9 @@ fn seed_anchor(tx: &mut Transaction<'_>, place: &Place, anchor: &PlaceAnchor) ->
             "provenance": anchor.provenance});
     tx.execute(
         concat!(
-            "INSERT INTO catalog.place_anchors SELECT * FROM ",
+            "INSERT INTO catalog.place_anchors ",
+            "(place_id, city_id, map_version_id, x_m, y_m, z_m, provenance) ",
+            "SELECT place_id, city_id, map_version_id, x_m, y_m, z_m, provenance FROM ",
             "jsonb_populate_record(NULL::catalog.place_anchors, $1) ON CONFLICT DO NOTHING"
         ),
         &[&data],
@@ -138,7 +151,7 @@ fn seed_anchor(tx: &mut Transaction<'_>, place: &Place, anchor: &PlaceAnchor) ->
 
 fn verify_anchor(tx: &mut Transaction<'_>, data: &Value, place_id: &str) -> Result<(), Error> {
     let query = concat!(
-        "SELECT to_jsonb(a) = $1 FROM catalog.place_anchors a ",
+        "SELECT a = jsonb_populate_record(a, $1) FROM catalog.place_anchors a ",
         "WHERE place_id = ($1->>'place_id')::uuid ",
         "AND map_version_id = ($1->>'map_version_id')::uuid"
     );

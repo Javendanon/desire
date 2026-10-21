@@ -77,6 +77,12 @@ SELECT pg_temp.reject($q$INSERT INTO catalog.places VALUES
 SELECT pg_temp.reject($q$INSERT INTO catalog.place_anchors VALUES
     (pg_temp.id(6), pg_temp.id(8), pg_temp.id(4), 0, 0, 0,
     '{"source":"test","attribution":"test","evidence":"synthetic"}')$q$, '23503');
+SELECT pg_temp.reject($q$INSERT INTO catalog.place_anchors VALUES
+    (pg_temp.id(6), pg_temp.id(8), pg_temp.id(3), 0, 0, 0,
+    '{"source":"test","attribution":"test","evidence":"synthetic"}')$q$, '23503');
+SELECT pg_temp.reject($q$INSERT INTO catalog.place_anchors VALUES
+    (pg_temp.id(6), pg_temp.id(8), pg_temp.id(3), 0, 0, 0,
+    '{"source":"test","attribution":"test","evidence":"synthetic"}', false)$q$, '23514');
 SELECT pg_temp.reject($q$INSERT INTO campaign.travels VALUES
     (pg_temp.id(80), pg_temp.id(10), pg_temp.id(21), pg_temp.id(30),
     0, 0, 0, 1, 0, 1, 1, 1, 1, 'planned', 1)$q$, '23503');

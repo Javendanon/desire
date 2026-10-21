@@ -59,7 +59,7 @@ backup and rehearsing the upgrade against an isolated restored copy. Connecting 
 constructing a repository never runs migrations. `apply_through` supports rehearsal
 of any forward prefix, not downgrade.
 
-The four numbered SQL files are embedded in the crate. An advisory transaction
+The five numbered SQL files are embedded in the crate. An advisory transaction
 lock serializes migration runners. History is always stored in
 `public.persistence_migrations`, independent of connection `search_path`. The
 installed ordered prefix and exact SQL
@@ -68,6 +68,13 @@ are in one transaction. Unknown, edited, missing, or out-of-order history and
 requests to downgrade fail without modifying data. Do not edit a deployed file;
 add a new numbered migration and extend the embedded list. These initial scripts
 contain no drops, truncation, cascading deletes, or destructive automatic upgrade.
+
+Migration 0005 requires every place anchor to reference a calibrated map and blocks
+clearing that calibration while anchors exist. An installation with legacy anchors
+on uncalibrated maps fails the upgrade atomically; inspect and repair the editorial
+data explicitly before retrying. The migration never deletes or invents calibration.
+Seed comparisons normalize SQL types (including UUID case), while database-owned
+generated/default columns are omitted from inserts and preserved during comparisons.
 
 No production upgrade, backup/restore, PostgreSQL volume, Docker service, or network
 port was touched for this task. Database lifecycle is not an application side effect.
