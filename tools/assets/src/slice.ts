@@ -29,7 +29,7 @@ const ALBEDO: Record<number, Rgb> = {
   [Surface.RedRoof]: [88, 80, 70],
   [Surface.Outline]: [88, 80, 70],
   [Surface.Garden]: [86, 104, 66],
-  [Surface.Pier]: [94, 72, 52],
+  [Surface.Pier]: [92, 82, 70],
   [Surface.Water]: [22, 50, 58],
 };
 const SHALLOW: Rgb = [62, 120, 118];

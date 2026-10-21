@@ -25,6 +25,8 @@ const MIN_SHADOW_DISTANCE_M = 120;
 const TEXTURE_SEED = 7;
 const SKY_RADIUS_M = 3000;
 const WINDOW_GLOW = 1.1;
+/** Below the engine default: the warm light saturates enough. */
+const GRADING_SATURATION = 0.86;
 
 export interface DioramaOptions {
   backend?: 'auto' | 'webgl2';
@@ -97,7 +99,7 @@ export async function createDiorama(
   const sun = buildSun('high');
   app.root.addChild(sun);
   const town = buildTown(app, slice.houses, textures);
-  app.root.addChild(buildTerrain(app, slice));
+  app.root.addChild(buildTerrain(app, slice, textures.cobble));
   app.root.addChild(town.root);
   const centre = sceneCentre(slice);
   const extent = Math.max(slice.meta.width_m, slice.meta.depth_m);
@@ -109,7 +111,9 @@ export async function createDiorama(
     wall.emissiveIntensity = WINDOW_GLOW;
     wall.update();
   }
-  createFrame(app, camera.camera!, 'high');
+  const frame = createFrame(app, camera.camera!, 'high');
+  frame.grading.saturation = GRADING_SATURATION;
+  frame.update();
   const goal: Rig = { target: { x: centre.x, y: centre.y, z: centre.z }, radius: ZOOM.city,
     polar: 0.92, azimuth: 0.7 };
   const orbit = { goal };

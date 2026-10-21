@@ -8,6 +8,9 @@ import { material } from '../engine/render/kit.ts';
 const SEGMENTS = 96;
 const MARGIN = 1.8;
 const SWELL_M = 0.25;
+const WATER_COLOUR = '#3d7480';
+/** Translucent enough that the shallows and foam painted on the seabed show through. */
+const WATER_OPACITY = 0.6;
 
 export interface Sea {
   entity: pc.Entity;
@@ -42,8 +45,8 @@ export function buildSea(device: pc.GraphicsDevice, extent: number, centre: pc.V
   mesh.setNormals(pc.calculateNormals(Array.from(positions), indices));
   mesh.setIndices(indices);
   mesh.update(pc.PRIMITIVE_TRIANGLES);
-  const water = material({ color: '#2b5c68', gloss: 0.9, metalness: 0.35 });
-  water.opacity = 0.78;
+  const water = material({ color: WATER_COLOUR, gloss: 0.9, metalness: 0.35 });
+  water.opacity = WATER_OPACITY;
   water.blendType = pc.BLEND_NORMAL;
   water.update();
   const entity = new pc.Entity('sea');

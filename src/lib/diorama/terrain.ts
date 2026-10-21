@@ -1,11 +1,14 @@
 // Ground of the slice: one mesh over the height field, textured with the stylised albedo.
-// Heights are softened with their neighbours so the shore slopes instead of stepping.
+// Heights are softened with their neighbours so the shore slopes instead of stepping. A tiled
+// cobble texture overlays the albedo, so the ground holds detail at street zoom.
 
 import * as pc from 'playcanvas';
 
 import type { Slice } from './slice-data.ts';
 
 const SMOOTH_PASSES = 2;
+/** One repeat of the cobble detail texture covers this many metres. */
+const DETAIL_TILE_M = 3;
 
 type Field = {
   values: Float32Array;
@@ -91,7 +94,7 @@ function albedoTexture(device: pc.GraphicsDevice, image: HTMLImageElement): pc.T
   return texture;
 }
 
-export function buildTerrain(app: pc.AppBase, slice: Slice): pc.Entity {
+export function buildTerrain(app: pc.AppBase, slice: Slice, detail: pc.Texture): pc.Entity {
   const { positions, uvs, indices } = gridGeometry(slice);
   const mesh = new pc.Mesh(app.graphicsDevice);
   mesh.setPositions(positions);
@@ -101,6 +104,10 @@ export function buildTerrain(app: pc.AppBase, slice: Slice): pc.Entity {
   mesh.update(pc.PRIMITIVE_TRIANGLES);
   const ground = new pc.StandardMaterial();
   ground.diffuseMap = albedoTexture(app.graphicsDevice, slice.albedo);
+  ground.diffuseDetailMap = detail;
+  ground.diffuseDetailMode = pc.DETAILMODE_OVERLAY;
+  ground.diffuseDetailMapTiling = new pc.Vec2(slice.meta.width_m / DETAIL_TILE_M,
+    slice.meta.depth_m / DETAIL_TILE_M);
   ground.useMetalness = true;
   ground.metalness = 0;
   ground.gloss = 0.12;

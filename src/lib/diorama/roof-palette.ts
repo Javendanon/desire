@@ -13,6 +13,8 @@ const DESIGN_ROOFS: Rgb[] = [
   [124, 135, 146], [184, 113, 79], [95, 106, 116], [143, 135, 112], [163, 95, 69],
 ];
 const DESIGN_SHARE = 0.55;
+/** Shingle texture and shade darken a tint a lot: lift the tones so roofs read in daylight. */
+const ROOF_LIFT = 1.3;
 
 export interface RoofPalette {
   colours: string[];
@@ -44,7 +46,7 @@ function chroma(value: Rgb): Rgb {
 function toHex(colour: Rgb): string {
   const tint = DESIGN_ROOFS[nearest(chroma(colour), DESIGN_ROOFS.map(chroma))];
   const mixed = colour.map((channel, index) =>
-    channel * (1 - DESIGN_SHARE) + tint[index] * DESIGN_SHARE);
+    Math.min(255, (channel * (1 - DESIGN_SHARE) + tint[index] * DESIGN_SHARE) * ROOF_LIFT));
   return `#${mixed.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
 }
 
