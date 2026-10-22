@@ -106,7 +106,7 @@ measurement compared with the previous state on the same input.
 | **M1** ✅ | Write the format: `render.bin` in `crates/core` and in TS, round-trip tests on both sides; choose the sector size from real counts | Done: [sector-format.md](sector-format.md); 1024-px sectors (479.6 m); Rust and TS both match a spec-built fixture byte for byte. `export-sectors` writes the whole map (40 sectors, 13,919 houses, about 0.6 MB). Stable house ids are given where lots are made, and a house's look derives from its id. `?sectors=` renders the Dock Ward from sectors, with 1065 of 1065 houses identical by id. The ground tile layout moves to M3, where the viewer first streams terrain |
 | **M2** ✅ | `crates/atlas` ports the stages in order (classify → refine → blocks → lots → features → sectors). Each stage gets a **parity test** against the TS output on the same input | Done. The full Rust chain (`atlas extract` → `houses` → `sectors`) gives byte-identical `classes.bin`, `blocks.json`, 40 sector payloads and `index.json`. Houses match field for field, and `rotation_radians` (an atan2 for the viewer) within 1 ulp, which the payload's f32 absorbs. 3.3 s against about 17 s for the TS chain (about 95 s before M0). Ground tiles move to M3 |
 | **M3** ✅ | Viewer streams sectors through a Worker; per-sector batches and culling | Done. `atlas ground` cuts 63 ground tiles (`desire.ground-tiles/1`, 0.74 s). `?city=<dir>` streams sectors around the camera target: a Worker fetches, decodes and builds the ground mesh, and the frame loop builds at most one sector per frame. The Dock Ward from sectors matches the slice house for house (fog banks fall elsewhere, being random). Panning at 60–150 m/s at ward zoom: no frame over 25 ms (worst 22 ms, p50 3.7 ms, headless Chrome, Metal, low quality, frame limit off); high quality p50 6.8 ms. The whole city loaded (radius 700, 13,490 houses): p50 8.7 ms, 8 frames over 25 ms in 10 s, left for M4 |
-| **M4** | LOD1/LOD2 and the distance policy | The whole map loaded; frame time, memory and dropped frames at city, ward and street zoom on the owner's display |
+| **M4** ✅ | LOD1/LOD2 and the distance policy | Done in the M3 PR, after the owner's first measurement (30 fps capped by Chrome's energy saver, and a frame of about 10 ms). Houses are planned in the Worker at two levels of detail and drawn **city-wide**: one merged batch per house part and level, refilled in place as sectors come, go or change level. Near sectors (shadow reach, with hysteresis) get full detail and cast shadows; far ones get a wall box and a roof. At the owner's resolution (3024×1646), low city view: draws 617 → 151, CPU 4.8 → 1.2 ms, GPU about 4.7 ms (SSAO 1.5, MSAA 0.5, shadows 0.5, bloom 0.2). No long frames while panning at 60 Hz |
 | **M5** | Retire the TS pipeline stages that Rust replaced | Docs updated; one pipeline |
 
 Order note: M0 is cheap and shortens every later parity run, so it goes first even though Rust
@@ -147,7 +147,23 @@ replaces those stages at M2.
 - **A dropped sector frees its GPU objects**: instance buffers, materials and textures it owns,
   while the stage's shared textures stay.
 
-## 7. Risks and open questions
+## 7. Decisions taken during M4
+
+- **Merge across sectors, not per sector.** Per-sector batches cost about 28 draws each, paid
+  again by the shadow pass and the SSAO depth prepass, and the CPU time followed the draw count.
+  Per-sector culling saved little, since the sectors near the target are mostly in view. One
+  batch per house part and level, refilled in place (instance buffers grow in powers of two),
+  makes the draw count independent of how many sectors are loaded.
+- **No LOD2 (block extrusions).** With merged LOD1 batches, far houses cost a fixed handful of
+  draws and few triangles, so a per-block mesh would save nothing measurable and needs block
+  outlines in the payload.
+- **The Worker plans the houses**, as instance matrices computed without the engine
+  (`town-plan.ts`, PlayCanvas's Y-rotation convention, tested), and fog banks once per sector.
+  The frame loop only concatenates and uploads.
+- **Far houses cast no shadows**; the shadow reach and the near level are one policy, with a
+  25 % keep margin so a resting camera does not flip sectors.
+
+## 8. Risks and open questions
 
 - **Parity of vector stages.** Douglas–Peucker, edge tracing and the lot placement are
   order-sensitive. Fix a deterministic order in both implementations, compare with tolerances,
@@ -162,8 +178,8 @@ replaces those stages at M2.
 - **Wasm in the browser** is out of scope until a measured hot spot remains. After M3, building
   sectors took 50 ms of the frame loop's time over a 10 s pan (mostly the town and its
   ambience, profiled), none of it numeric work that Wasm would speed up.
-- **Per-sector materials.** Each sector builds its own town, fleet and ambience materials.
-  Shaders are cached, so this costs memory, not compiles. Sharing them across sectors is a
-  candidate for M4.
+- **Ships and ambience rebuild whole** when the loaded set changes (a few ms, a few times a
+  second while panning). If that shows on the owner's display, refill them in place like the
+  houses.
 - **Tile normals at seams.** Normals are one-sided at a tile's edge, so neighbouring tiles can
   shade a hair apart there. It is not visible at the measured views.
