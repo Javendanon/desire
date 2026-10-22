@@ -132,6 +132,9 @@ fn colour_table() -> Vec<u8> {
         .collect()
 }
 
+/// The class of every 24-bit colour, built once per process (16 MiB) and shared by every call.
+static COLOUR_TABLE: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+
 /// Classifies a row-major RGB buffer, one class id per pixel. O(pixels), in parallel.
 ///
 /// # Panics
@@ -142,7 +145,7 @@ pub fn classify_rgb(rgb: &[u8]) -> Vec<u8> {
         "classify_rgb needs 3 bytes per pixel, got {} bytes",
         rgb.len()
     );
-    let table = colour_table();
+    let table = COLOUR_TABLE.get_or_init(colour_table);
     rgb.par_chunks_exact(RGB)
         .map(|pixel| {
             let colour = (usize::from(pixel[0]) << 16) | (usize::from(pixel[1]) << 8);

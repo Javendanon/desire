@@ -7,6 +7,7 @@
  */
 import fs from 'node:fs';
 
+import { townFiles } from './parity-town.ts';
 import { findBerths, plantTrees } from './src/features.ts';
 import { placeHouses } from './src/lots.ts';
 import { mulberry32 } from './src/random.ts';
@@ -285,6 +286,8 @@ const files: [string, string | Uint8Array][] = [
   [BLOCKS_GOLDEN, `${JSON.stringify({ trace: TRACE, blocks: syntheticBlocks(classes) })}\n`],
   [LOTS_GOLDEN, `${JSON.stringify({ rules: LOT_RULES, open: OPEN, blocks: lotGolden() })}\n`],
   [FEATURES_GOLDEN, `${JSON.stringify(syntheticFeatures(classes))}\n`],
+  ...townFiles({ classes: refinedSynthetic(classes).refined, size: RASTER },
+    syntheticBlocks(classes), fnv1a),
 ];
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;

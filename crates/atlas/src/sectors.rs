@@ -203,6 +203,9 @@ pub struct SectorEntry {
     pub bytes: usize,
 }
 
+/// The seed both exporters give berths and trees.
+pub const FEATURE_SEED: u32 = 0xd0c4;
+
 /// `index.json`: the grid, the city-wide roof palette and each sector's counts.
 #[derive(Serialize)]
 pub struct SectorIndex {
@@ -236,17 +239,18 @@ pub fn export(
     houses: &[LayerHouse],
     features: &Features,
 ) -> (Vec<Payload>, SectorIndex) {
-    let mut entries = Vec::new();
-    let payloads: Vec<Payload> = partition(&grid, houses, features)
+    let sectors = partition(&grid, houses, features);
+    let payloads: Vec<Payload> = sectors
         .iter()
-        .map(|sector| {
-            let bytes = write_sector(sector);
-            entries.push(SectorEntry::of(sector, &bytes));
-            Payload {
-                index: sector.index,
-                bytes,
-            }
+        .map(|sector| Payload {
+            index: sector.index,
+            bytes: write_sector(sector),
         })
+        .collect();
+    let entries = sectors
+        .iter()
+        .zip(&payloads)
+        .map(|(sector, payload)| SectorEntry::of(sector, &payload.bytes))
         .collect();
     let roofs: Vec<[u8; 3]> = houses.iter().map(|house| house.roof_rgb).collect();
     let palette = roof_centres(&roofs);
@@ -257,4 +261,11 @@ pub fn export(
         sectors: entries,
     };
     (payloads, index)
+}
+
+/// `index.json` as written: two-space indent and a final newline, as `JSON.stringify(index,
+/// null, 2)` writes it.
+pub fn index_json(index: &SectorIndex) -> String {
+    let json = serde_json::to_string_pretty(index).expect("the index serialises");
+    format!("{json}\n")
 }

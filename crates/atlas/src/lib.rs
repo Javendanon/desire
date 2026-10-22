@@ -17,6 +17,8 @@ pub mod raster_ops;
 pub mod refine;
 pub mod sectors;
 pub mod simplify;
+pub mod spatial;
 pub mod surface;
 pub mod tiles;
+pub mod tuning;
 pub mod vectors;

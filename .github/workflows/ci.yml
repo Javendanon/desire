@@ -46,11 +46,18 @@ jobs:
         run: corepack pnpm install --frozen-lockfile
       - name: Type and Svelte checks
         run: corepack pnpm check
+      # The viewer's and the map format's tests (tests/*.test.ts). They ran only locally before.
+      - name: Frontend tests
+        run: corepack pnpm test:frontend
       # Offline asset pipeline (D18): strict types for sources and tests, then its test suite.
       - name: Asset pipeline types
         run: corepack pnpm check:assets
       - name: Asset pipeline tests
         run: corepack pnpm test:assets
+      # The Rust pipeline's parity tests compare against goldens the TypeScript pipeline wrote
+      # from synthetic inputs. Fails when the TypeScript stages changed and the goldens are stale.
+      - name: Rust parity goldens are fresh
+        run: node tools/assets/parity.ts --check
       # The source raster and dataset are not in the repository, so CI checks the package's
       # internal consistency and the verifier's own tests; --image/--dataset run locally.
       - name: Waterdeep reference package
@@ -107,6 +114,10 @@ jobs:
           python3 tools/ci/tamper_check.py "$BASE_SHA" HEAD
       - name: Tooling tests for the anti-tamper check
         run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
+      # The sector format contract: the generated Rust and TypeScript layouts are fresh, and the
+      # validator accepts the fixture and rejects malformed payloads.
+      - name: Sector format contract
+        run: python3 -m unittest discover -s tools/contracts/tests
       - name: Install the toolchain pinned in rust-toolchain.toml
         run: ./tools/ci/install-rust-toolchain.sh
       - name: Install kimun (km)
