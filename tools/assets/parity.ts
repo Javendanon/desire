@@ -27,7 +27,8 @@ const VECTOR_INPUT = `${FIXTURES}/vectors-input.json`;
 const BLOCKS_GOLDEN = `${FIXTURES}/blocks-golden.json`;
 const LOTS_GOLDEN = `${FIXTURES}/lots-golden.json`;
 /** The z18 lot rules of generate-houses. */
-const LOT_RULES = { frontage: [4.5, 8.5] as [number, number], depth: [6.5, 11] as [number, number] };
+type Range = [number, number];
+const LOT_RULES = { frontage: [4.5, 8.5] as Range, depth: [6.5, 11] as Range };
 /** Open ground in the synthetic lots: a disc, so some lots are rejected and others shift. */
 const OPEN = { x_m: 50, z_m: 40, radius_m: 12 };
 /** Scaled to the synthetic raster: small blocks kept, 1.5 px tolerance as on the map. */
