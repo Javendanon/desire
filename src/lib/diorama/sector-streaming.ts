@@ -11,13 +11,16 @@ export interface GridShape {
   size_m: number;
 }
 
+/** The camera target on the ground plane. */
+export interface Target {
+  x: number;
+  z: number;
+}
+
 export interface PlanSpec {
   grid: GridShape;
   loaded: number[];
-  target: {
-    x: number;
-    z: number;
-  };
+  target: Target;
   reach_m: number;
 }
 
@@ -30,8 +33,7 @@ export interface SectorPlan {
 const KEEP_MARGIN = 0.5;
 
 /** Distance from the target to the nearest point of a sector's square. */
-function distanceTo(spec: PlanSpec, index: number): number {
-  const { grid, target } = spec;
+export function sectorDistance(grid: GridShape, index: number, target: Target): number {
   const x0 = (index % grid.columns) * grid.size_m;
   const z0 = Math.floor(index / grid.columns) * grid.size_m;
   const dx = Math.max(x0 - target.x, 0, target.x - (x0 + grid.size_m));
@@ -44,15 +46,35 @@ export function planSectors(spec: PlanSpec): SectorPlan {
   const loaded = new Set(spec.loaded);
   const all = Array.from({ length: spec.grid.columns * spec.grid.rows }, (_, index) => ({
     index,
-    distance: distanceTo(spec, index),
+    distance: sectorDistance(spec.grid, index, spec.target),
   }));
   const load = all
     .filter(({ index, distance }) => distance <= spec.reach_m && !loaded.has(index))
     .sort((a, b) => a.distance - b.distance || a.index - b.index)
     .map(({ index }) => index);
   const keep = spec.reach_m * (1 + KEEP_MARGIN);
-  const unload = spec.loaded.filter((index) => distanceTo(spec, index) > keep);
+  const far = (index: number) => sectorDistance(spec.grid, index, spec.target) > keep;
+  const unload = spec.loaded.filter(far);
   return { load, unload };
+}
+
+/** Shadows reach this far from the target, plus a share of the camera distance. */
+const SHADOW_REACH_M = 250;
+const SHADOW_PER_RADIUS = 0.5;
+
+export interface ShadowSpec {
+  /** From the camera target to the sector. */
+  distance_m: number;
+  /** Camera distance from its target. */
+  radius_m: number;
+}
+
+/**
+ * Whether a sector's houses and ships cast shadows. Far ones would only blur into the shadow
+ * map's low texel density at that zoom, yet cost a second draw of every house.
+ */
+export function castsShadows(spec: ShadowSpec): boolean {
+  return spec.distance_m <= SHADOW_REACH_M + spec.radius_m * SHADOW_PER_RADIUS;
 }
 
 /** One tile of `ground.json`. */

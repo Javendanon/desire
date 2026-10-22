@@ -28,6 +28,8 @@ export interface SectorView {
   root: pc.Entity;
   houses: number;
   mover: Mover;
+  /** Turns the sector's shadow casting on or off. */
+  shade(cast: boolean): void;
   release(): void;
 }
 
@@ -97,6 +99,18 @@ function releaseGpu(root: pc.Entity, shared: Set<pc.Texture>) {
 
 const still: Mover = () => {};
 
+/** The batches built to cast shadows. The policy may turn them off at a distance. */
+function shadowSwitch(root: pc.Entity): (cast: boolean) => void {
+  const casters = (root.findComponents('render') as pc.RenderComponent[])
+    .filter((render) => render.castShadows);
+  let casting = true;
+  return (cast) => {
+    if (cast === casting) return;
+    casting = cast;
+    for (const render of casters) render.castShadows = cast;
+  };
+}
+
 /** Builds a loaded sector's entities under one root, added to the scene by the caller. */
 export function buildSectorView(kit: SectorKit, arrival: Arrival): SectorView {
   const { assets } = arrival;
@@ -111,6 +125,7 @@ export function buildSectorView(kit: SectorKit, arrival: Arrival): SectorView {
     root,
     houses: assets.sector?.houses.length ?? 0,
     mover: life.mover,
+    shade: shadowSwitch(root),
     release: () => {
       releaseGpu(root, shared);
       assets.albedo.close();

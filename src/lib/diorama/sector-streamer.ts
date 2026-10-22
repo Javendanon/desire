@@ -5,7 +5,9 @@
 
 import type * as pc from 'playcanvas';
 
-import { planSectors, type GridShape } from './sector-streaming.ts';
+import {
+  castsShadows, planSectors, sectorDistance, type GridShape, type Target,
+} from './sector-streaming.ts';
 import type { Arrival, WorkerReply, WorkerRequest } from './sector-worker.ts';
 import { buildSectorView, type SectorKit, type SectorView } from './sector-view.ts';
 import type { Moment } from './stage.ts';
@@ -51,14 +53,24 @@ function drop(streamer: Streamer, index: number) {
   streamer.failed.delete(index);
 }
 
+/** Near sectors cast shadows, far ones stop (sector-streaming.ts). */
+function shade(streamer: Streamer, target: Target, radius_m: number) {
+  for (const [index, view] of streamer.views) {
+    const distance_m = sectorDistance(streamer.spec.grid, index, target);
+    view.shade(castsShadows({ distance_m, radius_m }));
+  }
+}
+
 function plan(streamer: Streamer, rig: Moment['rig']) {
   const { views, pending, failed } = streamer;
+  const target = { x: rig.target.x, z: rig.target.z };
   const { load, unload } = planSectors({
     grid: streamer.spec.grid,
     loaded: [...views.keys(), ...pending, ...failed],
-    target: { x: rig.target.x, z: rig.target.z },
+    target,
     reach_m: rig.radius * REACH_PER_RADIUS + REACH_M,
   });
+  shade(streamer, target, rig.radius);
   unload.forEach((index) => drop(streamer, index));
   load.slice(0, Math.max(0, MAX_IN_FLIGHT - pending.size)).forEach((index) =>
     request(streamer, index));

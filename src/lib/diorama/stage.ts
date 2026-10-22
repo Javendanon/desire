@@ -10,7 +10,7 @@ import { bootApp } from '../engine/boot.ts';
 import { cloneRig, dampRig, rigPosition, type Rig } from '../engine/math/camera-rig.ts';
 import { buildSun, createFrame } from '../engine/render/atmosphere.ts';
 import { paintTextures, type Textures } from '../engine/render/textures.ts';
-import { bindOrbit, ZOOM } from './orbit.ts';
+import { bindOrbit, ZOOM, type OrbitBinding } from './orbit.ts';
 import { QUALITY, type QualityName, type QualitySettings } from './quality.ts';
 import { animateSea, buildSea, type Sea } from './sea.ts';
 import { buildSky, lightScene } from './sky.ts';
@@ -98,6 +98,7 @@ type Live = {
   sky: pc.Entity;
   sea: Sea;
   orbit: { goal: Rig };
+  controls: OrbitBinding;
   movers: Set<Mover>;
   moment: Moment;
   frames: number;
@@ -114,6 +115,7 @@ function tick(live: Live, dt: number) {
   moment.time += dt;
   moment.dt = dt;
   live.frames += 1;
+  live.controls.step(dt);
   moment.rig = dampRig(moment.rig, live.orbit.goal, dt, CAMERA_HALF_LIFE_S);
   placeCamera(moment.camera, moment.rig);
   live.sky.setPosition(moment.camera.getPosition());
@@ -185,8 +187,8 @@ export async function createStage(canvas: HTMLCanvasElement, spec: StageSpec): P
   const frame = postProcess(app, camera, options.quality);
   const orbit = { goal: openingRig(spec.centre) };
   const moment = { time: 0, dt: 0, camera, rig: cloneRig(orbit.goal) };
-  const live: Live = { app, sun, sky, sea, orbit, movers: new Set(), moment, frames: 0 };
-  const unbind = bindOrbit(canvas, orbit);
+  const controls = bindOrbit(canvas, orbit);
+  const live: Live = { app, sun, sky, sea, orbit, controls, movers: new Set(), moment, frames: 0 };
   app.on('update', (dt: number) => tick(live, dt));
   app.start();
   return {
@@ -194,7 +196,7 @@ export async function createStage(canvas: HTMLCanvasElement, spec: StageSpec): P
     textures: paintTextures(app.graphicsDevice, TEXTURE_SEED),
     live: () => ({ frames: live.frames, rig: live.moment.rig }),
     destroy: () => {
-      unbind();
+      controls.unbind();
       app.destroy();
     },
   };
