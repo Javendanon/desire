@@ -77,11 +77,15 @@ function canvasOf(image: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
-function albedoTexture(device: pc.GraphicsDevice, image: HTMLImageElement): pc.Texture {
+/** An albedo the GPU accepts: decoded bitmaps go as they are, image elements through a canvas. */
+export type AlbedoSource = HTMLImageElement | ImageBitmap;
+
+function albedoTexture(device: pc.GraphicsDevice, image: AlbedoSource): pc.Texture {
+  const source = image instanceof ImageBitmap ? image : canvasOf(image);
   const texture = new pc.Texture(device, {
-    name: 'slice-albedo',
-    width: image.naturalWidth,
-    height: image.naturalHeight,
+    name: 'ground-albedo',
+    width: source.width,
+    height: source.height,
     format: pc.PIXELFORMAT_SRGBA8,
     mipmaps: true,
     addressU: pc.ADDRESS_CLAMP_TO_EDGE,
@@ -90,33 +94,58 @@ function albedoTexture(device: pc.GraphicsDevice, image: HTMLImageElement): pc.T
     magFilter: pc.FILTER_LINEAR,
     anisotropy: 8,
   });
-  texture.setSource(canvasOf(image));
+  // The engine uploads ImageBitmap directly; its typings only list DOM elements.
+  texture.setSource(source as HTMLCanvasElement);
   return texture;
 }
 
-export function buildTerrain(app: pc.AppBase, slice: Slice, detail: pc.Texture): pc.Entity {
-  const { positions, uvs, indices } = gridGeometry(slice);
+/** A ground mesh: positions, UVs over its albedo, triangle indices. */
+export interface GroundMesh {
+  positions: Float32Array;
+  uvs: Float32Array;
+  indices: number[] | Uint32Array;
+}
+
+/** What a ground patch is drawn with, and how far it spans for the detail tiling. */
+export interface GroundLook {
+  albedo: AlbedoSource;
+  detail: pc.Texture;
+  extent_m: [number, number];
+}
+
+/** A ground patch: mesh, albedo and the cobble detail overlay (3 m repeat). */
+export function groundEntity(app: pc.AppBase, geometry: GroundMesh, look: GroundLook): pc.Entity {
+  const indices = Array.from(geometry.indices);
   const mesh = new pc.Mesh(app.graphicsDevice);
-  mesh.setPositions(positions);
-  mesh.setNormals(pc.calculateNormals(Array.from(positions), indices));
-  mesh.setUvs(0, uvs);
+  mesh.setPositions(geometry.positions);
+  mesh.setNormals(pc.calculateNormals(Array.from(geometry.positions), indices));
+  mesh.setUvs(0, geometry.uvs);
   mesh.setIndices(indices);
   mesh.update(pc.PRIMITIVE_TRIANGLES);
   const ground = new pc.StandardMaterial();
-  ground.diffuseMap = albedoTexture(app.graphicsDevice, slice.albedo);
-  ground.diffuseDetailMap = detail;
+  ground.diffuseMap = albedoTexture(app.graphicsDevice, look.albedo);
+  ground.diffuseDetailMap = look.detail;
   ground.diffuseDetailMode = pc.DETAILMODE_OVERLAY;
-  ground.diffuseDetailMapTiling = new pc.Vec2(slice.meta.width_m / DETAIL_TILE_M,
-    slice.meta.depth_m / DETAIL_TILE_M);
+  const [width, depth] = look.extent_m;
+  ground.diffuseDetailMapTiling = new pc.Vec2(width / DETAIL_TILE_M, depth / DETAIL_TILE_M);
   ground.useMetalness = true;
   ground.metalness = 0;
   ground.gloss = 0.12;
   ground.update();
-  const entity = new pc.Entity('terrain');
+  const entity = new pc.Entity('ground');
   entity.addComponent('render', {
     meshInstances: [new pc.MeshInstance(mesh, ground)],
     receiveShadows: true,
     castShadows: false,
   });
+  return entity;
+}
+
+/** The slice's ground as one patch. */
+export function buildTerrain(app: pc.AppBase, slice: Slice, detail: pc.Texture): pc.Entity {
+  const look = { albedo: slice.albedo, detail, extent_m: [slice.meta.width_m,
+    slice.meta.depth_m] as [number, number] };
+  const entity = groundEntity(app, gridGeometry(slice), look);
+  entity.name = 'terrain';
   return entity;
 }

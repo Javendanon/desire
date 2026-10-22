@@ -15,7 +15,6 @@ import {
 } from './ambience-plan.ts';
 import { boundsAround, useInstanceChunks } from './gpu-instancing.ts';
 import { haloChunks, smokeChunks } from './shaders.ts';
-import type { Slice } from './slice-data.ts';
 import type { Marker, Town } from './town.ts';
 
 const LANTERN_SIZE: [number, number, number] = [0.3, 0.4, 0.3];
@@ -51,8 +50,21 @@ export interface Ambience {
   moving: pc.StandardMaterial[];
 }
 
+/** Height cells where fog may lie (below zero is water), placed at `origin` in map metres. */
+export interface WaterField {
+  heights: Float32Array;
+  meta: {
+    columns: number;
+    cell_m: number;
+  };
+  origin: {
+    x_m: number;
+    z_m: number;
+  };
+}
+
 export interface AmbienceScene {
-  slice: Slice;
+  water: WaterField;
   town: Town;
 }
 
@@ -144,12 +156,13 @@ function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: Marker[]) {
   return { entity: batch.entity, material: haze };
 }
 
-function buildFog(app: pc.AppBase, disc: pc.Texture, slice: Slice) {
+function buildFog(app: pc.AppBase, disc: pc.Texture, water: WaterField) {
   const random = createRandom(SEED + 1);
-  const spots = waterSpots({ heights: slice.heights, meta: slice.meta, count: FOG_BANKS,
+  const spots = waterSpots({ heights: water.heights, meta: water.meta, count: FOG_BANKS,
     seed: SEED });
   const banks = spots.map((spot) => ({
-    ...spot,
+    x: spot.x + water.origin.x_m,
+    z: spot.z + water.origin.z_m,
     y: between(random, ...FOG_HEIGHT_M),
     width: between(random, ...FOG_SIZE_M),
     depth: between(random, ...FOG_SIZE_M) * 0.6,
@@ -193,7 +206,7 @@ export function buildAmbience(app: pc.AppBase, scene: AmbienceScene): Ambience {
   const disc = softDisc(app.graphicsDevice);
   const root = new pc.Entity('ambience');
   const smoke = buildSmoke(app, disc, scene.town.chimneyTops);
-  const fog = buildFog(app, disc, scene.slice);
+  const fog = buildFog(app, disc, scene.water);
   const lanterns = buildLanterns(app, disc, scene.town.fronts);
   root.addChild(lanterns.entity);
   root.addChild(smoke.entity);

@@ -150,7 +150,8 @@ export async function createDiorama(
   app.root.addChild(town.root);
   const fleet = buildFleet(app, slice.features.berths, textures);
   app.root.addChild(fleet.root);
-  const ambience = buildAmbience(app, { slice, town });
+  const water = { heights: slice.heights, meta: slice.meta, origin: { x_m: 0, z_m: 0 } };
+  const ambience = buildAmbience(app, { water, town });
   app.root.addChild(ambience.root);
   const edge = buildEdgeHaze(app, slice);
   app.root.addChild(edge.root);
