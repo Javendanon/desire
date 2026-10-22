@@ -1,0 +1,268 @@
+{
+  "CreatureTemplate": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "revision": 1,
+      "name": "Synthetic",
+      "creature_type": "Synthetic",
+      "size": "Synthetic",
+      "abilities": {
+        "strength": 1,
+        "dexterity": 1,
+        "constitution": 1,
+        "intelligence": 1,
+        "wisdom": 1,
+        "charisma": 1
+      },
+      "armor_class": 1,
+      "max_hp": 1,
+      "speed_m": 1.0,
+      "description": "Synthetic",
+      "provenance": {
+        "source": "fixture:tabletop",
+        "attribution": "Synthetic example",
+        "evidence": "synthetic"
+      }
+    }
+  ],
+  "CreatureAction": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "template_id": "00000000-0000-4000-8000-000000000064",
+      "name": "Synthetic",
+      "kind": "action",
+      "description": "Synthetic"
+    }
+  ],
+  "Actor": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "character_id": null,
+      "template_id": null,
+      "kind": "character",
+      "name": "Synthetic",
+      "visibility": "players",
+      "disposition": "friendly",
+      "revision": 1
+    }
+  ],
+  "ActorStats": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "abilities": {
+        "strength": 1,
+        "dexterity": 1,
+        "constitution": 1,
+        "intelligence": 1,
+        "wisdom": 1,
+        "charisma": 1
+      },
+      "armor_class": 1,
+      "speed_m": 1.0,
+      "revision": 1
+    }
+  ],
+  "ActorState": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "max_hp": 1,
+      "current_hp": 1,
+      "temporary_hp": 1,
+      "status": "active",
+      "revision": 1
+    }
+  ],
+  "ActorCondition": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "knowledge_entry_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "remaining_rounds": null,
+      "revision": 1
+    }
+  ],
+  "CharacterSheet": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "ancestry": "Synthetic",
+      "background": "Synthetic",
+      "experience": 1,
+      "biography": "Synthetic",
+      "revision": 1
+    }
+  ],
+  "CharacterClass": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "class_entry_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "level": 1
+    }
+  ],
+  "CharacterProficiency": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "category": "skill",
+      "name": "Synthetic",
+      "training": "untrained"
+    }
+  ],
+  "CharacterEquipment": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "name": "Synthetic",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "description": "Synthetic",
+      "revision": 1
+    }
+  ],
+  "CharacterSpell": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "knowledge_entry_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "prepared": false
+    }
+  ],
+  "ActorResource": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "name": "Synthetic",
+      "maximum": 1,
+      "remaining": 1,
+      "recovery": "manual",
+      "revision": 1
+    }
+  ],
+  "ActorConcentration": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "knowledge_entry_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "revision": 1
+    }
+  ],
+  "Party": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "name": "Synthetic",
+      "revision": 1
+    }
+  ],
+  "PartyMember": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "party_id": "00000000-0000-4000-8000-000000000064"
+    }
+  ],
+  "GroupTravel": [
+    {
+      "protocol_version": 2,
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "scene_id": "00000000-0000-4000-8000-000000000064",
+      "party_id": null,
+      "participants": [
+        "00000000-0000-4000-8000-000000000064"
+      ],
+      "position": {
+        "x_m": 1.0,
+        "y_m": 1.0,
+        "z_m": 1.0
+      },
+      "destination": {
+        "x_m": 1.0,
+        "y_m": 1.0,
+        "z_m": 1.0
+      },
+      "distance_m": 1.0,
+      "narrative_seconds": 1.0,
+      "visual_seconds": 1.0,
+      "status": "planned",
+      "revision": 1
+    }
+  ],
+  "Encounter": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "place_id": null,
+      "scene_id": null,
+      "name": "Synthetic",
+      "status": "planned",
+      "round_number": 1,
+      "revision": 1
+    }
+  ],
+  "EncounterParticipant": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "encounter_id": "00000000-0000-4000-8000-000000000064",
+      "initiative": null
+    }
+  ],
+  "PlaceOccupant": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "place_id": "00000000-0000-4000-8000-000000000064",
+      "presence": "present",
+      "visibility": "players",
+      "revision": 1
+    }
+  ],
+  "ScenePlacement": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "scene_id": "00000000-0000-4000-8000-000000000064",
+      "x_m": 1.0,
+      "y_m": 1.0,
+      "z_m": 1.0,
+      "visibility": "players",
+      "revision": 1
+    }
+  ],
+  "PopulationRule": [
+    {
+      "id": "00000000-0000-4000-8000-000000000064",
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "place_id": "00000000-0000-4000-8000-000000000064",
+      "template_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014",
+      "quantity_min": 1,
+      "quantity_max": 1,
+      "visibility": "players",
+      "disposition": "friendly",
+      "revision": 1
+    }
+  ],
+  "PlayerResident": [
+    {
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "name": "Synthetic",
+      "kind": "character",
+      "disposition": "friendly"
+    }
+  ]
+}

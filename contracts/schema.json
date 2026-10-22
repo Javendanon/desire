@@ -1130,6 +1130,1019 @@
           "$ref": "#/$defs/Provenance"
         }
       }
+    },
+    "SignedInteger": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647,
+      "x-module": "common"
+    },
+    "AbilityScores": {
+      "type": "object",
+      "x-module": "common",
+      "additionalProperties": false,
+      "required": [
+        "strength",
+        "dexterity",
+        "constitution",
+        "intelligence",
+        "wisdom",
+        "charisma"
+      ],
+      "properties": {
+        "strength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "dexterity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "constitution": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "intelligence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "wisdom": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "charisma": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        }
+      }
+    },
+    "ActorKind": {
+      "enum": [
+        "character",
+        "npc",
+        "monster"
+      ],
+      "x-module": "common"
+    },
+    "Disposition": {
+      "enum": [
+        "friendly",
+        "neutral",
+        "hostile"
+      ],
+      "x-module": "common"
+    },
+    "ActorStatus": {
+      "enum": [
+        "active",
+        "dead",
+        "removed"
+      ],
+      "x-module": "common"
+    },
+    "Presence": {
+      "enum": [
+        "present",
+        "away"
+      ],
+      "x-module": "common"
+    },
+    "EncounterStatus": {
+      "enum": [
+        "planned",
+        "active",
+        "completed",
+        "cancelled"
+      ],
+      "x-module": "common"
+    },
+    "ActionKind": {
+      "enum": [
+        "action",
+        "bonus_action",
+        "reaction",
+        "passive"
+      ],
+      "x-module": "common"
+    },
+    "ProficiencyCategory": {
+      "enum": [
+        "skill",
+        "saving_throw",
+        "tool",
+        "weapon",
+        "armor"
+      ],
+      "x-module": "common"
+    },
+    "Training": {
+      "enum": [
+        "untrained",
+        "half",
+        "proficient",
+        "expertise"
+      ],
+      "x-module": "common"
+    },
+    "ResourceRecovery": {
+      "enum": [
+        "manual",
+        "short_rest",
+        "long_rest"
+      ],
+      "x-module": "common"
+    },
+    "CreatureTemplate": {
+      "type": "object",
+      "x-module": "actors",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rules_edition",
+        "revision",
+        "name",
+        "creature_type",
+        "size",
+        "abilities",
+        "armor_class",
+        "max_hp",
+        "speed_m",
+        "description",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "name": {
+          "type": "string"
+        },
+        "creature_type": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "abilities": {
+          "$ref": "#/$defs/AbilityScores"
+        },
+        "armor_class": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "max_hp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "speed_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "description": {
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    },
+    "CreatureAction": {
+      "type": "object",
+      "x-module": "actors",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "template_id",
+        "name",
+        "kind",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "template_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActionKind"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "Actor": {
+      "type": "object",
+      "x-module": "actors",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "rules_edition",
+        "character_id",
+        "template_id",
+        "kind",
+        "name",
+        "visibility",
+        "disposition",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "character_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "disposition": {
+          "$ref": "#/$defs/Disposition"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "ActorStats": {
+      "type": "object",
+      "x-module": "actors",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "abilities",
+        "armor_class",
+        "speed_m",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "abilities": {
+          "$ref": "#/$defs/AbilityScores"
+        },
+        "armor_class": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "speed_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "ActorState": {
+      "type": "object",
+      "x-module": "actors",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "max_hp",
+        "current_hp",
+        "temporary_hp",
+        "status",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "max_hp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "current_hp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "temporary_hp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "status": {
+          "$ref": "#/$defs/ActorStatus"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "ActorCondition": {
+      "type": "object",
+      "x-module": "actors",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "actor_id",
+        "knowledge_entry_id",
+        "rules_edition",
+        "remaining_rounds",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "knowledge_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "remaining_rounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "CharacterSheet": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "ancestry",
+        "background",
+        "experience",
+        "biography",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "ancestry": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string"
+        },
+        "experience": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "biography": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "CharacterClass": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "class_entry_id",
+        "rules_edition",
+        "level"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "class_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "CharacterProficiency": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "category",
+        "name",
+        "training"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "category": {
+          "$ref": "#/$defs/ProficiencyCategory"
+        },
+        "name": {
+          "type": "string"
+        },
+        "training": {
+          "$ref": "#/$defs/Training"
+        }
+      }
+    },
+    "CharacterEquipment": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "actor_id",
+        "name",
+        "quantity",
+        "equipped",
+        "attuned",
+        "description",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "equipped": {
+          "type": "boolean"
+        },
+        "attuned": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "CharacterSpell": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "knowledge_entry_id",
+        "rules_edition",
+        "prepared"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "knowledge_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "prepared": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ActorResource": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "name",
+        "maximum",
+        "remaining",
+        "recovery",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "maximum": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "recovery": {
+          "$ref": "#/$defs/ResourceRecovery"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "ActorConcentration": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "knowledge_entry_id",
+        "rules_edition",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "knowledge_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Party": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "name",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "PartyMember": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "party_id"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "party_id": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "GroupTravel": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "id",
+        "campaign_id",
+        "scene_id",
+        "party_id",
+        "participants",
+        "position",
+        "destination",
+        "distance_m",
+        "narrative_seconds",
+        "visual_seconds",
+        "status",
+        "revision"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "scene_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "party_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "destination": {
+          "$ref": "#/$defs/Position"
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "narrative_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "visual_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/$defs/TravelStatus"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "Encounter": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "place_id",
+        "scene_id",
+        "name",
+        "status",
+        "round_number",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "place_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scene_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/EncounterStatus"
+        },
+        "round_number": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "EncounterParticipant": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "encounter_id",
+        "initiative"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "encounter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "initiative": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SignedInteger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PlaceOccupant": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "place_id",
+        "presence",
+        "visibility",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "place_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "presence": {
+          "$ref": "#/$defs/Presence"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "ScenePlacement": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "scene_id",
+        "x_m",
+        "y_m",
+        "z_m",
+        "visibility",
+        "revision"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "scene_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "x_m": {
+          "type": "number"
+        },
+        "y_m": {
+          "type": "number"
+        },
+        "z_m": {
+          "type": "number"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "PopulationRule": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "campaign_id",
+        "place_id",
+        "template_id",
+        "rules_edition",
+        "quantity_min",
+        "quantity_max",
+        "visibility",
+        "disposition",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "place_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "template_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        },
+        "quantity_min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "quantity_max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "disposition": {
+          "$ref": "#/$defs/Disposition"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        }
+      }
+    },
+    "PlayerResident": {
+      "type": "object",
+      "x-module": "adventure",
+      "additionalProperties": false,
+      "required": [
+        "actor_id",
+        "name",
+        "kind",
+        "disposition"
+      ],
+      "properties": {
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActorKind"
+        },
+        "disposition": {
+          "$ref": "#/$defs/Disposition"
+        }
+      }
     }
   }
 }

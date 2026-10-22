@@ -1,6 +1,9 @@
 //! Atomic, append-only imports of typed editorial content.
 use crate::{Error, ErrorKind, error::Context};
-use desire_core::contracts::catalog::*;
+use desire_core::contracts::{
+    actors::{CreatureAction, CreatureTemplate},
+    catalog::*,
+};
 use postgres::{Client, Transaction};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -9,6 +12,8 @@ use std::collections::HashSet;
 #[derive(Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CatalogSeed {
+    pub creature_templates: Vec<CreatureTemplate>,
+    pub creature_actions: Vec<CreatureAction>,
     pub worlds: Vec<World>,
     pub eras: Vec<Era>,
     pub cities: Vec<City>,
@@ -32,6 +37,8 @@ impl CatalogRepository {
         seed_places(&mut tx, &seed.places)?;
         seed_chunks(&mut tx, &seed.chunks)?;
         seed_rows(&mut tx, "knowledge_entries", &seed.knowledge_entries)?;
+        seed_rows(&mut tx, "creature_templates", &seed.creature_templates)?;
+        seed_rows(&mut tx, "creature_actions", &seed.creature_actions)?;
         tx.commit().context("commit catalog seed")
     }
 }

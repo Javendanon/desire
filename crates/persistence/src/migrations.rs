@@ -8,6 +8,10 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../migrations/0003_notes.sql"),
     include_str!("../../../migrations/0004_realtime.sql"),
     include_str!("../../../migrations/0005_calibrated_anchors.sql"),
+    include_str!("../../../migrations/0006_actors.sql"),
+    include_str!("../../../migrations/0007_character_sheets.sql"),
+    include_str!("../../../migrations/0008_groups_and_encounters.sql"),
+    include_str!("../../../migrations/0009_place_population.sql"),
 ];
 const MIGRATION_LOCK: i64 = 0x444553495245;
 
