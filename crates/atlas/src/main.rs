@@ -233,7 +233,7 @@ fn houses(args: &[String]) -> Result<(), String> {
         region: numbers(&args[3])?,
         heights: numbers(&args[4])?,
     };
-    let houses = generate_houses(&sources.raster(layer.metres_per_pixel), &layer, &spec);
+    let houses = generate_houses(&sources.raster(layer.metres_per_pixel), &layer, &spec)?;
     write(
         &args[5],
         houses_json(&houses, layer.metres_per_pixel).as_bytes(),

@@ -109,7 +109,7 @@ fn houses_text(town: &Built) -> String {
         size: town.size,
         metres_per_pixel: town.layer.metres_per_pixel,
     };
-    let houses = generate_houses(&raster, &town.layer, &town.spec);
+    let houses = generate_houses(&raster, &town.layer, &town.spec).expect("ids fit");
     houses_json(&houses, town.layer.metres_per_pixel)
 }
 

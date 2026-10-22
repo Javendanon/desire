@@ -37,10 +37,15 @@ export interface SectorInput {
   trees: SectorTree[];
 }
 
+/** Blocks the 32-bit id holds: 2³² ids over 4096 lots each. */
+const MAX_BLOCKS = 2 ** 32 / LOTS_PER_BLOCK;
+
+/** Block × 4096 + lot. Refused when it would not fit 32 bits, never wrapped into another id. */
 export function houseId(block: number, lot: number): number {
   if (lot >= LOTS_PER_BLOCK) {
     throw new Error(`block ${block}: lot ${lot} does not fit the house id`);
   }
+  if (block >= MAX_BLOCKS) throw new Error(`block ${block} does not fit a 32-bit house id`);
   return block * LOTS_PER_BLOCK + lot;
 }
 
