@@ -41,12 +41,17 @@ export type Payload = {
   bytes: Uint8Array;
 };
 
+export type SectorExport = {
+  payloads: Payload[];
+  index: SectorIndex;
+};
+
 /** One palette for the whole city: a house's roof tone then depends on its own colour only. */
 const cityTones = (houses: LayerHouse[]) => roofCentres(houses.map((house) => house.roof_rgb))
   .map((centre) => centre.map((channel) => Math.round(channel)));
 
 /** Every sector's payload, and the index describing them. */
-export function exportSectors(source: SectorSource): { payloads: Payload[]; index: SectorIndex } {
+export function exportSectors(source: SectorSource): SectorExport {
   const grid = sectorGrid(source.size, source.metresPerPixel);
   const found = featuresInMetres(source, source.metresPerPixel, FEATURE_SEED);
   const sectors = partitionSectors({ grid, houses: source.houses, ...found });

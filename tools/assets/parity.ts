@@ -7,8 +7,8 @@
  */
 import fs from 'node:fs';
 
+import { townFiles } from './parity-town.ts';
 import { findBerths, plantTrees } from './src/features.ts';
-import { generateHouses, type BlocksLayer, type Region } from './src/houses.ts';
 import { placeHouses } from './src/lots.ts';
 import { mulberry32 } from './src/random.ts';
 import { createMercatorFrame, type LngLat } from './src/raster/frame.ts';
@@ -20,7 +20,6 @@ import { refineSurfaces } from './src/raster/refine.ts';
 import { measureStreetWidth } from './src/raster/street-width.ts';
 import { heightField, paintAlbedo, shoreDistance } from './src/slice.ts';
 import { classifyPixel, Surface } from './src/raster/surface.ts';
-import { exportSectors, indexJson } from './src/sector-export.ts';
 
 const FIXTURES = 'crates/atlas/tests/fixtures';
 const GOLDEN = `${FIXTURES}/parity.json`;
@@ -42,21 +41,6 @@ const OPEN = { x_m: 50, z_m: 40, radius_m: 12 };
 /** Scaled to the synthetic raster: small blocks kept, 1.5 px tolerance as on the map. */
 const TRACE = { minAreaPx: 30, tolerancePx: 1.5, minHoleAreaPx: 6 };
 const STREETS_RGB = `${FIXTURES}/streets-301x203.rgb`;
-/**
- * The synthetic town: the refined raster placed in a larger, empty canvas so that it straddles
- * the 1024-px sector lines, with its own roof colours. Houses and sector payloads come from it.
- */
-const TOWN = {
-  canvas: { width: 1300, height: 1100 },
-  offset: { x: 900, y: 950 },
-  metres_per_pixel: 0.4683867315551439,
-  region: [880, 940, 240, 150] as Region,
-  heights: [5, 9] as [number, number],
-};
-const TOWN_CLASSES = `${FIXTURES}/town-classes-257x131.bin`;
-const TOWN_RGB = `${FIXTURES}/town-257x131.rgb`;
-const TOWN_INPUT = `${FIXTURES}/town-input.json`;
-const TOWN_GOLDEN = `${FIXTURES}/town-golden.json`;
 const STREETS = { width: 301, height: 203 };
 /** The Tych z18 frame of Waterdeep. */
 const TYCH = { zoom: 18, west: -123.05626478690047, north: 38.33925568803595 };
@@ -281,56 +265,6 @@ function groundGolden(classes: Uint8Array) {
   };
 }
 
-/** Roof-like colours that vary across the tile, so roof sampling and tones are exercised. */
-function townColours(): Uint8Array {
-  return Uint8Array.from({ length: RASTER.width * RASTER.height * 3 }, (_, at) => {
-    const [pixel, channel] = [Math.floor(at / 3), at % 3];
-    const [x, y] = [pixel % RASTER.width, Math.floor(pixel / RASTER.width)];
-    return (60 + channel * 40 + x * (3 - channel) + y * (channel + 1)) % 256;
-  });
-}
-
-/** A tile-sized buffer copied into the empty town canvas at the offset. */
-function onCanvas(tile: Uint8Array, channels: number): Uint8Array {
-  const { canvas, offset } = TOWN;
-  const out = new Uint8Array(canvas.width * canvas.height * channels);
-  for (let row = 0; row < RASTER.height; row += 1) {
-    const from = row * RASTER.width * channels;
-    const to = ((offset.y + row) * canvas.width + offset.x) * channels;
-    out.set(tile.subarray(from, from + RASTER.width * channels), to);
-  }
-  return out;
-}
-
-/** The synthetic blocks moved onto the canvas, in metres, as `blocks.json` holds them. */
-function townLayer(classes: Uint8Array): BlocksLayer {
-  const { offset, metres_per_pixel: mpp } = TOWN;
-  const metres = ([x, y]: number[]): [number, number] =>
-    [(x + offset.x) * mpp, (y + offset.y) * mpp];
-  const blocks = syntheticBlocks(classes).map((block, id) => ({ id,
-    outer: block.outer.map(metres), holes: block.holes.map((hole) => hole.map(metres)) }));
-  return { metres_per_pixel: mpp, blocks };
-}
-
-/** Houses and sector payloads of the synthetic town, from the same code as the CLIs. */
-function townGolden(classes: Uint8Array) {
-  const { refined } = refinedSynthetic(classes);
-  const { canvas, metres_per_pixel: mpp } = TOWN;
-  const raster = { rgb: onCanvas(townColours(), 3), classes: onCanvas(refined, 1),
-    width: canvas.width, height: canvas.height, metresPerPixel: mpp };
-  const houses = generateHouses(raster, townLayer(classes), TOWN);
-  const { payloads, index } = exportSectors({ classes: raster.classes, size: canvas, houses,
-    metresPerPixel: mpp });
-  const text = Buffer.from(indexJson(index));
-  return {
-    houses,
-    payloads: payloads.map(({ index: sector, bytes }) =>
-      ({ index: sector, fnv1a: fnv1a(bytes), bytes: bytes.length })),
-    index_fnv1a: fnv1a(text),
-    index_bytes: text.length,
-  };
-}
-
 function goldens(classes: Uint8Array) {
   return {
     classify_all_colours: classifyAllColours(),
@@ -352,10 +286,8 @@ const files: [string, string | Uint8Array][] = [
   [BLOCKS_GOLDEN, `${JSON.stringify({ trace: TRACE, blocks: syntheticBlocks(classes) })}\n`],
   [LOTS_GOLDEN, `${JSON.stringify({ rules: LOT_RULES, open: OPEN, blocks: lotGolden() })}\n`],
   [FEATURES_GOLDEN, `${JSON.stringify(syntheticFeatures(classes))}\n`],
-  [TOWN_CLASSES, refinedSynthetic(classes).refined],
-  [TOWN_RGB, townColours()],
-  [TOWN_INPUT, `${JSON.stringify({ ...TOWN, ...townLayer(classes) })}\n`],
-  [TOWN_GOLDEN, `${JSON.stringify(townGolden(classes))}\n`],
+  ...townFiles({ classes: refinedSynthetic(classes).refined, size: RASTER },
+    syntheticBlocks(classes), fnv1a),
 ];
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;

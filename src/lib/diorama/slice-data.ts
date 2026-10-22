@@ -50,6 +50,36 @@ export interface Slice {
   albedo: HTMLImageElement;
 }
 
+const finite = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+const positive = (value: unknown) => finite(value) && value > 0;
+const count = (value: unknown) => positive(value) && Number.isInteger(value);
+function point(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const fields = value as Record<string, unknown>;
+  return finite(fields.x_m) && finite(fields.z_m);
+}
+
+/** What each meta field must hold, and how a failure names it. */
+const META_RULES: [keyof SliceMeta, (value: unknown) => boolean, string][] = [
+  ['width_m', positive, 'a positive number'],
+  ['depth_m', positive, 'a positive number'],
+  ['cell_m', positive, 'a positive number'],
+  ['columns', count, 'a positive whole number'],
+  ['rows', count, 'a positive whole number'],
+  ['origin_m', point, 'an { x_m, z_m } point'],
+];
+
+/** The slice's `meta.json`, checked field by field, so a bad file fails here by name. */
+export function checkSliceMeta(meta: unknown): SliceMeta {
+  if (typeof meta !== 'object' || meta === null) throw new Error('slice meta: not an object');
+  const fields = meta as Record<string, unknown>;
+  for (const [field, holds, what] of META_RULES) {
+    if (!holds(fields[field])) throw new Error(`slice meta: ${field} must be ${what}`);
+  }
+  return meta as SliceMeta;
+}
+
 export async function fetchOk(url: string): Promise<Response> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`slice file ${url}: HTTP ${response.status}`);
@@ -67,7 +97,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 export async function loadSlice(base: string): Promise<Slice> {
   const [meta, heights, houses, features, albedo] = await Promise.all([
-    fetchOk(`${base}/meta.json`).then((response) => response.json() as Promise<SliceMeta>),
+    fetchOk(`${base}/meta.json`).then((response) => response.json()).then(checkSliceMeta),
     fetchOk(`${base}/heights.bin`).then((response) => response.arrayBuffer()),
     fetchOk(`${base}/houses.json`).then((response) => response.json() as Promise<SliceHouse[]>),
     fetchOk(`${base}/features.json`).then((response) =>

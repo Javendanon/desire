@@ -36,9 +36,11 @@ export function lightScene(app: pc.AppBase, sun: pc.Entity): pc.Entity {
   return fill;
 }
 
+const HORIZON_COLOUR = new pc.Color().fromString(HORIZON);
+
 /** Colour of the sky in a direction: horizon to zenith, warmer and brighter toward the sun. */
 function skyColour(direction: pc.Vec3, toSun: pc.Vec3): number[] {
-  const horizon = new pc.Color().fromString(HORIZON);
+  const horizon = HORIZON_COLOUR;
   const height = Math.max(0, direction.y);
   const glow = Math.max(0, direction.dot(toSun)) ** 6;
   const lift = (1 - height) ** 1.6;
@@ -58,19 +60,29 @@ const GAMMA = 2.2;
 const toByte = (channel: number) => Math.round(channel ** GAMMA * BYTE_MAX);
 
 /** An unlit dome with per-vertex colours, drawn behind everything and ignoring fog. */
-export function buildSky(app: pc.AppBase, sun: pc.Entity, radius: number): pc.Entity {
+/** The sky sphere with each vertex coloured by its direction and the sun's. */
+function skySphere(sun: pc.Entity, radius: number): pc.SphereGeometry {
   const bands = { latitudeBands: SKY_SEGMENTS, longitudeBands: SKY_SEGMENTS };
   const sphere = new pc.SphereGeometry({ radius, ...bands });
-  const toSun = sun.up.clone().mulScalar(1).normalize();
-  const colours: number[] = [];
+  const toSun = sun.up.clone().normalize();
   const positions = sphere.positions;
-  for (let index = 0; index < positions.length; index += 3) {
-    const [x, y, z] = [positions[index], positions[index + 1], positions[index + 2]];
-    const direction = new pc.Vec3(x, y, z).normalize();
-    colours.push(...skyColour(direction, toSun).map(toByte), BYTE_MAX);
+  const colours = new Array<number>((positions.length / 3) * 4);
+  const direction = new pc.Vec3();
+  for (let vertex = 0; vertex * 3 < positions.length; vertex += 1) {
+    const at = vertex * 3;
+    direction.set(positions[at], positions[at + 1], positions[at + 2]).normalize();
+    const [r, g, b] = skyColour(direction, toSun).map(toByte);
+    colours[vertex * 4] = r;
+    colours[vertex * 4 + 1] = g;
+    colours[vertex * 4 + 2] = b;
+    colours[vertex * 4 + 3] = BYTE_MAX;
   }
   sphere.colors = colours;
-  const mesh = pc.Mesh.fromGeometry(app.graphicsDevice, sphere);
+  return sphere;
+}
+
+/** Unlit, fogless, drawn from inside: only the vertex colours show. */
+function domeMaterial(): pc.StandardMaterial {
   const dome = new pc.StandardMaterial();
   dome.useLighting = false;
   dome.useFog = false;
@@ -81,6 +93,12 @@ export function buildSky(app: pc.AppBase, sun: pc.Entity, radius: number): pc.En
   dome.cull = pc.CULLFACE_FRONT;
   dome.depthWrite = false;
   dome.update();
+  return dome;
+}
+
+export function buildSky(app: pc.AppBase, sun: pc.Entity, radius: number): pc.Entity {
+  const mesh = pc.Mesh.fromGeometry(app.graphicsDevice, skySphere(sun, radius));
+  const dome = domeMaterial();
   const entity = new pc.Entity('sky');
   entity.addComponent('render', {
     meshInstances: [new pc.MeshInstance(mesh, dome)],

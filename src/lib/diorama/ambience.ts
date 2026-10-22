@@ -107,10 +107,17 @@ const FLOATS_PER_INSTANCE = 16;
 const PUFF_REACH_M = PUFF.riseM * PUFF.windSlant + PUFF.sizeM * (PUFF.birthShare + 1);
 
 /** A plane batch over `count` instances inside `bounds`, its data written by the caller. */
-function planeBatch(app: pc.AppBase, haze: pc.StandardMaterial, count: number,
-  bounds: pc.BoundingBox): MovingBatch {
+/** A camera-facing plane batch: its haze material, instance count and world bounds. */
+type PlaneSpec = {
+  haze: pc.StandardMaterial;
+  count: number;
+  bounds: pc.BoundingBox;
+};
+
+function planeBatch(app: pc.AppBase, spec: PlaneSpec): MovingBatch {
   const mesh = geometryMesh(app.graphicsDevice, new pc.PlaneGeometry());
-  return movingBatch(app, { mesh, material: haze, count, castShadows: false, bounds });
+  return movingBatch(app, { mesh, material: spec.haze, count: spec.count, castShadows: false,
+    bounds: spec.bounds });
 }
 
 /** Per puff: chimney top and phase in line 1, the puff's share of the cycle in line 2. */
@@ -132,7 +139,7 @@ function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: MarkerPoint[]) {
   useInstanceChunks(haze, smokeChunks());
   const bounds = boundsAround(chosen,
     { side: PUFF_REACH_M, below: PUFF.sizeM, above: PUFF.riseM + PUFF.sizeM });
-  const batch = planeBatch(app, haze, chosen.length * PUFFS_PER_CHIMNEY, bounds);
+  const batch = planeBatch(app, { haze, count: chosen.length * PUFFS_PER_CHIMNEY, bounds });
   batch.data.set(smokeData(chosen, offsets));
   batch.buffer.setData(batch.data);
   return { entity: batch.entity, material: haze };
@@ -143,7 +150,7 @@ function buildFog(app: pc.AppBase, disc: pc.Texture, banks: FogBank[]) {
   const centres = banks.map((bank) => new pc.Vec3(bank.x, bank.y, bank.z));
   const bounds = boundsAround(centres,
     { side: FOG_SIZE_M[1] / 2 + FOG_SWAY_M, below: 1, above: 1 });
-  const batch = planeBatch(app, haze, banks.length, bounds);
+  const batch = planeBatch(app, { haze, count: banks.length, bounds });
   return { entity: batch.entity, fog: { ...batch, banks } };
 }
 
@@ -174,8 +181,8 @@ function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: MarkerPoint[])
     { colour: '#ffb35a', opacity: HALO_OPACITY, blend: pc.BLEND_ADDITIVEALPHA });
   useInstanceChunks(glow, haloChunks());
   const reach = HALO.sizeM * (1 + HALO.flicker);
-  const halos = planeBatch(app, glow, lamps.length,
-    boundsAround(lamps, { side: reach, below: reach, above: reach }));
+  const bounds = boundsAround(lamps, { side: reach, below: reach, above: reach });
+  const halos = planeBatch(app, { haze: glow, count: lamps.length, bounds });
   halos.data.set(haloData(lamps));
   halos.buffer.setData(halos.data);
   halos.entity.addChild(lanternBodies(app, lamps));
