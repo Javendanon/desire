@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import sharp from 'sharp';
 
 import { readFlags } from './src/flags.ts';
-import { footprintCorners, footprintPoint } from './src/footprint.ts';
+import { footprintPoint } from './src/footprint.ts';
 import { placeHouses, type House } from './src/lots.ts';
 import { between, mulberry32 } from './src/random.ts';
 import { simplifyRing } from './src/raster/simplify.ts';
@@ -79,12 +79,8 @@ function isBuilt(raster: Raster) {
   };
 }
 
-/** Mean raster colour over a 3 × 3 grid inside the footprint. */
-function roofColour(raster: Raster, house: House): [number, number, number] {
-  const corners = footprintCorners({
-    center: house.center, width_m: house.width_m, depth_m: house.depth_m,
-    rotation_radians: house.rotation_radians,
-  });
+/** Mean raster colour over a 3 × 3 grid inside the footprint, from the lot's own corners. */
+function roofColour(raster: Raster, corners: Plan[]): [number, number, number] {
   const total = [0, 0, 0];
   let count = 0;
   for (let index = 0; index < ROOF_SAMPLES; index += 1) {
@@ -128,10 +124,10 @@ function housesOf(raster: Raster, block: BlockJson, options: Options) {
   const rules = { frontage: FRONTAGE_M, depth: DEPTH_M, seed, isBuilt: isBuilt(raster) };
   const random = mulberry32(SEED_BASE ^ block.id);
   // The id comes from the lot's place in its block, before the region filter drops any lot.
-  return placeHouses(shape, rules).map((house, lot) => ({
+  return placeHouses(shape, rules).map(({ corners, ...house }, lot) => ({
     ...house,
     height_m: Math.round(between(random, options.heights) * 10) / 10,
-    roof_rgb: roofColour(raster, house),
+    roof_rgb: roofColour(raster, corners),
     block: block.id,
     id: houseId(block.id, lot),
   }));

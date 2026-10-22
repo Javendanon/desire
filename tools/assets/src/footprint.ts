@@ -31,16 +31,36 @@ function axesOf(rotation: number): Axis[] {
   return [[cos, -sin], [sin, cos]];
 }
 
-/** Corners in order around the footprint. */
-export function footprintCorners(footprint: Footprint): Plan[] {
-  const [width, depth] = axesOf(footprint.rotation_radians);
-  const halfWidth = footprint.width_m / 2;
-  const halfDepth = footprint.depth_m / 2;
+type Box = {
+  center: Plan;
+  width_m: number;
+  depth_m: number;
+};
+
+/** Corners in order around a box whose width and depth axes are given. */
+function cornersOnAxes(box: Box, [width, depth]: Axis[]): Plan[] {
+  const halfWidth = box.width_m / 2;
+  const halfDepth = box.depth_m / 2;
   const signs: Axis[] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
   return signs.map(([along, across]) => ({
-    x_m: footprint.center.x_m + along * halfWidth * width[0] + across * halfDepth * depth[0],
-    z_m: footprint.center.z_m + along * halfWidth * width[1] + across * halfDepth * depth[1],
+    x_m: box.center.x_m + along * halfWidth * width[0] + across * halfDepth * depth[0],
+    z_m: box.center.z_m + along * halfWidth * width[1] + across * halfDepth * depth[1],
   }));
+}
+
+/** Corners in order around the footprint. */
+export function footprintCorners(footprint: Footprint): Plan[] {
+  return cornersOnAxes(footprint, axesOf(footprint.rotation_radians));
+}
+
+/**
+ * The same corners for a footprint laid along a unit tangent: rotation atan2(−tz, tx), so the
+ * width axis is the tangent and the depth axis (−tz, tx). No trigonometry, hence no last-bit
+ * differences between JavaScript engines and other languages' math libraries.
+ */
+export function footprintCornersAlong(footprint: Box & { tangent: Plan }): Plan[] {
+  const { x_m: tx, z_m: tz } = footprint.tangent;
+  return cornersOnAxes(footprint, [[tx, tz], [-tz, tx]]);
 }
 
 export function footprintBounds(corners: Plan[]): Bounds {

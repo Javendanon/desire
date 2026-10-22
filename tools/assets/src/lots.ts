@@ -5,7 +5,7 @@
  * Rotation follows the engine convention (footprint.ts): the width axis, along the street, is
  * (cos θ, −sin θ) in plan.
  */
-import { footprintCorners, footprintPoint } from './footprint.ts';
+import { footprintCornersAlong, footprintPoint } from './footprint.ts';
 import { pointInRing, ringsOverlap } from './polygon.ts';
 import { between, mulberry32 } from './random.ts';
 import type { Plan } from './types.ts';
@@ -34,11 +34,14 @@ export type House = {
   rotation_radians: number;
   frontage: boolean;
 };
+/** A placed house with the corners it was placed with, built from its edge tangent. */
+export type Lot = House & {
+  corners: Plan[];
+};
 type Placement = {
   block: BlockShape;
   rules: LotRules;
-  houses: House[];
-  corners: Plan[][];
+  houses: Lot[];
   random: () => number;
 };
 type Axis = {
@@ -60,13 +63,6 @@ const offset = (point: Plan, direction: Plan, distance: number): Plan => ({
   z_m: point.z_m + direction.z_m * distance,
 });
 
-function cornersOf(house: House): Plan[] {
-  return footprintCorners({
-    center: house.center, width_m: house.width_m, depth_m: house.depth_m,
-    rotation_radians: house.rotation_radians,
-  });
-}
-
 function onBuiltGround(rules: LotRules, corners: Plan[]): boolean {
   if (!rules.isBuilt) return true;
   const built = BUILT_SAMPLES.filter(([u, v]) => rules.isBuilt!(footprintPoint(corners, u, v)));
@@ -78,14 +74,12 @@ function fits(placement: Placement, corners: Plan[]): boolean {
   if (!corners.every((corner) => pointInRing(corner, block.outer))) return false;
   if (block.holes.some((hole) => ringsOverlap(corners, hole))) return false;
   if (!onBuiltGround(rules, corners)) return false;
-  return !placement.corners.some((other) => ringsOverlap(corners, other));
+  return !placement.houses.some((other) => ringsOverlap(corners, other.corners));
 }
 
-function tryPlace(placement: Placement, house: House): boolean {
-  const corners = cornersOf(house);
-  if (!fits(placement, corners)) return false;
-  placement.houses.push(house);
-  placement.corners.push(corners);
+function tryPlace(placement: Placement, lot: Lot): boolean {
+  if (!fits(placement, lot.corners)) return false;
+  placement.houses.push(lot);
   return true;
 }
 
@@ -108,16 +102,18 @@ type Slot = {
   frontage: boolean;
 };
 
-function lotAt(placement: Placement, { axis, along, frontage }: Slot): House {
+function lotAt(placement: Placement, slot: Slot): Lot {
+  const { axis, along, frontage } = slot;
   const width = between(placement.random, placement.rules.frontage);
   const depth = between(placement.random, placement.rules.depth);
   const front = offset(axis.origin, axis.tangent, along + width / 2);
+  const center = offset(front, axis.normal, SETBACK_M + depth / 2);
+  const box = { center, width_m: width, depth_m: depth };
   return {
-    center: offset(front, axis.normal, SETBACK_M + depth / 2),
-    width_m: width,
-    depth_m: depth,
+    ...box,
     rotation_radians: rotationOf(axis.tangent),
     frontage,
+    corners: footprintCornersAlong({ ...box, tangent: axis.tangent }),
   };
 }
 
@@ -168,9 +164,9 @@ function fillInterior(placement: Placement) {
 }
 
 /** Houses for one block: frontage rows first, then the interior. */
-export function placeHouses(block: BlockShape, rules: LotRules): House[] {
+export function placeHouses(block: BlockShape, rules: LotRules): Lot[] {
   const random = mulberry32(rules.seed);
-  const placement: Placement = { block, rules, houses: [], corners: [], random };
+  const placement: Placement = { block, rules, houses: [], random };
   block.outer.forEach((point, index) => {
     lineFrontage(placement, point, block.outer[(index + 1) % block.outer.length]);
   });
