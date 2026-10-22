@@ -11,6 +11,11 @@ test('a house id packs its block and its lot within the block', () => {
   assert.throws(() => houseId(1, 4096), /lot/);
 });
 
+test('a block past the 32-bit id space is refused instead of colliding', () => {
+  assert.equal(houseId(2 ** 20 - 1, 4095), 2 ** 32 - 1);
+  assert.throws(() => houseId(2 ** 20, 0), /block/);
+});
+
 test('the grid covers the map in squares of 1024 source pixels from the north-west corner', () => {
   const grid = sectorGrid({ width: 2500, height: 1100 }, MPP);
   assert.deepEqual(grid, { columns: 3, rows: 2, size_px: 1024, size_m: 512, metres_per_pixel: MPP });
