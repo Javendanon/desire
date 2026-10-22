@@ -50,7 +50,7 @@ export interface Slice {
   albedo: HTMLImageElement;
 }
 
-async function fetchOk(url: string): Promise<Response> {
+export async function fetchOk(url: string): Promise<Response> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`slice file ${url}: HTTP ${response.status}`);
   return response;
@@ -82,15 +82,15 @@ export async function loadSlice(base: string): Promise<Slice> {
   return { meta, heights: field, houses, features, albedo };
 }
 
-/** index.json written by tools/assets/export-sectors.ts. */
-interface SectorIndex {
+/** index.json written by the sectors stage. */
+export interface SectorIndex {
   format: string;
   grid: GridShape;
   roof_centres: [number, number, number][];
   sectors: { index: number }[];
 }
 
-const SECTOR_FORMAT = 'desire.sector-render/1';
+export const SECTOR_FORMAT = 'desire.sector-render/1';
 
 /**
  * The slice with its houses, berths and trees read from sector payloads (`dir`), and the

@@ -7,6 +7,7 @@ import * as pc from 'playcanvas';
 
 import { geometryMesh, material, movingBatch, type MovingBatch } from '../engine/render/kit.ts';
 import type { Textures } from '../engine/render/textures.ts';
+import { shareOf } from '../engine/math/rng.ts';
 import { swellHeight } from './sea-swell.ts';
 import type { SliceBerth } from './slice-data.ts';
 
@@ -17,6 +18,13 @@ const HULL_HEIGHT_M = 2.8;
 const WATERLINE_Y = 0.5;
 const BOW_SHARE = 0.22;
 const ROLL_DEGREES = 2.2;
+/** Radians of roll cycle per second. */
+const ROLL_RATE = 0.7;
+/** Berth positions are hashed at this resolution, finer than any two berths stand apart. */
+const BERTH_CELL_M = 0.5;
+/** More cells than a map row holds (about 3.4 km at 0.5 m), so a cell number is unique. */
+const BERTH_ROW_CELLS = 16384;
+const ROLL_SALT = 0x5a11;
 /** A moored ship, masts included, stays within this distance of its berth. */
 const SHIP_REACH_M = 24;
 
@@ -163,9 +171,19 @@ const scratch = {
   unit: new pc.Vec3(1, 1, 1),
 };
 
+/**
+ * A ship's roll phase from where it is moored, so it keeps its motion when the fleet is rebuilt
+ * with other sectors' ships. In [0, 2π).
+ */
+export function rollPhase(berth: SliceBerth): number {
+  const column = Math.round(berth.x_m / BERTH_CELL_M);
+  const row = Math.round(berth.z_m / BERTH_CELL_M);
+  return shareOf(row * BERTH_ROW_CELLS + column, ROLL_SALT) * Math.PI * 2;
+}
+
 function placeShip(fleet: Fleet, ship: number, time: number) {
   const berth = fleet.berths[ship];
-  const roll = Math.sin(time * 0.7 + ship) * ROLL_DEGREES;
+  const roll = Math.sin(time * ROLL_RATE + rollPhase(berth)) * ROLL_DEGREES;
   const swell = swellHeight(berth.x_m, berth.z_m, time);
   scratch.position.set(berth.x_m, WATERLINE_Y + swell, berth.z_m);
   scratch.rotation.setFromEulerAngles(0, (berth.heading_radians * 180) / Math.PI, roll);

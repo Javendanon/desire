@@ -221,5 +221,12 @@
       "Pier": 4606,
       "Garden": 4476
     }
+  },
+  "ground": {
+    "shore_fnv1a": 364507897,
+    "albedo_fnv1a": 2424723930,
+    "heights_fnv1a": 2389922085,
+    "columns": 65,
+    "rows": 33
   }
 }

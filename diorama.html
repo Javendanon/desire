@@ -58,8 +58,12 @@
         position: fixed;
         left: 28px;
         bottom: 22px;
+        margin: 0;
+        max-width: calc(100% - 56px);
         font-size: 15px;
         color: var(--ash);
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+        pointer-events: none;
       }
       #hud {
         position: fixed;
@@ -87,7 +91,10 @@
       <p>Waterdeep · revisión de diorama</p>
       <h1>Puerto Profundo</h1>
     </div>
-    <p id="status"></p>
+    <p id="status">
+      Arrastra para girar · dos dedos, Shift + arrastrar o WASD para moverte · pellizca o usa la
+      rueda para acercarte
+    </p>
     <pre id="hud" hidden aria-live="off"></pre>
     <script type="module" src="/src/lib/diorama/main.ts"></script>
   </body>

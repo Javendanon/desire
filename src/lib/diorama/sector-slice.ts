@@ -3,7 +3,7 @@
 // the slice's metres. Features keep their stable ids, so they look the same as anywhere else.
 // Pure.
 
-import type { Sector } from '../map/sector-format.ts';
+import type { Sector, SectorHouse } from '../map/sector-format.ts';
 import type { SliceBerth, SliceHouse, SliceTree } from './slice-data.ts';
 
 export interface GridShape {
@@ -71,11 +71,15 @@ function within<T extends Point>(items: T[], frame: Frame): T[] {
   return kept;
 }
 
+/** A payload house as the town builds it: centred, with its id. */
+export const centred = ({ x_m, z_m, ...house }: SectorHouse): SliceHouse =>
+  ({ ...house, center: { x_m, z_m } });
+
 /** The sectors' features inside the frame, in frame metres, with their ids. O(features). */
 export function featuresInFrame(sectors: Sector[], frame: Frame): FrameFeatures {
   const houses = sectors.flatMap((sector) => within(sector.houses, frame));
   return {
-    houses: houses.map(({ x_m, z_m, ...house }) => ({ ...house, center: { x_m, z_m } })),
+    houses: houses.map(centred),
     berths: sectors.flatMap((sector) => within(sector.berths, frame)),
     trees: sectors.flatMap((sector) => within(sector.trees, frame)),
   };

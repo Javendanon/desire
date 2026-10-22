@@ -6,17 +6,15 @@
 
 import * as pc from 'playcanvas';
 
-import { between, createRandom } from '../engine/math/rng.ts';
 import {
   geometryMesh, instancedEntity, material, movingBatch, trs, type MovingBatch,
 } from '../engine/render/kit.ts';
 import {
-  chimneySmoke, HALO, hasLantern, PUFF, waterSpots, type Spot,
+  chimneySmoke, FOG_SIZE_M, HALO, hasLantern, PUFF, type FogBank,
 } from './ambience-plan.ts';
 import { boundsAround, useInstanceChunks } from './gpu-instancing.ts';
 import { haloChunks, smokeChunks } from './shaders.ts';
-import type { Slice } from './slice-data.ts';
-import type { Marker, Town } from './town.ts';
+import type { MarkerPoint } from './town-plan.ts';
 
 const LANTERN_SIZE: [number, number, number] = [0.3, 0.4, 0.3];
 const LANTERN_GLOW = 8;
@@ -24,24 +22,14 @@ const LANTERN_GLOW = 8;
 const HALO_OPACITY = 0.55;
 const PUFFS_PER_CHIMNEY = 7;
 const SMOKE_OPACITY = 0.26;
-const FOG_BANKS = 14;
 const FOG_OPACITY = 0.3;
-const FOG_SIZE_M: [number, number] = [70, 170];
-const FOG_HEIGHT_M: [number, number] = [2.5, 7];
 /** Fog banks sway this far back and forth across a slow cycle. */
 const FOG_SWAY_M = 25;
 const FOG_SWAY_RATE = 0.025;
 const SOFT_TEXTURE_PX = 64;
-const SEED = 0x5e7;
 
-type Bank = Spot & {
-  y: number;
-  width: number;
-  depth: number;
-  phase: number;
-};
 type Fog = MovingBatch & {
-  banks: Bank[];
+  banks: FogBank[];
 };
 
 export interface Ambience {
@@ -51,9 +39,16 @@ export interface Ambience {
   moving: pc.StandardMaterial[];
 }
 
+/** Where smoke rises and lanterns hang. */
+export interface TownMarkers {
+  chimneyTops: MarkerPoint[];
+  fronts: MarkerPoint[];
+}
+
 export interface AmbienceScene {
-  slice: Slice;
-  town: Town;
+  /** Placed by fogBanks (ambience-plan.ts). */
+  banks: FogBank[];
+  town: TownMarkers;
 }
 
 export interface AmbienceFrame {
@@ -119,7 +114,7 @@ function planeBatch(app: pc.AppBase, haze: pc.StandardMaterial, count: number,
 }
 
 /** Per puff: chimney top and phase in line 1, the puff's share of the cycle in line 2. */
-function smokeData(tops: pc.Vec3[], offsets: number[]): Float32Array {
+function smokeData(tops: MarkerPoint[], offsets: number[]): Float32Array {
   const data = new Float32Array(tops.length * PUFFS_PER_CHIMNEY * FLOATS_PER_INSTANCE);
   tops.forEach((top, chimney) => {
     for (let puff = 0; puff < PUFFS_PER_CHIMNEY; puff += 1) {
@@ -130,10 +125,9 @@ function smokeData(tops: pc.Vec3[], offsets: number[]): Float32Array {
   return data;
 }
 
-function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: Marker[]) {
-  const smoking = tops.filter((top) => chimneySmoke(top.id).smokes);
-  const chosen = smoking.map((top) => top.at);
-  const offsets = smoking.map((top) => chimneySmoke(top.id).phase);
+function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: MarkerPoint[]) {
+  const chosen = tops.filter((top) => chimneySmoke(top.id).smokes);
+  const offsets = chosen.map((top) => chimneySmoke(top.id).phase);
   const haze = hazeMaterial(disc, { colour: '#bdb5ae', opacity: SMOKE_OPACITY });
   useInstanceChunks(haze, smokeChunks());
   const bounds = boundsAround(chosen,
@@ -144,17 +138,7 @@ function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: Marker[]) {
   return { entity: batch.entity, material: haze };
 }
 
-function buildFog(app: pc.AppBase, disc: pc.Texture, slice: Slice) {
-  const random = createRandom(SEED + 1);
-  const spots = waterSpots({ heights: slice.heights, meta: slice.meta, count: FOG_BANKS,
-    seed: SEED });
-  const banks = spots.map((spot) => ({
-    ...spot,
-    y: between(random, ...FOG_HEIGHT_M),
-    width: between(random, ...FOG_SIZE_M),
-    depth: between(random, ...FOG_SIZE_M) * 0.6,
-    phase: random() * Math.PI * 2,
-  }));
+function buildFog(app: pc.AppBase, disc: pc.Texture, banks: FogBank[]) {
   const haze = hazeMaterial(disc, { colour: '#e2cfc2', opacity: FOG_OPACITY });
   const centres = banks.map((bank) => new pc.Vec3(bank.x, bank.y, bank.z));
   const bounds = boundsAround(centres,
@@ -164,19 +148,28 @@ function buildFog(app: pc.AppBase, disc: pc.Texture, slice: Slice) {
 }
 
 /** Per lantern: its position and index (the flicker phase) in line 1. */
-function haloData(lamps: pc.Vec3[]): Float32Array {
+function haloData(lamps: MarkerPoint[]): Float32Array {
   const data = new Float32Array(lamps.length * FLOATS_PER_INSTANCE);
   lamps.forEach((lamp, index) =>
     data.set([lamp.x, lamp.y, lamp.z, index], index * FLOATS_PER_INSTANCE));
   return data;
 }
 
-function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: Marker[]) {
-  const lamps = fronts.filter((front) => hasLantern(front.id)).map((front) => front.at);
+/**
+ * The lantern boxes. With none, no mesh or material is made: nothing would draw them, so nothing
+ * would release them either.
+ */
+function lanternBodies(app: pc.AppBase, lamps: MarkerPoint[]): pc.Entity {
+  if (lamps.length === 0) return new pc.Entity('lanterns');
   const lamp = material({ color: '#ffcf86', emissive: '#ffb35a',
     emissiveIntensity: LANTERN_GLOW });
   const cube = geometryMesh(app.graphicsDevice, new pc.BoxGeometry());
   const matrices = lamps.map((front) => trs([front.x, front.y, front.z], 0, LANTERN_SIZE));
+  return instancedEntity(app, cube, lamp, matrices);
+}
+
+function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: MarkerPoint[]) {
+  const lamps = fronts.filter((front) => hasLantern(front.id));
   const glow = hazeMaterial(disc,
     { colour: '#ffb35a', opacity: HALO_OPACITY, blend: pc.BLEND_ADDITIVEALPHA });
   useInstanceChunks(glow, haloChunks());
@@ -185,7 +178,7 @@ function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: Marker[]) {
     boundsAround(lamps, { side: reach, below: reach, above: reach }));
   halos.data.set(haloData(lamps));
   halos.buffer.setData(halos.data);
-  halos.entity.addChild(instancedEntity(app, cube, lamp, matrices));
+  halos.entity.addChild(lanternBodies(app, lamps));
   return { entity: halos.entity, material: glow };
 }
 
@@ -193,7 +186,7 @@ export function buildAmbience(app: pc.AppBase, scene: AmbienceScene): Ambience {
   const disc = softDisc(app.graphicsDevice);
   const root = new pc.Entity('ambience');
   const smoke = buildSmoke(app, disc, scene.town.chimneyTops);
-  const fog = buildFog(app, disc, scene.slice);
+  const fog = buildFog(app, disc, scene.banks);
   const lanterns = buildLanterns(app, disc, scene.town.fronts);
   root.addChild(lanterns.entity);
   root.addChild(smoke.entity);

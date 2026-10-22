@@ -29,7 +29,14 @@ export interface Reach {
 }
 
 /** World box around points, grown by `reach` sideways, below and above. */
-export function boundsAround(points: pc.Vec3[], reach: Reach): pc.BoundingBox {
+/** A point in world space. */
+export type Point3 = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+export function boundsAround(points: Point3[], reach: Reach): pc.BoundingBox {
   const min = new pc.Vec3(Infinity, Infinity, Infinity);
   const max = new pc.Vec3(-Infinity, -Infinity, -Infinity);
   for (const point of points) {

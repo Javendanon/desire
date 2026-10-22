@@ -4,6 +4,7 @@
 
 pub mod blocks;
 pub mod features;
+pub mod ground;
 pub mod houses;
 pub mod js;
 pub mod layers;
@@ -17,4 +18,5 @@ pub mod refine;
 pub mod sectors;
 pub mod simplify;
 pub mod surface;
+pub mod tiles;
 pub mod vectors;

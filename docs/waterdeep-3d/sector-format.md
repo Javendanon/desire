@@ -67,3 +67,29 @@ city before LOD. 960 m would cull and stream too coarsely.
   offline (rust-chunk-pipeline.md §2).
 - The house plan (storeys, roof type and the rest) and the roof tone are still derived by the
   viewer, as today. A later minor version adds them as fields at the end of the house record.
+
+## Ground tiles: `desire.ground-tiles/1`
+
+The terrain under the sectors, written by `atlas ground <classes> <map-width> <metres-per-pixel>
+<out-dir>` (`crates/atlas/src/{ground,tiles}.rs`). Tiles follow the sector grid: tile `index`
+covers the same 1024 × 1024 source pixels as sector `index` (partial at the map's right and
+bottom edges). Every grid tile is written, sea included.
+
+| File | Content |
+| --- | --- |
+| `ground.json` | `format`, `tile_px` (1024), `cell_px` (4), `metres_per_pixel`, grid `columns` and `rows`, and per tile its `width_px`, `height_px`, `cells_x`, `cells_y` |
+| `<index>.jpg` | The tile's albedo, quality 85, one texel per source pixel |
+| `<index>.heights.bin` | Vertex heights, `i16` little-endian centimetres above the water plane, row-major, `(cells_x + 1) × (cells_y + 1)` |
+
+- **Vertices sit at cell centres.** Vertex `(i, j)` of tile `index` is the centre of map cell
+  `(column + i, row + j)`, where `column` and `row` are the tile's first cell. A tile carries one
+  extra vertex column and row taken from its right and lower neighbour, so meshes of
+  neighbouring tiles share their edge vertices and close with no gap. At the map's edge the
+  last cell repeats.
+- **Seamless by construction.** The albedo noise uses map-wide pixel coordinates, and the heights
+  are smoothed (two 3 × 3 box passes) over the whole map before cutting. No tile edge shows in
+  the colour or the relief.
+- **Albedo vs heights.** The albedo is painted from the classes (palette, value noise, shallows
+  and foam within 40 px of the shore). It never copies the source artwork's pixels. Heights take
+  the majority surface of each 4-px cell: seabed −2.5 m, pier 0.8 m, land 1 m.
+- Whole Waterdeep map: 63 tiles, about 14 MB, written in 0.8 s.
