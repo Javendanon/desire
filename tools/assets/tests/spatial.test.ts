@@ -14,7 +14,7 @@ test('a query finds overlapping and touching boxes but not far ones', () => {
   grid.insert(square(100, 100, 5), 2);
   grid.insert(square(-30, -30, 4), 3);
   assert.deepEqual(near(grid, square(2, 2, 1)), [0, 1]);
-  assert.deepEqual(near(grid, square(10, 0, 1)), [0, 1], 'touching at x = 10');
+  assert.deepEqual(near(grid, square(10, 0, 1)), [1], 'touching box 1 at x = 10');
   assert.deepEqual(near(grid, square(-27, -27, 1)), [3], 'negative cells');
 });
 

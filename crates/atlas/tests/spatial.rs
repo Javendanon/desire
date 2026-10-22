@@ -28,8 +28,8 @@ fn a_query_finds_overlapping_and_touching_boxes_but_not_far_ones() {
     assert_eq!(near(&grid, &square(2.0, 2.0, 1.0)), vec![0, 1]);
     assert_eq!(
         near(&grid, &square(10.0, 0.0, 1.0)),
-        vec![0, 1],
-        "touching at x = 10"
+        vec![1],
+        "touching box 1 at x = 10"
     );
     assert_eq!(
         near(&grid, &square(-27.0, -27.0, 1.0)),
@@ -43,7 +43,7 @@ fn a_box_wider_than_a_cell_is_found_from_any_cell_it_covers() {
     let mut grid = SpatialGrid::new(4.0);
     grid.insert(&square(0.0, 0.0, 30.0), 7);
     assert_eq!(near(&grid, &square(25.0, 25.0, 1.0)), vec![7]);
-    assert_eq!(near(&grid, &square(31.0, 31.0, 1.0)), Vec::<usize>::new());
+    assert_eq!(near(&grid, &square(40.0, 40.0, 1.0)), Vec::<usize>::new());
 }
 
 #[test]

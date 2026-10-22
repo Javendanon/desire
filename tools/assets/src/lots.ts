@@ -7,6 +7,7 @@
  */
 import { footprintCornersAlong, footprintPoint } from './footprint.ts';
 import { pointInRing, ringsOverlap } from './polygon.ts';
+import { boxAround, SpatialGrid } from './spatial.ts';
 import { between, mulberry32 } from './random.ts';
 import type { Plan } from './types.ts';
 
@@ -42,8 +43,15 @@ type Placement = {
   block: BlockShape;
   rules: LotRules;
   houses: Lot[];
+  /** Where the placed lots are, so a candidate is tested only against its neighbours. */
+  index: SpatialGrid;
   random: () => number;
 };
+
+/** Grid cell for placed lots: about one house wide, so a lot touches a few cells. */
+const LOT_CELL_M = 16;
+
+const lotBox = (corners: Plan[]) => boxAround(corners.map((corner) => [corner.x_m, corner.z_m]));
 type Axis = {
   origin: Plan;
   tangent: Plan;
@@ -74,11 +82,15 @@ function fits(placement: Placement, corners: Plan[]): boolean {
   if (!corners.every((corner) => pointInRing(corner, block.outer))) return false;
   if (block.holes.some((hole) => ringsOverlap(corners, hole))) return false;
   if (!onBuiltGround(rules, corners)) return false;
-  return !placement.houses.some((other) => ringsOverlap(corners, other.corners));
+  for (const other of placement.index.near(lotBox(corners))) {
+    if (ringsOverlap(corners, placement.houses[other].corners)) return false;
+  }
+  return true;
 }
 
 function tryPlace(placement: Placement, lot: Lot): boolean {
   if (!fits(placement, lot.corners)) return false;
+  placement.index.insert(lotBox(lot.corners), placement.houses.length);
   placement.houses.push(lot);
   return true;
 }
@@ -166,7 +178,8 @@ function fillInterior(placement: Placement) {
 /** Houses for one block: frontage rows first, then the interior. */
 export function placeHouses(block: BlockShape, rules: LotRules): Lot[] {
   const random = mulberry32(rules.seed);
-  const placement: Placement = { block, rules, houses: [], random };
+  const placement: Placement = { block, rules, houses: [], index: new SpatialGrid(LOT_CELL_M),
+    random };
   block.outer.forEach((point, index) => {
     lineFrontage(placement, point, block.outer[(index + 1) % block.outer.length]);
   });

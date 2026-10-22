@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::js;
 use crate::random::Mulberry32;
 use crate::raster_ops::Size;
+use crate::spatial::{Bounds, SpatialGrid};
 use crate::surface::Surface;
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
@@ -194,11 +195,28 @@ fn moorings(grid: &Grid, ship: &ShipSpec) -> Vec<Hull> {
 }
 
 /// Greedy choice in a seeded shuffle: a hull is kept unless it clashes with one already kept.
+/// No hull clashes with one farther than this: the corner of the keel-by-abreast rectangle.
+fn clash_reach(ship: &ShipSpec) -> f64 {
+    ship.spacing_px.hypot(ship.beam_px * ABREAST_BEAMS)
+}
+
+/// Keeps hulls in shuffled order unless one already kept clashes. Kept hulls sit in a grid one
+/// clash reach wide, so each is tested against its neighbours only. O(hulls · neighbours).
 fn spaced(mut fits: Vec<Hull>, ship: &ShipSpec, random: &mut Mulberry32) -> Vec<Hull> {
     shuffle(&mut fits, random);
+    let reach = clash_reach(ship);
+    let mut grid = SpatialGrid::new(reach);
     let mut chosen: Vec<Hull> = Vec::new();
     for hull in fits {
-        if !chosen.iter().any(|other| clashes(&hull, other, ship)) {
+        let around = Bounds {
+            min: [hull.x - reach, hull.y - reach],
+            max: [hull.x + reach, hull.y + reach],
+        };
+        if !grid
+            .near(&around)
+            .any(|other| clashes(&hull, &chosen[other], ship))
+        {
+            grid.insert(&Bounds::around([[hull.x, hull.y]]), chosen.len());
             chosen.push(hull);
         }
     }

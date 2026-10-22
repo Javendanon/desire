@@ -5,6 +5,7 @@
 import { between, mulberry32 } from './random.ts';
 import type { RasterSize } from './raster/raster-ops.ts';
 import { Surface } from './raster/surface.ts';
+import { boxAround, SpatialGrid, type Box } from './spatial.ts';
 
 export type Berth = {
   x_px: number;
@@ -134,6 +135,28 @@ function clashes(hull: Hull, other: Hull, ship: ShipSpec): boolean {
   return along < ship.spacingPx && across < ship.beamPx * ABREAST_BEAMS;
 }
 
+/** No hull clashes with one farther than this: the corner of the keel-by-abreast rectangle. */
+const clashReach = (ship: ShipSpec) => Math.hypot(ship.spacingPx, ship.beamPx * ABREAST_BEAMS);
+
+/**
+ * Keeps hulls in order unless one already kept clashes. Kept hulls sit in a grid one clash reach
+ * wide, so each is tested against its neighbours only. O(hulls · neighbours).
+ */
+function spaced(hulls: Hull[], ship: ShipSpec): Hull[] {
+  const reach = clashReach(ship);
+  const grid = new SpatialGrid(reach);
+  const chosen: Hull[] = [];
+  for (const hull of hulls) {
+    const around: Box = { min: [hull.x - reach, hull.y - reach],
+      max: [hull.x + reach, hull.y + reach] };
+    const clash = [...grid.near(around)].some((other) => clashes(hull, chosen[other], ship));
+    if (clash) continue;
+    grid.insert(boxAround([[hull.x, hull.y]]), chosen.length);
+    chosen.push(hull);
+  }
+  return chosen;
+}
+
 function shuffle<T>(items: T[], random: () => number): T[] {
   for (let index = items.length - 1; index > 0; index -= 1) {
     const other = Math.floor(random() * (index + 1));
@@ -151,10 +174,7 @@ export function findBerths(classes: Uint8Array, size: RasterSize, ship: ShipSpec
     if (hull && mooringFits(grid, hull, ship)) fits.push(hull);
   });
   const random = mulberry32(ship.seed);
-  const chosen: Hull[] = [];
-  for (const hull of shuffle(fits, random)) {
-    if (!chosen.some((other) => clashes(hull, other, ship))) chosen.push(hull);
-  }
+  const chosen = spaced(shuffle(fits, random), ship);
   return chosen.map(({ x, y, out }) => ({
     x_px: x,
     y_px: y,

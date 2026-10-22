@@ -125,20 +125,18 @@ impl Boundary {
     /// The unused edge of the same label that continues `current`, by turn preference.
     fn next(&self, current: usize) -> Option<usize> {
         let edge = self.edges[current];
-        let candidates: Vec<usize> = self
-            .outgoing(edge.to)
-            .iter()
-            .map(|&e| e as usize)
-            .filter(|&e| !self.used[e] && self.edges[e].label == edge.label)
-            .collect();
+        let free = |e: &usize| !self.used[*e] && self.edges[*e].label == edge.label;
+        let candidates = || {
+            self.outgoing(edge.to)
+                .iter()
+                .map(|&e| e as usize)
+                .filter(free)
+        };
         let turned = TURN_PREFERENCE.iter().find_map(|turn| {
             let wanted = (edge.direction + turn) % SIDES.len();
-            candidates
-                .iter()
-                .copied()
-                .find(|&e| self.edges[e].direction == wanted)
+            candidates().find(|&e| self.edges[e].direction == wanted)
         });
-        turned.or(candidates.first().copied())
+        turned.or_else(|| candidates().next())
     }
 
     /// Follows unused edges from `start` until the loop closes, as pixel-corner points.
@@ -162,10 +160,11 @@ impl Boundary {
         let mut loops: Vec<(i32, Vec<Vec<PixelPoint>>)> = Vec::new();
         let mut slot: HashMap<i32, usize> = HashMap::new();
         for first in 0..self.edges.len() {
-            let group = self.outgoing(self.edges[first].from).to_vec();
+            let group = self.outgoing(self.edges[first].from);
             if group[0] as usize != first {
                 continue;
             }
+            let group = group.to_vec();
             for edge in group.into_iter().map(|e| e as usize) {
                 if self.used[edge] {
                     continue;
@@ -235,17 +234,23 @@ fn signed_area(ring: &[PixelPoint]) -> f64 {
         / 2.0
 }
 
-/// The largest ring is the outline. The others, if large enough, are holes.
-fn to_block(mut rings: Vec<Vec<PixelPoint>>, area_px: usize, options: &TraceOptions) -> Block {
-    rings.sort_by(|a, b| signed_area(b).abs().total_cmp(&signed_area(a).abs()));
+/// The largest ring is the outline. The others, if large enough, are holes. Each ring's area is
+/// computed once, not again in every comparison (a stable sort, as the TypeScript one).
+/// O(rings · log rings + points).
+fn to_block(rings: Vec<Vec<PixelPoint>>, area_px: usize, options: &TraceOptions) -> Block {
+    let mut sized: Vec<(f64, Vec<PixelPoint>)> = rings
+        .into_iter()
+        .map(|ring| (signed_area(&ring).abs(), ring))
+        .collect();
+    sized.sort_by(|a, b| b.0.total_cmp(&a.0));
     let tolerance = options.tolerance_px;
-    let holes = rings[1..]
+    let holes = sized[1..]
         .iter()
-        .filter(|ring| signed_area(ring).abs() >= options.min_hole_area_px)
-        .map(|ring| simplify_ring(ring, tolerance))
+        .filter(|(area, _)| *area >= options.min_hole_area_px)
+        .map(|(_, ring)| simplify_ring(ring, tolerance))
         .collect();
     Block {
-        outer: simplify_ring(&rings[0], tolerance),
+        outer: simplify_ring(&sized[0].1, tolerance),
         holes,
         area_px,
     }
