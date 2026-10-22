@@ -1,7 +1,9 @@
 //! Writing and reading `desire.sector-render/1`. Every offset, stride and kind comes from
 //! `layout.rs`, generated from `contracts/sector-render.json`: this file holds no layout numbers
 //! of its own. Readers skip unknown kinds and read only the known leading fields of a wider
-//! stride.
+//! stride. Reading checks structure only (bounds, alignment, strides); value constraints are
+//! checked where payloads are made, by `tools/contracts/sector.py --validate`
+//! (docs/waterdeep-3d/sector-format.md, "Two levels of checking").
 
 use super::layout::*;
 use super::{Berth, House, Sector, SectorFormatError, Tree};
