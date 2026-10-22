@@ -45,3 +45,14 @@ pub fn median(values: &mut [f64]) -> f64 {
     values.sort_by(f64::total_cmp);
     values[values.len() / 2]
 }
+
+/// A number as `JSON.stringify` writes it: integers without a decimal point, other values in
+/// their shortest round-trip form (Rust's `Display` already is). Values stay far from the
+/// exponent ranges (below 1e-6 or from 1e21) where JavaScript would switch notation.
+pub fn number(value: f64) -> String {
+    if value.fract() == 0.0 && value.abs() < 1e21 {
+        format!("{}", value as i64)
+    } else {
+        format!("{value}")
+    }
+}

@@ -236,7 +236,11 @@ fn blocks_trace_as_in_typescript() {
     let (input, _) = vector_case();
     let case = input.refine;
     let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    fill_polygons(
+        &mut urban,
+        SYNTHETIC_SIZE,
+        std::slice::from_ref(&case.urban),
+    );
     let input = RefineInput {
         classes: SYNTHETIC,
         size: SYNTHETIC_SIZE,

@@ -1,11 +1,14 @@
 //! `atlas`: command-line entry of the offline map pipeline.
 //!
 //! - `atlas classify <map> <out>`: unrefined per-pixel surface classes, one byte per pixel.
-//! - `atlas surfaces <map> <wards> <streets> <zoom> <west> <north> <out>`: refined surfaces
-//!   (the TypeScript pipeline's `classes.bin`).
+//! - `atlas extract <map> <wards> <streets> <zoom> <west> <north> <classes> <blocks>`: refined
+//!   surfaces and traced city blocks, the TypeScript `extract-surfaces` outputs (`classes.bin`,
+//!   `blocks.json`), byte for byte.
 
 use std::{env, fs, path::Path, process::ExitCode, time::Instant};
 
+use desire_atlas::blocks::{TraceOptions, block_mask, trace_blocks};
+use desire_atlas::layers::blocks_json;
 use desire_atlas::raster::{RgbRaster, read_rgb};
 use desire_atlas::raster_ops::Size;
 use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
@@ -20,9 +23,11 @@ type Run = fn(&[String]) -> Result<(), String>;
 const COMMANDS: [(&str, &[&str], Run); 2] = [
     ("classify", &["map", "out"], classify),
     (
-        "surfaces",
-        &["map", "wards", "streets", "zoom", "west", "north", "out"],
-        surfaces,
+        "extract",
+        &[
+            "map", "wards", "streets", "zoom", "west", "north", "classes", "blocks",
+        ],
+        extract,
     ),
 ];
 
@@ -83,30 +88,62 @@ fn urban_mask(frame: &MercatorFrame, wards: &str, size: Size) -> Result<Vec<u8>,
     Ok(urban)
 }
 
-fn surfaces(args: &[String]) -> Result<(), String> {
-    let start = Instant::now();
-    let frame = frame_of(&args[3], &args[4], &args[5])?;
+/// Blocks smaller than about 10 m² are noise, open holes under about 45 m² are misread roof
+/// patches, and outlines are simplified to about 0.7 m (under a wall's thickness).
+const BLOCK_TRACE: TraceOptions = TraceOptions {
+    min_area_px: 45,
+    tolerance_px: 1.5,
+    min_hole_area_px: 200.0,
+};
+
+/// The refined surfaces of the map and the urban mask they were refined with.
+struct Surfaces {
+    classes: Vec<u8>,
+    urban: Vec<u8>,
+    size: Size,
+}
+
+fn surfaces(frame: &MercatorFrame, args: &[String]) -> Result<Surfaces, String> {
     let raster = read_map(&args[0])?;
     let size = Size {
         width: raster.width,
         height: raster.height,
     };
-    let urban = urban_mask(&frame, &args[1], size)?;
+    let urban = urban_mask(frame, &args[1], size)?;
     let survey = StreetSurvey {
-        frame: &frame,
+        frame,
         raster: &raster,
         policy: &street_policy(),
     };
     let streets = survey.streets(&read_features(Path::new(&args[2]))?);
-    let classes = classify_rgb(&raster.rgb);
+    let raw = classify_rgb(&raster.rgb);
     let input = RefineInput {
-        classes: &classes,
+        classes: &raw,
         size,
         streets: &streets,
         urban: Some(&urban),
     };
-    write(&args[6], &refine_surfaces(&input, &RefineParams::default()))?;
-    eprintln!("{}: surfaces in {:.2?}", args[6], start.elapsed());
+    let classes = refine_surfaces(&input, &RefineParams::default());
+    Ok(Surfaces {
+        classes,
+        urban,
+        size,
+    })
+}
+
+fn extract(args: &[String]) -> Result<(), String> {
+    let start = Instant::now();
+    let frame = frame_of(&args[3], &args[4], &args[5])?;
+    let refined = surfaces(&frame, args)?;
+    write(&args[6], &refined.classes)?;
+    let mask = block_mask(&refined.classes, &refined.urban);
+    let blocks = trace_blocks(&mask, refined.size, &BLOCK_TRACE);
+    write(&args[7], blocks_json(&blocks, &frame).as_bytes())?;
+    eprintln!(
+        "{} blocks, extracted in {:.2?}",
+        blocks.len(),
+        start.elapsed()
+    );
     Ok(())
 }
 

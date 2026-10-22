@@ -2,8 +2,12 @@
 //! lots, features, sectors), ported one at a time with a parity check against the TypeScript
 //! version on the same input. Plan: `docs/waterdeep-3d/rust-chunk-pipeline.md` (M2).
 
+pub mod blocks;
+pub mod js;
+pub mod layers;
 pub mod raster;
 pub mod raster_ops;
 pub mod refine;
+pub mod simplify;
 pub mod surface;
 pub mod vectors;

@@ -9,7 +9,8 @@ use std::collections::HashMap;
 
 use rayon::prelude::*;
 
-use super::{Feature, MercatorFrame, PixelPoint, Polyline, js};
+use super::{Feature, MercatorFrame, PixelPoint, Polyline};
+use crate::js;
 use crate::raster::RgbRaster;
 
 const SAMPLE_STEP_PX: f64 = 4.0;

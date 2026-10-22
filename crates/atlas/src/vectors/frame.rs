@@ -3,7 +3,8 @@
 
 use serde::Deserialize;
 
-use super::{PixelPoint, js};
+use super::PixelPoint;
+use crate::js;
 
 const EARTH_RADIUS_M: f64 = 6_378_137.0;
 const TILE_PIXELS: f64 = 256.0;
