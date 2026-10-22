@@ -4,5 +4,6 @@
 
 pub mod raster;
 pub mod raster_ops;
+pub mod refine;
 pub mod surface;
 pub mod vectors;

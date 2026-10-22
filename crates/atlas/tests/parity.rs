@@ -195,7 +195,11 @@ fn refinement_matches_typescript_on_a_synthetic_raster() {
     let (input, _) = vector_case();
     let case = input.refine;
     let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    fill_polygons(
+        &mut urban,
+        SYNTHETIC_SIZE,
+        std::slice::from_ref(&case.urban),
+    );
     let refined = refine_surfaces(
         &RefineInput {
             classes: SYNTHETIC,
@@ -206,8 +210,16 @@ fn refinement_matches_typescript_on_a_synthetic_raster() {
         &case.params,
     );
     for surface in Surface::ALL {
-        let count = refined.iter().filter(|&&class| class == surface as u8).count() as u64;
-        assert_eq!(count, golden_number("refine", surface.name()), "{}", surface.name());
+        let count = refined
+            .iter()
+            .filter(|&&class| class == surface as u8)
+            .count() as u64;
+        assert_eq!(
+            count,
+            golden_number("refine", surface.name()),
+            "{}",
+            surface.name()
+        );
     }
     assert_eq!(u64::from(fnv1a(&refined)), golden_number("refine", "fnv1a"));
 }

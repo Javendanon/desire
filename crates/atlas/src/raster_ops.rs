@@ -299,7 +299,7 @@ pub fn components(mask: &[u8], size: Size) -> Components {
 }
 
 /// The in-image 4-neighbours of `index`, in the order left, right, up, down.
-fn neighbours4(index: usize, size: Size) -> impl Iterator<Item = usize> {
+pub fn neighbours4(index: usize, size: Size) -> impl Iterator<Item = usize> {
     let x = index % size.width;
     let left = (x > 0).then(|| index - 1);
     let right = (x + 1 < size.width).then(|| index + 1);
