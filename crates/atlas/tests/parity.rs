@@ -3,6 +3,7 @@
 
 use desire_atlas::raster::RgbRaster;
 use desire_atlas::raster_ops::{Size, components, dilate, erode, majority};
+use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
 use desire_atlas::surface::{Surface, classify_pixel};
 use desire_atlas::vectors::{
     FrameSpec, MercatorFrame, Polyline, fill_polygons, measure_street_width, paint_polylines,
@@ -100,6 +101,14 @@ struct VectorInput {
     rings: Vec<Vec<[f64; 2]>>,
     lines: Vec<Polyline>,
     street_lines: Vec<Vec<[f64; 2]>>,
+    refine: RefineCase,
+}
+
+#[derive(Deserialize)]
+struct RefineCase {
+    streets: Vec<Polyline>,
+    urban: Vec<[f64; 2]>,
+    params: RefineParams,
 }
 
 #[derive(Deserialize)]
@@ -179,4 +188,26 @@ fn street_widths_measure_as_in_typescript() {
         .map(|line| measure_street_width(&raster, line))
         .collect();
     assert_eq!(widths, golden.street_widths);
+}
+
+#[test]
+fn refinement_matches_typescript_on_a_synthetic_raster() {
+    let (input, _) = vector_case();
+    let case = input.refine;
+    let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
+    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    let refined = refine_surfaces(
+        &RefineInput {
+            classes: SYNTHETIC,
+            size: SYNTHETIC_SIZE,
+            streets: &case.streets,
+            urban: Some(&urban),
+        },
+        &case.params,
+    );
+    for surface in Surface::ALL {
+        let count = refined.iter().filter(|&&class| class == surface as u8).count() as u64;
+        assert_eq!(count, golden_number("refine", surface.name()), "{}", surface.name());
+    }
+    assert_eq!(u64::from(fnv1a(&refined)), golden_number("refine", "fnv1a"));
 }

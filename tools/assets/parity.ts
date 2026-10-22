@@ -12,6 +12,7 @@ import { createMercatorFrame, type LngLat } from './src/raster/frame.ts';
 import { fillPolygons, type PixelRing } from './src/raster/polygon-fill.ts';
 import { paintPolylines, type PixelPolyline } from './src/raster/polyline.ts';
 import { components, dilate, erode, majority } from './src/raster/raster-ops.ts';
+import { refineSurfaces } from './src/raster/refine.ts';
 import { measureStreetWidth } from './src/raster/street-width.ts';
 import { classifyPixel, Surface } from './src/raster/surface.ts';
 
@@ -156,11 +157,32 @@ function vectorGoldens() {
   };
 }
 
+/** Refinement of the synthetic raster, with parameters scaled to its size. */
+const REFINE = {
+  streets: [
+    { width: 5, points: [[0, 20.5], [256, 30.5]] },
+    { width: 3, points: [[128.5, 0], [100.5, 130]] },
+  ] as PixelPolyline[],
+  urban: [[30.5, 10.5], [240.5, 15.5], [230.5, 120.5], [20.5, 110.5]] as PixelRing,
+  params: { majorityRadius: 1, minSquarePx: 25, pierRadius: 3, pierGapPixels: 1,
+    pierWetShare: 0.4, minWaterShareOfSea: 0.05 },
+};
+
+function refineGolden(classes: Uint8Array) {
+  const urban = fillPolygons(new Uint8Array(classes.length), RASTER, [REFINE.urban]);
+  const refined = refineSurfaces({ classes, size: RASTER, streets: REFINE.streets, urban,
+    ...REFINE.params });
+  const counts = Object.fromEntries(Object.entries(Surface).map(([name, value]) =>
+    [name, refined.reduce((sum, entry) => sum + (entry === value ? 1 : 0), 0)]));
+  return { fnv1a: hashOf(refined), counts };
+}
+
 function goldens(classes: Uint8Array) {
   return {
     classify_all_colours: classifyAllColours(),
     raster_ops: rasterOps(classes),
     vectors: vectorGoldens(),
+    refine: refineGolden(classes),
   };
 }
 
@@ -169,7 +191,8 @@ const files: [string, string | Uint8Array][] = [
   [GOLDEN, `${JSON.stringify(goldens(classes), null, 2)}\n`],
   [RASTER_FILE, classes],
   [VECTOR_INPUT, `${JSON.stringify({ frame: TYCH, frame_points: framePoints(),
-    rings: syntheticRings(), lines: syntheticLines(), street_lines: STREET_LINES }, null, 2)}\n`],
+    rings: syntheticRings(), lines: syntheticLines(), street_lines: STREET_LINES,
+    refine: REFINE }, null, 2)}\n`],
   [STREETS_RGB, syntheticStreets()],
 ];
 for (const [file, content] of files) {

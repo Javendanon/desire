@@ -208,5 +208,18 @@
       0,
       0
     ]
+  },
+  "refine": {
+    "fnv1a": 1802039948,
+    "counts": {
+      "Ground": 11257,
+      "Water": 2817,
+      "Roof": 2049,
+      "Street": 1915,
+      "Outline": 4380,
+      "RedRoof": 2167,
+      "Pier": 4606,
+      "Garden": 4476
+    }
   }
 }

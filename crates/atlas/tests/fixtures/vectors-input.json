@@ -320,5 +320,61 @@
         100.3
       ]
     ]
-  ]
+  ],
+  "refine": {
+    "streets": [
+      {
+        "width": 5,
+        "points": [
+          [
+            0,
+            20.5
+          ],
+          [
+            256,
+            30.5
+          ]
+        ]
+      },
+      {
+        "width": 3,
+        "points": [
+          [
+            128.5,
+            0
+          ],
+          [
+            100.5,
+            130
+          ]
+        ]
+      }
+    ],
+    "urban": [
+      [
+        30.5,
+        10.5
+      ],
+      [
+        240.5,
+        15.5
+      ],
+      [
+        230.5,
+        120.5
+      ],
+      [
+        20.5,
+        110.5
+      ]
+    ],
+    "params": {
+      "majorityRadius": 1,
+      "minSquarePx": 25,
+      "pierRadius": 3,
+      "pierGapPixels": 1,
+      "pierWetShare": 0.4,
+      "minWaterShareOfSea": 0.05
+    }
+  }
 }
