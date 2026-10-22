@@ -76,7 +76,8 @@ const clamp = (value: number, [low, high]: [number, number]) =>
 
 /**
  * Moves the target as if the ground were dragged `dx`, `dy` screen pixels: right drags move it
- * left (camera right is (cos, −sin)), down drags move it forward (camera forward is (−sin, −cos)).
+ * left (camera right is (cos, −sin)), down drags move it forward (camera forward is
+ * (−sin, −cos)).
  */
 export function panGoal(goal: Rig, dx: number, dy: number) {
   const scale = goal.radius * PAN_PER_PX;

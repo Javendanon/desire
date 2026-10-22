@@ -3,6 +3,7 @@
 
 import * as pc from 'playcanvas';
 
+import { fogBanks } from './ambience-plan.ts';
 import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
 import { buildEdgeHaze, tiltEdgeHaze, type EdgeHaze } from './edge-haze.ts';
 import { animateFleet, buildFleet, type Fleet } from './ships.ts';
@@ -53,7 +54,7 @@ function populate(stage: Stage, layout: TiledSlice): SliceLife {
   glowWindows(town.windowMaterials);
   const fleet = buildFleet(app, slice.features.berths, textures);
   const water = { heights: slice.heights, meta: slice.meta, origin: { x_m: 0, z_m: 0 } };
-  const ambience = buildAmbience(app, { water, town });
+  const ambience = buildAmbience(app, { banks: fogBanks(water), town });
   const edge = buildEdgeHaze(app, slice);
   const parts = [buildGround(app, layout, textures.cobble), town.root, fleet.root,
     ambience.root, edge.root];

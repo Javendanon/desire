@@ -3,8 +3,10 @@
 
 import * as pc from 'playcanvas';
 
+import { roofTones } from './roof-palette.ts';
 import { fetchOk, SECTOR_FORMAT, type SectorIndex } from './slice-data.ts';
 import type { GroundGrid, GroundTile } from './sector-streaming.ts';
+import { createCityLife, lifeMover, releaseLife } from './city-life.ts';
 import { createStreamer, stopStreamer, streamSectors } from './sector-streamer.ts';
 import { createStage, type Diorama, type DioramaOptions } from './stage.ts';
 
@@ -57,8 +59,11 @@ export async function createCity(canvas: HTMLCanvasElement, spec: CitySpec): Pro
   const { app } = stage;
   const kit = { app, textures: stage.textures, ground, roofCentres: sectors.roof_centres };
   const listed = new Set(sectors.sectors.map((entry) => entry.index));
-  const streamer = createStreamer({ kit, grid, base: spec.base, listed });
+  const tones = roofTones([], sectors.roof_centres).colours;
+  const life = createCityLife(app, stage.textures, tones);
+  const streamer = createStreamer({ kit, grid, base: spec.base, listed, life });
   stage.movers.add((moment) => streamSectors(streamer, moment));
+  stage.movers.add(lifeMover(life));
   const houses = () => [...streamer.views.values()].reduce((sum, view) => sum + view.houses, 0);
   return {
     app,
@@ -68,6 +73,7 @@ export async function createCity(canvas: HTMLCanvasElement, spec: CitySpec): Pro
       radius: stage.live().rig.radius, backend: app.graphicsDevice.deviceType }),
     destroy: () => {
       stopStreamer(streamer);
+      releaseLife(life);
       stage.destroy();
     },
   };

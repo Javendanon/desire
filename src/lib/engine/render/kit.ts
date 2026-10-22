@@ -86,16 +86,34 @@ export function instancedEntity(
   mat: pc.StandardMaterial,
   matrices: readonly pc.Mat4[],
 ): pc.Entity {
-  const entity = new pc.Entity('instanced');
-  if (matrices.length === 0) return entity;
   const data = new Float32Array(matrices.length * 16);
   matrices.forEach((m, i) => data.set(m.data, i * 16));
-  const format = pc.VertexFormat.getDefaultInstancingFormat(app.graphicsDevice);
-  const buffer = new pc.VertexBuffer(app.graphicsDevice, format, matrices.length, { data });
-  const instance = new pc.MeshInstance(mesh, mat);
+  return instancedData(app, { mesh, material: mat }, data);
+}
+
+/** What an instanced batch draws. */
+export interface InstancedLook {
+  mesh: pc.Mesh;
+  material: pc.StandardMaterial;
+}
+
+/** Conservative world box of column-major instance matrices. */
+export function boundsOf(data: Float32Array): pc.BoundingBox {
   const { min, max } = instanceBounds(data);
   const box = new pc.BoundingBox();
   box.setMinMax(new pc.Vec3(...min), new pc.Vec3(...max));
+  return box;
+}
+
+/** A static instanced batch from column-major matrices, 16 floats each. */
+export function instancedData(app: pc.AppBase, look: InstancedLook, data: Float32Array): pc.Entity {
+  const entity = new pc.Entity('instanced');
+  const count = data.length / 16;
+  if (count === 0) return entity;
+  const format = pc.VertexFormat.getDefaultInstancingFormat(app.graphicsDevice);
+  const buffer = new pc.VertexBuffer(app.graphicsDevice, format, count, { data });
+  const instance = new pc.MeshInstance(look.mesh, look.material);
+  const box = boundsOf(data);
   instance.setInstancing(buffer, true);
   entity.addComponent('render', {
     meshInstances: [instance],

@@ -2,7 +2,7 @@
 // doors that carry a lantern and the chimneys that smoke (by house id, so the choice never
 // depends on what else is loaded), and the water cells that host drifting fog banks.
 
-import { createRandom, shareOf } from '../engine/math/rng.ts';
+import { between, createRandom, shareOf } from '../engine/math/rng.ts';
 
 /** The life of a chimney smoke puff. The vertex shader (shaders.ts) uses these same values. */
 export const PUFF = {
@@ -80,10 +80,9 @@ export function wetCells(heights: ArrayLike<number>): number[] {
   return water;
 }
 
-/** Random points inside cells below the waterline (negative height). Empty when none. */
-export function waterSpots(spec: WaterSpotSpec): Spot[] {
-  const { heights, meta, count, seed } = spec;
-  const water = wetCells(heights);
+/** Random points inside the given wet cells. */
+function spotsAmong(water: number[], spec: WaterSpotSpec): Spot[] {
+  const { meta, count, seed } = spec;
   if (water.length === 0) return [];
   const random = createRandom(seed);
   return Array.from({ length: count }, () => {
@@ -92,4 +91,59 @@ export function waterSpots(spec: WaterSpotSpec): Spot[] {
     const row = Math.floor(cell / meta.columns);
     return { x: (column + random()) * meta.cell_m, z: (row + random()) * meta.cell_m };
   });
+}
+
+/** Random points inside cells below the waterline (negative height). Empty when none. */
+export const waterSpots = (spec: WaterSpotSpec): Spot[] => spotsAmong(wetCells(spec.heights), spec);
+
+/** Height cells where fog may lie (below zero is water), placed at `origin` in map metres. */
+export interface WaterField {
+  /** Any unit: only the sign matters. */
+  heights: ArrayLike<number>;
+  meta: {
+    columns: number;
+    cell_m: number;
+  };
+  origin: {
+    x_m: number;
+    z_m: number;
+  };
+}
+
+/** A fog bank: its centre in map metres, height, extent and sway phase. */
+export type FogBank = Spot & {
+  y: number;
+  width: number;
+  depth: number;
+  phase: number;
+};
+
+/**
+ * Open water per fog bank: the Dock Ward slice's 88 000 m² of water held 14 banks, and a
+ * streamed sector keeps that density over whatever water it has.
+ */
+const FOG_WATER_M2_PER_BANK = 6300;
+export const FOG_SIZE_M: [number, number] = [70, 170];
+const FOG_HEIGHT_M: [number, number] = [2.5, 7];
+const FOG_SEED = 0x5e7;
+
+/** A field's seed follows its origin, so its banks stay put whatever else is loaded. */
+const seedOf = (water: WaterField) =>
+  (FOG_SEED ^ Math.round(water.origin.x_m * 7 + water.origin.z_m * 13)) >>> 0;
+
+/** Fog banks over one field's water, at the slice's density per area. O(cells). */
+export function fogBanks(water: WaterField): FogBank[] {
+  const seed = seedOf(water);
+  const random = createRandom(seed + 1);
+  const wet = wetCells(water.heights);
+  const count = Math.round((wet.length * water.meta.cell_m ** 2) / FOG_WATER_M2_PER_BANK);
+  const spots = spotsAmong(wet, { heights: water.heights, meta: water.meta, count, seed });
+  return spots.map((spot) => ({
+    x: spot.x + water.origin.x_m,
+    z: spot.z + water.origin.z_m,
+    y: between(random, ...FOG_HEIGHT_M),
+    width: between(random, ...FOG_SIZE_M),
+    depth: between(random, ...FOG_SIZE_M) * 0.6,
+    phase: random() * Math.PI * 2,
+  }));
 }

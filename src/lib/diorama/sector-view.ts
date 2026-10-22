@@ -1,20 +1,15 @@
-// One streamed city sector on stage: its ground tile, and when its payload holds features, its
-// town, ships, lanterns, smoke and fog. Each part is its own instanced batch with bounds, so a
-// sector off screen costs no draw calls. Releasing a sector frees what it put on the GPU, and
+// One streamed city sector's ground on stage: its tile mesh (built in the Worker) under its
+// albedo, with the cobble detail overlay. Houses, ships and ambience are drawn city-wide from
+// every sector's plans (city-life.ts). Releasing a sector frees what its tile put on the GPU and
 // keeps the stage's shared textures.
 
 import * as pc from 'playcanvas';
 
 import type { Textures } from '../engine/render/textures.ts';
-import type { Sector } from '../map/sector-format.ts';
-import { animateAmbience, buildAmbience, type WaterField } from './ambience.ts';
-import { centred } from './sector-slice.ts';
+import { releaseGpu } from './gpu-release.ts';
 import type { GroundGrid, GroundTile } from './sector-streaming.ts';
 import type { Arrival } from './sector-worker.ts';
-import { animateFleet, buildFleet } from './ships.ts';
-import { glowWindows, type Mover } from './stage.ts';
 import { groundEntity } from './terrain.ts';
-import { buildTown } from './town.ts';
 
 /** What every sector is built with. */
 export interface SectorKit {
@@ -27,29 +22,7 @@ export interface SectorKit {
 export interface SectorView {
   root: pc.Entity;
   houses: number;
-  mover: Mover;
-  /** Turns the sector's shadow casting on or off. */
-  shade(cast: boolean): void;
   release(): void;
-}
-
-const TEXTURE_SLOTS = ['diffuseMap', 'opacityMap', 'emissiveMap'] as const;
-
-/** The tile's north-west corner in map metres. */
-function tileOrigin(ground: GroundGrid, index: number) {
-  const metres = ground.tile_px * ground.metres_per_pixel;
-  const [column, row] = [index % ground.columns, Math.floor(index / ground.columns)];
-  return { x_m: column * metres, z_m: row * metres };
-}
-
-/** The tile's vertex heights as the fog reads them, placed at the tile corner. */
-function waterField(kit: SectorKit, tile: GroundTile, heights: Int16Array): WaterField {
-  const { ground } = kit;
-  return {
-    heights,
-    meta: { columns: tile.cells_x + 1, cell_m: ground.cell_px * ground.metres_per_pixel },
-    origin: tileOrigin(ground, tile.index),
-  };
 }
 
 function groundTile(kit: SectorKit, tile: GroundTile, arrival: Arrival) {
@@ -61,71 +34,16 @@ function groundTile(kit: SectorKit, tile: GroundTile, arrival: Arrival) {
     extent_m });
 }
 
-/** A sector's entities besides its ground, and what moves them. */
-type Life = {
-  parts: pc.Entity[];
-  mover: Mover;
-};
-
-/** Houses, ships and ambience of a sector with features. */
-function populate(kit: SectorKit, sector: Sector, water: WaterField): Life {
-  const { app, textures } = kit;
-  const town = buildTown(app, { houses: sector.houses.map(centred),
-    roofCentres: kit.roofCentres }, textures);
-  glowWindows(town.windowMaterials);
-  const fleet = buildFleet(app, sector.berths, textures);
-  const ambience = buildAmbience(app, { water, town });
-  const mover: Mover = (moment) => {
-    animateFleet(fleet, moment.time);
-    const { right, up } = moment.camera;
-    animateAmbience(ambience, { time: moment.time, right, up });
-  };
-  return { parts: [town.root, fleet.root, ambience.root], mover };
-}
-
-/** Instance buffers, materials and the textures they own. Meshes go with their entities. */
-function releaseGpu(root: pc.Entity, shared: Set<pc.Texture>) {
-  const renders = root.findComponents('render') as pc.RenderComponent[];
-  const instances = renders.flatMap((render) => render.meshInstances);
-  const buffers = new Set(instances.map((instance) => instance.instancingData?.vertexBuffer));
-  const materials = new Set(instances.map((instance) => instance.material as pc.StandardMaterial));
-  const textures = new Set([...materials].flatMap((material) =>
-    TEXTURE_SLOTS.map((slot) => material[slot])));
-  root.destroy();
-  buffers.forEach((buffer) => buffer?.destroy());
-  materials.forEach((material) => material.destroy());
-  textures.forEach((texture) => texture && !shared.has(texture) && texture.destroy());
-}
-
-const still: Mover = () => {};
-
-/** The batches built to cast shadows. The policy may turn them off at a distance. */
-function shadowSwitch(root: pc.Entity): (cast: boolean) => void {
-  const casters = (root.findComponents('render') as pc.RenderComponent[])
-    .filter((render) => render.castShadows);
-  let casting = true;
-  return (cast) => {
-    if (cast === casting) return;
-    casting = cast;
-    for (const render of casters) render.castShadows = cast;
-  };
-}
-
-/** Builds a loaded sector's entities under one root, added to the scene by the caller. */
+/** Builds a loaded sector's ground under one root, added to the scene by the caller. */
 export function buildSectorView(kit: SectorKit, arrival: Arrival): SectorView {
   const { assets } = arrival;
   const tile = kit.ground.tiles[assets.index];
   const root = new pc.Entity(`sector-${assets.index}`);
   root.addChild(groundTile(kit, tile, arrival));
-  const water = waterField(kit, tile, assets.heights);
-  const life = assets.sector ? populate(kit, assets.sector, water) : { parts: [], mover: still };
-  life.parts.forEach((part) => root.addChild(part));
   const shared = new Set(Object.values(kit.textures));
   return {
     root,
     houses: assets.sector?.houses.length ?? 0,
-    mover: life.mover,
-    shade: shadowSwitch(root),
     release: () => {
       releaseGpu(root, shared);
       assets.albedo.close();

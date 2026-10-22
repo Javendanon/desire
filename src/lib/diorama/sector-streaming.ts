@@ -5,6 +5,8 @@
 // past reach plus a margin (hysteresis), so a camera resting near a boundary does not load and
 // drop the same sector over and over.
 
+import type { WaterField } from './ambience-plan.ts';
+
 export interface GridShape {
   columns: number;
   rows: number;
@@ -77,6 +79,25 @@ export function castsShadows(spec: ShadowSpec): boolean {
   return spec.distance_m <= SHADOW_REACH_M + spec.radius_m * SHADOW_PER_RADIUS;
 }
 
+/** A near sector stays near until it falls past this share of the reach beyond it. */
+const DETAIL_KEEP_MARGIN = 0.25;
+
+export type SectorDetail = 'near' | 'far';
+
+export interface DetailSpec extends ShadowSpec {
+  current: SectorDetail;
+}
+
+/**
+ * Full detail within the shadow reach, the far level past it. Near sectors keep their detail a
+ * little further, so a camera resting at the boundary does not rebuild them every plan.
+ */
+export function sectorDetail(spec: DetailSpec): SectorDetail {
+  const keep = spec.current === 'near' ? 1 + DETAIL_KEEP_MARGIN : 1;
+  const reach = { ...spec, distance_m: spec.distance_m / keep };
+  return castsShadows(reach) ? 'near' : 'far';
+}
+
 /** One tile of `ground.json`. */
 export interface GroundTile {
   index: number;
@@ -147,6 +168,22 @@ export function gridNormals(positions: Float32Array, size: GridSize): Float32Arr
 }
 
 const CENTIMETRES = 100;
+
+/** A tile's north-west corner in map metres. */
+export function tileOrigin(ground: GroundGrid, index: number) {
+  const metres = ground.tile_px * ground.metres_per_pixel;
+  const [column, row] = [index % ground.columns, Math.floor(index / ground.columns)];
+  return { x_m: column * metres, z_m: row * metres };
+}
+
+/** A tile's vertex heights as fog placement reads them (water below zero), at its corner. */
+export function tileWater(tile: GroundTile, ground: GroundGrid, heights: Int16Array): WaterField {
+  return {
+    heights,
+    meta: { columns: tile.cells_x + 1, cell_m: ground.cell_px * ground.metres_per_pixel },
+    origin: tileOrigin(ground, tile.index),
+  };
+}
 
 /**
  * Vertices at the centres of the tile's cells plus its shared row and column, in map metres,
