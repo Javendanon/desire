@@ -273,7 +273,11 @@ fn berths_and_trees_match_typescript() {
     let (input, _) = vector_case();
     let case = input.refine;
     let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    fill_polygons(
+        &mut urban,
+        SYNTHETIC_SIZE,
+        std::slice::from_ref(&case.urban),
+    );
     let input = RefineInput {
         classes: SYNTHETIC,
         size: SYNTHETIC_SIZE,
@@ -283,11 +287,17 @@ fn berths_and_trees_match_typescript() {
     let refined = refine_surfaces(&input, &case.params);
     let golden: FeaturesGolden =
         serde_json::from_str(include_str!("fixtures/features-golden.json")).expect("golden");
-    assert_eq!(plant_trees(&refined, SYNTHETIC_SIZE, &golden.orchard), golden.trees);
+    assert_eq!(
+        plant_trees(&refined, SYNTHETIC_SIZE, &golden.orchard),
+        golden.trees
+    );
     let berths = find_berths(&refined, SYNTHETIC_SIZE, &golden.ship);
     assert_eq!(berths.len(), golden.berths.len());
     for (berth, expected) in berths.iter().zip(&golden.berths) {
         assert_eq!([berth.x_px, berth.y_px], [expected.x_px, expected.y_px]);
-        assert!(within_one_ulp(berth.heading_radians, expected.heading_radians));
+        assert!(within_one_ulp(
+            berth.heading_radians,
+            expected.heading_radians
+        ));
     }
 }

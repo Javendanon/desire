@@ -6,6 +6,8 @@
 //!   `blocks.json`), byte for byte.
 //! - `atlas houses <blocks> <classes> <map> <left,top,width,height> <min,max> <out>`: houses of
 //!   the blocks in a region, as the TypeScript `generate-houses` writes them.
+//! - `atlas sectors <houses> <classes> <map-width> <out-dir>`: sector payloads and `index.json`,
+//!   as the TypeScript `export-sectors` writes them.
 
 use std::{env, fs, path::Path, process::ExitCode, time::Instant};
 
@@ -15,6 +17,9 @@ use desire_atlas::layers::{blocks_json, houses_json};
 use desire_atlas::raster::{RgbRaster, read_rgb};
 use desire_atlas::raster_ops::Size;
 use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
+use desire_atlas::sectors::{
+    ClassRaster, HousesLayer, Payload, SectorGrid, SectorIndex, export, features_in_metres,
+};
 use desire_atlas::surface::classify_rgb;
 use desire_atlas::vectors::{
     FrameSpec, MercatorFrame, PixelPoint, StreetPolicy, StreetSurvey, fill_polygons, read_features,
@@ -23,7 +28,7 @@ use desire_atlas::vectors::{
 type Run = fn(&[String]) -> Result<(), String>;
 
 /// Command table: name, argument names (for usage), and what it runs.
-const COMMANDS: [(&str, &[&str], Run); 3] = [
+const COMMANDS: [(&str, &[&str], Run); 4] = [
     ("classify", &["map", "out"], classify),
     (
         "extract",
@@ -36,6 +41,11 @@ const COMMANDS: [(&str, &[&str], Run); 3] = [
         "houses",
         &["blocks", "classes", "map", "region", "heights", "out"],
         houses,
+    ),
+    (
+        "sectors",
+        &["houses", "classes", "map-width", "out-dir"],
+        sectors,
     ),
 ];
 
@@ -220,6 +230,64 @@ fn houses(args: &[String]) -> Result<(), String> {
         "{}: {} houses in {:.2?}",
         args[5],
         houses.len(),
+        start.elapsed()
+    );
+    Ok(())
+}
+
+/// The seed both exporters give berths and trees.
+const FEATURE_SEED: u32 = 0xd0c4;
+
+/// A class raster of known width, its height derived and checked.
+fn class_raster(path: &str, width: &str) -> Result<(Vec<u8>, Size), String> {
+    let classes = read(path)?;
+    let width: usize = width
+        .parse()
+        .map_err(|_| format!("not a pixel width: {width}"))?;
+    if width == 0 || classes.len() % width != 0 {
+        return Err(format!(
+            "{path}: {} bytes is not a whole number of {width}-px rows",
+            classes.len()
+        ));
+    }
+    let size = Size {
+        width,
+        height: classes.len() / width,
+    };
+    Ok((classes, size))
+}
+
+/// Writes every payload as `<index>.render.bin` and the index as `index.json`.
+fn write_sectors(out: &Path, payloads: &[Payload], index: &SectorIndex) -> Result<(), String> {
+    fs::create_dir_all(out).map_err(|error| format!("{}: {error}", out.display()))?;
+    for payload in payloads {
+        let path = out.join(format!("{}.render.bin", payload.index));
+        write(&path.to_string_lossy(), &payload.bytes)?;
+    }
+    let json = serde_json::to_string_pretty(index).map_err(|error| error.to_string())?;
+    write(
+        &out.join("index.json").to_string_lossy(),
+        format!("{json}\n").as_bytes(),
+    )
+}
+
+fn sectors(args: &[String]) -> Result<(), String> {
+    let start = Instant::now();
+    let layer: HousesLayer = serde_json::from_slice(&read(&args[0])?)
+        .map_err(|error| format!("{}: {error}", args[0]))?;
+    let (classes, size) = class_raster(&args[1], &args[2])?;
+    let raster = ClassRaster {
+        classes: &classes,
+        size,
+    };
+    let features = features_in_metres(&raster, layer.metres_per_pixel, FEATURE_SEED);
+    let grid = SectorGrid::new(size, layer.metres_per_pixel);
+    let (payloads, index) = export(grid, &layer.houses, &features);
+    write_sectors(Path::new(&args[3]), &payloads, &index)?;
+    eprintln!(
+        "{}: {} sectors in {:.2?}",
+        args[3],
+        payloads.len(),
         start.elapsed()
     );
     Ok(())

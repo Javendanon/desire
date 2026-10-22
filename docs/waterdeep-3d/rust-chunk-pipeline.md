@@ -104,7 +104,7 @@ measurement compared with the previous state on the same input.
 | --- | --- | --- |
 | **M0** ✅ | Quick fixes in the TS pipeline from the audit (`majority`, `from` copies, `erode`/`dilate`, components, classification) | Done: `extract-surfaces` on the full map 93.2 s → 15.0 s, peak 2.44 → 2.0 GB, no large-heap flag needed; `classes.bin` and `blocks.json` byte-identical. `paintAlbedo` noise moves to M2 |
 | **M1** ✅ | Write the format: `render.bin` in `crates/core` and in TS, round-trip tests on both sides; choose the sector size from real counts | Done: [sector-format.md](sector-format.md); 1024-px sectors (479.6 m); Rust and TS both match a spec-built fixture byte for byte. `export-sectors` writes the whole map (40 sectors, 13,919 houses, about 0.6 MB). Stable house ids are given where lots are made, and a house's look derives from its id. `?sectors=` renders the Dock Ward from sectors, with 1065 of 1065 houses identical by id. The ground tile layout moves to M3, where the viewer first streams terrain |
-| **M2** | `crates/atlas` ports the stages in order (classify → refine → blocks → lots → features → tiles). Each stage gets a **parity test** against the TS output on the same input | Parity per stage (identical rasters; equal polygons and lots within a stated tolerance); time per stage, native vs TS |
+| **M2** ✅ | `crates/atlas` ports the stages in order (classify → refine → blocks → lots → features → sectors). Each stage gets a **parity test** against the TS output on the same input | Done. The full Rust chain (`atlas extract` → `houses` → `sectors`) gives byte-identical `classes.bin`, `blocks.json`, 40 sector payloads and `index.json`. Houses match field for field, and `rotation_radians` (an atan2 for the viewer) within 1 ulp, which the payload's f32 absorbs. 3.3 s against about 17 s for the TS chain (about 95 s before M0). Ground tiles move to M3 |
 | **M3** | Viewer streams sectors through a Worker; per-sector batches and culling | The Dock Ward cut into sectors looks identical; hitches while panning measured with `?hud` |
 | **M4** | LOD1/LOD2 and the distance policy | The whole map loaded; frame time, memory and dropped frames at city, ward and street zoom on the owner's display |
 | **M5** | Retire the TS pipeline stages that Rust replaced | Docs updated; one pipeline |
@@ -120,6 +120,12 @@ replaces those stages at M2.
   `sharp` and saved as PNG (`outputs/waterdeep-source/map.png`, 108 MB, ignored). Rust reads
   that PNG. Its classes then equal the TS classes of the JPEG byte for byte, so every later
   stage can be compared exactly instead of within a tolerance.
+- **No trigonometry on decision paths.** V8's `tan`/`cos`/`sin`/`atan2` match neither the
+  platform libm nor the `libm` crate bit for bit (1M-input check: 0.1–18 % of results differ in
+  the last bit). Where those bits fed a decision they flipped lots in 6 of 583 blocks. Lot
+  corners are now built from the edge tangent in both pipelines (no `cos`/`sin` of an angle
+  derived from it). The remaining transcendentals are the Mercator projection (≤ 1e-8 px, no
+  pixel changes on the whole map) and output angles (≤ 1 ulp, invisible and absorbed by f32).
 - **Parity goldens come from synthetic or exhaustive inputs** (`tools/assets/parity.ts` →
   `crates/atlas/tests/fixtures/parity.json`, `--check` for staleness), never the licensed map.
   The whole-map parity runs are local and their results are reported in the PR.
