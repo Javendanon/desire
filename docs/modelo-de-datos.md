@@ -3,6 +3,15 @@
 Estado: propuesta implementada y comprobable, pendiente de integración y aprobación.
 Los consumidores siguen bloqueados hasta que el integrador verifique esta entrega.
 
+## Ampliación de mesa
+
+La ampliación posterior de D04/D08 añade actores persistentes, fichas, parties,
+viajes múltiples y población de lugares independiente del combate. Se documenta en
+[tabletop-model.md](tabletop-model.md), con el [DBML completo](database/desire.dbml).
+Las formas wire v1 de este documento se conservan para compatibilidad; los nuevos
+consumidores usan los DTOs ampliados y `GroupTravel` con versión 2. No interpretar
+`character_id` como el único participante de los viajes nuevos.
+
 ## Fuente de verdad y frontera
 
 `contracts/schema.json` es la fuente normativa de la forma JSON, basada en JSON Schema

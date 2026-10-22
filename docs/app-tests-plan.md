@@ -9,7 +9,7 @@ the anti-tamper rule, and a cross-crate contract test.
 | Side | Runner | Why |
 | --- | --- | --- |
 | Frontend (TypeScript) | Node's built-in `node:test` (D02) | No new dependency. Node 24 (`.nvmrc`, D01) strips TypeScript types natively; Node 22.17 needed `--experimental-strip-types` |
-| Rust | `cargo test` | Already the workspace test command |
+| Rust | `cargo test` through `crates/persistence/test-postgres.sh` | The persistence integration tests need `DESIRE_TEST_SOCKET`, so bare `cargo test` fails closed; the harness owns a disposable cluster |
 | Gate tooling (Python) | `unittest` | D02's `test:quality` |
 
 Scripts (`package.json`):
@@ -18,7 +18,7 @@ Scripts (`package.json`):
 | --- | --- |
 | `pnpm test:frontend` | `tests/*.test.ts`: the visible tests, top level only |
 | `pnpm test:holdout` | `tests/holdout/*.test.ts`: CI only, see below |
-| `pnpm test:rust` | `cargo test --workspace` |
+| `pnpm test:rust` | `bash crates/persistence/test-postgres.sh`: disposable PostgreSQL cluster + `cargo test --workspace` |
 | `pnpm test` | frontend + rust (not holdout) |
 
 `test:frontend` used the glob `tests/**/*.test.ts`, which would also pick up the holdout. It is now

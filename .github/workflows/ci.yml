@@ -51,6 +51,10 @@ jobs:
         run: corepack pnpm check:assets
       - name: Asset pipeline tests
         run: corepack pnpm test:assets
+      - name: Frontend tests and test type-check
+        run: |
+          corepack pnpm run test:frontend
+          corepack pnpm run check:tests
       # The source raster and dataset are not in the repository, so CI checks the package's
       # internal consistency and the verifier's own tests; --image/--dataset run locally.
       - name: Waterdeep reference package
@@ -81,7 +85,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install the toolchain pinned in rust-toolchain.toml
         run: ./tools/ci/install-rust-toolchain.sh
-      - run: cargo test --workspace --locked
+      # The persistence integration tests fail closed without an isolated cluster, so the harness is
+      # the workspace test entry point: it starts a socket-only cluster, runs the SQL checks and
+      # then the whole suite. Replacing this step with plain `cargo test` is red for every crate
+      # that touches the database; `crates/persistence/tests/pipeline.rs` guards that contract.
+      - name: Put the runner's PostgreSQL binaries on PATH
+        run: |
+          pg_bin="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1 || true)"
+          if [ -z "$pg_bin" ] && command -v pg_config > /dev/null; then
+              pg_bin="$(pg_config --bindir)"
+          fi
+          test -n "$pg_bin" || { echo "::error::no PostgreSQL binaries on this runner"; exit 1; }
+          echo "$pg_bin" >> "$GITHUB_PATH"
+          "$pg_bin/initdb" --version
+      - name: Workspace tests against a disposable PostgreSQL cluster
+        run: bash crates/persistence/test-postgres.sh
 
   wasm-build:
     runs-on: ubuntu-24.04
@@ -107,6 +125,12 @@ jobs:
           python3 tools/ci/tamper_check.py "$BASE_SHA" HEAD
       - name: Tooling tests for the anti-tamper check
         run: python3 -m unittest discover -s tools/ci -p 'test_*.py'
+      # The Rust DTOs under crates/core/src/contracts/ are generated from contracts/schema.json;
+      # a hand-edited generated file must not reach main.
+      - name: Contract generator drift and contract tests
+        run: |
+          python3 tools/contracts/generate.py --check
+          python3 -m unittest discover -s tools/contracts/tests -p 'test_*.py'
       - name: Install the toolchain pinned in rust-toolchain.toml
         run: ./tools/ci/install-rust-toolchain.sh
       - name: Install kimun (km)

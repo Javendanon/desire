@@ -2,12 +2,42 @@
   "version": 1,
   "mode": "enforce",
   "gates": [
-    {"name": "frontend-check", "cmd": "corepack pnpm install --frozen-lockfile && corepack pnpm check", "timeout_s": 900, "optional": false},
-    {"name": "rust-fmt", "cmd": "cargo fmt --all --check", "timeout_s": 300, "optional": false},
-    {"name": "rust-clippy", "cmd": "cargo clippy --workspace --all-targets --locked -- -D warnings", "timeout_s": 1200, "optional": false},
-    {"name": "rust-test", "cmd": "cargo test --workspace --locked", "timeout_s": 1200, "optional": false},
-    {"name": "wasm-build", "cmd": "cargo build -p desire-wasm --target wasm32-unknown-unknown --release --locked", "timeout_s": 1200, "optional": false},
-    {"name": "quality-gate", "cmd": "python3 tools/quality/gate.py --root .", "timeout_s": 600, "optional": false}
+    {
+      "name": "frontend-check",
+      "cmd": "corepack pnpm install --frozen-lockfile && corepack pnpm check",
+      "timeout_s": 900,
+      "optional": false
+    },
+    {
+      "name": "rust-fmt",
+      "cmd": "cargo fmt --all --check",
+      "timeout_s": 300,
+      "optional": false
+    },
+    {
+      "name": "rust-clippy",
+      "cmd": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "timeout_s": 1200,
+      "optional": false
+    },
+    {
+      "name": "rust-test",
+      "cmd": "bash crates/persistence/test-postgres.sh",
+      "timeout_s": 1200,
+      "optional": false
+    },
+    {
+      "name": "wasm-build",
+      "cmd": "cargo build -p desire-wasm --target wasm32-unknown-unknown --release --locked",
+      "timeout_s": 1200,
+      "optional": false
+    },
+    {
+      "name": "quality-gate",
+      "cmd": "python3 tools/quality/gate.py --root .",
+      "timeout_s": 600,
+      "optional": false
+    }
   ],
   "never_paths": [
     ".github/**",

@@ -102,6 +102,10 @@ docker compose exec -T db pg_isready -U umbra -d umbra
 pnpm db:stop                        # keeps the named volume and its data
 ```
 
+`pnpm test:rust` bootstraps its own disposable, socket-only PostgreSQL cluster, so it needs
+`initdb` and `pg_ctl` on `PATH`; it never uses the Compose database. See
+[crates/persistence/README.md](crates/persistence/README.md).
+
 In two separate terminals:
 
 ```sh
@@ -125,7 +129,8 @@ database connections yet. To stop the database without deleting data: `pnpm db:s
 See [docs/entorno.md](docs/entorno.md) and the
 [quality diagnosis](outputs/quality/estado-inicial.md). The listed environment gates
 were executed: frontend `check`/`build`, Rust `fmt`/`clippy`/`test`, the Wasm build,
-the `/api/health` round trip and the PostgreSQL service check. The Rust test suite is
-empty (0 tests), GPU rendering is not verified, and the API does not read PostgreSQL
-yet, so this is not an end-to-end product validation. The Nivel20 integration remains
+the `/api/health` round trip and the PostgreSQL service check. The Rust workspace suite
+runs through `crates/persistence/test-postgres.sh` with an isolated PostgreSQL cluster.
+GPU rendering is not verified, and the API does not read PostgreSQL yet, so this is
+not an end-to-end product validation. The Nivel20 integration remains
 read-only and untouched.

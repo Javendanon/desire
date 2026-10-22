@@ -272,3 +272,248 @@ export interface PlayerKnowledge {
   revision: Revision;
   provenance: Provenance;
 }
+
+export type SignedInteger = number;
+
+export interface AbilityScores {
+  strength: number;
+  dexterity: number;
+  constitution: number;
+  intelligence: number;
+  wisdom: number;
+  charisma: number;
+}
+
+export type ActorKind = "character" | "npc" | "monster";
+
+export type Disposition = "friendly" | "neutral" | "hostile";
+
+export type ActorStatus = "active" | "dead" | "removed";
+
+export type Presence = "present" | "away";
+
+export type EncounterStatus = "planned" | "active" | "completed" | "cancelled";
+
+export type ActionKind = "action" | "bonus_action" | "reaction" | "passive";
+
+export type ProficiencyCategory = "skill" | "saving_throw" | "tool" | "weapon" | "armor";
+
+export type Training = "untrained" | "half" | "proficient" | "expertise";
+
+export type ResourceRecovery = "manual" | "short_rest" | "long_rest";
+
+export interface CreatureTemplate {
+  id: Id;
+  rules_edition: RulesEdition;
+  revision: Revision;
+  name: string;
+  creature_type: string;
+  size: string;
+  abilities: AbilityScores;
+  armor_class: number;
+  max_hp: number;
+  speed_m: number;
+  description: string;
+  provenance: Provenance;
+}
+
+export interface CreatureAction {
+  id: Id;
+  template_id: Id;
+  name: string;
+  kind: ActionKind;
+  description: string;
+}
+
+export interface Actor {
+  id: Id;
+  campaign_id: Id;
+  rules_edition: RulesEdition;
+  character_id: Id | null;
+  template_id: Id | null;
+  kind: ActorKind;
+  name: string;
+  visibility: Visibility;
+  disposition: Disposition;
+  revision: Revision;
+}
+
+export interface ActorStats {
+  campaign_id: Id;
+  actor_id: Id;
+  abilities: AbilityScores;
+  armor_class: number;
+  speed_m: number;
+  revision: Revision;
+}
+
+export interface ActorState {
+  campaign_id: Id;
+  actor_id: Id;
+  max_hp: number;
+  current_hp: number;
+  temporary_hp: number;
+  status: ActorStatus;
+  revision: Revision;
+}
+
+export interface ActorCondition {
+  id: Id;
+  campaign_id: Id;
+  actor_id: Id;
+  knowledge_entry_id: Id;
+  rules_edition: RulesEdition;
+  remaining_rounds: Revision | null;
+  revision: Revision;
+}
+
+export interface CharacterSheet {
+  campaign_id: Id;
+  actor_id: Id;
+  ancestry: string;
+  background: string;
+  experience: number;
+  biography: string;
+  revision: Revision;
+}
+
+export interface CharacterClass {
+  campaign_id: Id;
+  actor_id: Id;
+  class_entry_id: Id;
+  rules_edition: RulesEdition;
+  level: number;
+}
+
+export interface CharacterProficiency {
+  campaign_id: Id;
+  actor_id: Id;
+  category: ProficiencyCategory;
+  name: string;
+  training: Training;
+}
+
+export interface CharacterEquipment {
+  id: Id;
+  campaign_id: Id;
+  actor_id: Id;
+  name: string;
+  quantity: number;
+  equipped: boolean;
+  attuned: boolean;
+  description: string;
+  revision: Revision;
+}
+
+export interface CharacterSpell {
+  campaign_id: Id;
+  actor_id: Id;
+  knowledge_entry_id: Id;
+  rules_edition: RulesEdition;
+  prepared: boolean;
+}
+
+export interface ActorResource {
+  campaign_id: Id;
+  actor_id: Id;
+  name: string;
+  maximum: number;
+  remaining: number;
+  recovery: ResourceRecovery;
+  revision: Revision;
+}
+
+export interface ActorConcentration {
+  campaign_id: Id;
+  actor_id: Id;
+  knowledge_entry_id: Id;
+  rules_edition: RulesEdition;
+  revision: Revision;
+}
+
+export interface Party {
+  id: Id;
+  campaign_id: Id;
+  name: string;
+  revision: Revision;
+}
+
+export interface PartyMember {
+  campaign_id: Id;
+  actor_id: Id;
+  party_id: Id;
+}
+
+export interface GroupTravel {
+  protocol_version: 2;
+  id: Id;
+  campaign_id: Id;
+  scene_id: Id;
+  party_id: Id | null;
+  participants: Id[];
+  position: Position;
+  destination: Position;
+  distance_m: number;
+  narrative_seconds: number;
+  visual_seconds: number;
+  status: TravelStatus;
+  revision: Revision;
+}
+
+export interface Encounter {
+  id: Id;
+  campaign_id: Id;
+  place_id: Id | null;
+  scene_id: Id | null;
+  name: string;
+  status: EncounterStatus;
+  round_number: number;
+  revision: Revision;
+}
+
+export interface EncounterParticipant {
+  campaign_id: Id;
+  actor_id: Id;
+  encounter_id: Id;
+  initiative: SignedInteger | null;
+}
+
+export interface PlaceOccupant {
+  campaign_id: Id;
+  actor_id: Id;
+  place_id: Id;
+  presence: Presence;
+  visibility: Visibility;
+  revision: Revision;
+}
+
+export interface ScenePlacement {
+  campaign_id: Id;
+  actor_id: Id;
+  scene_id: Id;
+  x_m: number;
+  y_m: number;
+  z_m: number;
+  visibility: Visibility;
+  revision: Revision;
+}
+
+export interface PopulationRule {
+  id: Id;
+  campaign_id: Id;
+  place_id: Id;
+  template_id: Id;
+  rules_edition: RulesEdition;
+  quantity_min: number;
+  quantity_max: number;
+  visibility: Visibility;
+  disposition: Disposition;
+  revision: Revision;
+}
+
+export interface PlayerResident {
+  actor_id: Id;
+  name: string;
+  kind: ActorKind;
+  disposition: Disposition;
+}

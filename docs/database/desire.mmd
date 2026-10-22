@@ -1,0 +1,35 @@
+flowchart TB
+  subgraph catalog["catalog · reusable content"]
+    T[creature_templates] --> TA[creature_actions]
+    P[places]
+    K[knowledge_entries]
+  end
+  subgraph campaign["campaign · persistent instances"]
+    A[actors] --> S[actor_stats]
+    A --> H[actor_state]
+    A --> CS[character_sheets]
+    CS --> CL[character_classes]
+    CS --> EQ[character_equipment]
+    CS --> SP[character_spells]
+    A --> R[actor_resources]
+    A --> CO[conditions]
+    PA[parties] --> PM[party_members]
+    A --> PM
+    V[travels] --> VP[travel_participants]
+    A --> VP
+    PA -. departure snapshot .-> V
+    A --> O[place_occupants]
+    A --> POS[scene_placements]
+    EN[encounters] --> EP[encounter_participants]
+    A --> EP
+    PR[place_population_rules] --> RUN[population_runs]
+    RUN --> GEN[population_spawned_actors]
+    A --> GEN
+  end
+  T --> A
+  T --> PR
+  P --> O
+  P --> PR
+  K --> CO
+  K --> CL
+  K --> SP
