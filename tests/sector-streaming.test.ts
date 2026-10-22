@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { gridNormals, groundGeometry, planSectors } from '../src/lib/diorama/sector-streaming.ts';
+import {
+  castsShadows, gridNormals, groundGeometry, planSectors, sectorDistance,
+} from '../src/lib/diorama/sector-streaming.ts';
 
 const grid = { columns: 4, rows: 3, size_m: 100 };
 
@@ -68,4 +70,19 @@ test('ground geometry carries unit normals per vertex', () => {
   const ground = { tile_px: 8, cell_px: 4, metres_per_pixel: 0.5, columns: 1 };
   const geometry = groundGeometry(tile, ground, new Int16Array(9).fill(100));
   near(geometry.normals, Array.from({ length: 27 }, (_, at) => Number(at % 3 === 1)));
+});
+
+test('sector distance is zero inside the square and grows from its nearest edge', () => {
+  assert.equal(sectorDistance(grid, 5, { x: 150, z: 150 }), 0);
+  assert.equal(sectorDistance(grid, 6, { x: 150, z: 150 }), 50);
+  assert.equal(sectorDistance(grid, 0, { x: 130, z: 140 }), 50);
+});
+
+// Far shadows are invisible at that zoom but cost a second draw of every house in the shadow pass.
+test('only sectors near the target cast shadows, and more of them when zoomed out', () => {
+  assert.ok(castsShadows({ distance_m: 0, radius_m: 900 }));
+  assert.ok(castsShadows({ distance_m: 200, radius_m: 60 }), 'street zoom still shades its block');
+  assert.ok(!castsShadows({ distance_m: 1200, radius_m: 900 }), 'a kilometre out at city zoom');
+  assert.ok(castsShadows({ distance_m: 400, radius_m: 900 }));
+  assert.ok(!castsShadows({ distance_m: 400, radius_m: 200 }));
 });
