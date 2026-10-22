@@ -1,7 +1,9 @@
 // Performance HUD (`?hud`): real frame intervals from requestAnimationFrame on the viewer's own
 // display, so a judder can be measured where it is felt. Shows the display's refresh rate (the
 // median frame of a scene that keeps up, since the shortest frames jitter short), fps, median
-// and p95 frame times, the share of dropped frames, draw calls and the quality preset.
+// and p95 frame times, the share of dropped frames, draw calls and the quality preset. To tell
+// a slow CPU from a slow GPU it also shows the backend, the drawing buffer's size, the engine's
+// CPU update and render times and the GPU frame time (when the device can time it).
 
 import type * as pc from 'playcanvas';
 
@@ -16,6 +18,18 @@ const REFRESH_MS = 500;
 const DROPPED_INTERVALS = 1.5;
 
 const percent = (share: number) => `${(share * 100).toFixed(0)} %`.padStart(5);
+const ms = (value: number | undefined) => (value === undefined ? 'n/a' : value.toFixed(1));
+
+/** Where the frame's time goes, as the engine measures it. */
+function deviceLines(app: pc.AppBase): string[] {
+  const device = app.graphicsDevice;
+  const { stats } = app;
+  return [
+    `backend   ${device.deviceType} · ${device.width}×${device.height}`,
+    `cpu       update ${ms(stats.cpuUpdateTime)}  render ${ms(stats.cpuRenderTime)} ms`,
+    `gpu       ${ms(stats.gpuFrameTime)} ms`,
+  ];
+}
 
 export function mountHud(element: HTMLElement, app: pc.AppBase, quality: string): () => void {
   const meter = createMeter(WINDOW_FRAMES);
@@ -37,8 +51,10 @@ export function mountHud(element: HTMLElement, app: pc.AppBase, quality: string)
       `frame     p50 ${frames.p50.toFixed(1)}  p95 ${frames.p95.toFixed(1)} ms`,
       `dropped   ${percent(frames.overBudget)}`,
       `draws     ${app.stats.drawCalls.total}`,
+      ...deviceLines(app),
     ].join('\n');
   };
+  if (app.graphicsDevice.gpuProfiler) app.graphicsDevice.gpuProfiler.enabled = true;
   element.hidden = false;
   frame = requestAnimationFrame(step);
   const timer = setInterval(render, REFRESH_MS);
