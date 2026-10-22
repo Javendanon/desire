@@ -4,6 +4,7 @@
 
 import * as pc from 'playcanvas';
 
+import { gridNormals } from './sector-streaming.ts';
 import type { Slice } from './slice-data.ts';
 
 const SMOOTH_PASSES = 2;
@@ -63,7 +64,8 @@ function gridGeometry(slice: Slice) {
       indices.push(a, a + columns, a + 1, a + 1, a + columns, a + columns + 1);
     }
   }
-  return { positions, uvs, indices };
+  return { positions, normals: gridNormals(positions, { across: columns, down: rows }), uvs,
+    indices };
 }
 
 /** WebGPU takes canvases but not every image element as a texture source, as D11 found. */
@@ -102,6 +104,7 @@ function albedoTexture(device: pc.GraphicsDevice, image: AlbedoSource): pc.Textu
 /** A ground mesh: positions, UVs over its albedo, triangle indices. */
 export interface GroundMesh {
   positions: Float32Array;
+  normals: Float32Array;
   uvs: Float32Array;
   indices: number[] | Uint32Array;
 }
@@ -115,12 +118,11 @@ export interface GroundLook {
 
 /** A ground patch: mesh, albedo and the cobble detail overlay (3 m repeat). */
 export function groundEntity(app: pc.AppBase, geometry: GroundMesh, look: GroundLook): pc.Entity {
-  const indices = Array.from(geometry.indices);
   const mesh = new pc.Mesh(app.graphicsDevice);
   mesh.setPositions(geometry.positions);
-  mesh.setNormals(pc.calculateNormals(Array.from(geometry.positions), indices));
+  mesh.setNormals(geometry.normals);
   mesh.setUvs(0, geometry.uvs);
-  mesh.setIndices(indices);
+  mesh.setIndices(geometry.indices);
   mesh.update(pc.PRIMITIVE_TRIANGLES);
   const ground = new pc.StandardMaterial();
   ground.diffuseMap = albedoTexture(app.graphicsDevice, look.albedo);

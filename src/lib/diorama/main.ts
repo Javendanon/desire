@@ -3,10 +3,13 @@
 // `?stress=5x4` repeats it over a city-sized area for performance work (stress-slice.ts),
 // `?quality=high|medium|low` picks a preset (quality.ts), `?hud` shows frame times and
 // `?sectors=<dir>` reads houses, berths and trees from sector payloads (sector-slice.ts).
+// `?city=<dir>` streams the whole map instead (city.ts) from `<dir>/sectors` and `<dir>/ground`,
+// looking first at `?at=<x>,<z>` map metres.
 
+import { createCity } from './city.ts';
 import { mountHud } from './hud.ts';
 import { parseQuality } from './quality.ts';
-import { createDiorama, type Diorama } from './scene.ts';
+import { createDiorama, type Diorama, type DioramaOptions } from './scene.ts';
 import { loadSlice, withSectorFeatures } from './slice-data.ts';
 import { parseStress, tileSlice } from './stress-slice.ts';
 
@@ -34,18 +37,33 @@ function loadFonts() {
   document.head.append(link);
 }
 
+/** `x,z` in map metres, or nothing when absent or malformed. */
+function parseFocus(text: string | null): { x_m: number; z_m: number } | undefined {
+  const [x_m, z_m] = (text ?? '').split(',').map(Number);
+  return Number.isFinite(x_m) && Number.isFinite(z_m) ? { x_m, z_m } : undefined;
+}
+
+async function mountSlice(canvas: HTMLCanvasElement, params: URLSearchParams,
+  options: DioramaOptions): Promise<Diorama> {
+  const own = await loadSlice(params.get('slice') ?? DEFAULT_SLICE);
+  const sectors = params.get('sectors');
+  const slice = sectors ? await withSectorFeatures(own, sectors) : own;
+  const grid = parseStress(params.get('stress')) ?? { columns: 1, rows: 1 };
+  return createDiorama(canvas, tileSlice(slice, grid), options);
+}
+
 async function start() {
   loadFonts();
   const params = new URLSearchParams(location.search);
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
   try {
-    const own = await loadSlice(params.get('slice') ?? DEFAULT_SLICE);
-    const sectors = params.get('sectors');
-    const slice = sectors ? await withSectorFeatures(own, sectors) : own;
-    const grid = parseStress(params.get('stress')) ?? { columns: 1, rows: 1 };
     const backend = params.get('backend') === 'webgl2' ? 'webgl2' : 'auto';
     const quality = parseQuality(params.get('quality'));
-    window.diorama = await createDiorama(canvas, tileSlice(slice, grid), { backend, quality });
+    const city = params.get('city');
+    const focus = parseFocus(params.get('at'));
+    window.diorama = city
+      ? await createCity(canvas, { base: city, focus, options: { backend, quality } })
+      : await mountSlice(canvas, params, { backend, quality });
     if (params.has('hud')) mountHud(document.getElementById('hud')!, window.diorama.app, quality);
   } catch (error) {
     window.dioramaError = error instanceof Error ? error.message : String(error);

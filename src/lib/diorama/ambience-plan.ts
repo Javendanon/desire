@@ -41,7 +41,8 @@ export interface Spot {
 }
 
 export interface WaterSpotSpec {
-  heights: Float32Array;
+  /** Any unit: only the sign matters. */
+  heights: ArrayLike<number>;
   meta: {
     columns: number;
     cell_m: number;
@@ -72,13 +73,17 @@ export function chimneySmoke(id: number) {
   return { smokes: shareOf(id, SALT.smoke) < SMOKE_SHARE, phase: shareOf(id, SALT.phase) };
 }
 
+/** Indices of the cells below the waterline (negative height). O(cells). */
+export function wetCells(heights: ArrayLike<number>): number[] {
+  const water: number[] = [];
+  for (let index = 0; index < heights.length; index += 1) if (heights[index] < 0) water.push(index);
+  return water;
+}
+
 /** Random points inside cells below the waterline (negative height). Empty when none. */
 export function waterSpots(spec: WaterSpotSpec): Spot[] {
   const { heights, meta, count, seed } = spec;
-  const water: number[] = [];
-  heights.forEach((height, index) => {
-    if (height < 0) water.push(index);
-  });
+  const water = wetCells(heights);
   if (water.length === 0) return [];
   const random = createRandom(seed);
   return Array.from({ length: count }, () => {

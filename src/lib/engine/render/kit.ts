@@ -126,13 +126,15 @@ export interface MovingBatch {
 /** An instanced batch whose matrices the caller rewrites while its copies move in `bounds`. */
 export function movingBatch(app: pc.AppBase, spec: MovingBatchSpec): MovingBatch {
   const device = app.graphicsDevice;
-  const data = new Float32Array(spec.count * 16);
+  // A buffer holds at least one instance; an empty batch is disabled instead of drawn.
+  const slots = Math.max(1, spec.count);
+  const data = new Float32Array(slots * 16);
   const format = pc.VertexFormat.getDefaultInstancingFormat(device);
-  const buffer = new pc.VertexBuffer(device, format, Math.max(1, spec.count),
-    { usage: pc.BUFFER_DYNAMIC, data });
+  const buffer = new pc.VertexBuffer(device, format, slots, { usage: pc.BUFFER_DYNAMIC, data });
   const instance = new pc.MeshInstance(spec.mesh, spec.material);
   instance.setInstancing(buffer, true);
   const entity = new pc.Entity('moving');
+  entity.enabled = spec.count > 0;
   entity.addComponent('render', {
     meshInstances: [instance],
     castShadows: spec.castShadows,

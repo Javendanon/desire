@@ -74,8 +74,53 @@ export interface GroundGrid {
 
 export interface GroundGeometry {
   positions: Float32Array;
+  normals: Float32Array;
   uvs: Float32Array;
   indices: Uint32Array;
+}
+
+/** Vertices of a grid along x (across) and z (down). */
+export interface GridSize {
+  across: number;
+  down: number;
+}
+
+type Vector = [number, number, number];
+type Grid = GridSize & {
+  positions: Float32Array;
+};
+
+function difference(grid: Grid, from: number, to: number): Vector {
+  const p = grid.positions;
+  return [p[to * 3] - p[from * 3], p[to * 3 + 1] - p[from * 3 + 1], p[to * 3 + 2] - p[from * 3 + 2]];
+}
+
+/** Unit normal from the tangents to the vertex's neighbours, one-sided at the grid's edges. */
+function normalAt(grid: Grid, vertex: number): Vector {
+  const { across, down } = grid;
+  const [i, j] = [vertex % across, Math.floor(vertex / across)];
+  const row = j * across;
+  const east = difference(grid, row + Math.max(i - 1, 0), row + Math.min(i + 1, across - 1));
+  const south = difference(grid, Math.max(j - 1, 0) * across + i,
+    Math.min(j + 1, down - 1) * across + i);
+  // south × east: up for a grid whose rows run along +z.
+  const normal: Vector = [south[1] * east[2] - south[2] * east[1],
+    south[2] * east[0] - south[0] * east[2], south[0] * east[1] - south[1] * east[0]];
+  const length = Math.hypot(...normal);
+  return [normal[0] / length, normal[1] / length, normal[2] / length];
+}
+
+/**
+ * Per-vertex normals of a height grid, row-major positions. Smooth across cells and cheaper than
+ * averaging face normals over an index list. O(vertices).
+ */
+export function gridNormals(positions: Float32Array, size: GridSize): Float32Array {
+  const grid = { ...size, positions };
+  const normals = new Float32Array(positions.length);
+  for (let vertex = 0; vertex * 3 < positions.length; vertex += 1) {
+    normals.set(normalAt(grid, vertex), vertex * 3);
+  }
+  return normals;
 }
 
 const CENTIMETRES = 100;
@@ -104,7 +149,8 @@ export function groundGeometry(
       uvs.set([(px - origin[0]) / tile.width_px, (py - origin[1]) / tile.height_px], vertex * 2);
     }
   }
-  return { positions, uvs, indices: gridIndices(across, down) };
+  const normals = gridNormals(positions, { across, down });
+  return { positions, normals, uvs, indices: gridIndices(across, down) };
 }
 
 /** Two triangles per grid square, wound like the slice terrain. */

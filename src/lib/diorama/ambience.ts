@@ -11,7 +11,7 @@ import {
   geometryMesh, instancedEntity, material, movingBatch, trs, type MovingBatch,
 } from '../engine/render/kit.ts';
 import {
-  chimneySmoke, HALO, hasLantern, PUFF, waterSpots, type Spot,
+  chimneySmoke, HALO, hasLantern, PUFF, waterSpots, wetCells, type Spot,
 } from './ambience-plan.ts';
 import { boundsAround, useInstanceChunks } from './gpu-instancing.ts';
 import { haloChunks, smokeChunks } from './shaders.ts';
@@ -23,7 +23,11 @@ const LANTERN_GLOW = 8;
 const HALO_OPACITY = 0.55;
 const PUFFS_PER_CHIMNEY = 7;
 const SMOKE_OPACITY = 0.26;
-const FOG_BANKS = 14;
+/**
+ * Open water per fog bank: the Dock Ward slice's 88 000 m² of water held 14 banks, and a
+ * streamed sector keeps that density over whatever water it has.
+ */
+const FOG_WATER_M2_PER_BANK = 6300;
 const FOG_OPACITY = 0.3;
 const FOG_SIZE_M: [number, number] = [70, 170];
 const FOG_HEIGHT_M: [number, number] = [2.5, 7];
@@ -52,7 +56,8 @@ export interface Ambience {
 
 /** Height cells where fog may lie (below zero is water), placed at `origin` in map metres. */
 export interface WaterField {
-  heights: Float32Array;
+  /** Any unit: only the sign matters. */
+  heights: ArrayLike<number>;
   meta: {
     columns: number;
     cell_m: number;
@@ -158,8 +163,9 @@ function buildSmoke(app: pc.AppBase, disc: pc.Texture, tops: Marker[]) {
 
 function buildFog(app: pc.AppBase, disc: pc.Texture, water: WaterField) {
   const random = createRandom(SEED + 1);
-  const spots = waterSpots({ heights: water.heights, meta: water.meta, count: FOG_BANKS,
-    seed: SEED });
+  const wet = wetCells(water.heights).length * water.meta.cell_m ** 2;
+  const count = Math.round(wet / FOG_WATER_M2_PER_BANK);
+  const spots = waterSpots({ heights: water.heights, meta: water.meta, count, seed: SEED });
   const banks = spots.map((spot) => ({
     x: spot.x + water.origin.x_m,
     z: spot.z + water.origin.z_m,
