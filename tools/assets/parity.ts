@@ -17,6 +17,7 @@ import { components, dilate, erode, majority } from './src/raster/raster-ops.ts'
 import { blockMask, traceBlocks } from './src/raster/blocks.ts';
 import { refineSurfaces } from './src/raster/refine.ts';
 import { measureStreetWidth } from './src/raster/street-width.ts';
+import { heightField, paintAlbedo, shoreDistance } from './src/slice.ts';
 import { classifyPixel, Surface } from './src/raster/surface.ts';
 
 const FIXTURES = 'crates/atlas/tests/fixtures';
@@ -248,12 +249,28 @@ function lotGolden() {
   }));
 }
 
+/** Ground of the refined synthetic raster: shore distance, albedo and a 4-px height field. */
+function groundGolden(classes: Uint8Array) {
+  const { refined } = refinedSynthetic(classes);
+  const spec = { classes: refined, size: RASTER, cellPx: 4, seed: 0xd0c4 };
+  const shore = shoreDistance(refined, RASTER);
+  const field = heightField(spec);
+  return {
+    shore_fnv1a: hashOf(new Uint8Array(shore.buffer)),
+    albedo_fnv1a: hashOf(paintAlbedo(spec)),
+    heights_fnv1a: hashOf(new Uint8Array(field.heights.buffer)),
+    columns: field.columns,
+    rows: field.rows,
+  };
+}
+
 function goldens(classes: Uint8Array) {
   return {
     classify_all_colours: classifyAllColours(),
     raster_ops: rasterOps(classes),
     vectors: vectorGoldens(),
     refine: refineGolden(classes),
+    ground: groundGolden(classes),
   };
 }
 
