@@ -7,6 +7,7 @@
 
 import type * as pc from 'playcanvas';
 
+import { watchLongFrames } from './long-frames.ts';
 import { createMeter, meterSummary, recordFrame } from './perf-meter.ts';
 
 const WINDOW_FRAMES = 240;
@@ -33,6 +34,7 @@ function deviceLines(app: pc.AppBase): string[] {
 
 export function mountHud(element: HTMLElement, app: pc.AppBase, quality: string): () => void {
   const meter = createMeter(WINDOW_FRAMES);
+  const long = watchLongFrames();
   let last = 0;
   let frame = 0;
   const step = (now: number) => {
@@ -52,6 +54,7 @@ export function mountHud(element: HTMLElement, app: pc.AppBase, quality: string)
       `dropped   ${percent(frames.overBudget)}`,
       `draws     ${app.stats.drawCalls.total}`,
       ...deviceLines(app),
+      ...long.lines(),
     ].join('\n');
   };
   if (app.graphicsDevice.gpuProfiler) app.graphicsDevice.gpuProfiler.enabled = true;
@@ -61,6 +64,7 @@ export function mountHud(element: HTMLElement, app: pc.AppBase, quality: string)
   return () => {
     cancelAnimationFrame(frame);
     clearInterval(timer);
+    long.stop();
     element.hidden = true;
   };
 }
