@@ -1,8 +1,9 @@
-// What each house looks like, decided from its data and a seed. Pure, so it is tested without a
-// GPU: storeys, jettied upper floors, roof type, dormer, chimney, and notable buildings, which
+// What each house looks like, decided from its data and its stable id, never from where it sits
+// in a list, so a house looks the same in any set of loaded sectors. Pure, so it is tested without
+// a GPU: storeys, jettied upper floors, roof type, dormer, chimney, and notable buildings, which
 // the source map marks with red roofs.
 
-import { createRandom } from '../engine/math/rng.ts';
+import { createRandom, hashId } from '../engine/math/rng.ts';
 import type { SliceHouse } from './slice-data.ts';
 
 export const STOREY_M = 3.1;
@@ -37,8 +38,11 @@ function isNotable([r, g, b]: [number, number, number]): boolean {
 const storeysOf = (height: number) =>
   Math.min(MAX_STOREYS, Math.max(1, Math.round(height / STOREY_M)));
 
-export function planHouse(house: SliceHouse, seed: number): HousePlan {
-  const random = createRandom(seed);
+/** Salt that separates the plan's draws from other per-house choices. */
+const PLAN_SALT = 0x91a7;
+
+export function planHouse(house: SliceHouse): HousePlan {
+  const random = createRandom(hashId(house.id, PLAN_SALT));
   const notable = isNotable(house.roof_rgb);
   const storeys = Math.min(MAX_STOREYS, storeysOf(house.height_m) + (notable ? 1 : 0));
   const stone = notable || random() < STONE_SHARE;

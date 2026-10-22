@@ -1,0 +1,83 @@
+{
+  "$id": "desire.sector-render/1",
+  "description": "What the diorama draws for one map sector. Normative layout: tools/contracts/sector.py generates the Rust and TypeScript layout constants and the fixture from it, and validates payloads against it. Rationale: docs/waterdeep-3d/sector-format.md.",
+  "magic": "DSEC",
+  "version": 1,
+  "byte_order": "little",
+  "alignment": 4,
+  "header": {
+    "size": 32,
+    "fields": [
+      { "name": "magic", "offset": 0, "type": "ascii4" },
+      { "name": "version", "offset": 4, "type": "u16" },
+      { "name": "section_count", "offset": 6, "type": "u16" },
+      { "name": "index", "offset": 8, "type": "u32", "doc": "row * columns + column" },
+      { "name": "origin_x_m", "offset": 12, "type": "f32", "doc": "north-west corner, map metres" },
+      { "name": "origin_z_m", "offset": 16, "type": "f32" },
+      { "name": "size_m", "offset": 20, "type": "f32", "positive": true },
+      { "name": "reserved_0", "offset": 24, "type": "u32", "zero": true },
+      { "name": "reserved_1", "offset": 28, "type": "u32", "zero": true }
+    ]
+  },
+  "section_entry": {
+    "size": 16,
+    "fields": [
+      { "name": "kind", "offset": 0, "type": "u32" },
+      { "name": "count", "offset": 4, "type": "u32" },
+      { "name": "stride", "offset": 8, "type": "u32" },
+      { "name": "offset", "offset": 12, "type": "u32" }
+    ]
+  },
+  "sections": [
+    {
+      "kind": 1,
+      "name": "houses",
+      "stride": 32,
+      "fields": [
+        { "name": "id", "offset": 0, "type": "u32", "doc": "block * 4096 + lot" },
+        { "name": "x_m", "offset": 4, "type": "f32" },
+        { "name": "z_m", "offset": 8, "type": "f32" },
+        { "name": "width_m", "offset": 12, "type": "f32", "positive": true },
+        { "name": "depth_m", "offset": 16, "type": "f32", "positive": true },
+        { "name": "rotation_radians", "offset": 20, "type": "f32" },
+        { "name": "height_m", "offset": 24, "type": "f32", "positive": true },
+        { "name": "roof_rgb", "offset": 28, "type": "rgb8" },
+        { "name": "flags", "offset": 31, "type": "u8", "bits": { "frontage": 0 } }
+      ]
+    },
+    {
+      "kind": 2,
+      "name": "berths",
+      "stride": 12,
+      "fields": [
+        { "name": "x_m", "offset": 0, "type": "f32" },
+        { "name": "z_m", "offset": 4, "type": "f32" },
+        { "name": "heading_radians", "offset": 8, "type": "f32" }
+      ]
+    },
+    {
+      "kind": 3,
+      "name": "trees",
+      "stride": 12,
+      "fields": [
+        { "name": "x_m", "offset": 0, "type": "f32" },
+        { "name": "z_m", "offset": 4, "type": "f32" },
+        { "name": "scale", "offset": 8, "type": "f32", "positive": true }
+      ]
+    }
+  ],
+  "example": {
+    "index": 7,
+    "origin_x_m": 512.5,
+    "origin_z_m": 1024.0,
+    "size_m": 479.5,
+    "houses": [
+      { "id": 196610, "x_m": 600.25, "z_m": 1100.5, "width_m": 6.5, "depth_m": 9.75,
+        "rotation_radians": 1.5, "height_m": 7.25, "roof_rgb": [120, 90, 70], "flags": 1 },
+      { "id": 196611, "x_m": 610.0, "z_m": 1101.0, "width_m": 5.0, "depth_m": 8.0,
+        "rotation_radians": -0.25, "height_m": 4.0, "roof_rgb": [90, 100, 110], "flags": 0 }
+    ],
+    "berths": [{ "x_m": 700.5, "z_m": 1200.25, "heading_radians": 3.0 }],
+    "trees": []
+  }
+}

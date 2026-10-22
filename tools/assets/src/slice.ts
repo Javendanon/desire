@@ -89,7 +89,10 @@ function sweep(distance: Uint16Array, size: RasterSize, forward: boolean) {
 
 /** City-block pixels from each water pixel to the nearest non-water pixel, 0 on land. O(pixels). */
 export function shoreDistance(classes: Uint8Array, size: RasterSize): Uint16Array {
-  const distance = Uint16Array.from(classes, (value) => (value === Surface.Water ? UNREACHED : 0));
+  const distance = new Uint16Array(classes.length);
+  for (let index = 0; index < classes.length; index += 1) {
+    if (classes[index] === Surface.Water) distance[index] = UNREACHED;
+  }
   sweep(distance, size, true);
   sweep(distance, size, false);
   return distance;

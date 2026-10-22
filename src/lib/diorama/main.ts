@@ -1,12 +1,13 @@
 // Entry of the diorama review page: loads the slice exported by tools/assets and mounts the
 // scene. The slice lives under ignored outputs/ (derived from the source map, not redistributed).
 // `?stress=5x4` repeats it over a city-sized area for performance work (stress-slice.ts),
-// `?quality=high|medium|low` picks a preset (quality.ts) and `?hud` shows frame times.
+// `?quality=high|medium|low` picks a preset (quality.ts), `?hud` shows frame times and
+// `?sectors=<dir>` reads houses, berths and trees from sector payloads (sector-slice.ts).
 
 import { mountHud } from './hud.ts';
 import { parseQuality } from './quality.ts';
 import { createDiorama, type Diorama } from './scene.ts';
-import { loadSlice } from './slice-data.ts';
+import { loadSlice, withSectorFeatures } from './slice-data.ts';
 import { parseStress, tileSlice } from './stress-slice.ts';
 
 declare global {
@@ -38,7 +39,9 @@ async function start() {
   const params = new URLSearchParams(location.search);
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
   try {
-    const slice = await loadSlice(params.get('slice') ?? DEFAULT_SLICE);
+    const own = await loadSlice(params.get('slice') ?? DEFAULT_SLICE);
+    const sectors = params.get('sectors');
+    const slice = sectors ? await withSectorFeatures(own, sectors) : own;
     const grid = parseStress(params.get('stress')) ?? { columns: 1, rows: 1 };
     const backend = params.get('backend') === 'webgl2' ? 'webgl2' : 'auto';
     const quality = parseQuality(params.get('quality'));

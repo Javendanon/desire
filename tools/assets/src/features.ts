@@ -19,6 +19,11 @@ export type Tree = {
   scale: number;
 };
 
+/** A caravel at z18: about 22 m long and 6.5 m in the beam, 26 m between moored bows. */
+export const CARAVEL_Z18 = { lengthPx: 48, beamPx: 14, spacingPx: 56 } as const;
+/** One tree per 12 px (about 5.6 m) square of garden at most. */
+export const ORCHARD_Z18 = { spacingPx: 12 } as const;
+
 export type ShipSpec = {
   lengthPx: number;
   beamPx: number;
@@ -171,4 +176,28 @@ export function plantTrees(classes: Uint8Array, size: RasterSize, spec: TreeSpec
     }
   }
   return trees;
+}
+
+export type ClassRaster = {
+  classes: Uint8Array;
+  size: RasterSize;
+};
+
+/**
+ * Berths for z18 caravels and garden trees, in map metres. Both exporters write features this
+ * way, so a slice and the city's sectors agree. O(pier edge · hull samples + pixels / spacing²).
+ */
+export function featuresInMetres(raster: ClassRaster, metresPerPixel: number, seed: number) {
+  const { classes, size } = raster;
+  const berths = findBerths(classes, size, { ...CARAVEL_Z18, seed }).map((berth) => ({
+    x_m: berth.x_px * metresPerPixel,
+    z_m: berth.y_px * metresPerPixel,
+    heading_radians: berth.heading_radians,
+  }));
+  const trees = plantTrees(classes, size, { ...ORCHARD_Z18, seed }).map((tree) => ({
+    x_m: tree.x_px * metresPerPixel,
+    z_m: tree.y_px * metresPerPixel,
+    scale: tree.scale,
+  }));
+  return { berths, trees };
 }

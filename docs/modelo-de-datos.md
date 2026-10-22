@@ -191,6 +191,7 @@ python3 tools/contracts/generate.py
 python3 tools/contracts/generate.py --check
 python3 tools/contracts/validate.py
 python3 tools/contracts/examples.py
+python3 tools/contracts/sector.py --check
 python3 -m unittest discover -s tools/contracts/tests
 python3 tools/contracts/check-rust.py
 cargo fmt --all --check

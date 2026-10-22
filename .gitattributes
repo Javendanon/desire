@@ -1,0 +1,3 @@
+# Raw raster and payload fixtures: binary, never diffed or normalised as text.
+*.bin binary
+*.rgb binary

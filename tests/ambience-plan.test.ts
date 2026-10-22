@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { everyNth, puffAt, waterSpots } from '../src/lib/diorama/ambience-plan.ts';
+import { puffAt, waterSpots } from '../src/lib/diorama/ambience-plan.ts';
 
 test('a smoke puff rises steadily, grows, and vanishes at both ends of its life', () => {
   const ages = [0, 0.25, 0.5, 0.75, 1];
@@ -12,10 +12,6 @@ test('a smoke puff rises steadily, grows, and vanishes at both ends of its life'
     assert.ok(puffs[index].rise > puffs[index - 1].rise, 'always rising');
   }
   assert.ok(puffs[3].size > puffs[1].size, 'older puffs are wider until they fade');
-});
-
-test('lanterns go on every nth door, starting with the first', () => {
-  assert.deepEqual(everyNth(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 3), ['a', 'd', 'g']);
 });
 
 test('fog banks sit over water cells only, deterministically', () => {

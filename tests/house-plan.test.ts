@@ -5,6 +5,7 @@ import { planHouse, STOREY_M } from '../src/lib/diorama/house-plan.ts';
 import type { SliceHouse } from '../src/lib/diorama/slice-data.ts';
 
 const house = (overrides: Partial<SliceHouse> = {}): SliceHouse => ({
+  id: 1,
   center: { x_m: 10, z_m: 20 },
   width_m: 6,
   depth_m: 9,
@@ -16,19 +17,19 @@ const house = (overrides: Partial<SliceHouse> = {}): SliceHouse => ({
 });
 
 test('storeys follow the height, at least one, at most four', () => {
-  assert.equal(planHouse(house({ height_m: 2 }), 1).storeys, 1);
-  assert.equal(planHouse(house({ height_m: 6.4 }), 1).storeys, 2);
-  assert.equal(planHouse(house({ height_m: 30 }), 1).storeys, 4);
+  assert.equal(planHouse(house({ height_m: 2, id: 1 })).storeys, 1);
+  assert.equal(planHouse(house({ height_m: 6.4, id: 1 })).storeys, 2);
+  assert.equal(planHouse(house({ height_m: 30, id: 1 })).storeys, 4);
 });
 
 test('wall height is whole storeys, so window rows line up between neighbours', () => {
-  const plan = planHouse(house({ height_m: 7 }), 3);
+  const plan = planHouse(house({ height_m: 7, id: 3 }));
   assert.equal(plan.wallHeight, plan.storeys * STOREY_M);
 });
 
 test('a red roof from the map is a notable stone building with a hip roof and one more storey', () => {
-  const plain = planHouse(house(), 5);
-  const notable = planHouse(house({ roof_rgb: [180, 70, 50] }), 5);
+  const plain = planHouse(house({ id: 5 }));
+  const notable = planHouse(house({ roof_rgb: [180, 70, 50], id: 5 }));
   assert.equal(notable.notable, true);
   assert.equal(notable.stone, true);
   assert.equal(notable.roof, 'hip');
@@ -37,7 +38,7 @@ test('a red roof from the map is a notable stone building with a hip roof and on
 
 test('only timber houses of two or more storeys jetty their upper floors', () => {
   for (let seed = 0; seed < 200; seed += 1) {
-    const plan = planHouse(house({ height_m: seed % 2 === 0 ? 3 : 9 }), seed);
+    const plan = planHouse(house({ height_m: seed % 2 === 0 ? 3 : 9, id: seed }));
     if (plan.jetty > 0) {
       assert.equal(plan.stone, false, `seed ${seed}`);
       assert.ok(plan.storeys >= 2, `seed ${seed}`);
@@ -48,7 +49,7 @@ test('only timber houses of two or more storeys jetty their upper floors', () =>
 test('dormers appear only on hip roofs, facing the street', () => {
   let dormers = 0;
   for (let seed = 0; seed < 300; seed += 1) {
-    const plan = planHouse(house({ width_m: 8 }), seed);
+    const plan = planHouse(house({ width_m: 8, id: seed }));
     if (plan.dormer) {
       dormers += 1;
       assert.equal(plan.roof, 'hip', `seed ${seed}`);
@@ -58,11 +59,11 @@ test('dormers appear only on hip roofs, facing the street', () => {
 });
 
 test('the same house and seed always give the same plan', () => {
-  assert.deepEqual(planHouse(house(), 42), planHouse(house(), 42));
+  assert.deepEqual(planHouse(house({ id: 42 })), planHouse(house({ id: 42 })));
 });
 
 test('every roof type and both wall materials occur across a street', () => {
-  const plans = Array.from({ length: 200 }, (_, seed) => planHouse(house(), seed));
+  const plans = Array.from({ length: 200 }, (_, seed) => planHouse(house({ id: seed })));
   assert.deepEqual([...new Set(plans.map((plan) => plan.roof))].sort(), ['gable', 'hip']);
   assert.deepEqual([...new Set(plans.map((plan) => plan.stone))].sort(), [false, true]);
 });

@@ -7,7 +7,7 @@
  * blocks touch only at a corner, the component label picks the path. Pure.
  */
 import type { PixelPoint } from './polyline.ts';
-import { components, type RasterSize } from './raster-ops.ts';
+import { components, maskWhere, type RasterSize } from './raster-ops.ts';
 import { simplifyRing } from './simplify.ts';
 import { Surface } from './surface.ts';
 
@@ -43,8 +43,7 @@ const TURN_PREFERENCE = [1, 0, 3];
 
 /** Urban pixels that are not street, water or pier: the land blocks are made of. */
 export function blockMask(classes: Uint8Array, urban: Uint8Array): Uint8Array {
-  return Uint8Array.from(classes, (value, index) =>
-    (urban[index] === 1 && !NOT_BLOCK.has(value) ? 1 : 0));
+  return maskWhere(classes, (value, index) => urban[index] === 1 && !NOT_BLOCK.has(value));
 }
 
 /**
@@ -141,8 +140,11 @@ function toBlock(rings: PixelPoint[][], areaPx: number, options: TraceOptions): 
 /** Traces each 4-connected component of `mask` into a block. O(pixels + perimeter). */
 export function traceBlocks(mask: Uint8Array, size: RasterSize, options: TraceOptions): Block[] {
   const { labels, sizes } = components(mask, size);
-  const kept = Int32Array.from(labels, (label) =>
-    (label >= 0 && sizes[label] >= options.minAreaPx ? label : -1));
+  const kept = new Int32Array(labels.length);
+  for (let index = 0; index < labels.length; index += 1) {
+    const label = labels[index];
+    kept[index] = label >= 0 && sizes[label] >= options.minAreaPx ? label : -1;
+  }
   const loops = loopsByLabel(boundaryEdges(kept, size), size.width);
   return [...loops].map(([label, rings]) => toBlock(rings, sizes[label], options));
 }

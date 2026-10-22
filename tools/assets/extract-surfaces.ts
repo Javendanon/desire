@@ -112,7 +112,12 @@ function cropGrid(grid: Uint8Array, width: number, crop: Crop) {
 
 async function writeDebug(classes: Uint8Array, size: RasterSize, out: string) {
   const rgb = Buffer.alloc(classes.length * 3);
-  classes.forEach((value, index) => rgb.set(PALETTE[value], index * 3));
+  for (let index = 0; index < classes.length; index += 1) {
+    const [r, g, b] = PALETTE[classes[index]];
+    rgb[index * 3] = r;
+    rgb[index * 3 + 1] = g;
+    rgb[index * 3 + 2] = b;
+  }
   await sharp(rgb, { raw: { ...size, channels: 3 } }).png().toFile(out);
 }
 
@@ -181,8 +186,9 @@ async function main(argv: string[]) {
   const crop = options.crop ?? [0, 0, raster.width, raster.height];
   const classes = cropGrid(full, raster.width, crop);
   await writeDebug(classes, { width: crop[2], height: crop[3] }, options.out);
-  const percent = (value: number) =>
-    ((classes.filter((entry) => entry === value).length / classes.length) * 100).toFixed(1);
+  const counts = new Uint32Array(Object.keys(Surface).length);
+  for (let index = 0; index < classes.length; index += 1) counts[classes[index]] += 1;
+  const percent = (value: number) => ((counts[value] / classes.length) * 100).toFixed(1);
   const names = Object.entries(Surface).map(([name, value]) => `${name} ${percent(value)}%`);
   console.log(`${options.out}: ${names.join(' · ')}`);
 }

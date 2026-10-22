@@ -65,7 +65,8 @@ centrelines, rasterised at their width, force them open).
 
 ## Layer extraction: what the whole city showed
 
-`extract-surfaces.ts` (commit `1a6e0aa`) runs on the whole 6319 × 9136 raster in 82 s and 2.2 GB.
+`extract-surfaces.ts` (commit `1a6e0aa`) runs on the whole 6319 × 9136 raster in 82 s and 2.2 GB
+(15.0 s and 2.0 GB without the large-heap flag after M0, same output, see the Rust plan).
 Dock Ward comes out clean: open water, coastline, every pier including the cross-pier junction,
 streets cutting the blocks, landmark roofs. The whole city exposes two limits of colour rules:
 

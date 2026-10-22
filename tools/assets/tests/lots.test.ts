@@ -75,3 +75,12 @@ test('a ridge line under the centre does not reject an otherwise built lot', () 
   const withRidges = placeHouses({ outer: square(40), holes: [] }, { ...RULES, isBuilt: ridgeFree }).length;
   assert.ok(withRidges >= everywhere - 2, `${withRidges} of ${everywhere}`);
 });
+
+test('every lot carries the corners it was placed with, those of its footprint', () => {
+  for (const house of placeHouses({ outer: square(40), holes: [] }, RULES)) {
+    house.corners.forEach((corner, index) => {
+      assert.ok(Math.abs(corner.x_m - cornersOf(house)[index].x_m) < 1e-9);
+      assert.ok(Math.abs(corner.z_m - cornersOf(house)[index].z_m) < 1e-9);
+    });
+  }
+});

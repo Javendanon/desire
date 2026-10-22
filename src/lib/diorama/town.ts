@@ -8,7 +8,7 @@ import { gableMesh, geometryMesh, instancedEntity, material, trs } from '../engi
 import type { Textures } from '../engine/render/textures.ts';
 import { hipMesh } from './house-kit.ts';
 import { planHouse, STOREY_M, type HousePlan } from './house-plan.ts';
-import { roofPalette } from './roof-palette.ts';
+import { roofTones, type Rgb } from './roof-palette.ts';
 import type { SliceHouse } from './slice-data.ts';
 
 /** Land sits 1 m above the water plane (tools/assets/src/slice.ts). */
@@ -21,7 +21,6 @@ const HIP_PITCH = 0.6;
 const ROOF_TILING = 3;
 const CHIMNEY_SIZE: [number, number, number] = [0.7, 2.4, 0.7];
 const DORMER_SIZE: [number, number, number] = [1.5, 1.3, 1.2];
-const PLAN_SEED = 0x7a1;
 
 type Batch = Map<string, pc.Mat4[]>;
 type Build = {
@@ -35,11 +34,23 @@ type Placed = {
   tone: number;
 };
 
+/** A point on a house (chimney top, street door) with the house's id, for per-house choices. */
+export interface Marker {
+  at: pc.Vec3;
+  id: number;
+}
+
+export interface TownSpec {
+  houses: SliceHouse[];
+  /** City-wide roof tone centres (index.json). Without them, tones come from these houses. */
+  roofCentres?: Rgb[];
+}
+
 export interface Town {
   root: pc.Entity;
   windowMaterials: pc.StandardMaterial[];
-  chimneyTops: pc.Vec3[];
-  fronts: pc.Vec3[];
+  chimneyTops: Marker[];
+  fronts: Marker[];
 }
 
 function push(batch: Batch, key: string, matrix: pc.Mat4) {
@@ -79,14 +90,14 @@ function addRoof(batch: Batch, placed: Placed) {
   push(batch, `${plan.roof}:${tone}`, trs(local(house, 0, y, 0), house.rotation_radians, scale));
 }
 
-function addChimney(batch: Batch, placed: Placed, tops: pc.Vec3[]) {
+function addChimney(batch: Batch, placed: Placed, tops: Marker[]) {
   const { house, plan } = placed;
   if (!plan.chimney) return;
   const side = (house.center.x_m * 7 + house.center.z_m) % 2 > 1 ? 1 : -1;
   const y = GROUND_Y + plan.wallHeight + house.width_m * pitchOf(plan) * 0.55;
   const position = local(house, side * house.width_m * 0.2, y, roofDepth(placed) * 0.2);
   push(batch, 'chimney', trs(position, house.rotation_radians, CHIMNEY_SIZE));
-  tops.push(new pc.Vec3(position[0], y + CHIMNEY_SIZE[1] / 2, position[2]));
+  tops.push({ at: new pc.Vec3(position[0], y + CHIMNEY_SIZE[1] / 2, position[2]), id: house.id });
 }
 
 function addDormer(batch: Batch, placed: Placed) {
@@ -101,9 +112,9 @@ function addDormer(batch: Batch, placed: Placed) {
     house.rotation_radians, roofScale));
 }
 
-function frontOf(placed: Placed): pc.Vec3 {
+function frontOf(placed: Placed): Marker {
   const [x, , z] = local(placed.house, 0, 0, -(roofDepth(placed) / 2 + 0.25));
-  return new pc.Vec3(x, GROUND_Y + 2.6, z);
+  return { at: new pc.Vec3(x, GROUND_Y + 2.6, z), id: placed.house.id };
 }
 
 function windowedWall(map: pc.Texture, windows: pc.Texture): pc.StandardMaterial {
@@ -140,14 +151,15 @@ function emitBatches(build: Build, batch: Batch, tones: string[]) {
   return [mats.timber, mats.stone];
 }
 
-export function buildTown(app: pc.AppBase, houses: SliceHouse[], tx: Textures): Town {
+export function buildTown(app: pc.AppBase, spec: TownSpec, tx: Textures): Town {
+  const { houses } = spec;
   const build = { app, root: new pc.Entity('town'), tx };
-  const palette = roofPalette(houses);
+  const palette = roofTones(houses, spec.roofCentres);
   const batch: Batch = new Map();
-  const chimneyTops: pc.Vec3[] = [];
-  const fronts: pc.Vec3[] = [];
+  const chimneyTops: Marker[] = [];
+  const fronts: Marker[] = [];
   houses.forEach((house, index) => {
-    const plan = planHouse(house, PLAN_SEED + index);
+    const plan = planHouse(house);
     const placed = { house, plan, tone: palette.labels[index] };
     addStoreys(batch, placed);
     addRoof(batch, placed);

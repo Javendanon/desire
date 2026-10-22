@@ -61,15 +61,28 @@ export function classifyPixel(r: number, g: number, b: number): SurfaceClass {
   return RULES.find(([, matches]) => matches(pixel))?.[0] ?? Surface.Ground;
 }
 
-/** Classifies a row-major RGB buffer of `pixels` pixels. O(pixels). */
+const COLOURS = 1 << 24;
+const UNSEEN = 0xff;
+
+/**
+ * Classifies a row-major RGB buffer of `pixels` pixels. O(pixels). The rules run once per
+ * distinct colour: a 16 MB table keyed by the 24-bit colour remembers each answer, since a map
+ * has far fewer colours than pixels.
+ */
 export function classifyRgb(rgb: Uint8Array, pixels: number): Uint8Array {
   if (rgb.length !== pixels * RGB) {
     throw new Error(`classifyRgb needs 3 bytes per pixel: ${rgb.length} bytes for ${pixels}`);
   }
+  const known = new Uint8Array(COLOURS).fill(UNSEEN);
   const classes = new Uint8Array(pixels);
   for (let index = 0; index < pixels; index += 1) {
     const offset = index * RGB;
-    classes[index] = classifyPixel(rgb[offset], rgb[offset + 1], rgb[offset + 2]);
+    const r = rgb[offset];
+    const g = rgb[offset + 1];
+    const b = rgb[offset + 2];
+    const colour = (r << 16) | (g << 8) | b;
+    if (known[colour] === UNSEEN) known[colour] = classifyPixel(r, g, b);
+    classes[index] = known[colour];
   }
   return classes;
 }

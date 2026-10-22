@@ -2,9 +2,7 @@
 // its nearest tint from the design canvas. A painted map colour is far darker than a daylight
 // albedo; the mix keeps the ward's identity with the design's brightness. Pure.
 
-import type { SliceHouse } from './slice-data.ts';
-
-type Rgb = [number, number, number];
+export type Rgb = [number, number, number];
 
 const ROOF_TONES = 6;
 const KMEANS_ROUNDS = 12;
@@ -50,9 +48,12 @@ function toHex(colour: Rgb): string {
   return `#${mixed.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
 }
 
-/** Deterministic k-means seeded from evenly spaced houses. O(houses · tones · rounds). */
-export function roofPalette(houses: SliceHouse[]): RoofPalette {
-  const colours = houses.map((house) => house.roof_rgb);
+/**
+ * Roof tone centres: deterministic k-means seeded from evenly spaced colours.
+ * O(colours · tones · rounds). Run it once over the whole city (export-sectors stores the result)
+ * so that every house keeps its tone whatever else is loaded.
+ */
+export function roofCentres(colours: Rgb[]): Rgb[] {
   const count = Math.min(ROOF_TONES, colours.length);
   let centres: Rgb[] = Array.from({ length: count }, (_, index) =>
     colours[Math.floor((index * colours.length) / count)]);
@@ -62,5 +63,20 @@ export function roofPalette(houses: SliceHouse[]): RoofPalette {
       mean(colours.filter((_, house) => labels[house] === tone), centre));
     labels = colours.map((colour) => nearest(colour, centres));
   }
-  return { colours: centres.map(toHex), labels };
+  return centres;
+}
+
+/**
+ * Each house's tone is the centre nearest its sampled colour. With fixed `centres` a house's tone
+ * depends on its own colour only. Without them the centres come from these houses (a lone
+ * slice). O(houses · tones).
+ */
+export function roofTones(
+  houses: { roof_rgb: Rgb }[],
+  centres: Rgb[] = roofCentres(houses.map((house) => house.roof_rgb)),
+): RoofPalette {
+  return {
+    colours: centres.map(toHex),
+    labels: houses.map((house) => nearest(house.roof_rgb, centres)),
+  };
 }
