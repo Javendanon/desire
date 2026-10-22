@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  castsShadows, gridNormals, groundGeometry, planSectors, sectorDistance,
+  castsShadows, gridNormals, groundGeometry, planSectors, sectorDetail, sectorDistance,
 } from '../src/lib/diorama/sector-streaming.ts';
 
 const grid = { columns: 4, rows: 3, size_m: 100 };
@@ -85,4 +85,13 @@ test('only sectors near the target cast shadows, and more of them when zoomed ou
   assert.ok(!castsShadows({ distance_m: 1200, radius_m: 900 }), 'a kilometre out at city zoom');
   assert.ok(castsShadows({ distance_m: 400, radius_m: 900 }));
   assert.ok(!castsShadows({ distance_m: 400, radius_m: 200 }));
+});
+
+// Near sectors get full detail; far ones a box and a roof per house, merged city-wide.
+test('sectors switch detail with hysteresis, so a boundary does not flip every frame', () => {
+  const radius_m = 200;
+  assert.equal(sectorDetail({ distance_m: 300, radius_m, current: 'far' }), 'near');
+  assert.equal(sectorDetail({ distance_m: 380, radius_m, current: 'far' }), 'far');
+  assert.equal(sectorDetail({ distance_m: 380, radius_m, current: 'near' }), 'near', 'kept');
+  assert.equal(sectorDetail({ distance_m: 600, radius_m, current: 'near' }), 'far');
 });
