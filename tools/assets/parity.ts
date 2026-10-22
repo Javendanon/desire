@@ -7,6 +7,7 @@
  */
 import fs from 'node:fs';
 
+import { placeHouses } from './src/lots.ts';
 import { mulberry32 } from './src/random.ts';
 import { createMercatorFrame, type LngLat } from './src/raster/frame.ts';
 import { fillPolygons, type PixelRing } from './src/raster/polygon-fill.ts';
@@ -24,6 +25,11 @@ const RASTER = { width: 257, height: 131 };
 const RASTER_FILE = `${FIXTURES}/classes-257x131.bin`;
 const VECTOR_INPUT = `${FIXTURES}/vectors-input.json`;
 const BLOCKS_GOLDEN = `${FIXTURES}/blocks-golden.json`;
+const LOTS_GOLDEN = `${FIXTURES}/lots-golden.json`;
+/** The z18 lot rules of generate-houses. */
+const LOT_RULES = { frontage: [4.5, 8.5] as [number, number], depth: [6.5, 11] as [number, number] };
+/** Open ground in the synthetic lots: a disc, so some lots are rejected and others shift. */
+const OPEN = { x_m: 50, z_m: 40, radius_m: 12 };
 /** Scaled to the synthetic raster: small blocks kept, 1.5 px tolerance as on the map. */
 const TRACE = { minAreaPx: 30, tolerancePx: 1.5, minHoleAreaPx: 6 };
 const STREETS_RGB = `${FIXTURES}/streets-301x203.rgb`;
@@ -189,6 +195,37 @@ function syntheticBlocks(classes: Uint8Array) {
   return traceBlocks(blockMask(refined, urban), RASTER, TRACE);
 }
 
+const plan = ([x_m, z_m]: [number, number]) => ({ x_m, z_m });
+
+/** A 30° rotated rectangle, an L-shaped block, and a block with a courtyard hole. */
+function lotBlocks() {
+  const turn = (x: number, z: number): [number, number] => {
+    const [c, s] = [Math.sqrt(3) / 2, 0.5];
+    return [20 + x * c - z * s, 15 + x * s + z * c];
+  };
+  return [
+    { outer: [turn(0, 0), turn(60, 0), turn(60, 25), turn(0, 25)], holes: [] },
+    { outer: [[100, 10], [160, 10], [160, 30], [125, 30], [125, 70], [100, 70]], holes: [] },
+    { outer: [[10, 90], [90, 90], [90, 150], [10, 150]],
+      holes: [[[35, 110], [65, 110], [65, 130], [35, 130]]] },
+  ].map((block, index) => ({
+    seed: 0x5eed + index,
+    outer: block.outer.map((point) => plan(point as [number, number])),
+    holes: block.holes.map((hole) => hole.map((point) => plan(point as [number, number]))),
+  }));
+}
+
+function lotGolden() {
+  const isBuilt = ({ x_m, z_m }: { x_m: number, z_m: number }) =>
+    Math.hypot(x_m - OPEN.x_m, z_m - OPEN.z_m) >= OPEN.radius_m;
+  return lotBlocks().map((block) => ({
+    seed: block.seed,
+    outer: block.outer,
+    holes: block.holes,
+    houses: placeHouses(block, { ...LOT_RULES, seed: block.seed, isBuilt }),
+  }));
+}
+
 function goldens(classes: Uint8Array) {
   return {
     classify_all_colours: classifyAllColours(),
@@ -207,6 +244,7 @@ const files: [string, string | Uint8Array][] = [
     refine: REFINE }, null, 2)}\n`],
   [STREETS_RGB, syntheticStreets()],
   [BLOCKS_GOLDEN, `${JSON.stringify({ trace: TRACE, blocks: syntheticBlocks(classes) })}\n`],
+  [LOTS_GOLDEN, `${JSON.stringify({ rules: LOT_RULES, open: OPEN, blocks: lotGolden() })}\n`],
 ];
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;
