@@ -6,13 +6,24 @@ use desire_atlas::tiles::{TileGrid, albedo_tile, height_tile, smooth};
 
 /// A 10 × 7 px map in tiles of 4 px with 2-px cells: 3 × 2 tiles, the last ones partial.
 fn grid() -> TileGrid {
-    TileGrid::new(Size { width: 10, height: 7 }, 4, 2)
+    TileGrid::new(
+        Size {
+            width: 10,
+            height: 7,
+        },
+        4,
+        2,
+    )
 }
 
 fn field() -> HeightField {
     let (columns, rows) = (5, 4);
     let heights = (0..columns * rows).map(|cell| cell as f32 / 10.0).collect();
-    HeightField { columns, rows, heights }
+    HeightField {
+        columns,
+        rows,
+        heights,
+    }
 }
 
 #[test]
@@ -70,7 +81,11 @@ fn grid_field_last() -> HeightField {
 
 #[test]
 fn smoothing_averages_the_clipped_three_by_three_neighbourhood() {
-    let field = HeightField { columns: 3, rows: 1, heights: vec![0.0, 3.0, 6.0] };
+    let field = HeightField {
+        columns: 3,
+        rows: 1,
+        heights: vec![0.0, 3.0, 6.0],
+    };
     assert_eq!(smooth(&field, 1).heights, vec![1.5, 3.0, 4.5]);
     assert_eq!(smooth(&field, 0).heights, field.heights);
 }

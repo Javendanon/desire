@@ -308,7 +308,11 @@ fn ground_paints_and_heights_as_in_typescript() {
     let (input, _) = vector_case();
     let case = input.refine;
     let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    fill_polygons(
+        &mut urban,
+        SYNTHETIC_SIZE,
+        std::slice::from_ref(&case.urban),
+    );
     let input = RefineInput {
         classes: SYNTHETIC,
         size: SYNTHETIC_SIZE,
@@ -316,16 +320,27 @@ fn ground_paints_and_heights_as_in_typescript() {
         urban: Some(&urban),
     };
     let refined = refine_surfaces(&input, &case.params);
-    let spec = GroundSpec { classes: &refined, size: SYNTHETIC_SIZE, cell_px: 4, seed: 0xd0c4 };
+    let spec = GroundSpec {
+        classes: &refined,
+        size: SYNTHETIC_SIZE,
+        cell_px: 4,
+        seed: 0xd0c4,
+    };
     let golden = |key| golden_number("ground", key);
     let shore: Vec<u8> = shore_distance(&refined, SYNTHETIC_SIZE)
         .iter()
         .flat_map(|d| d.to_le_bytes())
         .collect();
     assert_eq!(u64::from(fnv1a(&shore)), golden("shore_fnv1a"));
-    assert_eq!(u64::from(fnv1a(&paint_albedo(&spec))), golden("albedo_fnv1a"));
+    assert_eq!(
+        u64::from(fnv1a(&paint_albedo(&spec))),
+        golden("albedo_fnv1a")
+    );
     let field = height_field(&spec);
-    assert_eq!((field.columns as u64, field.rows as u64), (golden("columns"), golden("rows")));
+    assert_eq!(
+        (field.columns as u64, field.rows as u64),
+        (golden("columns"), golden("rows"))
+    );
     let heights: Vec<u8> = field.heights.iter().flat_map(|h| h.to_le_bytes()).collect();
     assert_eq!(u64::from(fnv1a(&heights)), golden("heights_fnv1a"));
 }
