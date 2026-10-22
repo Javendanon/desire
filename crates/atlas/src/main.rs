@@ -23,7 +23,8 @@ use desire_atlas::raster::{RgbRaster, read_rgb};
 use desire_atlas::raster_ops::Size;
 use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
 use desire_atlas::sectors::{
-    ClassRaster, HousesLayer, Payload, SectorGrid, SectorIndex, export, features_in_metres,
+    ClassRaster, FEATURE_SEED, HousesLayer, Payload, SectorGrid, SectorIndex, export,
+    features_in_metres, index_json,
 };
 use desire_atlas::surface::classify_rgb;
 use desire_atlas::tiles::{TileGrid, albedo_tile, height_tile, smooth};
@@ -246,9 +247,6 @@ fn houses(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-/// The seed both exporters give berths and trees.
-const FEATURE_SEED: u32 = 0xd0c4;
-
 /// A class raster of known width, its height derived and checked.
 fn class_raster(path: &str, width: &str) -> Result<(Vec<u8>, Size), String> {
     let classes = read(path)?;
@@ -275,10 +273,9 @@ fn write_sectors(out: &Path, payloads: &[Payload], index: &SectorIndex) -> Resul
         let path = out.join(format!("{}.render.bin", payload.index));
         write(&path.to_string_lossy(), &payload.bytes)?;
     }
-    let json = serde_json::to_string_pretty(index).map_err(|error| error.to_string())?;
     write(
         &out.join("index.json").to_string_lossy(),
-        format!("{json}\n").as_bytes(),
+        index_json(index).as_bytes(),
     )
 }
 
