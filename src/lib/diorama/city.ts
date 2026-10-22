@@ -19,11 +19,17 @@ interface GroundIndex extends GroundGrid {
   tiles: GroundTile[];
 }
 
+/** A point in map metres. */
+export interface MapPoint {
+  x_m: number;
+  z_m: number;
+}
+
 export interface CitySpec {
   /** Directory holding `sectors/` and `ground/`. */
   base: string;
-  /** Where the camera looks first, in map metres; the map centre when absent. */
-  focus?: { x_m: number; z_m: number };
+  /** Where the camera looks first, or the map centre when absent. */
+  focus?: MapPoint;
   options: DioramaOptions;
 }
 

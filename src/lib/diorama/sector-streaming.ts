@@ -92,7 +92,8 @@ type Grid = GridSize & {
 
 function difference(grid: Grid, from: number, to: number): Vector {
   const p = grid.positions;
-  return [p[to * 3] - p[from * 3], p[to * 3 + 1] - p[from * 3 + 1], p[to * 3 + 2] - p[from * 3 + 2]];
+  const [a, b] = [from * 3, to * 3];
+  return [p[b] - p[a], p[b + 1] - p[a + 1], p[b + 2] - p[a + 2]];
 }
 
 /** Unit normal from the tangents to the vertex's neighbours, one-sided at the grid's edges. */

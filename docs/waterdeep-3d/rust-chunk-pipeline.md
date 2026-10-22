@@ -105,7 +105,7 @@ measurement compared with the previous state on the same input.
 | **M0** ✅ | Quick fixes in the TS pipeline from the audit (`majority`, `from` copies, `erode`/`dilate`, components, classification) | Done: `extract-surfaces` on the full map 93.2 s → 15.0 s, peak 2.44 → 2.0 GB, no large-heap flag needed; `classes.bin` and `blocks.json` byte-identical. `paintAlbedo` noise moves to M2 |
 | **M1** ✅ | Write the format: `render.bin` in `crates/core` and in TS, round-trip tests on both sides; choose the sector size from real counts | Done: [sector-format.md](sector-format.md); 1024-px sectors (479.6 m); Rust and TS both match a spec-built fixture byte for byte. `export-sectors` writes the whole map (40 sectors, 13,919 houses, about 0.6 MB). Stable house ids are given where lots are made, and a house's look derives from its id. `?sectors=` renders the Dock Ward from sectors, with 1065 of 1065 houses identical by id. The ground tile layout moves to M3, where the viewer first streams terrain |
 | **M2** ✅ | `crates/atlas` ports the stages in order (classify → refine → blocks → lots → features → sectors). Each stage gets a **parity test** against the TS output on the same input | Done. The full Rust chain (`atlas extract` → `houses` → `sectors`) gives byte-identical `classes.bin`, `blocks.json`, 40 sector payloads and `index.json`. Houses match field for field, and `rotation_radians` (an atan2 for the viewer) within 1 ulp, which the payload's f32 absorbs. 3.3 s against about 17 s for the TS chain (about 95 s before M0). Ground tiles move to M3 |
-| **M3** | Viewer streams sectors through a Worker; per-sector batches and culling | The Dock Ward cut into sectors looks identical; hitches while panning measured with `?hud` |
+| **M3** ✅ | Viewer streams sectors through a Worker; per-sector batches and culling | Done. `atlas ground` cuts 63 ground tiles (`desire.ground-tiles/1`, 0.74 s). `?city=<dir>` streams sectors around the camera target: a Worker fetches, decodes and builds the ground mesh, and the frame loop builds at most one sector per frame. The Dock Ward from sectors matches the slice house for house (fog banks fall elsewhere, being random). Panning at 60–150 m/s at ward zoom: no frame over 25 ms (worst 22 ms, p50 3.7 ms, headless Chrome, Metal, low quality, frame limit off); high quality p50 6.8 ms. The whole city loaded (radius 700, 13,490 houses): p50 8.7 ms, 8 frames over 25 ms in 10 s, left for M4 |
 | **M4** | LOD1/LOD2 and the distance policy | The whole map loaded; frame time, memory and dropped frames at city, ward and street zoom on the owner's display |
 | **M5** | Retire the TS pipeline stages that Rust replaced | Docs updated; one pipeline |
 
@@ -130,7 +130,24 @@ replaces those stages at M2.
   `crates/atlas/tests/fixtures/parity.json`, `--check` for staleness), never the licensed map.
   The whole-map parity runs are local and their results are reported in the PR.
 
-## 6. Risks and open questions
+## 6. Decisions taken during M3
+
+- **Ground tiles are cut from map-wide fields.** Noise and the two smoothing passes are computed
+  over the whole map before cutting, and each height tile carries its neighbour's first row and
+  column, so tiles meet without a step ([sector-format.md](sector-format.md), "Ground tiles").
+- **The Worker builds the ground mesh.** Positions, UVs, indices and normals are computed there
+  and transferred. Normals come from the grid's neighbour differences (O(vertices)) instead of
+  averaging face normals over an index list. That moved the mesh's 25–30 ms per sector off the
+  frame loop. The slice terrain uses the same normals, so both modes shade alike.
+- **One stage, two modes.** `stage.ts` owns the engine, light, sky, sea, post stack and frame
+  loop. The slice (`scene.ts`) and the city (`city.ts`) only add what stands on it and its
+  movers.
+- **Fog follows water area.** 6300 m² of water per bank, the Dock Ward slice's density, so a
+  sector of open sea gets more banks than a sector of quays.
+- **A dropped sector frees its GPU objects**: instance buffers, materials and textures it owns,
+  while the stage's shared textures stay.
+
+## 7. Risks and open questions
 
 - **Parity of vector stages.** Douglas–Peucker, edge tracing and the lot placement are
   order-sensitive. Fix a deterministic order in both implementations, compare with tolerances,
@@ -142,5 +159,11 @@ replaces those stages at M2.
   the repository.
 - **D04/D05 rescale.** The world scale is Tych's. The map version revision scaled by 1 / 1.84
   should land before sector ids are published, so ids are not minted twice.
-- **Wasm in the browser** is out of scope until a measured hot spot remains after the Worker
-  move (M3).
+- **Wasm in the browser** is out of scope until a measured hot spot remains. After M3, building
+  sectors took 50 ms of the frame loop's time over a 10 s pan (mostly the town and its
+  ambience, profiled), none of it numeric work that Wasm would speed up.
+- **Per-sector materials.** Each sector builds its own town, fleet and ambience materials.
+  Shaders are cached, so this costs memory, not compiles. Sharing them across sectors is a
+  candidate for M4.
+- **Tile normals at seams.** Normals are one-sided at a tile's edge, so neighbouring tiles can
+  shade a hair apart there. It is not visible at the measured views.

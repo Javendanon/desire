@@ -6,7 +6,7 @@
 // `?city=<dir>` streams the whole map instead (city.ts) from `<dir>/sectors` and `<dir>/ground`,
 // looking first at `?at=<x>,<z>` map metres.
 
-import { createCity } from './city.ts';
+import { createCity, type MapPoint } from './city.ts';
 import { mountHud } from './hud.ts';
 import { parseQuality } from './quality.ts';
 import { createDiorama, type Diorama, type DioramaOptions } from './scene.ts';
@@ -38,7 +38,7 @@ function loadFonts() {
 }
 
 /** `x,z` in map metres, or nothing when absent or malformed. */
-function parseFocus(text: string | null): { x_m: number; z_m: number } | undefined {
+function parseFocus(text: string | null): MapPoint | undefined {
   const [x_m, z_m] = (text ?? '').split(',').map(Number);
   return Number.isFinite(x_m) && Number.isFinite(z_m) ? { x_m, z_m } : undefined;
 }

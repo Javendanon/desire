@@ -36,7 +36,8 @@ const TEXTURE_SLOTS = ['diffuseMap', 'opacityMap', 'emissiveMap'] as const;
 /** The tile's north-west corner in map metres. */
 function tileOrigin(ground: GroundGrid, index: number) {
   const metres = ground.tile_px * ground.metres_per_pixel;
-  return { x_m: (index % ground.columns) * metres, z_m: Math.floor(index / ground.columns) * metres };
+  const [column, row] = [index % ground.columns, Math.floor(index / ground.columns)];
+  return { x_m: column * metres, z_m: row * metres };
 }
 
 /** The tile's vertex heights as the fog reads them, placed at the tile corner. */
@@ -58,9 +59,14 @@ function groundTile(kit: SectorKit, tile: GroundTile, arrival: Arrival) {
     extent_m });
 }
 
-/** Houses, ships and ambience of a sector with features; returns what moves them. */
-function populate(kit: SectorKit, sector: Sector, water: WaterField): { parts: pc.Entity[];
-  mover: Mover; } {
+/** A sector's entities besides its ground, and what moves them. */
+type Life = {
+  parts: pc.Entity[];
+  mover: Mover;
+};
+
+/** Houses, ships and ambience of a sector with features. */
+function populate(kit: SectorKit, sector: Sector, water: WaterField): Life {
   const { app, textures } = kit;
   const town = buildTown(app, { houses: sector.houses.map(centred),
     roofCentres: kit.roofCentres }, textures);
@@ -75,7 +81,7 @@ function populate(kit: SectorKit, sector: Sector, water: WaterField): { parts: p
   return { parts: [town.root, fleet.root, ambience.root], mover };
 }
 
-/** Instance buffers, materials and the textures they own; meshes go with their entities. */
+/** Instance buffers, materials and the textures they own. Meshes go with their entities. */
 function releaseGpu(root: pc.Entity, shared: Set<pc.Texture>) {
   const renders = root.findComponents('render') as pc.RenderComponent[];
   const instances = renders.flatMap((render) => render.meshInstances);

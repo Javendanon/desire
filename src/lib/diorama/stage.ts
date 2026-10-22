@@ -75,6 +75,11 @@ export interface StageSpec {
   options: DioramaOptions;
 }
 
+export interface LiveStats {
+  frames: number;
+  rig: Rig;
+}
+
 export interface Stage {
   app: pc.AppBase;
   frame: pc.CameraFrame;
@@ -82,7 +87,7 @@ export interface Stage {
   orbit: { goal: Rig };
   movers: Set<Mover>;
   /** Frames drawn and the camera rig as it is now. */
-  live(): { frames: number; rig: Rig };
+  live(): LiveStats;
   destroy(): void;
 }
 
@@ -146,8 +151,13 @@ export function glowWindows(walls: pc.StandardMaterial[]) {
   }
 }
 
+type Lights = {
+  sun: pc.Entity;
+  sky: pc.Entity;
+};
+
 /** Sun, fill, ambient, fog and sky. Returns the sun the shadows follow. */
-function light(app: pc.AppBase): { sun: pc.Entity; sky: pc.Entity } {
+function light(app: pc.AppBase): Lights {
   const sun = buildSun('high');
   app.root.addChild(sun);
   lightScene(app, sun);
