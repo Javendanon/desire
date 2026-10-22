@@ -6,7 +6,7 @@ use desire_persistence::{CampaignRename, CampaignRepository, ErrorKind, migratio
 
 #[test]
 fn every_migration_prefix_upgrades_to_current() {
-    for version in 0..=5 {
+    for version in 0..=9 {
         let mut db = support::database();
         migrations::apply_through(&mut db, version).unwrap();
         migrations::apply(&mut db).unwrap();
@@ -14,7 +14,7 @@ fn every_migration_prefix_upgrades_to_current() {
             db.query_one("SELECT count(*) FROM persistence_migrations", &[])
                 .unwrap()
                 .get::<_, i64>(0),
-            5
+            9
         );
     }
 }
@@ -30,7 +30,7 @@ fn migration_history_is_independent_of_connection_search_path() {
         db.query_one("SELECT count(*) FROM public.persistence_migrations", &[])
             .unwrap()
             .get::<_, i64>(0),
-        5
+        9
     );
     assert!(
         db.query_one(
@@ -60,7 +60,7 @@ fn invalid_history_and_downgrades_are_rejected() {
         ErrorKind::InvalidMigration
     );
     assert_eq!(
-        migrations::apply_through(&mut db, 6).unwrap_err().kind,
+        migrations::apply_through(&mut db, 10).unwrap_err().kind,
         ErrorKind::InvalidMigration
     );
 }
@@ -126,7 +126,7 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
         db.query_one("SELECT count(*) FROM persistence_migrations", &[])
             .unwrap()
             .get::<_, i64>(0),
-        5
+        9
     );
 }
 

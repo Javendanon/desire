@@ -65,3 +65,114 @@ pub struct Position {
     pub y_m: f64,
     pub z_m: f64,
 }
+
+pub type SignedInteger = i32;
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AbilityScores {
+    pub strength: u32,
+    pub dexterity: u32,
+    pub constitution: u32,
+    pub intelligence: u32,
+    pub wisdom: u32,
+    pub charisma: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum ActorKind {
+    #[serde(rename = "character")]
+    Character,
+    #[serde(rename = "npc")]
+    Npc,
+    #[serde(rename = "monster")]
+    Monster,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Disposition {
+    #[serde(rename = "friendly")]
+    Friendly,
+    #[serde(rename = "neutral")]
+    Neutral,
+    #[serde(rename = "hostile")]
+    Hostile,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum ActorStatus {
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "dead")]
+    Dead,
+    #[serde(rename = "removed")]
+    Removed,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Presence {
+    #[serde(rename = "present")]
+    Present,
+    #[serde(rename = "away")]
+    Away,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum EncounterStatus {
+    #[serde(rename = "planned")]
+    Planned,
+    #[serde(rename = "active")]
+    Active,
+    #[serde(rename = "completed")]
+    Completed,
+    #[serde(rename = "cancelled")]
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum ActionKind {
+    #[serde(rename = "action")]
+    Action,
+    #[serde(rename = "bonus_action")]
+    BonusAction,
+    #[serde(rename = "reaction")]
+    Reaction,
+    #[serde(rename = "passive")]
+    Passive,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum ProficiencyCategory {
+    #[serde(rename = "skill")]
+    Skill,
+    #[serde(rename = "saving_throw")]
+    SavingThrow,
+    #[serde(rename = "tool")]
+    Tool,
+    #[serde(rename = "weapon")]
+    Weapon,
+    #[serde(rename = "armor")]
+    Armor,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Training {
+    #[serde(rename = "untrained")]
+    Untrained,
+    #[serde(rename = "half")]
+    Half,
+    #[serde(rename = "proficient")]
+    Proficient,
+    #[serde(rename = "expertise")]
+    Expertise,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum ResourceRecovery {
+    #[serde(rename = "manual")]
+    Manual,
+    #[serde(rename = "short_rest")]
+    ShortRest,
+    #[serde(rename = "long_rest")]
+    LongRest,
+}

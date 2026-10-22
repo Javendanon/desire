@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 UUID = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
 SUPPORTED = {'$schema', '$id', '$defs', '$ref', 'x-module', 'type', 'enum', 'const',
              'anyOf', 'properties', 'required', 'additionalProperties', 'items',
-             'minimum', 'maximum', 'exclusiveMinimum', 'format'}
+             'minimum', 'maximum', 'exclusiveMinimum', 'format', 'minItems', 'uniqueItems'}
 
 
 def fail(path: str, detail: str) -> None:
@@ -23,6 +23,7 @@ def check_shape(value: Any, node: dict, path: str) -> None:
         'object': lambda item: isinstance(item, dict),
         'array': lambda item: isinstance(item, list),
         'string': lambda item: isinstance(item, str),
+        'boolean': lambda item: type(item) is bool,
         'integer': lambda item: type(item) is int,
         'number': lambda item: type(item) in (int, float) and math.isfinite(item),
         'null': lambda item: item is None,
@@ -37,6 +38,7 @@ def check_shape(value: Any, node: dict, path: str) -> None:
 def check_limits(value: Any, node: dict, path: str) -> None:
     checks = {
         'minimum': lambda bound: value >= bound,
+        'minItems': lambda bound: len(value) >= bound,
         'maximum': lambda bound: value <= bound,
         'exclusiveMinimum': lambda bound: value > bound,
         'const': lambda expected: type(value) is type(expected) and value == expected,
@@ -89,8 +91,20 @@ def visit(value: Any, context: tuple, path: str) -> None:
     if node.get('type') == 'object':
         check_object(value, context, path)
     if node.get('type') == 'array':
-        for index, item in enumerate(value):
-            visit(item, (node['items'], definitions), f'{path}[{index}]')
+        check_items(value, context, path)
+
+
+def check_items(value: list, context: tuple, path: str) -> None:
+    """Validate array children and uniqueness in one pass, O(serialized input size)."""
+    node, definitions = context
+    seen = set()
+    for index, item in enumerate(value):
+        visit(item, (node['items'], definitions), f'{path}[{index}]')
+        if node.get('uniqueItems'):
+            identity = json.dumps(item, sort_keys=True)
+            if identity in seen:
+                fail(path, 'duplicate array item')
+            seen.add(identity)
 
 
 def validate(value: Any, schema: dict) -> None:

@@ -59,7 +59,7 @@ backup and rehearsing the upgrade against an isolated restored copy. Connecting 
 constructing a repository never runs migrations. `apply_through` supports rehearsal
 of any forward prefix, not downgrade.
 
-The five numbered SQL files are embedded in the crate. An advisory transaction
+The nine numbered SQL files are embedded in the crate. An advisory transaction
 lock serializes migration runners. History is always stored in
 `public.persistence_migrations`, independent of connection `search_path`. The
 installed ordered prefix and exact SQL
@@ -147,3 +147,22 @@ contract. The workflow was not executed remotely from this worktree; the wiring 
 verified locally by `tests/pipeline.rs`, which only accepts a real `run:` step in the
 named job (a comment, an `echo`, a multi-line `name:` or a `|| true` tail does not count),
 and by running the harness the job now runs.
+
+## Persistent tabletop actors and places
+
+Migrations 0006–0009 add creature templates/actions, campaign actors, statistics,
+HP/resources, character-sheet components, parties, group travel participants,
+encounters, place occupants/scene placements, and once-only prepared populations.
+See [the model](../../docs/tabletop-model.md) and [full DBML](../../docs/database/desire.dbml).
+
+`ActorRepository` copies template statistics once and uses CAS for state updates.
+`SheetRepository` creates a whole sheet atomically; `TravelRepository` snapshots
+party membership or accepts explicit participants; `EncounterRepository` reuses
+existing actors. `PresenceRepository::activate_for_dm` locks and creates a rule's
+population once, returning the same instances on revisits or concurrent entries.
+The player resident projection omits hidden actors and sensitive statistics.
+
+Existing v1 character IDs, conditions and journeys are backfilled without inventing
+character scores or HP. The new group DTO is explicitly version 2; the old v1
+travel event is not emitted for group journeys. API/auth/realtime and UI hooks
+remain D09/D10/D14/D16 work. Repositories assume an authorized server caller.

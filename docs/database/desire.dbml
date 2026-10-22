@@ -1,0 +1,889 @@
+// Desire tabletop schema: migrations 0001-0009 and Rust migration history.
+// Generated from an isolated PostgreSQL schema; no existing database was accessed.
+// Documentation only: generated columns, domains, deferred FKs and partial indexes use notes.
+// Triggers and functions remain authoritative in the SQL migrations.
+Project desire {
+  database_type: 'PostgreSQL'
+  Note: 'Persistent actors, sheets, parties, group travel, place populations and encounters. v1 DTOs remain compatible; GroupTravel uses protocol_version 2.'
+}
+
+Table campaign.actor_concentration {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  knowledge_entry_id uuid [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Indexes {
+    (campaign_id, actor_id) [pk]
+  }
+}
+
+Table campaign.actor_resources {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  name text [not null]
+  maximum integer [not null]
+  remaining integer [not null]
+  recovery text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(maximum >= 0)`
+    `(length(btrim(name)) > 0)`
+    `((remaining >= 0) AND (remaining <= maximum))`
+    `(recovery = ANY (ARRAY['manual'::text, 'short_rest'::text, 'long_rest'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, actor_id, name) [pk]
+  }
+}
+
+Table campaign.actor_state {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  max_hp integer [not null]
+  current_hp integer [not null]
+  temporary_hp integer [not null, default: `0`]
+  status text [not null, default: `'active'::text`]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(max_hp >= 0)`
+    `((current_hp >= 0) AND (current_hp <= max_hp))`
+    `(temporary_hp >= 0)`
+    `(status = ANY (ARRAY['active'::text, 'dead'::text, 'removed'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, actor_id) [pk]
+  }
+}
+
+Table campaign.actor_stats {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  abilities jsonb [not null]
+  armor_class integer [not null]
+  speed_m "double precision" [not null, check: `((speed_m > '-Infinity'::double precision) AND (speed_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(armor_class >= 0)`
+    `catalog.valid_abilities(abilities)`
+    `((speed_m)::double precision >= (0)::double precision)`
+  }
+
+  Indexes {
+    (campaign_id, actor_id) [pk]
+  }
+}
+
+Table campaign.actors {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  character_id uuid
+  template_id uuid
+  kind text [not null]
+  name text [not null]
+  visibility text [not null, default: `'dm'::text`, check: `(visibility = ANY (ARRAY['players'::text, 'dm'::text]))`, note: 'PostgreSQL domain campaign.visibility']
+  disposition text [not null, default: `'neutral'::text`]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(kind = ANY (ARRAY['character'::text, 'npc'::text, 'monster'::text]))`
+    `(length(btrim(name)) > 0)`
+    `(disposition = ANY (ARRAY['friendly'::text, 'neutral'::text, 'hostile'::text]))`
+    `((character_id IS NULL) OR (character_id = id))`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, id, rules_edition) [unique]
+    (template_id, rules_edition) [name: 'actors_template']
+  }
+}
+
+Table campaign.campaigns {
+  Note: 'FOREIGN KEY (id, owner_id, owner_role) REFERENCES campaign.memberships(campaign_id, user_id, role) DEFERRABLE INITIALLY DEFERRED'
+  id uuid [pk, not null]
+  owner_id uuid [not null]
+  city_id uuid
+  name text [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  owner_role text [not null, default: `'dm'::text`]
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+    `(owner_role = 'dm'::text)`
+  }
+
+  Indexes {
+    (id, rules_edition) [unique]
+    (city_id) [name: 'campaigns_city']
+    (owner_id) [name: 'campaigns_owner']
+  }
+}
+
+Table campaign.character_classes {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  class_entry_id uuid [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  level integer [not null]
+
+  Checks {
+    `((level >= 1) AND (level <= 20))`
+  }
+
+  Indexes {
+    (campaign_id, actor_id, class_entry_id) [pk]
+  }
+}
+
+Table campaign.character_equipment {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  name text [not null]
+  quantity integer [not null]
+  equipped boolean [not null]
+  attuned boolean [not null]
+  description text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+    `(quantity >= 0)`
+  }
+
+  Indexes {
+    (campaign_id, actor_id) [name: 'equipment_actor']
+  }
+}
+
+Table campaign.character_proficiencies {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  category text [not null]
+  name text [not null]
+  training text [not null]
+
+  Checks {
+    `(category = ANY (ARRAY['skill'::text, 'saving_throw'::text, 'tool'::text, 'weapon'::text, 'armor'::text]))`
+    `(length(btrim(name)) > 0)`
+    `(training = ANY (ARRAY['untrained'::text, 'half'::text, 'proficient'::text, 'expertise'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, actor_id, category, name) [pk]
+  }
+}
+
+Table campaign.character_sheets {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  ancestry text [not null]
+  background text [not null]
+  experience integer [not null]
+  biography text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(experience >= 0)`
+  }
+
+  Indexes {
+    (campaign_id, actor_id) [pk]
+  }
+}
+
+Table campaign.character_spells {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  knowledge_entry_id uuid [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  prepared boolean [not null]
+
+  Indexes {
+    (campaign_id, actor_id, knowledge_entry_id) [pk]
+  }
+}
+
+Table campaign.characters {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  controller_id uuid
+  name text [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, id, rules_edition) [unique]
+    (campaign_id, controller_id) [name: 'characters_controller']
+  }
+}
+
+Table campaign.conditions {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  character_id uuid
+  knowledge_entry_id uuid [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  remaining_rounds bigint [check: `((remaining_rounds >= 1) AND (remaining_rounds <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  actor_id uuid [not null]
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, character_id) [name: 'conditions_character']
+    (knowledge_entry_id, rules_edition) [name: 'conditions_knowledge']
+    (campaign_id, actor_id) [name: 'conditions_actor']
+  }
+}
+
+Table campaign.encounter_participants {
+  campaign_id uuid [not null]
+  encounter_id uuid [not null]
+  actor_id uuid [not null]
+  initiative integer
+
+  Indexes {
+    (campaign_id, encounter_id, actor_id) [pk]
+    (campaign_id, actor_id) [name: 'encounter_participants_actor']
+  }
+}
+
+Table campaign.encounters {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  place_id uuid
+  scene_id uuid
+  name text [not null]
+  status text [not null]
+  round_number integer [not null, default: `0`]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+    `(status = ANY (ARRAY['planned'::text, 'active'::text, 'completed'::text, 'cancelled'::text]))`
+    `(round_number >= 0)`
+    `((place_id IS NOT NULL) OR (scene_id IS NOT NULL))`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+  }
+}
+
+Table campaign.idempotency_keys {
+  campaign_id uuid [not null]
+  key uuid [not null]
+  event_id uuid [not null]
+  request jsonb [not null]
+
+  Indexes {
+    (campaign_id, key) [pk]
+    (campaign_id, event_id) [name: 'idempotency_event']
+  }
+}
+
+Table campaign.journal_entries {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  session_id uuid [not null]
+  body text [not null]
+  visibility text [not null, check: `(visibility = ANY (ARRAY['players'::text, 'dm'::text]))`, note: 'PostgreSQL domain campaign.visibility']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, session_id) [name: 'journal_session']
+    (campaign_id, id) [name: 'journal_players', note: 'PARTIAL WHERE ((visibility)::text = \'players\'::text)']
+  }
+}
+
+Table campaign.knowledge {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  title text [not null]
+  body text [not null]
+  visibility text [not null, check: `(visibility = ANY (ARRAY['players'::text, 'dm'::text]))`, note: 'PostgreSQL domain campaign.visibility']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+
+  Checks {
+    `(length(btrim(title)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, id) [name: 'knowledge_players', note: 'PARTIAL WHERE ((visibility)::text = \'players\'::text)']
+  }
+}
+
+Table campaign.memberships {
+  campaign_id uuid [not null]
+  user_id uuid [not null]
+  role text [not null]
+
+  Checks {
+    `(role = ANY (ARRAY['dm'::text, 'player'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, user_id) [pk]
+    (campaign_id, user_id, role) [unique]
+    (user_id, campaign_id) [name: 'memberships_user']
+  }
+}
+
+Table campaign.outbox {
+  event_id uuid [pk, not null]
+  campaign_id uuid [not null]
+  stream_revision bigint [not null, check: `((stream_revision >= 1) AND (stream_revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  kind text [not null]
+  scene_id uuid
+  travel_id uuid
+  published_at "timestamp with time zone"
+
+  Checks {
+    `(kind = ANY (ARRAY['scene_changed'::text, 'travel_updated'::text]))`
+    `(((kind = 'scene_changed'::text) AND (scene_id IS NOT NULL) AND (travel_id IS NULL)) OR ((kind = 'travel_updated'::text) AND (travel_id IS NOT NULL) AND (scene_id IS NULL)))`
+  }
+
+  Indexes {
+    (campaign_id, stream_revision) [unique]
+    (campaign_id, event_id) [unique]
+    (campaign_id, stream_revision) [name: 'outbox_pending', note: 'PARTIAL WHERE (published_at IS NULL)']
+    (campaign_id, scene_id) [name: 'outbox_scene']
+    (campaign_id, travel_id) [name: 'outbox_travel']
+  }
+}
+
+Table campaign.parties {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  name text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+  }
+}
+
+Table campaign.party_members {
+  campaign_id uuid [not null]
+  party_id uuid [not null]
+  actor_id uuid [not null]
+
+  Indexes {
+    (campaign_id, party_id, actor_id) [pk]
+    (campaign_id, actor_id) [name: 'party_members_actor']
+  }
+}
+
+Table campaign.place_occupants {
+  campaign_id uuid [not null]
+  place_id uuid [not null]
+  actor_id uuid [not null]
+  presence text [not null]
+  visibility text [not null, check: `(visibility = ANY (ARRAY['players'::text, 'dm'::text]))`, note: 'PostgreSQL domain campaign.visibility']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(presence = ANY (ARRAY['present'::text, 'away'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, place_id, actor_id) [pk]
+    (campaign_id, actor_id) [name: 'actor_current_place', unique, note: 'PARTIAL WHERE (presence = \'present\'::text)']
+  }
+}
+
+Table campaign.place_overrides {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  place_id uuid [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  name text [not null]
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, place_id) [unique]
+    (place_id) [name: 'overrides_place']
+  }
+}
+
+Table campaign.place_population_rules {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  place_id uuid [not null]
+  template_id uuid [not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  quantity_min integer [not null]
+  quantity_max integer [not null]
+  visibility text [not null, check: `(visibility = ANY (ARRAY['players'::text, 'dm'::text]))`, note: 'PostgreSQL domain campaign.visibility']
+  disposition text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(quantity_min > 0)`
+    `(quantity_max >= quantity_min)`
+    `(disposition = ANY (ARRAY['friendly'::text, 'neutral'::text, 'hostile'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+  }
+}
+
+Table campaign.population_runs {
+  campaign_id uuid [not null]
+  rule_id uuid [not null]
+
+  Indexes {
+    (campaign_id, rule_id) [pk]
+  }
+}
+
+Table campaign.population_spawned_actors {
+  campaign_id uuid [not null]
+  rule_id uuid [not null]
+  actor_id uuid [not null]
+
+  Indexes {
+    (campaign_id, rule_id, actor_id) [pk]
+    (campaign_id, actor_id) [name: 'population_spawned_actor']
+  }
+}
+
+Table campaign.scene_placements {
+  campaign_id uuid [not null]
+  scene_id uuid [not null]
+  actor_id uuid [not null]
+  x_m "double precision" [not null, check: `((x_m > '-Infinity'::double precision) AND (x_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  y_m "double precision" [not null, check: `((y_m > '-Infinity'::double precision) AND (y_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  z_m "double precision" [not null, check: `((z_m > '-Infinity'::double precision) AND (z_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  visibility text [not null, check: `(visibility = ANY (ARRAY['players'::text, 'dm'::text]))`, note: 'PostgreSQL domain campaign.visibility']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Indexes {
+    (campaign_id, scene_id, actor_id) [pk]
+  }
+}
+
+Table campaign.scenes {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  map_version_id uuid [not null]
+  name text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (map_version_id) [name: 'scenes_map']
+  }
+}
+
+Table campaign.sessions {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  title text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+
+  Checks {
+    `(length(btrim(title)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+  }
+}
+
+Table campaign.streams {
+  campaign_id uuid [pk, not null]
+  revision bigint [not null, default: `0`]
+
+  Checks {
+    `((revision >= 0) AND (revision <= '4294967295'::bigint))`
+  }
+}
+
+Table campaign.travel_participants {
+  campaign_id uuid [not null]
+  travel_id uuid [not null]
+  actor_id uuid [not null]
+
+  Indexes {
+    (campaign_id, travel_id, actor_id) [pk]
+    (campaign_id, actor_id) [name: 'travel_participants_actor']
+  }
+}
+
+Table campaign.travels {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  scene_id uuid [not null]
+  character_id uuid
+  x_m "double precision" [not null, check: `((x_m > '-Infinity'::double precision) AND (x_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  y_m "double precision" [not null, check: `((y_m > '-Infinity'::double precision) AND (y_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  z_m "double precision" [not null, check: `((z_m > '-Infinity'::double precision) AND (z_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  destination_x_m "double precision" [not null, check: `((destination_x_m > '-Infinity'::double precision) AND (destination_x_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  destination_y_m "double precision" [not null, check: `((destination_y_m > '-Infinity'::double precision) AND (destination_y_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  destination_z_m "double precision" [not null, check: `((destination_z_m > '-Infinity'::double precision) AND (destination_z_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  distance_m "double precision" [not null, check: `((distance_m > '-Infinity'::double precision) AND (distance_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  narrative_seconds "double precision" [not null, check: `((narrative_seconds > '-Infinity'::double precision) AND (narrative_seconds < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  visual_seconds "double precision" [not null, check: `((visual_seconds > '-Infinity'::double precision) AND (visual_seconds < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  status text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  party_id uuid
+
+  Checks {
+    `((distance_m)::double precision >= (0)::double precision)`
+    `((narrative_seconds)::double precision >= (0)::double precision)`
+    `((visual_seconds)::double precision >= (0)::double precision)`
+    `(status = ANY (ARRAY['planned'::text, 'moving'::text, 'completed'::text, 'cancelled'::text]))`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, scene_id) [name: 'travels_scene']
+    (campaign_id, character_id) [name: 'travels_character']
+  }
+}
+
+Table catalog.chunks {
+  id uuid [pk, not null]
+  map_version_id uuid [not null]
+  x_m "double precision" [not null, check: `((x_m > '-Infinity'::double precision) AND (x_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  y_m "double precision" [not null, check: `((y_m > '-Infinity'::double precision) AND (y_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  z_m "double precision" [not null, check: `((z_m > '-Infinity'::double precision) AND (z_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  size_m "double precision" [not null, check: `((size_m > '-Infinity'::double precision) AND (size_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  asset_uri text [not null]
+
+  Checks {
+    `((size_m)::double precision > (0)::double precision)`
+    `(length(btrim(asset_uri)) > 0)`
+  }
+
+  Indexes {
+    (map_version_id) [name: 'chunks_map']
+  }
+}
+
+Table catalog.cities {
+  id uuid [pk, not null]
+  era_id uuid [not null]
+  name text [not null]
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (era_id) [name: 'cities_era']
+  }
+}
+
+Table catalog.creature_actions {
+  id uuid [pk, not null]
+  template_id uuid [not null]
+  name text [not null]
+  kind text [not null]
+  description text [not null]
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+    `(kind = ANY (ARRAY['action'::text, 'bonus_action'::text, 'reaction'::text, 'passive'::text]))`
+  }
+
+  Indexes {
+    (template_id) [name: 'creature_actions_template']
+  }
+}
+
+Table catalog.creature_templates {
+  id uuid [pk, not null]
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  name text [not null]
+  creature_type text [not null]
+  size text [not null]
+  abilities jsonb [not null]
+  armor_class integer [not null]
+  max_hp integer [not null]
+  speed_m "double precision" [not null, check: `((speed_m > '-Infinity'::double precision) AND (speed_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  description text [not null]
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+    `catalog.valid_abilities(abilities)`
+    `(armor_class >= 0)`
+    `(max_hp >= 0)`
+    `((speed_m)::double precision >= (0)::double precision)`
+  }
+
+  Indexes {
+    (id, rules_edition) [unique]
+  }
+}
+
+Table catalog.districts {
+  id uuid [pk, not null]
+  city_id uuid [not null]
+  name text [not null]
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (city_id, id) [unique]
+  }
+}
+
+Table catalog.eras {
+  id uuid [pk, not null]
+  world_id uuid [not null]
+  name text [not null]
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (world_id) [name: 'eras_world']
+  }
+}
+
+Table catalog.knowledge_entries {
+  id uuid [pk, not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
+  language text [not null]
+  title text [not null]
+  body text [not null]
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+
+  Checks {
+    `(length(btrim(language)) > 0)`
+    `(length(btrim(title)) > 0)`
+  }
+
+  Indexes {
+    (id, rules_edition) [unique]
+  }
+}
+
+Table catalog.map_versions {
+  id uuid [pk, not null]
+  map_id uuid [not null]
+  city_id uuid
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  calibration jsonb
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+  calibrated boolean [note: 'GENERATED ALWAYS AS ((calibration IS NOT NULL)) STORED']
+
+  Checks {
+    `((calibration IS NULL) OR catalog.valid_calibration(calibration))`
+  }
+
+  Indexes {
+    (map_id, revision) [unique]
+    (city_id, id) [unique]
+    (city_id, id, calibrated) [unique]
+  }
+}
+
+Table catalog.maps {
+  id uuid [pk, not null]
+}
+
+Table catalog.place_anchors {
+  place_id uuid [not null]
+  map_version_id uuid [not null]
+  city_id uuid [not null]
+  x_m "double precision" [not null, check: `((x_m > '-Infinity'::double precision) AND (x_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  y_m "double precision" [not null, check: `((y_m > '-Infinity'::double precision) AND (y_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  z_m "double precision" [not null, check: `((z_m > '-Infinity'::double precision) AND (z_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+  calibrated boolean [not null, default: `true`]
+
+  Checks {
+    `calibrated`
+  }
+
+  Indexes {
+    (place_id, map_version_id) [pk]
+    (city_id, map_version_id) [name: 'anchors_map']
+  }
+}
+
+Table catalog.places {
+  id uuid [pk, not null]
+  city_id uuid [not null]
+  district_id uuid
+  name text [not null]
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+
+  Indexes {
+    (city_id, id) [unique]
+    (city_id, district_id) [name: 'places_district']
+  }
+}
+
+Table catalog.worlds {
+  id uuid [pk, not null]
+  name text [not null]
+  provenance jsonb [not null, check: `((jsonb_typeof(provenance) = 'object'::text) AND (provenance ?& ARRAY['source'::text, 'attribution'::text, 'evidence'::text]) AND (jsonb_typeof((provenance -> 'source'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'attribution'::text)) = 'string'::text) AND (jsonb_typeof((provenance -> 'evidence'::text)) = 'string'::text) AND ((provenance ->> 'evidence'::text) = ANY (ARRAY['verified'::text, 'interpretation'::text, 'synthetic'::text])))`, note: 'PostgreSQL domain catalog.provenance']
+
+  Checks {
+    `(length(btrim(name)) > 0)`
+  }
+}
+
+Table private.dm_secrets {
+  id uuid [pk, not null]
+  campaign_id uuid [not null]
+  place_id uuid
+  scene_id uuid
+  character_id uuid
+  session_id uuid
+  journal_entry_id uuid
+  campaign_knowledge_id uuid
+  travel_id uuid
+  place_override_id uuid
+  condition_id uuid
+  body text [not null]
+  revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
+  subject_id uuid [note: 'GENERATED ALWAYS AS (COALESCE(place_id, scene_id, character_id, session_id, journal_entry_id, campaign_knowledge_id, travel_id, place_override_id, condition_id)) STORED']
+  subject_kind text [note: 'GENERATED ALWAYS AS ( CASE     WHEN (place_id IS NOT NULL) THEN \'place\'::text     WHEN (scene_id IS NOT NULL) THEN \'scene\'::text     WHEN (character_id IS NOT NULL) THEN \'character\'::text     WHEN (session_id IS NOT NULL) THEN \'session\'::text     WHEN (journal_entry_id IS NOT NULL) THEN \'journal_entry\'::text     WHEN (campaign_knowledge_id IS NOT NULL) THEN \'campaign_knowledge\'::text     WHEN (travel_id IS NOT NULL) THEN \'travel\'::text     WHEN (place_override_id IS NOT NULL) THEN \'place_override\'::text     WHEN (condition_id IS NOT NULL) THEN \'condition\'::text     ELSE NULL::text END) STORED']
+
+  Checks {
+    `(num_nonnulls(place_id, scene_id, character_id, session_id, journal_entry_id, campaign_knowledge_id, travel_id, place_override_id, condition_id) = 1)`
+  }
+
+  Indexes {
+    (campaign_id, id) [unique]
+    (campaign_id, subject_kind, subject_id) [name: 'secrets_subject']
+  }
+}
+
+Table public.persistence_migrations {
+  version bigint [pk, not null]
+  sql text [not null]
+  installed_at "timestamp with time zone" [not null, default: `now()`]
+}
+
+Ref: campaign.actor_concentration.(campaign_id, actor_id, rules_edition) > campaign.actors.(campaign_id, id, rules_edition)
+Ref: campaign.actor_concentration.(knowledge_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
+Ref: campaign.actor_resources.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.actor_state.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.actor_stats.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.actors.(campaign_id, rules_edition) > campaign.campaigns.(id, rules_edition)
+Ref: campaign.actors.(campaign_id, character_id, rules_edition) > campaign.characters.(campaign_id, id, rules_edition)
+Ref: campaign.actors.(template_id, rules_edition) > catalog.creature_templates.(id, rules_edition)
+Ref: campaign.campaigns.(city_id) > catalog.cities.(id)
+Ref: campaign.campaigns.(id, owner_id, owner_role) > campaign.memberships.(campaign_id, user_id, role)
+Ref: campaign.character_classes.(campaign_id, actor_id) > campaign.character_sheets.(campaign_id, actor_id)
+Ref: campaign.character_classes.(campaign_id, actor_id, rules_edition) > campaign.actors.(campaign_id, id, rules_edition)
+Ref: campaign.character_classes.(class_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
+Ref: campaign.character_equipment.(campaign_id, actor_id) > campaign.character_sheets.(campaign_id, actor_id)
+Ref: campaign.character_proficiencies.(campaign_id, actor_id) > campaign.character_sheets.(campaign_id, actor_id)
+Ref: campaign.character_sheets.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.character_spells.(campaign_id, actor_id) > campaign.character_sheets.(campaign_id, actor_id)
+Ref: campaign.character_spells.(campaign_id, actor_id, rules_edition) > campaign.actors.(campaign_id, id, rules_edition)
+Ref: campaign.character_spells.(knowledge_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
+Ref: campaign.characters.(campaign_id, rules_edition) > campaign.campaigns.(id, rules_edition)
+Ref: campaign.characters.(campaign_id, controller_id) > campaign.memberships.(campaign_id, user_id)
+Ref: campaign.conditions.(campaign_id, character_id, rules_edition) > campaign.characters.(campaign_id, id, rules_edition)
+Ref: campaign.conditions.(knowledge_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
+Ref: campaign.conditions.(campaign_id, actor_id, rules_edition) > campaign.actors.(campaign_id, id, rules_edition)
+Ref: campaign.encounter_participants.(campaign_id, encounter_id) > campaign.encounters.(campaign_id, id)
+Ref: campaign.encounter_participants.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.encounters.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.encounters.(place_id) > catalog.places.(id)
+Ref: campaign.encounters.(campaign_id, scene_id) > campaign.scenes.(campaign_id, id)
+Ref: campaign.idempotency_keys.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.idempotency_keys.(campaign_id, event_id) > campaign.outbox.(campaign_id, event_id)
+Ref: campaign.journal_entries.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.journal_entries.(campaign_id, session_id) > campaign.sessions.(campaign_id, id)
+Ref: campaign.knowledge.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.memberships.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.outbox.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.outbox.(campaign_id, scene_id) > campaign.scenes.(campaign_id, id)
+Ref: campaign.outbox.(campaign_id, travel_id) > campaign.travels.(campaign_id, id)
+Ref: campaign.parties.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.party_members.(campaign_id, party_id) > campaign.parties.(campaign_id, id)
+Ref: campaign.party_members.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.place_occupants.(place_id) > catalog.places.(id)
+Ref: campaign.place_occupants.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.place_overrides.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.place_overrides.(place_id) > catalog.places.(id)
+Ref: campaign.place_population_rules.(place_id) > catalog.places.(id)
+Ref: campaign.place_population_rules.(campaign_id, rules_edition) > campaign.campaigns.(id, rules_edition)
+Ref: campaign.place_population_rules.(template_id, rules_edition) > catalog.creature_templates.(id, rules_edition)
+Ref: campaign.population_runs.(campaign_id, rule_id) > campaign.place_population_rules.(campaign_id, id)
+Ref: campaign.population_spawned_actors.(campaign_id, rule_id) > campaign.population_runs.(campaign_id, rule_id)
+Ref: campaign.population_spawned_actors.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.scene_placements.(campaign_id, scene_id) > campaign.scenes.(campaign_id, id)
+Ref: campaign.scene_placements.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.scenes.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.scenes.(map_version_id) > catalog.map_versions.(id)
+Ref: campaign.sessions.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.streams.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.travel_participants.(campaign_id, travel_id) > campaign.travels.(campaign_id, id)
+Ref: campaign.travel_participants.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.travels.(campaign_id) > campaign.campaigns.(id)
+Ref: campaign.travels.(campaign_id, scene_id) > campaign.scenes.(campaign_id, id)
+Ref: campaign.travels.(campaign_id, character_id) > campaign.characters.(campaign_id, id)
+Ref: campaign.travels.(campaign_id, party_id) > campaign.parties.(campaign_id, id)
+Ref: catalog.chunks.(map_version_id) > catalog.map_versions.(id)
+Ref: catalog.cities.(era_id) > catalog.eras.(id)
+Ref: catalog.creature_actions.(template_id) > catalog.creature_templates.(id)
+Ref: catalog.districts.(city_id) > catalog.cities.(id)
+Ref: catalog.eras.(world_id) > catalog.worlds.(id)
+Ref: catalog.map_versions.(map_id) > catalog.maps.(id)
+Ref: catalog.map_versions.(city_id) > catalog.cities.(id)
+Ref: catalog.place_anchors.(city_id, map_version_id) > catalog.map_versions.(city_id, id)
+Ref: catalog.place_anchors.(city_id, place_id) > catalog.places.(city_id, id)
+Ref: catalog.place_anchors.(city_id, map_version_id, calibrated) > catalog.map_versions.(city_id, id, calibrated)
+Ref: catalog.places.(city_id) > catalog.cities.(id)
+Ref: catalog.places.(city_id, district_id) > catalog.districts.(city_id, id)
+Ref: private.dm_secrets.(campaign_id) > campaign.campaigns.(id)
+Ref: private.dm_secrets.(place_id) > catalog.places.(id)
+Ref: private.dm_secrets.(campaign_id, scene_id) > campaign.scenes.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, character_id) > campaign.characters.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, session_id) > campaign.sessions.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, journal_entry_id) > campaign.journal_entries.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, campaign_knowledge_id) > campaign.knowledge.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, travel_id) > campaign.travels.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, place_override_id) > campaign.place_overrides.(campaign_id, id)
+Ref: private.dm_secrets.(campaign_id, condition_id) > campaign.conditions.(campaign_id, id)

@@ -1,8 +1,11 @@
-//! Generated v1 DTOs; validate JSON Schema constraints before accepting external data.
+//! v1 compatibility and tabletop resource DTOs; validate schemas before accepting external data.
 
+pub mod actors;
+pub mod adventure;
 pub mod campaign;
 pub mod catalog;
 pub mod common;
+pub mod sheets;
 pub mod transport;
 
 /// A nullable field is still required: omitting it is not the same as sending null.

@@ -329,3 +329,10 @@ from the pre-rebase 95.48 and is not a like-for-like regression measurement.
 The project gate remains `OK (partial)`, with integral approval pending manual
 coverage. The local Wasm gate is blocked because Homebrew Rust lacks the wasm32
 standard library and rustup; the remote `wasm-build` check must confirm it.
+
+## Expanded tabletop scope
+
+The user subsequently requested parties, sheets, creature instances and persistent
+place populations. The current expansion and its actual checks are recorded in
+[the tabletop report](../../docs/reports/d08-tabletop.md). The earlier head/gate
+results above describe their historical scopes, not approval of the expansion.
