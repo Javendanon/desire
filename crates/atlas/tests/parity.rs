@@ -1,7 +1,12 @@
 //! Parity with the TypeScript pipeline: each stage gives the reference result that
 //! `tools/assets/parity.ts` recorded in `fixtures/parity.json` from the same input.
 
+use desire_atlas::raster::RgbRaster;
 use desire_atlas::raster_ops::{Size, components, dilate, erode, majority};
+use desire_atlas::vectors::{
+    FrameSpec, MercatorFrame, Polyline, fill_polygons, measure_street_width, paint_polylines,
+};
+use serde::Deserialize;
 use desire_atlas::surface::{Surface, classify_pixel};
 
 const GOLDEN: &str = include_str!("fixtures/parity.json");
@@ -86,4 +91,74 @@ fn raster_operations_match_typescript_on_a_synthetic_raster() {
     assert_eq!(found.sizes.len() as u64, golden("components_count"));
     let largest = found.sizes.iter().copied().max().unwrap_or(0);
     assert_eq!(largest as u64, golden("components_largest"));
+}
+
+#[derive(Deserialize)]
+struct VectorInput {
+    frame: FrameSpec,
+    frame_points: Vec<[f64; 2]>,
+    rings: Vec<Vec<[f64; 2]>>,
+    lines: Vec<Polyline>,
+    street_lines: Vec<Vec<[f64; 2]>>,
+}
+
+#[derive(Deserialize)]
+struct VectorGolden {
+    frame_metres_per_pixel: f64,
+    frame_pixels: Vec<[f64; 2]>,
+    fill_fnv1a: u32,
+    fill_count: usize,
+    paint_fnv1a: u32,
+    paint_count: usize,
+    street_widths: Vec<f64>,
+}
+
+fn vector_case() -> (VectorInput, VectorGolden) {
+    let input = serde_json::from_str(include_str!("fixtures/vectors-input.json")).expect("input");
+    let golden: serde_json::Value = serde_json::from_str(GOLDEN).expect("golden json");
+    let golden = serde_json::from_value(golden["vectors"].clone()).expect("vector goldens");
+    (input, golden)
+}
+
+#[test]
+fn the_mercator_frame_projects_exactly_as_typescript() {
+    let (input, golden) = vector_case();
+    let frame = MercatorFrame::new(input.frame);
+    assert_eq!(frame.metres_per_pixel, golden.frame_metres_per_pixel);
+    for (point, expected) in input.frame_points.iter().zip(&golden.frame_pixels) {
+        assert_eq!(&frame.lng_lat_to_pixel(*point), expected, "{point:?}");
+    }
+}
+
+#[test]
+fn polygons_and_polylines_rasterise_as_in_typescript() {
+    let (input, golden) = vector_case();
+    let size = Size {
+        width: 200,
+        height: 150,
+    };
+    let mut filled = vec![0; size.pixels()];
+    fill_polygons(&mut filled, size, &input.rings);
+    assert_eq!(filled.iter().filter(|&&value| value == 1).count(), golden.fill_count);
+    assert_eq!(fnv1a(&filled), golden.fill_fnv1a);
+    let mut painted = vec![0; size.pixels()];
+    paint_polylines(&mut painted, size, &input.lines);
+    assert_eq!(painted.iter().filter(|&&value| value == 1).count(), golden.paint_count);
+    assert_eq!(fnv1a(&painted), golden.paint_fnv1a);
+}
+
+#[test]
+fn street_widths_measure_as_in_typescript() {
+    let (input, golden) = vector_case();
+    let raster = RgbRaster {
+        width: 301,
+        height: 203,
+        rgb: include_bytes!("fixtures/streets-301x203.rgb").to_vec(),
+    };
+    let widths: Vec<f64> = input
+        .street_lines
+        .iter()
+        .map(|line| measure_street_width(&raster, line))
+        .collect();
+    assert_eq!(widths, golden.street_widths);
 }

@@ -8,7 +8,11 @@
 import fs from 'node:fs';
 
 import { mulberry32 } from './src/random.ts';
+import { createMercatorFrame, type LngLat } from './src/raster/frame.ts';
+import { fillPolygons, type PixelRing } from './src/raster/polygon-fill.ts';
+import { paintPolylines, type PixelPolyline } from './src/raster/polyline.ts';
 import { components, dilate, erode, majority } from './src/raster/raster-ops.ts';
+import { measureStreetWidth } from './src/raster/street-width.ts';
 import { classifyPixel, Surface } from './src/raster/surface.ts';
 
 const FIXTURES = 'crates/atlas/tests/fixtures';
@@ -16,6 +20,11 @@ const GOLDEN = `${FIXTURES}/parity.json`;
 /** Synthetic class raster: odd sizes, so no operation can lean on powers of two. */
 const RASTER = { width: 257, height: 131 };
 const RASTER_FILE = `${FIXTURES}/classes-257x131.bin`;
+const VECTOR_INPUT = `${FIXTURES}/vectors-input.json`;
+const STREETS_RGB = `${FIXTURES}/streets-301x203.rgb`;
+const STREETS = { width: 301, height: 203 };
+/** The Tych z18 frame of Waterdeep. */
+const TYCH = { zoom: 18, west: -123.05626478690047, north: 38.33925568803595 };
 const COLOURS = 1 << 24;
 const FNV_OFFSET = 0x811c9dc5;
 const FNV_PRIME = 0x01000193;
@@ -75,14 +84,93 @@ function rasterOps(classes: Uint8Array) {
   };
 }
 
+/** Points across and beyond the map, including the frame's corner and its far edge. */
+function framePoints(): LngLat[] {
+  const random = mulberry32(0xf4a3e);
+  const points: LngLat[] = [[TYCH.west, TYCH.north], [-123.03, 38.33], [-123.0, 38.25]];
+  for (let point = 0; point < 40; point += 1) {
+    points.push([TYCH.west + random() * 0.04 - 0.005, TYCH.north - random() * 0.05 + 0.005]);
+  }
+  return points;
+}
+
+/** Rings with fractional corners: concave, overlapping, crossing the image edge. */
+function syntheticRings(): PixelRing[] {
+  return [
+    [[10.3, 12.7], [120.5, 8.1], [95.25, 60.5], [140.9, 110.2], [20.1, 95.6]],
+    [[80.5, 40.5], [190.2, 45.7], [205.4, 160.3], [70.6, 140.1]],
+    [[-15.2, 100.4], [40.8, 130.9], [5.5, 170.2]],
+  ];
+}
+
+function syntheticLines(): PixelPolyline[] {
+  return [
+    { width: 6.5, points: [[5.2, 5.7], [190.4, 30.1], [150.8, 120.6]] },
+    { width: 13, points: [[20.5, 140.5], [20.5, 60.5]] },
+    { width: 2.2, points: [[-10, 75.3], [215.6, 80.9]] },
+  ];
+}
+
+/** Light streets with dark 2 px outlines over brown ground, plus deterministic speckle. */
+function syntheticStreets(): Uint8Array {
+  const { width, height } = STREETS;
+  const random = mulberry32(0x57ee7);
+  const rgb = new Uint8Array(width * height * 3);
+  const paint = (inside: (x: number, y: number) => boolean, colour: number[]) => {
+    for (let index = 0; index < width * height; index += 1) {
+      if (inside(index % width, Math.floor(index / width))) rgb.set(colour, index * 3);
+    }
+  };
+  paint(() => true, [120, 96, 70]);
+  paint((_, y) => y >= 38 && y <= 59, [30, 20, 15]);
+  paint((_, y) => y >= 40 && y <= 57, [150, 144, 136]);
+  paint((x, y) => Math.abs(x - y * 0.8 - 90) <= 6, [30, 20, 15]);
+  paint((x, y) => Math.abs(x - y * 0.8 - 90) <= 4, [140, 132, 120]);
+  for (let index = 0; index < width * height; index += 1) {
+    if (random() < 0.01) rgb.set([200, 30, 30], index * 3);
+  }
+  return rgb;
+}
+
+const STREET_LINES: [number, number][][] = [
+  [[0, 48.5], [300, 48.5]],
+  [[90, 0], [250, 200]],
+  [[-50, 10], [-10, 10]],
+  [[150, 100], [150.4, 100.3]],
+];
+
+function vectorGoldens() {
+  const frame = createMercatorFrame(TYCH);
+  const size = { width: 200, height: 150 };
+  const filled = fillPolygons(new Uint8Array(size.width * size.height), size, syntheticRings());
+  const painted = paintPolylines(new Uint8Array(size.width * size.height), size, syntheticLines());
+  const raster = { rgb: syntheticStreets(), ...STREETS };
+  return {
+    frame_metres_per_pixel: frame.metresPerPixel,
+    frame_pixels: framePoints().map((point) => frame.lngLatToPixel(point)),
+    fill_fnv1a: hashOf(filled),
+    fill_count: filled.reduce((sum, value) => sum + value, 0),
+    paint_fnv1a: hashOf(painted),
+    paint_count: painted.reduce((sum, value) => sum + value, 0),
+    street_widths: STREET_LINES.map((line) => measureStreetWidth(raster, line)),
+  };
+}
+
 function goldens(classes: Uint8Array) {
-  return { classify_all_colours: classifyAllColours(), raster_ops: rasterOps(classes) };
+  return {
+    classify_all_colours: classifyAllColours(),
+    raster_ops: rasterOps(classes),
+    vectors: vectorGoldens(),
+  };
 }
 
 const classes = syntheticClasses();
 const files: [string, string | Uint8Array][] = [
   [GOLDEN, `${JSON.stringify(goldens(classes), null, 2)}\n`],
   [RASTER_FILE, classes],
+  [VECTOR_INPUT, `${JSON.stringify({ frame: TYCH, frame_points: framePoints(),
+    rings: syntheticRings(), lines: syntheticLines(), street_lines: STREET_LINES }, null, 2)}\n`],
+  [STREETS_RGB, syntheticStreets()],
 ];
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;
