@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { groundGeometry, planSectors } from '../src/lib/diorama/sector-streaming.ts';
+import { gridNormals, groundGeometry, planSectors } from '../src/lib/diorama/sector-streaming.ts';
 
 const grid = { columns: 4, rows: 3, size_m: 100 };
 
@@ -34,4 +34,38 @@ test('ground geometry puts vertices at cell centres with uvs across the tile tex
   assert.deepEqual([...geometry.positions.slice(12, 15)], [7, -2.5, 7]);
   assert.deepEqual([...geometry.uvs.slice(0, 2)], [0.25, 0.25]);
   assert.equal(geometry.indices.length, 2 * 2 * 6);
+});
+
+const near = (actual: Iterable<number>, expected: number[]) => {
+  [...actual].forEach((value, index) => assert.ok(Math.abs(value - expected[index]) < 1e-6,
+    `component ${index}: ${value} vs ${expected[index]}`));
+};
+
+/** A 3 × 3 grid of vertices 2 m apart with heights from `height(x, z)`. */
+const grid3 = (height: (x: number, z: number) => number) => Float32Array.from(
+  { length: 27 }, (_, at) => {
+    const [vertex, axis] = [Math.floor(at / 3), at % 3];
+    const [x, z] = [(vertex % 3) * 2, Math.floor(vertex / 3) * 2];
+    return [x, height(x, z), z][axis];
+  });
+
+test('grid normals point straight up over flat ground', () => {
+  const normals = gridNormals(grid3(() => 1), { across: 3, down: 3 });
+  assert.equal(normals.length, 27);
+  for (let vertex = 0; vertex < 9; vertex += 1) near(normals.slice(vertex * 3, vertex * 3 + 3), [0, 1, 0]);
+});
+
+test('grid normals lean away from the slope, at the edges too', () => {
+  // Rising 1 m per metre eastward: the normal is (-1, 1, 0) / √2 everywhere.
+  const normals = gridNormals(grid3((x) => x), { across: 3, down: 3 });
+  for (let vertex = 0; vertex < 9; vertex += 1) {
+    near(normals.slice(vertex * 3, vertex * 3 + 3), [-Math.SQRT1_2, Math.SQRT1_2, 0]);
+  }
+});
+
+test('ground geometry carries unit normals per vertex', () => {
+  const tile = { index: 0, width_px: 8, height_px: 8, cells_x: 2, cells_y: 2 };
+  const ground = { tile_px: 8, cell_px: 4, metres_per_pixel: 0.5, columns: 1 };
+  const geometry = groundGeometry(tile, ground, new Int16Array(9).fill(100));
+  near(geometry.normals, Array.from({ length: 27 }, (_, at) => Number(at % 3 === 1)));
 });
