@@ -2,7 +2,7 @@
 
 import * as pc from 'playcanvas';
 
-import { instanceBounds } from '../math/instance-bounds.ts';
+import { instanceBounds, MATRIX_FLOATS, type Bounds } from '../math/instance-bounds.ts';
 
 export interface MaterialSpec {
   color?: string;
@@ -86,8 +86,8 @@ export function instancedEntity(
   mat: pc.StandardMaterial,
   matrices: readonly pc.Mat4[],
 ): pc.Entity {
-  const data = new Float32Array(matrices.length * 16);
-  matrices.forEach((m, i) => data.set(m.data, i * 16));
+  const data = new Float32Array(matrices.length * MATRIX_FLOATS);
+  matrices.forEach((m, i) => data.set(m.data, i * MATRIX_FLOATS));
   return instancedData(app, { mesh, material: mat }, data);
 }
 
@@ -97,23 +97,22 @@ export interface InstancedLook {
   material: pc.StandardMaterial;
 }
 
-/** Conservative world box of column-major instance matrices. */
-export function boundsOf(data: Float32Array): pc.BoundingBox {
-  const { min, max } = instanceBounds(data);
+/** A pure box as the engine's bounding box. */
+export function boundingBox(bounds: Bounds): pc.BoundingBox {
   const box = new pc.BoundingBox();
-  box.setMinMax(new pc.Vec3(...min), new pc.Vec3(...max));
+  box.setMinMax(new pc.Vec3(...bounds.min), new pc.Vec3(...bounds.max));
   return box;
 }
 
 /** A static instanced batch from column-major matrices, 16 floats each. */
 export function instancedData(app: pc.AppBase, look: InstancedLook, data: Float32Array): pc.Entity {
   const entity = new pc.Entity('instanced');
-  const count = data.length / 16;
+  const count = data.length / MATRIX_FLOATS;
   if (count === 0) return entity;
   const format = pc.VertexFormat.getDefaultInstancingFormat(app.graphicsDevice);
   const buffer = new pc.VertexBuffer(app.graphicsDevice, format, count, { data });
   const instance = new pc.MeshInstance(look.mesh, look.material);
-  const box = boundsOf(data);
+  const box = boundingBox(instanceBounds(data));
   instance.setInstancing(buffer, true);
   entity.addComponent('render', {
     meshInstances: [instance],

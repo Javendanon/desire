@@ -9,11 +9,11 @@ import { buildEdgeHaze, tiltEdgeHaze, type EdgeHaze } from './edge-haze.ts';
 import { animateFleet, buildFleet, type Fleet } from './ships.ts';
 import type { Slice } from './slice-data.ts';
 import {
-  createStage, glowWindows, type Diorama, type DioramaOptions, type Mover, type Stage,
+  createStage, type Diorama, type DioramaOptions, type Mover, type Stage,
 } from './stage.ts';
 import type { TiledSlice } from './stress-slice.ts';
 import { buildTerrain } from './terrain.ts';
-import { buildTown } from './town.ts';
+import { buildTown, glowWindows } from './town.ts';
 
 export type { Diorama, DioramaOptions, DioramaStats } from './stage.ts';
 

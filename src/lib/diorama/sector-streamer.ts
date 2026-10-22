@@ -2,7 +2,8 @@
 // sectors to load and drop and which get full detail (sector-streaming.ts), and refreshes the
 // city-wide houses, ships and ambience (city-life.ts) with what changed. The Worker fetches,
 // decodes and plans; the frame loop puts at most one arrived ground tile on stage per frame, so
-// arrivals never stack into one long frame. A sector dropped while in flight is discarded.
+// arrivals never stack into one long frame. Requests are tracked by generation
+// (stream-ledger.ts): stale replies are discarded and their decoded images closed.
 
 import type * as pc from 'playcanvas';
 
@@ -10,11 +11,14 @@ import {
   addSector, dropSector, refreshLife, setDetail, type CityLife,
 } from './city-life.ts';
 import {
-  planSectors, sectorDetail, sectorDistance, type GridShape, type SectorDetail, type Target,
+  planSectors, sectorDetail, sectorDistance, type GridShape, type SectorDetail,
 } from './sector-streaming.ts';
 import type { Arrival, WorkerReply, WorkerRequest } from './sector-worker.ts';
 import { buildSectorView, type SectorKit, type SectorView } from './sector-view.ts';
 import type { Moment } from './stage.ts';
+import {
+  busy, capacity, claim, createLedger, place, release, settle, type Ledger,
+} from './stream-ledger.ts';
 
 /** Sectors load within this many camera distances plus metres of the target. */
 const REACH_PER_RADIUS = 1.5;
@@ -34,12 +38,13 @@ export interface StreamSpec {
 
 export interface Streamer {
   views: Map<number, SectorView>;
-  /** Requested and not yet on stage: in flight, or arrived and waiting to be built. */
-  pending: Set<number>;
+  ledger: Ledger;
+  /** Replies the Worker sent that the frame loop has not put on stage yet. */
   arrived: Arrival[];
-  failed: Set<number>;
   worker: Worker;
   sincePlan: number;
+  /** Seconds on the frame clock, for failure back-off. */
+  clock: number;
   /** The camera rig at the last plan, for the detail of sectors arriving after it. */
   rig: Moment['rig'] | null;
   spec: StreamSpec;
@@ -48,24 +53,23 @@ export interface Streamer {
 function request(streamer: Streamer, index: number) {
   const { base, listed, kit } = streamer.spec;
   const message: WorkerRequest = { base, index, hasSector: listed.has(index),
-    tile: kit.ground.tiles[index], grid: kit.ground, roofCentres: kit.roofCentres };
+    generation: claim(streamer.ledger, index), tile: kit.ground.tiles[index], grid: kit.ground,
+    roofCentres: kit.roofCentres };
   streamer.worker.postMessage(message);
-  streamer.pending.add(index);
 }
 
 function drop(streamer: Streamer, index: number) {
   streamer.views.get(index)?.release();
   streamer.views.delete(index);
+  release(streamer.ledger, index);
   dropSector(streamer.spec.life, index);
-  streamer.pending.delete(index);
-  streamer.failed.delete(index);
 }
 
 /** The detail a sector should have now, from its current one (hysteresis). */
 function detailOf(streamer: Streamer, index: number, current: SectorDetail): SectorDetail {
   const { rig } = streamer;
   if (!rig) return current;
-  const target: Target = { x: rig.target.x, z: rig.target.z };
+  const target = { x: rig.target.x, z: rig.target.z };
   const distance_m = sectorDistance(streamer.spec.grid, index, target);
   return sectorDetail({ distance_m, radius_m: rig.radius, current });
 }
@@ -78,16 +82,15 @@ function redetail(streamer: Streamer) {
 }
 
 function plan(streamer: Streamer, rig: Moment['rig']) {
-  const { views, pending, failed } = streamer;
   streamer.rig = rig;
   const { load, unload } = planSectors({
     grid: streamer.spec.grid,
-    loaded: [...views.keys(), ...pending, ...failed],
+    loaded: [...streamer.views.keys(), ...busy(streamer.ledger, streamer.clock)],
     target: { x: rig.target.x, z: rig.target.z },
     reach_m: rig.radius * REACH_PER_RADIUS + REACH_M,
   });
   unload.forEach((index) => drop(streamer, index));
-  load.slice(0, Math.max(0, MAX_IN_FLIGHT - pending.size)).forEach((index) =>
+  load.slice(0, capacity(streamer.ledger, MAX_IN_FLIGHT)).forEach((index) =>
     request(streamer, index));
   redetail(streamer);
   refreshLife(streamer.spec.life);
@@ -97,39 +100,38 @@ function plan(streamer: Streamer, rig: Moment['rig']) {
 function buildNext(streamer: Streamer, root: pc.Entity) {
   const arrival = streamer.arrived.shift();
   if (!arrival) return;
-  const { index } = arrival.assets;
-  if (!streamer.pending.delete(index)) {
-    arrival.assets.albedo.close();
+  if (!place(streamer.ledger, arrival.index, arrival.generation)) {
+    arrival.albedo.close();
     return;
   }
   const view = buildSectorView(streamer.spec.kit, arrival);
   root.addChild(view.root);
-  streamer.views.set(index, view);
-  const { berths = [] } = arrival.assets.sector ?? {};
-  addSector(streamer.spec.life, index, { ...arrival.plans, berths, banks: arrival.banks },
-    detailOf(streamer, index, 'far'));
+  streamer.views.set(arrival.index, view);
+  const { plans, berths, banks } = arrival;
+  addSector(streamer.spec.life, { index: arrival.index, sector: { ...plans, berths, banks },
+    detail: detailOf(streamer, arrival.index, 'far') });
 }
 
 function receive(streamer: Streamer, reply: WorkerReply) {
-  if (reply.kind === 'loaded') {
-    streamer.arrived.push(reply.arrival);
-    return;
-  }
-  streamer.pending.delete(reply.index);
-  streamer.failed.add(reply.index);
-  console.warn(`sector ${reply.index}: ${reply.message}`);
+  const ok = reply.kind === 'loaded';
+  const { index, generation } = ok ? reply.arrival : reply;
+  const verdict = settle(streamer.ledger, { index, generation, ok, now: streamer.clock });
+  if (ok && verdict === 'build') streamer.arrived.push(reply.arrival);
+  else if (ok) reply.arrival.albedo.close();
+  else console.warn(`sector ${index}: ${reply.message}`);
 }
 
 export function createStreamer(spec: StreamSpec): Streamer {
   const worker = new Worker(new URL('./sector-worker.ts', import.meta.url), { type: 'module' });
-  const streamer: Streamer = { views: new Map(), pending: new Set(), arrived: [],
-    failed: new Set(), worker, sincePlan: PLAN_EVERY_S, rig: null, spec };
+  const streamer: Streamer = { views: new Map(), ledger: createLedger(), arrived: [], worker,
+    sincePlan: PLAN_EVERY_S, clock: 0, rig: null, spec };
   worker.onmessage = (event: MessageEvent<WorkerReply>) => receive(streamer, event.data);
   return streamer;
 }
 
 /** Called every frame: replans now and then and builds one arrival. */
 export function streamSectors(streamer: Streamer, moment: Moment) {
+  streamer.clock = moment.time;
   streamer.sincePlan += moment.dt;
   if (streamer.sincePlan >= PLAN_EVERY_S) {
     streamer.sincePlan = 0;
@@ -140,5 +142,7 @@ export function streamSectors(streamer: Streamer, moment: Moment) {
 
 export function stopStreamer(streamer: Streamer) {
   streamer.worker.terminate();
+  streamer.arrived.forEach((arrival) => arrival.albedo.close());
+  streamer.arrived = [];
   [...streamer.views.keys()].forEach((index) => drop(streamer, index));
 }

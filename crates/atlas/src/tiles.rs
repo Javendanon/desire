@@ -1,8 +1,9 @@
 //! Ground tiles cut along the sector grid (`docs/waterdeep-3d/sector-format.md`, "Ground
 //! tiles"): an albedo rectangle per tile and a height tile whose vertices sit at cell centres.
 //! A height tile carries one extra vertex row and column from its neighbour, so tile meshes meet
-//! with no seam. Both are cut from fields computed over the whole map, so noise and smoothing are
-//! continuous across tiles.
+//! with no gap (shading may differ a hair at the shared vertices, whose normals are one-sided).
+//! Both are cut from fields computed over the whole map, so noise and smoothing are continuous
+//! across tiles.
 
 use rayon::prelude::*;
 

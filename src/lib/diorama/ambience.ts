@@ -155,12 +155,21 @@ function haloData(lamps: MarkerPoint[]): Float32Array {
   return data;
 }
 
-function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: MarkerPoint[]) {
-  const lamps = fronts.filter((front) => hasLantern(front.id));
+/**
+ * The lantern boxes. With none, no mesh or material is made: nothing would draw them, so nothing
+ * would release them either.
+ */
+function lanternBodies(app: pc.AppBase, lamps: MarkerPoint[]): pc.Entity {
+  if (lamps.length === 0) return new pc.Entity('lanterns');
   const lamp = material({ color: '#ffcf86', emissive: '#ffb35a',
     emissiveIntensity: LANTERN_GLOW });
   const cube = geometryMesh(app.graphicsDevice, new pc.BoxGeometry());
   const matrices = lamps.map((front) => trs([front.x, front.y, front.z], 0, LANTERN_SIZE));
+  return instancedEntity(app, cube, lamp, matrices);
+}
+
+function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: MarkerPoint[]) {
+  const lamps = fronts.filter((front) => hasLantern(front.id));
   const glow = hazeMaterial(disc,
     { colour: '#ffb35a', opacity: HALO_OPACITY, blend: pc.BLEND_ADDITIVEALPHA });
   useInstanceChunks(glow, haloChunks());
@@ -169,7 +178,7 @@ function buildLanterns(app: pc.AppBase, disc: pc.Texture, fronts: MarkerPoint[])
     boundsAround(lamps, { side: reach, below: reach, above: reach }));
   halos.data.set(haloData(lamps));
   halos.buffer.setData(halos.data);
-  halos.entity.addChild(instancedEntity(app, cube, lamp, matrices));
+  halos.entity.addChild(lanternBodies(app, lamps));
   return { entity: halos.entity, material: glow };
 }
 

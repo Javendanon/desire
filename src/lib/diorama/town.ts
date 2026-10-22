@@ -15,6 +15,7 @@ import type { SliceHouse } from './slice-data.ts';
 import { planTown } from './town-plan.ts';
 
 const ROOF_TILING = 3;
+const WINDOW_GLOW = 1.1;
 
 export interface TownSpec {
   houses: SliceHouse[];
@@ -62,6 +63,14 @@ export function lookOf(look: TownLook, key: string): InstancedLook {
     mesh: roof ? look.meshes[kind] : look.meshes.cube,
     material: roof ? look.roofs[Number(tone)] : look.walls[kind],
   };
+}
+
+/** Lit windows read at dusk: every town's wall materials glow a little. */
+export function glowWindows(walls: pc.StandardMaterial[]) {
+  for (const wall of walls) {
+    wall.emissiveIntensity = WINDOW_GLOW;
+    wall.update();
+  }
 }
 
 /** A whole town at full detail as static batches: the slice's houses. */

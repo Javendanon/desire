@@ -87,13 +87,23 @@ export function panGoal(goal: Rig, dx: number, dy: number) {
   goal.target.z += (dx * sin - dy * cos) * scale;
 }
 
-function turn(goal: Rig, dx: number, dy: number) {
+export function turnGoal(goal: Rig, dx: number, dy: number) {
   goal.azimuth -= dx * TURN_PER_PX;
   goal.polar = clamp(goal.polar - dy * TURN_PER_PX, POLAR_LIMITS);
 }
 
 function zoom(goal: Rig, delta: number) {
   goal.radius = clamp(goal.radius * Math.exp(delta * WHEEL_ZOOM), [MIN_RADIUS, MAX_RADIUS]);
+}
+
+/** What a wheel, pinch or swipe does to the goal: zoom, or drag the ground with the fingers. */
+const WHEEL_STEPS: Record<WheelIntent, (goal: Rig, wheel: WheelLike) => void> = {
+  zoom: (goal, wheel) => zoom(goal, wheel.deltaY),
+  pan: (goal, wheel) => panGoal(goal, -wheel.deltaX, -wheel.deltaY),
+};
+
+export function wheelStep(goal: Rig, wheel: WheelLike) {
+  WHEEL_STEPS[wheelIntent(wheel)](goal, wheel);
 }
 
 export interface OrbitBinding {
@@ -104,32 +114,38 @@ export interface OrbitBinding {
 
 type Listeners = [EventTarget, string, EventListener, AddEventListenerOptions?][];
 
+/**
+ * Drag turns, shift- or right-drag pans. Only the primary pointer steers, so a second finger
+ * cannot make the camera jump, and a cancelled or lost pointer ends the drag.
+ */
 function pointerListeners(canvas: HTMLCanvasElement, goal: Rig): Listeners {
   let last: Pointer | null = null;
   let panning = false;
   const down = (event: PointerEvent) => {
+    if (!event.isPrimary) return;
     canvas.setPointerCapture(event.pointerId);
     last = { x: event.clientX, y: event.clientY };
     panning = event.shiftKey || event.button === 2;
   };
   const move = (event: PointerEvent) => {
-    if (!last) return;
+    if (!last || !event.isPrimary) return;
     const [dx, dy] = [event.clientX - last.x, event.clientY - last.y];
     last = { x: event.clientX, y: event.clientY };
-    (panning ? panGoal : turn)(goal, dx, dy);
+    (panning ? panGoal : turnGoal)(goal, dx, dy);
   };
-  const up = () => {
+  const end = () => {
     last = null;
   };
+  const ends = ['pointerup', 'pointercancel', 'lostpointercapture'];
   return [[canvas, 'pointerdown', down as EventListener],
-    [canvas, 'pointermove', move as EventListener], [canvas, 'pointerup', up]];
+    [canvas, 'pointermove', move as EventListener],
+    ...ends.map((type): Listeners[number] => [canvas, type, end])];
 }
 
 function wheelListener(canvas: HTMLCanvasElement, goal: Rig): Listeners {
   const wheel = (event: WheelEvent) => {
     event.preventDefault();
-    if (wheelIntent(event) === 'zoom') zoom(goal, event.deltaY);
-    else panGoal(goal, -event.deltaX, -event.deltaY);
+    wheelStep(goal, event);
   };
   const menu = (event: Event) => event.preventDefault();
   return [[canvas, 'wheel', wheel as EventListener, { passive: false }],

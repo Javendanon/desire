@@ -4,7 +4,7 @@
 
 import * as pc from 'playcanvas';
 
-import { gridNormals } from './sector-streaming.ts';
+import { gridIndices, gridNormals } from './ground-mesh.ts';
 import type { Slice } from './slice-data.ts';
 
 const SMOOTH_PASSES = 2;
@@ -57,15 +57,8 @@ function gridGeometry(slice: Slice) {
       uvs.set([(column + 0.5) / columns, (row + 0.5) / rows], index * 2);
     }
   }
-  const indices: number[] = [];
-  for (let row = 0; row + 1 < rows; row += 1) {
-    for (let column = 0; column + 1 < columns; column += 1) {
-      const a = row * columns + column;
-      indices.push(a, a + columns, a + 1, a + 1, a + columns, a + columns + 1);
-    }
-  }
   return { positions, normals: gridNormals(positions, { across: columns, down: rows }), uvs,
-    indices };
+    indices: gridIndices(columns, rows) };
 }
 
 /** WebGPU takes canvases but not every image element as a texture source, as D11 found. */
@@ -106,7 +99,7 @@ export interface GroundMesh {
   positions: Float32Array;
   normals: Float32Array;
   uvs: Float32Array;
-  indices: number[] | Uint32Array;
+  indices: Uint32Array;
 }
 
 /** What a ground patch is drawn with, and how far it spans for the detail tiling. */

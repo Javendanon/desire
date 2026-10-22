@@ -12,14 +12,14 @@ import type { FogBank } from './ambience-plan.ts';
 import { animateAmbience, buildAmbience, type Ambience } from './ambience.ts';
 import { releaseGpu } from './gpu-release.ts';
 import {
-  createMergedBatch, fillMergedBatch, releaseMergedBatch, type MergedBatch,
+  createMergedBatch, emptyMergedBatch, fillMergedBatch, releaseMergedBatch, type MergedBatch,
 } from './merged-batch.ts';
 import type { SectorDetail } from './sector-streaming.ts';
 import { animateFleet, buildFleet, type Fleet } from './ships.ts';
 import type { SliceBerth } from './slice-data.ts';
-import { glowWindows, type Mover } from './stage.ts';
-import { lookOf, townLook, type TownLook } from './town.ts';
-import { mergePlans, type TownPlan } from './town-plan.ts';
+import type { Mover } from './stage.ts';
+import { glowWindows, lookOf, townLook, type TownLook } from './town.ts';
+import { layerParts, type TownPlan } from './town-plan.ts';
 
 /** What one sector contributes, at both levels of detail. */
 export interface SectorLife {
@@ -52,7 +52,6 @@ export interface CityLife {
 
 /** Only full-detail houses cast shadows: far ones would blur away in the shadow map. */
 const CASTS: Record<SectorDetail, boolean> = { near: true, far: false };
-const EMPTY = new Float32Array(0);
 
 export function createCityLife(app: pc.AppBase, textures: Textures, tones: string[]): CityLife {
   const look = townLook(app.graphicsDevice, textures, tones);
@@ -63,11 +62,17 @@ export function createCityLife(app: pc.AppBase, textures: Textures, tones: strin
     layers: { near: new Map(), far: new Map() }, dirty: new Set(), living: null };
 }
 
-export function addSector(life: CityLife, index: number, sector: SectorLife,
-  detail: SectorDetail) {
-  life.sectors.set(index, sector);
-  life.detail.set(index, detail);
-  life.dirty.add(detail).add('living');
+/** A sector arriving on stage at its first level of detail. */
+export interface Newcomer {
+  index: number;
+  sector: SectorLife;
+  detail: SectorDetail;
+}
+
+export function addSector(life: CityLife, newcomer: Newcomer) {
+  life.sectors.set(newcomer.index, newcomer.sector);
+  life.detail.set(newcomer.index, newcomer.detail);
+  life.dirty.add(newcomer.detail).add('living');
 }
 
 export function dropSector(life: CityLife, index: number) {
@@ -101,23 +106,27 @@ function batchFor(life: CityLife, detail: SectorDetail, key: string): MergedBatc
 }
 
 function refillLayer(life: CityLife, detail: SectorDetail) {
-  const merged = mergePlans(sectorsAt(life, detail).map((sector) => sector[detail]));
+  const layer = layerParts(sectorsAt(life, detail).map((sector) => sector[detail]));
   const device = life.app.graphicsDevice;
   for (const [key, batch] of life.layers[detail]) {
-    if (!(key in merged)) fillMergedBatch(device, batch, EMPTY);
+    if (!(key in layer)) emptyMergedBatch(batch);
   }
-  for (const [key, data] of Object.entries(merged)) {
-    fillMergedBatch(device, batchFor(life, detail, key), data);
+  for (const [key, part] of Object.entries(layer)) {
+    fillMergedBatch(device, batchFor(life, detail, key), part);
   }
+}
+
+function releaseLiving(life: CityLife) {
+  if (!life.living) return;
+  const shared = new Set(Object.values(life.textures));
+  releaseGpu(life.living.fleet.root, shared);
+  releaseGpu(life.living.ambience.root, shared);
+  life.living = null;
 }
 
 /** Ships at every berth, smoke and lanterns on near houses, fog over all loaded water. */
 function rebuildLiving(life: CityLife) {
-  const shared = new Set(Object.values(life.textures));
-  if (life.living) {
-    releaseGpu(life.living.fleet.root, shared);
-    releaseGpu(life.living.ambience.root, shared);
-  }
+  releaseLiving(life);
   const all = [...life.sectors.values()];
   const near = sectorsAt(life, 'near').map((sector) => sector.near);
   const fleet = buildFleet(life.app, all.flatMap((sector) => sector.berths), life.textures);
@@ -149,6 +158,7 @@ export const lifeMover = (life: CityLife): Mover => (moment) => {
 };
 
 export function releaseLife(life: CityLife) {
+  releaseLiving(life);
   for (const layer of Object.values(life.layers)) layer.forEach(releaseMergedBatch);
   life.root.destroy();
 }

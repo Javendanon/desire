@@ -7,7 +7,7 @@ import * as pc from 'playcanvas';
 
 import type { Textures } from '../engine/render/textures.ts';
 import { releaseGpu } from './gpu-release.ts';
-import type { GroundGrid, GroundTile } from './sector-streaming.ts';
+import type { GroundGrid, GroundTile } from './ground-mesh.ts';
 import type { Arrival } from './sector-worker.ts';
 import { groundEntity } from './terrain.ts';
 
@@ -25,28 +25,26 @@ export interface SectorView {
   release(): void;
 }
 
-function groundTile(kit: SectorKit, tile: GroundTile, arrival: Arrival) {
+function groundTile(kit: SectorKit, arrival: Arrival) {
   const { ground } = kit;
-  const { assets, geometry } = arrival;
+  const tile = ground.tiles[arrival.index];
   const extent_m: [number, number] = [tile.width_px * ground.metres_per_pixel,
     tile.height_px * ground.metres_per_pixel];
-  return groundEntity(kit.app, geometry, { albedo: assets.albedo, detail: kit.textures.cobble,
-    extent_m });
+  return groundEntity(kit.app, arrival.geometry, { albedo: arrival.albedo,
+    detail: kit.textures.cobble, extent_m });
 }
 
 /** Builds a loaded sector's ground under one root, added to the scene by the caller. */
 export function buildSectorView(kit: SectorKit, arrival: Arrival): SectorView {
-  const { assets } = arrival;
-  const tile = kit.ground.tiles[assets.index];
-  const root = new pc.Entity(`sector-${assets.index}`);
-  root.addChild(groundTile(kit, tile, arrival));
+  const root = new pc.Entity(`sector-${arrival.index}`);
+  root.addChild(groundTile(kit, arrival));
   const shared = new Set(Object.values(kit.textures));
   return {
     root,
-    houses: assets.sector?.houses.length ?? 0,
+    houses: arrival.houses,
     release: () => {
       releaseGpu(root, shared);
-      assets.albedo.close();
+      arrival.albedo.close();
     },
   };
 }

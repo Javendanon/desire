@@ -126,10 +126,15 @@ const FOG_WATER_M2_PER_BANK = 6300;
 export const FOG_SIZE_M: [number, number] = [70, 170];
 const FOG_HEIGHT_M: [number, number] = [2.5, 7];
 const FOG_SEED = 0x5e7;
+/** Banks are flatter than wide: depth as a share of a drawn size. */
+const FOG_DEPTH_SHARE = 0.6;
+/** Coprime weights that fold a field's origin into its seed. */
+const ORIGIN_MIX: [number, number] = [7, 13];
 
 /** A field's seed follows its origin, so its banks stay put whatever else is loaded. */
 const seedOf = (water: WaterField) =>
-  (FOG_SEED ^ Math.round(water.origin.x_m * 7 + water.origin.z_m * 13)) >>> 0;
+  (FOG_SEED ^ Math.round(water.origin.x_m * ORIGIN_MIX[0] + water.origin.z_m * ORIGIN_MIX[1]))
+    >>> 0;
 
 /** Fog banks over one field's water, at the slice's density per area. O(cells). */
 export function fogBanks(water: WaterField): FogBank[] {
@@ -143,7 +148,7 @@ export function fogBanks(water: WaterField): FogBank[] {
     z: spot.z + water.origin.z_m,
     y: between(random, ...FOG_HEIGHT_M),
     width: between(random, ...FOG_SIZE_M),
-    depth: between(random, ...FOG_SIZE_M) * 0.6,
+    depth: between(random, ...FOG_SIZE_M) * FOG_DEPTH_SHARE,
     phase: random() * Math.PI * 2,
   }));
 }

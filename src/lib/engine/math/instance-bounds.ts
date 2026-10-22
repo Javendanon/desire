@@ -9,7 +9,8 @@ export interface Bounds {
   max: Triple;
 }
 
-const MATRIX_FLOATS = 16;
+/** Floats in one column-major 4 × 4 instance matrix. */
+export const MATRIX_FLOATS = 16;
 const TRANSLATION = 12;
 
 /** O(instances). */
@@ -24,6 +25,19 @@ export function instanceBounds(data: Float32Array): Bounds {
       const centre = data[start + TRANSLATION + axis];
       min[axis] = Math.min(min[axis], centre - reach);
       max[axis] = Math.max(max[axis], centre + reach);
+    }
+  }
+  return { min, max };
+}
+
+/** The smallest box holding every given box. O(boxes). */
+export function unionBounds(boxes: Bounds[]): Bounds {
+  const min: Triple = [Infinity, Infinity, Infinity];
+  const max: Triple = [-Infinity, -Infinity, -Infinity];
+  for (const box of boxes) {
+    for (let axis = 0; axis < 3; axis += 1) {
+      min[axis] = Math.min(min[axis], box.min[axis]);
+      max[axis] = Math.max(max[axis], box.max[axis]);
     }
   }
   return { min, max };

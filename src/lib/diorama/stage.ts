@@ -27,7 +27,6 @@ const SHADOW_PER_RADIUS = 1.6;
 const MIN_SHADOW_DISTANCE_M = 120;
 const TEXTURE_SEED = 7;
 const SKY_RADIUS_M = 3000;
-const WINDOW_GLOW = 1.1;
 /** Below the engine default: the warm light saturates enough. */
 const GRADING_SATURATION = 0.86;
 /**
@@ -143,14 +142,6 @@ function applyQuality(app: pc.AppBase, frame: pc.CameraFrame, quality: QualitySe
   if (!quality.ssao) frame.ssao.type = pc.SSAOTYPE_NONE;
   if (!quality.bloom) frame.bloom.intensity = 0;
   frame.update();
-}
-
-/** Lit windows read at dusk: every town's wall materials glow a little. */
-export function glowWindows(walls: pc.StandardMaterial[]) {
-  for (const wall of walls) {
-    wall.emissiveIntensity = WINDOW_GLOW;
-    wall.update();
-  }
 }
 
 type Lights = {

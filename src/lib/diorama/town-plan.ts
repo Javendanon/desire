@@ -5,6 +5,10 @@
 //   and street doors that smoke and lanterns hang from;
 // - far: one wall box the full wall height and the roof, for houses too far to show more.
 
+import {
+  instanceBounds, unionBounds, type Bounds,
+} from '../engine/math/instance-bounds.ts';
+import { shareOf } from '../engine/math/rng.ts';
 import { planHouse, STOREY_M, type HousePlan } from './house-plan.ts';
 import { roofTones, type Rgb } from './roof-palette.ts';
 import type { SliceHouse } from './slice-data.ts';
@@ -18,7 +22,10 @@ const GABLE_PITCH = 0.85;
 const HIP_PITCH = 0.6;
 const CHIMNEY_SIZE: Triple = [0.7, 2.4, 0.7];
 const DORMER_SIZE: Triple = [1.5, 1.3, 1.2];
-const FLOATS_PER_MATRIX = 16;
+/** Street lanterns hang this high beside the door. */
+const LANTERN_HEIGHT_M = 2.6;
+/** Salt for which side of the ridge a chimney stands on, chosen by house id. */
+const CHIMNEY_SIDE_SALT = 0xc41d;
 
 export type Triple = [number, number, number];
 export type Detail = 'near' | 'far';
@@ -36,13 +43,15 @@ export type Batches = Record<string, Float32Array>;
 
 export interface TownPlan {
   batches: Batches;
+  /** World box of each batch's instances. */
+  bounds: Record<string, Bounds>;
   /** Roof tone colours, indexed by the tone in a roof key. */
   tones: string[];
   chimneyTops: MarkerPoint[];
   fronts: MarkerPoint[];
 }
 
-export interface TownSpec {
+export interface TownPlanSpec {
   /** City-wide roof tone centres (index.json). Without them, tones come from these houses. */
   roofCentres?: Rgb[];
   detail: Detail;
@@ -113,7 +122,7 @@ function addRoof(draft: Draft, placed: Placed) {
 function addChimney(draft: Draft, placed: Placed, markers: Markers) {
   const { house, plan } = placed;
   if (!plan.chimney) return;
-  const side = (house.center.x_m * 7 + house.center.z_m) % 2 > 1 ? 1 : -1;
+  const side = shareOf(house.id, CHIMNEY_SIDE_SALT) < 0.5 ? 1 : -1;
   const y = GROUND_Y + plan.wallHeight + house.width_m * pitchOf(plan) * 0.55;
   const at: Triple = [side * house.width_m * 0.2, y, roofDepth(placed) * 0.2];
   push(draft, 'chimney', { house, part: { at, size: CHIMNEY_SIZE } });
@@ -134,7 +143,7 @@ function addDormer(draft: Draft, placed: Placed) {
 function addFront(placed: Placed, markers: Markers) {
   if (!placed.house.frontage) return;
   const [x, , z] = local(placed.house, [0, 0, -(roofDepth(placed) / 2 + 0.25)]);
-  markers.fronts.push({ x, y: GROUND_Y + 2.6, z, id: placed.house.id });
+  markers.fronts.push({ x, y: GROUND_Y + LANTERN_HEIGHT_M, z, id: placed.house.id });
 }
 
 type Builder = (draft: Draft, placed: Placed, markers: Markers) => void;
@@ -149,8 +158,11 @@ const BUILDERS: Record<Detail, Builder[]> = {
 const sealed = (draft: Draft): Batches =>
   Object.fromEntries([...draft].map(([key, list]) => [key, Float32Array.from(list)]));
 
+const boundsOf = (batches: Batches): Record<string, Bounds> =>
+  Object.fromEntries(Object.entries(batches).map(([key, data]) => [key, instanceBounds(data)]));
+
 /** Every house's parts at the given detail. O(houses). */
-export function planTown(houses: SliceHouse[], spec: TownSpec): TownPlan {
+export function planTown(houses: SliceHouse[], spec: TownPlanSpec): TownPlan {
   const palette = roofTones(houses, spec.roofCentres);
   const draft: Draft = new Map();
   const markers: Markers = { chimneyTops: [], fronts: [] };
@@ -159,27 +171,36 @@ export function planTown(houses: SliceHouse[], spec: TownSpec): TownPlan {
     const placed = { house, plan: planHouse(house), tone: palette.labels[index] };
     for (const build of builders) build(draft, placed, markers);
   });
-  return { batches: sealed(draft), tones: palette.colours, ...markers };
+  const batches = sealed(draft);
+  return { batches, bounds: boundsOf(batches), tones: palette.colours, ...markers };
 }
 
-/** The plans' batches concatenated key by key, in plan order. O(instances). */
-export function mergePlans(plans: TownPlan[]): Batches {
-  const sizes = new Map<string, number>();
-  for (const plan of plans) {
-    for (const [key, data] of Object.entries(plan.batches)) {
-      sizes.set(key, (sizes.get(key) ?? 0) + data.length);
-    }
-  }
-  const merged: Batches = Object.fromEntries([...sizes].map(([key, size]) =>
-    [key, new Float32Array(size)]));
-  const filled = new Map<string, number>();
-  for (const plan of plans) {
-    for (const [key, data] of Object.entries(plan.batches)) {
-      merged[key].set(data, filled.get(key) ?? 0);
-      filled.set(key, (filled.get(key) ?? 0) + data.length);
-    }
-  }
-  return merged;
+/** One batch key over many plans: their instance arrays in order, uncopied. */
+export interface LayerPart {
+  parts: Float32Array[];
+  /** Floats over all parts. */
+  floats: number;
+  bounds: Bounds;
 }
 
-export const instanceCount = (data: Float32Array) => data.length / FLOATS_PER_MATRIX;
+type Group = {
+  parts: Float32Array[];
+  boxes: Bounds[];
+};
+
+/** The plans' instances grouped by key, in plan order, with joint bounds. O(plans · keys). */
+export function layerParts(plans: TownPlan[]): Record<string, LayerPart> {
+  const grouped = new Map<string, Group>();
+  for (const plan of plans) {
+    for (const [key, data] of Object.entries(plan.batches)) {
+      const group = grouped.get(key) ?? grouped.set(key, { parts: [], boxes: [] }).get(key)!;
+      group.parts.push(data);
+      group.boxes.push(plan.bounds[key]);
+    }
+  }
+  return Object.fromEntries([...grouped].map(([key, group]) => [key, {
+    parts: group.parts,
+    floats: group.parts.reduce((sum, data) => sum + data.length, 0),
+    bounds: unionBounds(group.boxes),
+  }]));
+}

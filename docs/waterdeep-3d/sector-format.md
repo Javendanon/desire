@@ -84,7 +84,7 @@ bottom edges). Every grid tile is written, sea included.
 - **Vertices sit at cell centres.** Vertex `(i, j)` of tile `index` is the centre of map cell
   `(column + i, row + j)`, where `column` and `row` are the tile's first cell. A tile carries one
   extra vertex column and row taken from its right and lower neighbour, so meshes of
-  neighbouring tiles share their edge vertices and close with no seam. At the map's edge the
+  neighbouring tiles share their edge vertices and close with no gap. At the map's edge the
   last cell repeats.
 - **Seamless by construction.** The albedo noise uses map-wide pixel coordinates, and the heights
   are smoothed (two 3 × 3 box passes) over the whole map before cutting. No tile edge shows in
