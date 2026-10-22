@@ -12,6 +12,7 @@ import { createMercatorFrame, type LngLat } from './src/raster/frame.ts';
 import { fillPolygons, type PixelRing } from './src/raster/polygon-fill.ts';
 import { paintPolylines, type PixelPolyline } from './src/raster/polyline.ts';
 import { components, dilate, erode, majority } from './src/raster/raster-ops.ts';
+import { blockMask, traceBlocks } from './src/raster/blocks.ts';
 import { refineSurfaces } from './src/raster/refine.ts';
 import { measureStreetWidth } from './src/raster/street-width.ts';
 import { classifyPixel, Surface } from './src/raster/surface.ts';
@@ -22,6 +23,9 @@ const GOLDEN = `${FIXTURES}/parity.json`;
 const RASTER = { width: 257, height: 131 };
 const RASTER_FILE = `${FIXTURES}/classes-257x131.bin`;
 const VECTOR_INPUT = `${FIXTURES}/vectors-input.json`;
+const BLOCKS_GOLDEN = `${FIXTURES}/blocks-golden.json`;
+/** Scaled to the synthetic raster: small blocks kept, 1.5 px tolerance as on the map. */
+const TRACE = { minAreaPx: 30, tolerancePx: 1.5, minHoleAreaPx: 6 };
 const STREETS_RGB = `${FIXTURES}/streets-301x203.rgb`;
 const STREETS = { width: 301, height: 203 };
 /** The Tych z18 frame of Waterdeep. */
@@ -177,6 +181,14 @@ function refineGolden(classes: Uint8Array) {
   return { fnv1a: hashOf(refined), counts };
 }
 
+/** Blocks traced from the refined synthetic raster, all of it urban. */
+function syntheticBlocks(classes: Uint8Array) {
+  const urban = fillPolygons(new Uint8Array(classes.length), RASTER, [REFINE.urban]);
+  const refined = refineSurfaces({ classes, size: RASTER, streets: REFINE.streets, urban,
+    ...REFINE.params });
+  return traceBlocks(blockMask(refined, urban), RASTER, TRACE);
+}
+
 function goldens(classes: Uint8Array) {
   return {
     classify_all_colours: classifyAllColours(),
@@ -194,6 +206,7 @@ const files: [string, string | Uint8Array][] = [
     rings: syntheticRings(), lines: syntheticLines(), street_lines: STREET_LINES,
     refine: REFINE }, null, 2)}\n`],
   [STREETS_RGB, syntheticStreets()],
+  [BLOCKS_GOLDEN, `${JSON.stringify({ trace: TRACE, blocks: syntheticBlocks(classes) })}\n`],
 ];
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;

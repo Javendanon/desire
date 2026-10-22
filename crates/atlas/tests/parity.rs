@@ -1,6 +1,7 @@
 //! Parity with the TypeScript pipeline: each stage gives the reference result that
 //! `tools/assets/parity.ts` recorded in `fixtures/parity.json` from the same input.
 
+use desire_atlas::blocks::{Block, TraceOptions, block_mask, trace_blocks};
 use desire_atlas::raster::RgbRaster;
 use desire_atlas::raster_ops::{Size, components, dilate, erode, majority};
 use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
@@ -222,4 +223,29 @@ fn refinement_matches_typescript_on_a_synthetic_raster() {
         );
     }
     assert_eq!(u64::from(fnv1a(&refined)), golden_number("refine", "fnv1a"));
+}
+
+#[derive(Deserialize)]
+struct BlocksGolden {
+    trace: TraceOptions,
+    blocks: Vec<Block>,
+}
+
+#[test]
+fn blocks_trace_as_in_typescript() {
+    let (input, _) = vector_case();
+    let case = input.refine;
+    let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
+    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    let input = RefineInput {
+        classes: SYNTHETIC,
+        size: SYNTHETIC_SIZE,
+        streets: &case.streets,
+        urban: Some(&urban),
+    };
+    let refined = refine_surfaces(&input, &case.params);
+    let golden: BlocksGolden =
+        serde_json::from_str(include_str!("fixtures/blocks-golden.json")).expect("golden");
+    let blocks = trace_blocks(&block_mask(&refined, &urban), SYNTHETIC_SIZE, &golden.trace);
+    assert_eq!(blocks, golden.blocks);
 }
