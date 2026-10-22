@@ -21,3 +21,20 @@ fn numbers_print_as_json_stringify_does() {
         assert_eq!(number(value), expected, "{value:?}");
     }
 }
+
+#[test]
+fn non_finite_numbers_write_as_json_null() {
+    // `JSON.stringify` writes NaN and ±Infinity as null.
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert_eq!(js::number(value), "null", "{value}");
+    }
+}
+
+#[test]
+fn hypot_with_an_infinity_is_infinite_even_beside_nan() {
+    // V8: any ±Infinity argument wins over NaN; otherwise NaN propagates.
+    assert_eq!(js::hypot(&[f64::INFINITY, f64::NAN]), f64::INFINITY);
+    assert_eq!(js::hypot(&[f64::NAN, f64::NEG_INFINITY]), f64::INFINITY);
+    assert!(js::hypot(&[f64::NAN, 3.0]).is_nan());
+    assert_eq!(js::hypot(&[3.0, 4.0]), 5.0);
+}
