@@ -2,6 +2,7 @@
 //! (`JSON.stringify`, no spaces), so the two can be compared with `cmp`.
 
 use crate::blocks::Block;
+use crate::houses::MapHouse;
 use crate::js;
 use crate::vectors::{MercatorFrame, PixelPoint};
 
@@ -42,5 +43,39 @@ pub fn blocks_json(blocks: &[Block], frame: &MercatorFrame) -> String {
         "{{\"metres_per_pixel\":{},\"blocks\":[{}]}}\n",
         js::number(frame.metres_per_pixel),
         blocks.join(",")
+    )
+}
+
+fn house(entry: &MapHouse) -> String {
+    let house = &entry.house;
+    let [r, g, b] = entry.roof_rgb;
+    format!(
+        concat!(
+            r#"{{"center":{{"x_m":{},"z_m":{}}},"width_m":{},"depth_m":{},"#,
+            r#""rotation_radians":{},"frontage":{},"height_m":{},"roof_rgb":[{},{},{}],"#,
+            r#""block":{},"id":{}}}"#
+        ),
+        js::number(house.center.x_m),
+        js::number(house.center.z_m),
+        js::number(house.width_m),
+        js::number(house.depth_m),
+        js::number(house.rotation_radians),
+        house.frontage,
+        js::number(entry.height_m),
+        r,
+        g,
+        b,
+        entry.block,
+        entry.id
+    )
+}
+
+/// A houses layer (`houses-*.json`): placed houses in map metres, in block and lot order.
+pub fn houses_json(houses: &[MapHouse], metres_per_pixel: f64) -> String {
+    let houses: Vec<String> = houses.iter().map(house).collect();
+    format!(
+        "{{\"metres_per_pixel\":{},\"houses\":[{}]}}\n",
+        js::number(metres_per_pixel),
+        houses.join(",")
     )
 }

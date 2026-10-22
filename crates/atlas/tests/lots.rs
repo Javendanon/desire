@@ -47,7 +47,12 @@ fn lots_are_placed_as_in_typescript() {
             seed: case.seed,
             is_built: &is_built,
         };
-        let block = BlockShape { outer: case.outer, holes: case.holes };
-        assert_eq!(place_houses(&block, &rules), case.houses, "seed {}", case.seed);
+        let block = BlockShape {
+            outer: case.outer,
+            holes: case.holes,
+        };
+        let lots = place_houses(&block, &rules);
+        let houses: Vec<House> = lots.into_iter().map(|lot| lot.house).collect();
+        assert_eq!(houses, case.houses, "seed {}", case.seed);
     }
 }

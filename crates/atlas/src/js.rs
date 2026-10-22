@@ -46,12 +46,21 @@ pub fn median(values: &mut [f64]) -> f64 {
     values[values.len() / 2]
 }
 
-/// A number as `JSON.stringify` writes it: integers without a decimal point, other values in
-/// their shortest round-trip form (Rust's `Display` already is). Values stay far from the
-/// exponent ranges (below 1e-6 or from 1e21) where JavaScript would switch notation.
+/// A number as `JSON.stringify` writes it: shortest round-trip digits, integers without a
+/// decimal point, magnitudes below 1e-6 or from 1e21 in exponent form (`-1.2e-17`, `1e+21`).
 pub fn number(value: f64) -> String {
-    if value.fract() == 0.0 && value.abs() < 1e21 {
-        format!("{}", value as i64)
+    let magnitude = value.abs();
+    if value != 0.0 && !(1e-6..1e21).contains(&magnitude) {
+        let text = format!("{value:e}");
+        return if magnitude >= 1e21 {
+            text.replace('e', "e+")
+        } else {
+            text
+        };
+    }
+    // `Display` prints integral values without a decimal point. Only −0 differs: JS prints 0.
+    if value == 0.0 {
+        "0".to_owned()
     } else {
         format!("{value}")
     }

@@ -4,11 +4,14 @@
 //! - `atlas extract <map> <wards> <streets> <zoom> <west> <north> <classes> <blocks>`: refined
 //!   surfaces and traced city blocks, the TypeScript `extract-surfaces` outputs (`classes.bin`,
 //!   `blocks.json`), byte for byte.
+//! - `atlas houses <blocks> <classes> <map> <left,top,width,height> <min,max> <out>`: houses of
+//!   the blocks in a region, as the TypeScript `generate-houses` writes them.
 
 use std::{env, fs, path::Path, process::ExitCode, time::Instant};
 
 use desire_atlas::blocks::{TraceOptions, block_mask, trace_blocks};
-use desire_atlas::layers::blocks_json;
+use desire_atlas::houses::{BlocksLayer, HouseRaster, HouseSpec, generate_houses};
+use desire_atlas::layers::{blocks_json, houses_json};
 use desire_atlas::raster::{RgbRaster, read_rgb};
 use desire_atlas::raster_ops::Size;
 use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
@@ -20,7 +23,7 @@ use desire_atlas::vectors::{
 type Run = fn(&[String]) -> Result<(), String>;
 
 /// Command table: name, argument names (for usage), and what it runs.
-const COMMANDS: [(&str, &[&str], Run); 2] = [
+const COMMANDS: [(&str, &[&str], Run); 3] = [
     ("classify", &["map", "out"], classify),
     (
         "extract",
@@ -28,6 +31,11 @@ const COMMANDS: [(&str, &[&str], Run); 2] = [
             "map", "wards", "streets", "zoom", "west", "north", "classes", "blocks",
         ],
         extract,
+    ),
+    (
+        "houses",
+        &["blocks", "classes", "map", "region", "heights", "out"],
+        houses,
     ),
 ];
 
@@ -142,6 +150,76 @@ fn extract(args: &[String]) -> Result<(), String> {
     eprintln!(
         "{} blocks, extracted in {:.2?}",
         blocks.len(),
+        start.elapsed()
+    );
+    Ok(())
+}
+
+/// `count` comma-separated numbers.
+fn numbers<const N: usize>(text: &str) -> Result<[f64; N], String> {
+    let values: Result<Vec<f64>, _> = text.split(',').map(str::parse::<f64>).collect();
+    let values = values.map_err(|_| format!("not numbers: {text}"))?;
+    values
+        .try_into()
+        .map_err(|_| format!("{N} comma-separated numbers expected: {text}"))
+}
+
+fn read(path: &str) -> Result<Vec<u8>, String> {
+    fs::read(path).map_err(|error| format!("{path}: {error}"))
+}
+
+/// What the houses stage reads besides the blocks: the class raster and the source map.
+struct HouseSources {
+    classes: Vec<u8>,
+    map: RgbRaster,
+}
+
+impl HouseSources {
+    /// Reads both and checks they cover the same pixels.
+    fn read(classes: &str, map: &str) -> Result<Self, String> {
+        let sources = HouseSources {
+            classes: read(classes)?,
+            map: read_map(map)?,
+        };
+        let pixels = sources.map.width * sources.map.height;
+        if sources.classes.len() != pixels {
+            let held = sources.classes.len();
+            return Err(format!("{classes}: {held} pixels, the map has {pixels}"));
+        }
+        Ok(sources)
+    }
+
+    fn raster(&self, metres_per_pixel: f64) -> HouseRaster<'_> {
+        HouseRaster {
+            rgb: &self.map.rgb,
+            classes: &self.classes,
+            size: Size {
+                width: self.map.width,
+                height: self.map.height,
+            },
+            metres_per_pixel,
+        }
+    }
+}
+
+fn houses(args: &[String]) -> Result<(), String> {
+    let start = Instant::now();
+    let layer: BlocksLayer = serde_json::from_slice(&read(&args[0])?)
+        .map_err(|error| format!("{}: {error}", args[0]))?;
+    let sources = HouseSources::read(&args[1], &args[2])?;
+    let spec = HouseSpec {
+        region: numbers(&args[3])?,
+        heights: numbers(&args[4])?,
+    };
+    let houses = generate_houses(&sources.raster(layer.metres_per_pixel), &layer, &spec);
+    write(
+        &args[5],
+        houses_json(&houses, layer.metres_per_pixel).as_bytes(),
+    )?;
+    eprintln!(
+        "{}: {} houses in {:.2?}",
+        args[5],
+        houses.len(),
         start.elapsed()
     );
     Ok(())
