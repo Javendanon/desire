@@ -3,11 +3,11 @@
 
 use desire_atlas::raster::RgbRaster;
 use desire_atlas::raster_ops::{Size, components, dilate, erode, majority};
+use desire_atlas::surface::{Surface, classify_pixel};
 use desire_atlas::vectors::{
     FrameSpec, MercatorFrame, Polyline, fill_polygons, measure_street_width, paint_polylines,
 };
 use serde::Deserialize;
-use desire_atlas::surface::{Surface, classify_pixel};
 
 const GOLDEN: &str = include_str!("fixtures/parity.json");
 
@@ -120,13 +120,25 @@ fn vector_case() -> (VectorInput, VectorGolden) {
     (input, golden)
 }
 
+/// V8 and Rust's `tan`/`cos`/`log` can differ in the last bit, which the 2^26 world scale turns
+/// into about 10⁻⁸ px. The tolerance is a hundred times that and far below a pixel. The full-map
+/// check (urban mask and streets identical to TypeScript) is what pins the consequence.
+const FRAME_TOLERANCE_PX: f64 = 1e-6;
+
 #[test]
-fn the_mercator_frame_projects_exactly_as_typescript() {
+fn the_mercator_frame_projects_as_typescript_within_a_millionth_of_a_pixel() {
     let (input, golden) = vector_case();
     let frame = MercatorFrame::new(input.frame);
     assert_eq!(frame.metres_per_pixel, golden.frame_metres_per_pixel);
     for (point, expected) in input.frame_points.iter().zip(&golden.frame_pixels) {
-        assert_eq!(&frame.lng_lat_to_pixel(*point), expected, "{point:?}");
+        let pixel = frame.lng_lat_to_pixel(*point);
+        let error = (pixel[0] - expected[0])
+            .abs()
+            .max((pixel[1] - expected[1]).abs());
+        assert!(
+            error < FRAME_TOLERANCE_PX,
+            "{point:?}: {pixel:?} vs {expected:?}"
+        );
     }
 }
 
@@ -139,11 +151,17 @@ fn polygons_and_polylines_rasterise_as_in_typescript() {
     };
     let mut filled = vec![0; size.pixels()];
     fill_polygons(&mut filled, size, &input.rings);
-    assert_eq!(filled.iter().filter(|&&value| value == 1).count(), golden.fill_count);
+    assert_eq!(
+        filled.iter().filter(|&&value| value == 1).count(),
+        golden.fill_count
+    );
     assert_eq!(fnv1a(&filled), golden.fill_fnv1a);
     let mut painted = vec![0; size.pixels()];
     paint_polylines(&mut painted, size, &input.lines);
-    assert_eq!(painted.iter().filter(|&&value| value == 1).count(), golden.paint_count);
+    assert_eq!(
+        painted.iter().filter(|&&value| value == 1).count(),
+        golden.paint_count
+    );
     assert_eq!(fnv1a(&painted), golden.paint_fnv1a);
 }
 

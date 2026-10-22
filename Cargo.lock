@@ -159,6 +159,8 @@ dependencies = [
  "desire-core",
  "image",
  "rayon",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
