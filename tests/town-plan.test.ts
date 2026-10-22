@@ -49,7 +49,7 @@ test('a far wall spans the full wall height, centred on it, turned with the hous
     `element ${at}: ${value} vs ${expected[at]}`));
 });
 
-test('a layer lists each key's parts in plan order, with their count and joint bounds', () => {
+test('a layer lists the parts of each key in plan order, with their count and bounds', () => {
   const a = planTown([house(1)], { roofCentres: centres, detail: 'far' });
   const b = planTown([house(2), house(3)], { roofCentres: centres, detail: 'far' });
   const layer = layerParts([a, b]);
@@ -63,7 +63,7 @@ test('a layer lists each key's parts in plan order, with their count and joint b
   assert.deepEqual(layerParts([]), {});
 });
 
-test('a layer's bounds cover every plan it joins', () => {
+test('the bounds of a layer cover every plan it joins', () => {
   const far = (x_m: number) => planTown([{ ...house(1), center: { x_m, z_m: 0 } }],
     { roofCentres: centres, detail: 'far' });
   const layer = layerParts([far(0), far(500)]);
@@ -89,7 +89,7 @@ test('which side a chimney stands on follows the house id, not its position', ()
   const side = (x_m: number) => {
     const one = { ...house(31), center: { x_m, z_m: 1 } };
     const town = planTown([one], { roofCentres: centres, detail: 'near' });
-    return town.chimneyTops.map((top) => top.x - x_m);
+    return town.chimneyTops.map((top) => Math.sign(top.x - x_m));
   };
   // (x·7 + z) mod 2 crosses 1 between these two positions.
   assert.deepEqual(side(0), side(0.0000001));
