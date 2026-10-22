@@ -28,7 +28,8 @@ test('a sector with houses loads its payload, ground heights and albedo', async 
     '/city/ground/7.heights.bin': new Uint8Array(HEIGHTS.buffer),
     '/city/ground/7.jpg': new Uint8Array([1, 2, 3]),
   });
-  const assets = await loadSectorAssets({ base: '/city', index: 7, hasSector: true }, { fetcher, decode });
+  const request = { base: '/city', index: 7, hasSector: true };
+  const assets = await loadSectorAssets(request, { fetcher, decode });
   assert.equal(assets.sector?.houses.length, 2);
   assert.deepEqual([...assets.heights], [...HEIGHTS]);
   assert.deepEqual(assets.albedo, { bytes: 3 });
@@ -40,7 +41,8 @@ test('open sea has ground only: no payload is requested', async () => {
     '/city/ground/3.heights.bin': new Uint8Array(HEIGHTS.buffer),
     '/city/ground/3.jpg': new Uint8Array([9]),
   });
-  const assets = await loadSectorAssets({ base: '/city', index: 3, hasSector: false }, { fetcher, decode });
+  const request = { base: '/city', index: 3, hasSector: false };
+  const assets = await loadSectorAssets(request, { fetcher, decode });
   assert.equal(assets.sector, null);
   assert.ok(!requested.some((url) => url.includes('render.bin')));
 });
@@ -51,4 +53,15 @@ test('a missing file is an error naming it', async () => {
     loadSectorAssets({ base: '/city', index: 2, hasSector: false }, { fetcher, decode }),
     /\/city\/ground\/2\.heights\.bin: HTTP 404/,
   );
+});
+
+test('when another file fails, an already decoded albedo is released, not leaked', async () => {
+  const { fetcher } = fakeFetch({ '/city/ground/2.jpg': new Uint8Array([4]) });
+  const released: unknown[] = [];
+  const discard = (image: unknown) => {
+    released.push(image);
+  };
+  await assert.rejects(loadSectorAssets({ base: '/city', index: 2, hasSector: false },
+    { fetcher, decode, discard }));
+  assert.deepEqual(released, [{ bytes: 1 }]);
 });

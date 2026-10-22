@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { gridNormals, groundGeometry } from '../src/lib/diorama/ground-mesh.ts';
 import {
-  castsShadows, gridNormals, groundGeometry, planSectors, sectorDetail, sectorDistance,
+  castsShadows, planSectors, sectorDetail, sectorDistance,
 } from '../src/lib/diorama/sector-streaming.ts';
 
 const grid = { columns: 4, rows: 3, size_m: 100 };
@@ -14,8 +15,9 @@ test('sectors within reach of the camera target are wanted, nearest first', () =
   assert.deepEqual(plan.unload, []);
 });
 
-test('loaded sectors stay until they fall beyond reach plus a margin, so edges do not flicker', () => {
-  const plan = planSectors({ grid, loaded: [5, 0, 11], target: { x: 150, z: 150 }, reach_m: 60 });
+test('loaded sectors stay until past reach plus a margin, so edges do not flicker', () => {
+  const target = { x: 150, z: 150 };
+  const plan = planSectors({ grid, loaded: [5, 0, 11], target, reach_m: 60 });
   assert.ok(!plan.load.includes(5), 'already loaded');
   assert.deepEqual(plan.unload, [11], 'sector 0 is just past reach, inside the margin');
 });
@@ -54,7 +56,9 @@ const grid3 = (height: (x: number, z: number) => number) => Float32Array.from(
 test('grid normals point straight up over flat ground', () => {
   const normals = gridNormals(grid3(() => 1), { across: 3, down: 3 });
   assert.equal(normals.length, 27);
-  for (let vertex = 0; vertex < 9; vertex += 1) near(normals.slice(vertex * 3, vertex * 3 + 3), [0, 1, 0]);
+  for (let vertex = 0; vertex < 9; vertex += 1) {
+    near(normals.slice(vertex * 3, vertex * 3 + 3), [0, 1, 0]);
+  }
 });
 
 test('grid normals lean away from the slope, at the edges too', () => {
