@@ -2,6 +2,7 @@
 //! `tools/assets/parity.ts` recorded in `fixtures/parity.json` from the same input.
 
 use desire_atlas::blocks::{Block, TraceOptions, block_mask, trace_blocks};
+use desire_atlas::features::{Berth, ShipSpec, Tree, TreeSpec, find_berths, plant_trees};
 use desire_atlas::raster::RgbRaster;
 use desire_atlas::raster_ops::{Size, components, dilate, erode, majority};
 use desire_atlas::refine::{RefineInput, RefineParams, refine_surfaces};
@@ -252,4 +253,41 @@ fn blocks_trace_as_in_typescript() {
         serde_json::from_str(include_str!("fixtures/blocks-golden.json")).expect("golden");
     let blocks = trace_blocks(&block_mask(&refined, &urban), SYNTHETIC_SIZE, &golden.trace);
     assert_eq!(blocks, golden.blocks);
+}
+
+#[derive(Deserialize)]
+struct FeaturesGolden {
+    ship: ShipSpec,
+    orchard: TreeSpec,
+    berths: Vec<Berth>,
+    trees: Vec<Tree>,
+}
+
+/// Headings are an `atan2` written for the viewer: equal within the last bit, as rotations are.
+fn within_one_ulp(a: f64, b: f64) -> bool {
+    (a.to_bits() as i64 - b.to_bits() as i64).abs() <= 1
+}
+
+#[test]
+fn berths_and_trees_match_typescript() {
+    let (input, _) = vector_case();
+    let case = input.refine;
+    let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
+    fill_polygons(&mut urban, SYNTHETIC_SIZE, std::slice::from_ref(&case.urban));
+    let input = RefineInput {
+        classes: SYNTHETIC,
+        size: SYNTHETIC_SIZE,
+        streets: &case.streets,
+        urban: Some(&urban),
+    };
+    let refined = refine_surfaces(&input, &case.params);
+    let golden: FeaturesGolden =
+        serde_json::from_str(include_str!("fixtures/features-golden.json")).expect("golden");
+    assert_eq!(plant_trees(&refined, SYNTHETIC_SIZE, &golden.orchard), golden.trees);
+    let berths = find_berths(&refined, SYNTHETIC_SIZE, &golden.ship);
+    assert_eq!(berths.len(), golden.berths.len());
+    for (berth, expected) in berths.iter().zip(&golden.berths) {
+        assert_eq!([berth.x_px, berth.y_px], [expected.x_px, expected.y_px]);
+        assert!(within_one_ulp(berth.heading_radians, expected.heading_radians));
+    }
 }

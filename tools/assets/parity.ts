@@ -7,6 +7,7 @@
  */
 import fs from 'node:fs';
 
+import { findBerths, plantTrees } from './src/features.ts';
 import { placeHouses } from './src/lots.ts';
 import { mulberry32 } from './src/random.ts';
 import { createMercatorFrame, type LngLat } from './src/raster/frame.ts';
@@ -26,6 +27,10 @@ const RASTER_FILE = `${FIXTURES}/classes-257x131.bin`;
 const VECTOR_INPUT = `${FIXTURES}/vectors-input.json`;
 const BLOCKS_GOLDEN = `${FIXTURES}/blocks-golden.json`;
 const LOTS_GOLDEN = `${FIXTURES}/lots-golden.json`;
+const FEATURES_GOLDEN = `${FIXTURES}/features-golden.json`;
+/** Ship and orchard scaled to the synthetic raster's small piers and gardens. */
+const SMALL_SHIP = { lengthPx: 12, beamPx: 4, spacingPx: 14, seed: 0xd0c4 };
+const SMALL_ORCHARD = { spacingPx: 6, seed: 0xd0c4 };
 /** The z18 lot rules of generate-houses. */
 type Range = [number, number];
 const LOT_RULES = { frontage: [4.5, 8.5] as Range, depth: [6.5, 11] as Range };
@@ -188,12 +193,28 @@ function refineGolden(classes: Uint8Array) {
   return { fnv1a: hashOf(refined), counts };
 }
 
-/** Blocks traced from the refined synthetic raster, all of it urban. */
-function syntheticBlocks(classes: Uint8Array) {
+function refinedSynthetic(classes: Uint8Array) {
   const urban = fillPolygons(new Uint8Array(classes.length), RASTER, [REFINE.urban]);
   const refined = refineSurfaces({ classes, size: RASTER, streets: REFINE.streets, urban,
     ...REFINE.params });
+  return { refined, urban };
+}
+
+/** Blocks traced from the refined synthetic raster. */
+function syntheticBlocks(classes: Uint8Array) {
+  const { refined, urban } = refinedSynthetic(classes);
   return traceBlocks(blockMask(refined, urban), RASTER, TRACE);
+}
+
+/** Berths and trees found on the refined synthetic raster. */
+function syntheticFeatures(classes: Uint8Array) {
+  const { refined } = refinedSynthetic(classes);
+  return {
+    ship: SMALL_SHIP,
+    orchard: SMALL_ORCHARD,
+    berths: findBerths(refined, RASTER, SMALL_SHIP),
+    trees: plantTrees(refined, RASTER, SMALL_ORCHARD),
+  };
 }
 
 const plan = ([x_m, z_m]: [number, number]) => ({ x_m, z_m });
@@ -246,6 +267,7 @@ const files: [string, string | Uint8Array][] = [
   [STREETS_RGB, syntheticStreets()],
   [BLOCKS_GOLDEN, `${JSON.stringify({ trace: TRACE, blocks: syntheticBlocks(classes) })}\n`],
   [LOTS_GOLDEN, `${JSON.stringify({ rules: LOT_RULES, open: OPEN, blocks: lotGolden() })}\n`],
+  [FEATURES_GOLDEN, `${JSON.stringify(syntheticFeatures(classes))}\n`],
 ];
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;
