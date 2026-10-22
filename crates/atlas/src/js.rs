@@ -18,6 +18,13 @@ pub fn round(value: f64) -> f64 {
 /// `Math.hypot` as V8 computes it: scaled by the largest magnitude, squares summed with Kahan
 /// compensation. `f64::hypot` can differ in the last bit, which moves a sample across a pixel.
 pub fn hypot(values: &[f64]) -> f64 {
+    // V8 first: any ±Infinity wins, even beside NaN; then NaN propagates.
+    if values.iter().any(|value| value.is_infinite()) {
+        return f64::INFINITY;
+    }
+    if values.iter().any(|value| value.is_nan()) {
+        return f64::NAN;
+    }
     let largest = values
         .iter()
         .fold(0.0f64, |max, value| max.max(value.abs()));
@@ -49,6 +56,9 @@ pub fn median(values: &mut [f64]) -> f64 {
 /// A number as `JSON.stringify` writes it: shortest round-trip digits, integers without a
 /// decimal point, magnitudes below 1e-6 or from 1e21 in exponent form (`-1.2e-17`, `1e+21`).
 pub fn number(value: f64) -> String {
+    if !value.is_finite() {
+        return "null".to_owned();
+    }
     let magnitude = value.abs();
     if value != 0.0 && !(1e-6..1e21).contains(&magnitude) {
         let text = format!("{value:e}");

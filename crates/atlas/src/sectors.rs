@@ -239,17 +239,18 @@ pub fn export(
     houses: &[LayerHouse],
     features: &Features,
 ) -> (Vec<Payload>, SectorIndex) {
-    let mut entries = Vec::new();
-    let payloads: Vec<Payload> = partition(&grid, houses, features)
+    let sectors = partition(&grid, houses, features);
+    let payloads: Vec<Payload> = sectors
         .iter()
-        .map(|sector| {
-            let bytes = write_sector(sector);
-            entries.push(SectorEntry::of(sector, &bytes));
-            Payload {
-                index: sector.index,
-                bytes,
-            }
+        .map(|sector| Payload {
+            index: sector.index,
+            bytes: write_sector(sector),
         })
+        .collect();
+    let entries = sectors
+        .iter()
+        .zip(&payloads)
+        .map(|(sector, payload)| SectorEntry::of(sector, &payload.bytes))
         .collect();
     let roofs: Vec<[u8; 3]> = houses.iter().map(|house| house.roof_rgb).collect();
     let palette = roof_centres(&roofs);

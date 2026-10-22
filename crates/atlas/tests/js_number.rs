@@ -1,6 +1,6 @@
 //! `js::number` against what `JSON.stringify` prints (values checked in Node 24).
 
-use desire_atlas::js::number;
+use desire_atlas::js::{self, number};
 
 #[test]
 fn numbers_print_as_json_stringify_does() {
