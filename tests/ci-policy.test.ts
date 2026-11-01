@@ -25,6 +25,11 @@ test('the browser scene regressions are reachable from the required frontend scr
   const runner = readFileSync(RUNNER, 'utf8');
   assert.match(runner, /tests\/browser\/waterdeep-smoke\.mjs/,
     'the browser runner must execute the Waterdeep scene smoke test');
+  const smoke = readFileSync(new URL('../tests/browser/waterdeep-smoke.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(smoke, /map-memory|sweepSectors|MEMORY_BUDGET/,
+    'the required browser gate must not run the sector sweep or memory audit');
+  assert.match(smoke, /dispatchMouseEvent/);
+  assert.match(smoke, /visualViewport/);
 });
 
 // Every module the runner imports must exist, or the required CI step dies on ERR_MODULE_NOT_FOUND.

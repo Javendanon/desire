@@ -49,8 +49,8 @@ jobs:
       # The viewer's and the map format's tests (tests/*.test.ts). They ran only locally before.
       - name: Frontend tests
         run: corepack pnpm run test:frontend
-      # The scene acceptance evidence (streaming, memory budgets, far shell, gestures, picking)
-      # lives in tests/browser/*.mjs and only a real browser runs it.
+      # Chrome-only: the page boots, one real click selects a place, pinch does not zoom the browser.
+      # Streaming, pick math and corridors are test:frontend.
       - name: Browser scene regressions
         run: corepack pnpm run test:browser
       # Offline asset pipeline (D18): strict types for sources and tests, then its test suite.

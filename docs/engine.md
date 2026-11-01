@@ -98,9 +98,10 @@ mentions a city by name, so other cities and campaigns can supply their own cont
 | `map-viewer.ts` | `createMapViewer(canvas, map, options)`, frame loop, events, stats |
 
 `content/maps/waterdeep/` provides the first `MapDefinition`. The waterdeep demo lives in
-`waterdeep.html` and `content/maps/waterdeep/demo.ts`; `tests/browser/waterdeep-smoke.mjs`
-checks it in a real browser. Sector streaming caps maximum detail and keeps a low-detail shell
-resident so panning never shows a hole.
+`waterdeep.html` and `content/maps/waterdeep/demo.ts`. `tests/browser/waterdeep-smoke.mjs`
+boots that page in Chrome: one real click, and a pinch that must not zoom the browser. Streaming,
+pick math and corridors are `pnpm test:frontend`. Sector streaming caps maximum detail and keeps a
+low-detail shell resident so panning never shows a hole.
 
 Shared additions used by both viewers: `page-watch.ts` (resize and tab visibility) and
 `flatMesh()` in `render/kit.ts`. They replaced duplicated code in `viewer.ts`, `city.ts` and

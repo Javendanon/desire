@@ -52,22 +52,17 @@ open http://127.0.0.1:5211/waterdeep.html?backend=webgl2
 Drag pans, shift-drag or right-drag orbits, the wheel and pinch zoom, `0` resets. The panel lists
 places, toggles the D05 control points and street anchors, and shows live sector and memory stats.
 
-Headless check in a real Chrome (screenshot paths are optional):
+Required headless check (`pnpm test:browser`):
 
 ```sh
-node tests/browser/waterdeep-smoke.mjs http://127.0.0.1:5211 /tmp/waterdeep.png
+node tests/browser/waterdeep-smoke.mjs http://127.0.0.1:5211
 ```
 
-It fails unless the scene renders, the far shell covers the city, resident detail stays under the
-cap, pan moves the focus, zoom changes the radius, and selecting `castle-waterdeep` succeeds. It
-also verifies close-zoom pointer selection and actual browser touch pan/pinch without native
-scrolling, zoom or pointer cancellation on a freshly loaded 600×900 mobile page. It writes a
-sector view, overview, near-top view with D05 control points, and a Market pilot view. Two ten-place
-sweeps visit 80 sectors in the latest run (the count varies with camera damping) and verify that
-old instance buffers are freed, the far shell stays intact, and retained CPU growth stays below
-8 MiB after an identical second cycle.
+It boots WebGL2, clicks one projected place with a real mouse event, and pinches a fresh 600×900
+page without the browser scrolling, zooming or cancelling the gesture. Streaming, corridors,
+close-zoom math and memory budgets are unit tests, not this script.
 
-## Budget observed in the smoke run
+## Budget from the manual D13 run
 
 | Measure | Value |
 | --- | --- |
@@ -82,16 +77,11 @@ old instance buffers are freed, the far shell stays intact, and retained CPU gro
 panel. It is **not** the scene memory budget. `MapViewer.memoryStats()` exposes device allocation
 counters for textures, geometry (including instances), and uniform/storage buffers.
 
-The browser audit includes those resources, real WebGL renderbuffer storage (including MSAA),
-and CDP heap/backing/embedder usage, including the CPU building caches. Device counters are
-observed each frame after readiness, so earlier/between-frame texture/buffer peaks are unverified.
-The renderbuffer hook and CPU sampling start before navigation. Budgets at 1440×900,
-DPR 1, high quality, Chrome WebGL2: **192 MiB graphics, 192 MiB CPU, 320 MiB combined**.
-Latest observed peaks: **64.3 MiB graphics, 67.6 MiB CPU, 131.9 MiB combined**. Earlier CPU peaks
-varied between 75.1 and 119.7 MiB, still within budget. Mobile gestures run separately after the
-desktop audit; mobile allocations are not certified by this budget.
-The audit fails on unsupported renderbuffer formats, missing counters, budget excess or retained
-growth. See [measurement scope and results](../../../docs/reports/d13-rework.md).
+Those peaks are a manual WebGL2 run at 1440×900, DPR 1, not a CI gate. Device counters cover
+textures, geometry and buffers; renderbuffer storage and CPU heap were sampled in that run.
+Budgets used then: **192 MiB graphics, 192 MiB CPU, 320 MiB combined**. Observed peaks:
+**64.3 MiB graphics, 67.6 MiB CPU, 131.9 MiB combined**. See
+[measurement scope and results](../../../docs/reports/d13-rework.md).
 
 These are measured browser-visible resource allocations, not physical VRAM. Driver/compiler,
 swapchain and browser-process overhead are excluded. WebGPU and other screen sizes require a
