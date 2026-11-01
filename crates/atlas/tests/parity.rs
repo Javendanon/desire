@@ -13,27 +13,32 @@ use desire_atlas::vectors::{
 };
 use serde::Deserialize;
 
+mod common;
+
+use std::sync::OnceLock;
+
+use common::{fnv1a, ulps_apart};
+
 const GOLDEN: &str = include_str!("fixtures/parity.json");
 
-/// FNV-1a, 32 bits, as `tools/assets/parity.ts` computes it.
-fn fnv1a(bytes: &[u8]) -> u32 {
-    bytes.iter().fold(0x811c_9dc5, |hash, byte| {
-        (hash ^ u32::from(*byte)).wrapping_mul(0x0100_0193)
-    })
+fn golden_json() -> &'static serde_json::Value {
+    static PARSED: OnceLock<serde_json::Value> = OnceLock::new();
+    PARSED.get_or_init(|| serde_json::from_str(GOLDEN).expect("golden json"))
 }
 
-/// The integer after `"key": ` inside the named golden section.
+/// A whole number in a golden section. A missing section or key fails, never reads another.
 fn golden_number(section: &str, key: &str) -> u64 {
-    let start = GOLDEN
-        .find(&format!("\"{section}\""))
-        .expect("section in golden");
-    let rest = &GOLDEN[start..];
-    let at = rest.find(&format!("\"{key}\": ")).expect("key in section") + key.len() + 4;
-    let digits: String = rest[at..]
-        .chars()
-        .take_while(char::is_ascii_digit)
-        .collect();
-    digits.parse().expect("a number")
+    golden_json()[section][key]
+        .as_u64()
+        .unwrap_or_else(|| panic!("{section}.{key} is not a whole number in the golden"))
+}
+
+/// A surface's pixel count in a golden section's `counts`.
+fn golden_count(section: &str, surface: Surface) -> u64 {
+    let name = surface.name();
+    golden_json()[section]["counts"][name]
+        .as_u64()
+        .unwrap_or_else(|| panic!("{section}.counts.{name} is not a whole number in the golden"))
 }
 
 #[test]
@@ -50,12 +55,7 @@ fn every_colour_classifies_as_in_typescript() {
             .iter()
             .filter(|&&class| class == surface as u8)
             .count() as u64;
-        assert_eq!(
-            count,
-            golden_number(section, surface.name()),
-            "{}",
-            surface.name()
-        );
+        assert_eq!(count, golden_count(section, surface), "{}", surface.name());
     }
     assert_eq!(u64::from(fnv1a(&table)), golden_number(section, "fnv1a"));
 }
@@ -142,6 +142,11 @@ fn the_mercator_frame_projects_as_typescript_within_a_millionth_of_a_pixel() {
     let (input, golden) = vector_case();
     let frame = MercatorFrame::new(input.frame);
     assert_eq!(frame.metres_per_pixel, golden.frame_metres_per_pixel);
+    assert_eq!(
+        input.frame_points.len(),
+        golden.frame_pixels.len(),
+        "frame points"
+    );
     for (point, expected) in input.frame_points.iter().zip(&golden.frame_pixels) {
         let pixel = frame.lng_lat_to_pixel(*point);
         let error = (pixel[0] - expected[0])
@@ -193,48 +198,8 @@ fn street_widths_measure_as_in_typescript() {
     assert_eq!(widths, golden.street_widths);
 }
 
-#[test]
-fn refinement_matches_typescript_on_a_synthetic_raster() {
-    let (input, _) = vector_case();
-    let case = input.refine;
-    let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(
-        &mut urban,
-        SYNTHETIC_SIZE,
-        std::slice::from_ref(&case.urban),
-    );
-    let refined = refine_surfaces(
-        &RefineInput {
-            classes: SYNTHETIC,
-            size: SYNTHETIC_SIZE,
-            streets: &case.streets,
-            urban: Some(&urban),
-        },
-        &case.params,
-    );
-    for surface in Surface::ALL {
-        let count = refined
-            .iter()
-            .filter(|&&class| class == surface as u8)
-            .count() as u64;
-        assert_eq!(
-            count,
-            golden_number("refine", surface.name()),
-            "{}",
-            surface.name()
-        );
-    }
-    assert_eq!(u64::from(fnv1a(&refined)), golden_number("refine", "fnv1a"));
-}
-
-#[derive(Deserialize)]
-struct BlocksGolden {
-    trace: TraceOptions,
-    blocks: Vec<Block>,
-}
-
-#[test]
-fn blocks_trace_as_in_typescript() {
+/// The synthetic raster refined with the recorded streets and urban outline, and that outline.
+fn refined_synthetic() -> (Vec<u8>, Vec<u8>) {
     let (input, _) = vector_case();
     let case = input.refine;
     let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
@@ -249,7 +214,31 @@ fn blocks_trace_as_in_typescript() {
         streets: &case.streets,
         urban: Some(&urban),
     };
-    let refined = refine_surfaces(&input, &case.params);
+    (refine_surfaces(&input, &case.params), urban)
+}
+
+#[test]
+fn refinement_matches_typescript_on_a_synthetic_raster() {
+    let (refined, _) = refined_synthetic();
+    for surface in Surface::ALL {
+        let count = refined
+            .iter()
+            .filter(|&&class| class == surface as u8)
+            .count() as u64;
+        assert_eq!(count, golden_count("refine", surface), "{}", surface.name());
+    }
+    assert_eq!(u64::from(fnv1a(&refined)), golden_number("refine", "fnv1a"));
+}
+
+#[derive(Deserialize)]
+struct BlocksGolden {
+    trace: TraceOptions,
+    blocks: Vec<Block>,
+}
+
+#[test]
+fn blocks_trace_as_in_typescript() {
+    let (refined, urban) = refined_synthetic();
     let golden: BlocksGolden =
         serde_json::from_str(include_str!("fixtures/blocks-golden.json")).expect("golden");
     let blocks = trace_blocks(&block_mask(&refined, &urban), SYNTHETIC_SIZE, &golden.trace);
@@ -264,28 +253,9 @@ struct FeaturesGolden {
     trees: Vec<Tree>,
 }
 
-/// Headings are an `atan2` written for the viewer: equal within the last bit, as rotations are.
-fn within_one_ulp(a: f64, b: f64) -> bool {
-    (a.to_bits() as i64 - b.to_bits() as i64).abs() <= 1
-}
-
 #[test]
 fn berths_and_trees_match_typescript() {
-    let (input, _) = vector_case();
-    let case = input.refine;
-    let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(
-        &mut urban,
-        SYNTHETIC_SIZE,
-        std::slice::from_ref(&case.urban),
-    );
-    let input = RefineInput {
-        classes: SYNTHETIC,
-        size: SYNTHETIC_SIZE,
-        streets: &case.streets,
-        urban: Some(&urban),
-    };
-    let refined = refine_surfaces(&input, &case.params);
+    let (refined, _) = refined_synthetic();
     let golden: FeaturesGolden =
         serde_json::from_str(include_str!("fixtures/features-golden.json")).expect("golden");
     assert_eq!(
@@ -296,30 +266,14 @@ fn berths_and_trees_match_typescript() {
     assert_eq!(berths.len(), golden.berths.len());
     for (berth, expected) in berths.iter().zip(&golden.berths) {
         assert_eq!([berth.x_px, berth.y_px], [expected.x_px, expected.y_px]);
-        assert!(within_one_ulp(
-            berth.heading_radians,
-            expected.heading_radians
-        ));
+        // Headings are an `atan2` written for the viewer: equal within the last bit.
+        assert!(ulps_apart(berth.heading_radians, expected.heading_radians) <= 1);
     }
 }
 
 #[test]
 fn ground_paints_and_heights_as_in_typescript() {
-    let (input, _) = vector_case();
-    let case = input.refine;
-    let mut urban = vec![0; SYNTHETIC_SIZE.pixels()];
-    fill_polygons(
-        &mut urban,
-        SYNTHETIC_SIZE,
-        std::slice::from_ref(&case.urban),
-    );
-    let input = RefineInput {
-        classes: SYNTHETIC,
-        size: SYNTHETIC_SIZE,
-        streets: &case.streets,
-        urban: Some(&urban),
-    };
-    let refined = refine_surfaces(&input, &case.params);
+    let (refined, _) = refined_synthetic();
     let spec = GroundSpec {
         classes: &refined,
         size: SYNTHETIC_SIZE,

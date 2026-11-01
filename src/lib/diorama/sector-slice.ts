@@ -58,29 +58,40 @@ type Point = {
   z_m: number;
 };
 
-/** Items whose point lies in the frame (north and west edges inclusive), moved into its metres. */
-function within<T extends Point>(items: T[], frame: Frame): T[] {
-  const kept: T[] = [];
+/** Builds what a kept item becomes, given its point in the frame's metres. */
+type Place<T, R> = (item: T, at: Point) => R;
+
+/**
+ * Items whose point lies in the frame (north and west edges inclusive), each built once in its
+ * final shape at its point in the frame's metres.
+ */
+function within<T extends Point, R>(items: T[], frame: Frame, place: Place<T, R>): R[] {
+  const kept: R[] = [];
   for (const item of items) {
-    const x_m = item.x_m - frame.x_m;
-    const z_m = item.z_m - frame.z_m;
-    if (x_m >= 0 && x_m < frame.width_m && z_m >= 0 && z_m < frame.depth_m) {
-      kept.push({ ...item, x_m, z_m });
-    }
+    const at = { x_m: item.x_m - frame.x_m, z_m: item.z_m - frame.z_m };
+    const inside = at.x_m >= 0 && at.x_m < frame.width_m && at.z_m >= 0 && at.z_m < frame.depth_m;
+    if (inside) kept.push(place(item, at));
   }
   return kept;
 }
 
-/** A payload house as the town builds it: centred, with its id. */
-export const centred = ({ x_m, z_m, ...house }: SectorHouse): SliceHouse =>
-  ({ ...house, center: { x_m, z_m } });
+const moved = <T extends Point>(item: T, at: Point): T => ({ ...item, ...at });
+
+/** A payload house centred at a point, with its id, as the town builds it. */
+function centredAt(house: SectorHouse, at: Point): SliceHouse {
+  const { x_m: _x, z_m: _z, ...body } = house;
+  return { ...body, center: at };
+}
+
+/** A payload house as the town builds it: centred where it stands, with its id. */
+export const centred = (house: SectorHouse): SliceHouse =>
+  centredAt(house, { x_m: house.x_m, z_m: house.z_m });
 
 /** The sectors' features inside the frame, in frame metres, with their ids. O(features). */
 export function featuresInFrame(sectors: Sector[], frame: Frame): FrameFeatures {
-  const houses = sectors.flatMap((sector) => within(sector.houses, frame));
   return {
-    houses: houses.map(centred),
-    berths: sectors.flatMap((sector) => within(sector.berths, frame)),
-    trees: sectors.flatMap((sector) => within(sector.trees, frame)),
+    houses: sectors.flatMap((sector) => within(sector.houses, frame, centredAt)),
+    berths: sectors.flatMap((sector) => within(sector.berths, frame, moved)),
+    trees: sectors.flatMap((sector) => within(sector.trees, frame, moved)),
   };
 }

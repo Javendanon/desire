@@ -126,13 +126,18 @@ function loopsByLabel(outgoing: Map<number, Edge[]>, width: number) {
   return loops;
 }
 
+/**
+ * The largest ring is the outline. The others, if large enough, are holes. Each ring's area is
+ * computed once, not again in every comparison. O(rings · log rings + points).
+ */
 function toBlock(rings: PixelPoint[][], areaPx: number, options: TraceOptions): Block {
-  const ordered = [...rings].sort((a, b) => Math.abs(signedArea(b)) - Math.abs(signedArea(a)));
+  const sized = rings.map((ring) => ({ ring, area: Math.abs(signedArea(ring)) }))
+    .sort((a, b) => b.area - a.area);
   const minHole = options.minHoleAreaPx ?? 0;
-  const holes = ordered.slice(1).filter((ring) => Math.abs(signedArea(ring)) >= minHole);
+  const holes = sized.slice(1).filter(({ area }) => area >= minHole);
   return {
-    outer: simplifyRing(ordered[0], options.tolerancePx),
-    holes: holes.map((ring) => simplifyRing(ring, options.tolerancePx)),
+    outer: simplifyRing(sized[0].ring, options.tolerancePx),
+    holes: holes.map(({ ring }) => simplifyRing(ring, options.tolerancePx)),
     areaPx,
   };
 }

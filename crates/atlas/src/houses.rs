@@ -110,7 +110,7 @@ fn lot_ring(ring: &[[f64; 2]]) -> Vec<Plan> {
         .collect()
 }
 
-/// The houses of one block, numbered by their lot's place in the block (before any filter).
+/// The block's outline and holes, simplified for laying out lots.
 fn block_shape(block: &BlockJson) -> BlockShape {
     BlockShape {
         outer: lot_ring(&block.outer),
@@ -118,47 +118,66 @@ fn block_shape(block: &BlockJson) -> BlockShape {
     }
 }
 
+/// Block × 4096 + lot. Refused when the lot passes its block's share or the id passes 32 bits,
+/// so ids never wrap into another house's.
+pub fn house_id(block: u32, lot: usize) -> Result<u32, String> {
+    if lot >= LOTS_PER_BLOCK {
+        return Err(format!(
+            "block {block}: lot {lot} does not fit the house id"
+        ));
+    }
+    block
+        .checked_mul(LOTS_PER_BLOCK as u32)
+        .and_then(|base| base.checked_add(lot as u32))
+        .ok_or_else(|| format!("block {block} does not fit a 32-bit house id"))
+}
+
 /// The houses of one block, numbered by their lot's place in the block (before any filter).
-fn houses_of(raster: &HouseRaster, block: &BlockJson, heights: [f64; 2]) -> Vec<MapHouse> {
+fn houses_of(
+    raster: &HouseRaster,
+    block: &BlockJson,
+    heights: [f64; 2],
+) -> Result<Vec<MapHouse>, String> {
     let is_built = |point: Plan| raster.is_built(point);
     let rules = LotRules {
         frontage: FRONTAGE_M,
         depth: DEPTH_M,
-        seed: SEED_BASE + block.id,
+        seed: SEED_BASE.wrapping_add(block.id),
         is_built: &is_built,
     };
     let lots = place_houses(&block_shape(block), &rules);
-    assert!(
-        lots.len() <= LOTS_PER_BLOCK,
-        "block {}: too many lots",
-        block.id
-    );
     let mut random = Mulberry32::new(SEED_BASE ^ block.id);
     lots.into_iter()
         .enumerate()
-        .map(|(index, Lot { house, corners })| MapHouse {
-            height_m: js::round(random.between(heights) * 10.0) / 10.0,
-            roof_rgb: raster.roof_colour(&corners),
-            block: block.id,
-            id: block.id * LOTS_PER_BLOCK as u32 + index as u32,
-            house,
+        .map(|(index, Lot { house, corners })| {
+            Ok(MapHouse {
+                height_m: js::round(random.between(heights) * 10.0) / 10.0,
+                roof_rgb: raster.roof_colour(&corners),
+                block: block.id,
+                id: house_id(block.id, index)?,
+                house,
+            })
         })
         .collect()
 }
 
 /// Houses of every block touching the region, kept when their centre is inside it.
-/// O(blocks · lots²) in the worst block, blocks in parallel.
+/// O(blocks · lots · neighbouring lots), blocks in parallel. Fails when an id would not fit.
 pub fn generate_houses(
     raster: &HouseRaster,
     layer: &BlocksLayer,
     spec: &HouseSpec,
-) -> Vec<MapHouse> {
+) -> Result<Vec<MapHouse>, String> {
     let inside = |[x_m, z_m]: [f64; 2]| raster.in_region(spec.region, Plan { x_m, z_m });
-    layer
+    let per_block: Vec<Vec<MapHouse>> = layer
         .blocks
         .par_iter()
         .filter(|block| block.outer.iter().any(|&point| inside(point)))
-        .flat_map_iter(|block| houses_of(raster, block, spec.heights))
+        .map(|block| houses_of(raster, block, spec.heights))
+        .collect::<Result<_, _>>()?;
+    Ok(per_block
+        .into_iter()
+        .flatten()
         .filter(|house| raster.in_region(spec.region, house.house.center))
-        .collect()
+        .collect())
 }

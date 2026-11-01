@@ -20,6 +20,14 @@ The implementations, `crates/core/src/sector` (Rust) and `src/lib/map/sector-for
 read it back. The fixture still equals the payload first written from this document's prose
 (commit 71d5eda).
 
+**Two levels of checking, on purpose.** The Rust and TypeScript readers check structure only:
+magic, version, truncation, section alignment and bounds, minimum strides. That is what keeps
+a bad file from reading out of bounds, and it costs nothing per record. They run in the viewer
+on the pipeline's own output, every time a sector loads. The value constraints (finite numbers,
+positive sizes, zero reserved fields, known flag bits) are checked once, where payloads are
+made: `sector.py --validate`. Restating them in both readers would add a pass over every
+record on every load and a third copy of the same rules.
+
 ## Sector grid
 
 The sector is a square of **1024 × 1024 source pixels**, about 479.6 m at z18 (0.4684 m/px), so a

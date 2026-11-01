@@ -9,6 +9,7 @@ use crate::js;
 pub use crate::plan::Plan;
 use crate::plan::{Footprint, footprint_point, point_in_ring, rings_overlap};
 use crate::random::Mulberry32;
+use crate::spatial::{Bounds, SpatialGrid};
 
 /// Half a step back from the block edge, so a house never straddles it.
 const SETBACK_M: f64 = 0.3;
@@ -82,7 +83,16 @@ struct Placement<'a> {
     block: &'a BlockShape,
     rules: &'a LotRules<'a>,
     lots: Vec<Lot>,
+    /// Where the placed lots are, so a candidate is tested only against its neighbours.
+    index: SpatialGrid,
     random: Mulberry32,
+}
+
+/// Grid cell for placed lots: about one house wide, so a lot touches a few cells.
+const LOT_CELL_M: f64 = 16.0;
+
+fn lot_bounds(corners: &[Plan; 4]) -> Bounds {
+    Bounds::around(corners.iter().map(|corner| [corner.x_m, corner.z_m]))
 }
 
 impl Placement<'_> {
@@ -106,15 +116,17 @@ impl Placement<'_> {
                 .any(|hole| rings_overlap(corners, hole))
             && self.on_built_ground(corners)
             && !self
-                .lots
-                .iter()
-                .any(|other| rings_overlap(corners, &other.corners))
+                .index
+                .near(&lot_bounds(corners))
+                .any(|other| rings_overlap(corners, &self.lots[other].corners))
     }
 
     fn try_place(&mut self, lot: Lot) -> bool {
         if !self.fits(&lot.corners) {
             return false;
         }
+        self.index
+            .insert(&lot_bounds(&lot.corners), self.lots.len());
         self.lots.push(lot);
         true
     }
@@ -268,6 +280,7 @@ pub fn place_houses(block: &BlockShape, rules: &LotRules) -> Vec<Lot> {
         block,
         rules,
         lots: Vec::new(),
+        index: SpatialGrid::new(LOT_CELL_M),
         random: Mulberry32::new(rules.seed),
     };
     let ring = &block.outer;

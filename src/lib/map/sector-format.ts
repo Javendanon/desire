@@ -2,7 +2,9 @@
 // Offsets, strides and kinds come from ../../generated/sector-layout.ts, generated from the
 // normative contracts/sector-render.json (tools/contracts/sector.py), as are the Rust twin's
 // (crates/core/src/sector). Pure: no DOM, no Node APIs, so the viewer's Worker and the asset
-// pipeline share it.
+// pipeline share it. Reading checks structure only (bounds, alignment, strides); value
+// constraints are checked where payloads are made, by `tools/contracts/sector.py --validate`
+// (docs/waterdeep-3d/sector-format.md, "Two levels of checking").
 
 import * as L from '../../generated/sector-layout.ts';
 
