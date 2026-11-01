@@ -36,8 +36,10 @@ export function hitSphere(ray: Ray, center: Vec3Like, radius: number): number | 
   const c = ox * ox + oy * oy + oz * oz - radius * radius;
   const disc = b * b - c;
   if (disc < 0) return null;
-  const t = -b - Math.sqrt(disc);
-  return t >= 0 ? t : null;
+  const root = Math.sqrt(disc);
+  const entry = -b - root;
+  const exit = -b + root;
+  return entry >= 0 ? entry : exit >= 0 ? exit : null;
 }
 
 /** Closest sphere hit among `targets`, by id. */

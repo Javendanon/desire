@@ -29,7 +29,7 @@ env:
 jobs:
   frontend-check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -48,7 +48,11 @@ jobs:
         run: corepack pnpm check
       # The viewer's and the map format's tests (tests/*.test.ts). They ran only locally before.
       - name: Frontend tests
-        run: corepack pnpm test:frontend
+        run: corepack pnpm run test:frontend
+      # Chrome-only: the page boots, one real click selects a place, pinch does not zoom the browser.
+      # Streaming, pick math and corridors are test:frontend.
+      - name: Browser scene regressions
+        run: corepack pnpm run test:browser
       # Offline asset pipeline (D18): strict types for sources and tests, then its test suite.
       - name: Asset pipeline types
         run: corepack pnpm check:assets

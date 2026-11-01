@@ -6,6 +6,7 @@
 import * as pc from 'playcanvas';
 
 import { bootApp, ViewerError } from './boot.ts';
+import { watchPage } from './page-watch.ts';
 import { Emitter } from './emitter.ts';
 import {
   clampPolar,
@@ -171,7 +172,7 @@ export class TableViewer implements InputTarget {
     this.introKeys = introKeys(this.plan.spot, START_AZIMUTH);
     if (!this.introDone) this.rig = sampleIntro(this.introKeys, 0);
     this.setMood(this.options.timeOfDay, this.options.fog);
-    this.watchPage();
+    this.cleanups.push(watchPage(this.app, this.canvas));
     this.cleanups.push(attachInput(this.canvas, this));
     this.app.on('update', this.onUpdate, this);
     this.app.start();
@@ -183,19 +184,6 @@ export class TableViewer implements InputTarget {
     if (this.camera.camera) {
       this.frame = createFrame(this.app, this.camera.camera, this.options.quality);
     }
-  }
-
-  private watchPage(): void {
-    const resize = () => this.app.resizeCanvas(this.canvas.clientWidth, this.canvas.clientHeight);
-    const observer = new ResizeObserver(resize);
-    observer.observe(this.canvas);
-    resize();
-    const visibility = () => {
-      this.app.timeScale = document.hidden ? 0 : 1;
-    };
-    document.addEventListener('visibilitychange', visibility);
-    this.cleanups.push(() => observer.disconnect());
-    this.cleanups.push(() => document.removeEventListener('visibilitychange', visibility));
   }
 
   // ---------- frame loop ----------
