@@ -3,11 +3,13 @@
  * CLI: reference results from the TypeScript pipeline, for the Rust port's parity tests
  * (crates/atlas/tests). Inputs are synthetic or exhaustive, never the licensed source map, so the
  * goldens can be committed. `--check` fails when the committed goldens differ from what the
- * TypeScript code now produces.
+ * TypeScript code now produces. Frame pixels in parity.json are fresh within 1e-6 px.
+ * arm64 and amd64 do not agree on the Mercator projection bit for bit (see src/parity-fresh.ts).
  */
 import fs from 'node:fs';
 
 import { townFiles } from './parity-town.ts';
+import { parityDrift } from './src/parity-fresh.ts';
 import { findBerths, plantTrees } from './src/features.ts';
 import { placeHouses } from './src/lots.ts';
 import { mulberry32 } from './src/random.ts';
@@ -289,15 +291,22 @@ const files: [string, string | Uint8Array][] = [
   ...townFiles({ classes: refinedSynthetic(classes).refined, size: RASTER },
     syntheticBlocks(classes), fnv1a),
 ];
+/** Why a fixture is stale, or null when it still matches what the pipeline produces. */
+function staleReason(file: string, current: Buffer | undefined, next: Buffer): string | null {
+  if (current === undefined) return 'missing';
+  if (file === GOLDEN) return parityDrift(current, next);
+  return Buffer.compare(current, next) === 0 ? null : 'bytes differ';
+}
+
 for (const [file, content] of files) {
   const current = fs.existsSync(file) ? fs.readFileSync(file) : undefined;
-  const fresh = current !== undefined && Buffer.compare(current, Buffer.from(content)) === 0;
+  const reason = staleReason(file, current, Buffer.from(content));
   if (process.argv.includes('--check')) {
-    if (!fresh) {
-      console.error(`parity: ${file} is stale, run node tools/assets/parity.ts`);
+    if (reason) {
+      console.error(`parity: ${file} is stale (${reason}), run node tools/assets/parity.ts`);
       process.exitCode = 1;
     }
-  } else if (!fresh) {
+  } else if (reason) {
     fs.writeFileSync(file, content);
     console.log(`${file} written`);
   }
