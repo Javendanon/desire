@@ -383,6 +383,24 @@ export interface CharacterClass {
   class_entry_id: Id;
   rules_edition: RulesEdition;
   level: number;
+  subclass_entry_id: Id | null;
+  hit_die: number;
+}
+
+export interface ClassFeature {
+  campaign_id: Id;
+  actor_id: Id;
+  class_entry_id: Id;
+  feature_entry_id: Id;
+  rules_edition: RulesEdition;
+}
+
+export interface ActorVisual {
+  campaign_id: Id;
+  actor_id: Id;
+  slot: string;
+  asset_uri: string;
+  equipment_id: Id | null;
 }
 
 export interface CharacterProficiency {

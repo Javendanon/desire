@@ -28,11 +28,13 @@ future endpoints for these resources belong under `/api/v2`.
 ## Character sheets
 
 `character_sheets` contains biography, ancestry, background and experience.
-`actor_stats` contains the six ability scores, base AC and movement speed in metres.
+`actor_stats` stores the six ability scores as columns, plus base AC and speed in metres.
 The character's HP and consumed resources remain separate mutable state.
 
-`character_classes` records class levels; total level is the sum rather than a
-second stored value. `character_proficiencies`, `character_equipment`,
+`character_classes` records class levels, an optional subclass and the hit die.
+Total level is the sum rather than a second stored value. `class_features` records
+chosen class options. `actor_visuals` records the miniature's worn slots; it is not
+the equipment list. `character_proficiencies`, `character_equipment`,
 `character_spells`, `actor_resources` and `actor_concentration` record the rest of
 this first sheet boundary. Multi-column FKs preserve campaign and rules edition.
 A sheet bundle is created atomically; a component for another actor aborts it all.
@@ -113,7 +115,7 @@ Migrations 0001–0005 are unchanged. The runner embeds all nine versions, appli
 pending DDL/history in one explicit transaction, and rejects edited history and
 downgrades. Existing campaigns, characters, journeys, conditions and secrets survive.
 
-- [Full DBML](database/desire.dbml): 47 tables, 85 foreign keys, generated from an
+- [Full DBML](database/desire.dbml): 49 tables, 91 foreign keys, generated from an
   isolated PostgreSQL schema and parsed with the official DBML CLI.
 - [Diagram](database/desire.mmd): simplified relationships for reading the model.
 - [Validation report](reports/d08-tabletop.md): actual commands, evidence and limits.

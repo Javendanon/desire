@@ -34,6 +34,8 @@ fn sheet() -> SheetWrite {
         spells: vec![example("CharacterSpell")],
         resources: vec![example("ActorResource")],
         concentration: None,
+        features: Vec::new(),
+        visuals: Vec::new(),
     };
     write.classes[0].class_entry_id = support::id(50);
     write.spells[0].knowledge_entry_id = support::id(50);

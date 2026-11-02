@@ -21,6 +21,30 @@ pub struct CharacterClass {
     pub class_entry_id: Id,
     pub rules_edition: RulesEdition,
     pub level: u32,
+    #[serde(deserialize_with = "super::required_nullable")]
+    pub subclass_entry_id: Option<Id>,
+    pub hit_die: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClassFeature {
+    pub campaign_id: Id,
+    pub actor_id: Id,
+    pub class_entry_id: Id,
+    pub feature_entry_id: Id,
+    pub rules_edition: RulesEdition,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActorVisual {
+    pub campaign_id: Id,
+    pub actor_id: Id,
+    pub slot: String,
+    pub asset_uri: String,
+    #[serde(deserialize_with = "super::required_nullable")]
+    pub equipment_id: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

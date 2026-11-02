@@ -13,6 +13,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../../migrations/0008_groups_and_encounters.sql"),
     include_str!("../../../migrations/0009_place_population.sql"),
     include_str!("../../../migrations/0010_ability_columns.sql"),
+    include_str!("../../../migrations/0011_class_and_visuals.sql"),
 ];
 const MIGRATION_LOCK: i64 = 0x444553495245;
 

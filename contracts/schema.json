@@ -1583,7 +1583,9 @@
         "actor_id",
         "class_entry_id",
         "rules_edition",
-        "level"
+        "level",
+        "subclass_entry_id",
+        "hit_die"
       ],
       "properties": {
         "campaign_id": {
@@ -1602,6 +1604,86 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20
+        },
+        "subclass_entry_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hit_die": {
+          "type": "integer",
+          "enum": [6, 8, 10, 12]
+        }
+      }
+    },
+    "ClassFeature": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "class_entry_id",
+        "feature_entry_id",
+        "rules_edition"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "class_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "feature_entry_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rules_edition": {
+          "$ref": "#/$defs/RulesEdition"
+        }
+      }
+    },
+    "ActorVisual": {
+      "type": "object",
+      "x-module": "sheets",
+      "additionalProperties": false,
+      "required": [
+        "campaign_id",
+        "actor_id",
+        "slot",
+        "asset_uri",
+        "equipment_id"
+      ],
+      "properties": {
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "actor_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "slot": {
+          "type": "string",
+          "enum": ["body", "head", "cloak", "main_hand", "off_hand", "feet"]
+        },
+        "asset_uri": {
+          "type": "string"
+        },
+        "equipment_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },

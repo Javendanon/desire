@@ -105,7 +105,27 @@
       "actor_id": "00000000-0000-4000-8000-000000000064",
       "class_entry_id": "00000000-0000-4000-8000-000000000064",
       "rules_edition": "dnd_2014",
-      "level": 1
+      "level": 1,
+      "subclass_entry_id": null,
+      "hit_die": 8
+    }
+  ],
+  "ClassFeature": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "class_entry_id": "00000000-0000-4000-8000-000000000064",
+      "feature_entry_id": "00000000-0000-4000-8000-000000000064",
+      "rules_edition": "dnd_2014"
+    }
+  ],
+  "ActorVisual": [
+    {
+      "campaign_id": "00000000-0000-4000-8000-000000000064",
+      "actor_id": "00000000-0000-4000-8000-000000000064",
+      "slot": "body",
+      "asset_uri": "synthetic://body",
+      "equipment_id": null
     }
   ],
   "CharacterProficiency": [

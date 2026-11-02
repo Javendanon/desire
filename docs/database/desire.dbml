@@ -64,14 +64,24 @@ Table campaign.actor_state {
 Table campaign.actor_stats {
   campaign_id uuid [not null]
   actor_id uuid [not null]
-  abilities jsonb [not null]
+  strength smallint [not null]
+  dexterity smallint [not null]
+  constitution smallint [not null]
+  intelligence smallint [not null]
+  wisdom smallint [not null]
+  charisma smallint [not null]
   armor_class integer [not null]
   speed_m "double precision" [not null, check: `((speed_m > '-Infinity'::double precision) AND (speed_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
   revision bigint [not null, check: `((revision >= 1) AND (revision <= '4294967295'::bigint))`, note: 'PostgreSQL domain catalog.revision']
 
   Checks {
     `(armor_class >= 0)`
-    `catalog.valid_abilities(abilities)`
+    `((strength >= 1) AND (strength <= 30))`
+    `((dexterity >= 1) AND (dexterity <= 30))`
+    `((constitution >= 1) AND (constitution <= 30))`
+    `((intelligence >= 1) AND (intelligence <= 30))`
+    `((wisdom >= 1) AND (wisdom <= 30))`
+    `((charisma >= 1) AND (charisma <= 30))`
     `((speed_m)::double precision >= (0)::double precision)`
   }
 
@@ -134,9 +144,12 @@ Table campaign.character_classes {
   class_entry_id uuid [not null]
   rules_edition text [not null, check: `(rules_edition = ANY (ARRAY['dnd_2014'::text, 'dnd_2024'::text]))`, note: 'PostgreSQL domain catalog.edition']
   level integer [not null]
+  subclass_entry_id uuid
+  hit_die smallint [not null, default: `8`]
 
   Checks {
     `((level >= 1) AND (level <= 20))`
+    `(hit_die = ANY (ARRAY[6, 8, 10, 12]))`
   }
 
   Indexes {
@@ -631,7 +644,12 @@ Table catalog.creature_templates {
   name text [not null]
   creature_type text [not null]
   size text [not null]
-  abilities jsonb [not null]
+  strength smallint [not null]
+  dexterity smallint [not null]
+  constitution smallint [not null]
+  intelligence smallint [not null]
+  wisdom smallint [not null]
+  charisma smallint [not null]
   armor_class integer [not null]
   max_hp integer [not null]
   speed_m "double precision" [not null, check: `((speed_m > '-Infinity'::double precision) AND (speed_m < 'Infinity'::double precision))`, note: 'PostgreSQL domain catalog.finite_number']
@@ -640,7 +658,12 @@ Table catalog.creature_templates {
 
   Checks {
     `(length(btrim(name)) > 0)`
-    `catalog.valid_abilities(abilities)`
+    `((strength >= 1) AND (strength <= 30))`
+    `((dexterity >= 1) AND (dexterity <= 30))`
+    `((constitution >= 1) AND (constitution <= 30))`
+    `((intelligence >= 1) AND (intelligence <= 30))`
+    `((wisdom >= 1) AND (wisdom <= 30))`
+    `((charisma >= 1) AND (charisma <= 30))`
     `(armor_class >= 0)`
     `(max_hp >= 0)`
     `((speed_m)::double precision >= (0)::double precision)`
@@ -769,6 +792,35 @@ Table catalog.worlds {
   }
 }
 
+Table campaign.class_features {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  class_entry_id uuid [not null]
+  feature_entry_id uuid [not null]
+  rules_edition text [not null]
+
+  Indexes {
+    (campaign_id, actor_id, class_entry_id, feature_entry_id) [pk]
+  }
+}
+
+Table campaign.actor_visuals {
+  campaign_id uuid [not null]
+  actor_id uuid [not null]
+  slot text [not null]
+  asset_uri text [not null]
+  equipment_id uuid
+
+  Checks {
+    `(slot = ANY (ARRAY['body'::text, 'head'::text, 'cloak'::text, 'main_hand'::text, 'off_hand'::text, 'feet'::text]))`
+    `(length(btrim(asset_uri)) > 0)`
+  }
+
+  Indexes {
+    (campaign_id, actor_id, slot) [pk]
+  }
+}
+
 Table private.dm_secrets {
   id uuid [pk, not null]
   campaign_id uuid [not null]
@@ -887,3 +939,9 @@ Ref: private.dm_secrets.(campaign_id, campaign_knowledge_id) > campaign.knowledg
 Ref: private.dm_secrets.(campaign_id, travel_id) > campaign.travels.(campaign_id, id)
 Ref: private.dm_secrets.(campaign_id, place_override_id) > campaign.place_overrides.(campaign_id, id)
 Ref: private.dm_secrets.(campaign_id, condition_id) > campaign.conditions.(campaign_id, id)
+Ref: campaign.character_classes.(subclass_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
+Ref: campaign.class_features.(campaign_id, actor_id, class_entry_id) > campaign.character_classes.(campaign_id, actor_id, class_entry_id)
+Ref: campaign.class_features.(campaign_id, actor_id, rules_edition) > campaign.actors.(campaign_id, id, rules_edition)
+Ref: campaign.class_features.(feature_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
+Ref: campaign.actor_visuals.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
+Ref: campaign.actor_visuals.(equipment_id) > campaign.character_equipment.(id)
