@@ -106,6 +106,21 @@ pnpm db:stop                        # keeps the named volume and its data
 `initdb` and `pg_ctl` on `PATH`; it never uses the Compose database. See
 [crates/persistence/README.md](crates/persistence/README.md).
 
+The API reads `DATABASE_URL` from the process environment; it never loads `.env`, so
+export the values yourself (`.env.example` lists local-only ones). Apply the D08
+migrations against the Compose database once, then start the server:
+
+```sh
+export DATABASE_URL=postgres://umbra:umbra_local@127.0.0.1:55432/umbra
+cargo run -p desire-api -- --migrate
+pnpm dev:api
+```
+
+`--migrate` runs the embedded, history-checked migrations and exits; the server itself
+only connects. Without `DATABASE_URL` the binary exits with an explicit error. Requests
+also need the development identity header
+(`x-desire-user: <uuid>`); D10 replaces it with real authentication.
+
 In two separate terminals:
 
 ```sh
@@ -121,8 +136,8 @@ proxies `/api` during development; `vite preview` provides neither a backend nor
 production proxy. The engine check on screen only validates its import, not rendering.
 
 PostgreSQL is exposed on `127.0.0.1:55432` to avoid occupying the usual port 5432. The
-values in `.env.example` are local only. The API does not load that file or open
-database connections yet. To stop the database without deleting data: `pnpm db:stop`.
+values in `.env.example` are local only. To stop the database without deleting data:
+`pnpm db:stop`.
 
 ## Verification state
 
@@ -131,6 +146,6 @@ See [docs/entorno.md](docs/entorno.md) and the
 were executed: frontend `check`/`build`, Rust `fmt`/`clippy`/`test`, the Wasm build,
 the `/api/health` round trip and the PostgreSQL service check. The Rust workspace suite
 runs through `crates/persistence/test-postgres.sh` with an isolated PostgreSQL cluster.
-GPU rendering is not verified, and the API does not read PostgreSQL yet, so this is
-not an end-to-end product validation. The Nivel20 integration remains
-read-only and untouched.
+GPU rendering is not verified, the API serves campaign data only to the development
+identity header, and there is no browser-driven end-to-end test, so this is not an
+end-to-end product validation. The Nivel20 integration remains read-only and untouched.

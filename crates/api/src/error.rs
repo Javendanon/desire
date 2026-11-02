@@ -72,6 +72,17 @@ impl ApiError {
         )
     }
 
+    /// The same key arrived with a different body, so replay would answer a different
+    /// request than the one stored.
+    pub fn idempotency_conflict(caller: &Caller) -> Self {
+        Self::new(
+            CONFLICT,
+            "idempotency_conflict",
+            "the idempotency key was already used for a different request",
+            &caller.request_id,
+        )
+    }
+
     /// Infrastructure failures happen before a caller exists; the generated ID still
     /// lets a log line and the response body agree.
     pub fn internal(message: impl Into<String>) -> Self {
@@ -103,7 +114,7 @@ impl ApiError {
         match sqlstate {
             Some("23503") => Self::invalid(caller, "the request references a missing resource"),
             Some("23505") => Self::conflict(caller, "the resource already exists"),
-            Some("23514" | "22P02" | "22003" | "22007" | "22001") => {
+            Some("23514" | "22P02" | "22003" | "22007" | "22001" | "22021" | "22P05") => {
                 Self::invalid(caller, "a value violates a database constraint")
             }
             Some("40001" | "40P01") => Self::conflict(caller, "retry the request"),

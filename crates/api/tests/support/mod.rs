@@ -33,21 +33,30 @@ impl TestDb {
     }
 
     pub fn state(&self) -> AppState {
-        AppState::from_client(connect(&self.name))
+        AppState::with_config(config(&self.name), connect(&self.name))
     }
 
     pub fn connection(&self) -> Client {
         connect(&self.name)
     }
 
-    /// Journal entries need a session; session management is outside this card.
-    pub fn seed_session(&self, campaign_id: &str, session_id: &str) {
-        self.connection()
-            .execute(
-                "INSERT INTO campaign.sessions (id, campaign_id, title, revision) \
-                 VALUES ($1::text::uuid, $2::text::uuid, 'Synthetic session', 1)",
-                &[&session_id, &campaign_id],
-            )
+    /// A libpq URL for the disposable cluster, used to start the real binary.
+    pub fn url(&self) -> String {
+        let socket = std::env::var("DESIRE_TEST_SOCKET").expect(
+            "run bash crates/persistence/test-postgres.sh; no external database is allowed",
+        );
+        let host = socket.replace('/', "%2F");
+        format!("postgresql://desire_test@{host}/{}", self.name)
+    }
+
+    /// Terminates every other backend on this database, as a database restart would.
+    pub fn drop_connections(&self) {
+        admin_client()
+            .batch_execute(&format!(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity \
+                 WHERE datname = '{}' AND pid <> pg_backend_pid()",
+                self.name
+            ))
             .unwrap();
     }
 
@@ -62,15 +71,16 @@ impl TestDb {
     }
 }
 
-fn connect(name: &str) -> Client {
+fn config(name: &str) -> Config {
     let socket = std::env::var("DESIRE_TEST_SOCKET")
         .expect("run bash crates/persistence/test-postgres.sh; no external database is allowed");
-    Config::new()
-        .host_path(socket)
-        .user("desire_test")
-        .dbname(name)
-        .connect(NoTls)
-        .unwrap()
+    let mut config = Config::new();
+    config.host_path(socket).user("desire_test").dbname(name);
+    config
+}
+
+fn connect(name: &str) -> Client {
+    config(name).connect(NoTls).unwrap()
 }
 
 fn admin_client() -> Client {
@@ -221,6 +231,65 @@ pub async fn create_character(app: &Router, campaign_id: &str, caller: &str) -> 
             "rules_edition": "dnd_2014"})),
     )
     .await;
+    assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
+    response.body
+}
+
+pub async fn create_scene(app: &Router, campaign_id: &str, caller: &str) -> Value {
+    created(
+        app,
+        &format!("/api/v1/campaigns/{campaign_id}/scenes"),
+        caller,
+        json!({"name": "Dock", "map_version_id": map_version()}),
+    )
+    .await
+}
+
+pub async fn create_session(app: &Router, campaign_id: &str, caller: &str) -> Value {
+    created(
+        app,
+        &format!("/api/v1/campaigns/{campaign_id}/sessions"),
+        caller,
+        json!({"title": "Synthetic session"}),
+    )
+    .await
+}
+
+pub async fn create_journal(
+    app: &Router,
+    campaign_id: &str,
+    caller: &str,
+    session_id: &str,
+    visibility: &str,
+) -> Value {
+    created(
+        app,
+        &format!("/api/v1/campaigns/{campaign_id}/journal"),
+        caller,
+        json!({"session_id": session_id, "body": "Synthetic recap",
+            "visibility": visibility}),
+    )
+    .await
+}
+
+pub async fn create_knowledge(
+    app: &Router,
+    campaign_id: &str,
+    caller: &str,
+    visibility: &str,
+) -> Value {
+    created(
+        app,
+        &format!("/api/v1/campaigns/{campaign_id}/knowledge"),
+        caller,
+        json!({"title": "Synthetic lore", "body": "Synthetic body",
+            "visibility": visibility, "provenance": provenance()}),
+    )
+    .await
+}
+
+async fn created(app: &Router, path: &str, caller: &str, body: Value) -> Value {
+    let response = call(app, Method::POST, path, Some(caller), Some(body)).await;
     assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
     response.body
 }

@@ -13,6 +13,9 @@ pub fn text(value: &str, field: &str, max: usize) -> Result<String, String> {
     if trimmed.is_empty() {
         return Err(format!("{field} must not be blank"));
     }
+    if trimmed.contains('\0') {
+        return Err(format!("{field} must not contain NUL characters"));
+    }
     if trimmed.chars().count() > max {
         return Err(format!("{field} must be at most {max} characters"));
     }

@@ -282,7 +282,13 @@ fn pagination_limits_offsets_and_validation() {
     assert_eq!(second.body["items"].as_array().unwrap().len(), 1);
     assert_eq!(second.body["has_more"], false);
 
-    for query in ["limit=0", "limit=101", "offset=not-a-number"] {
+    for query in [
+        "limit=0",
+        "limit=101",
+        "limit=abc",
+        "limit=-1",
+        "offset=not-a-number",
+    ] {
         let response = support::run(call(
             &app,
             Method::GET,
@@ -291,6 +297,12 @@ fn pagination_limits_offsets_and_validation() {
             None,
         ));
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{query}");
+        assert_eq!(response.body["code"], "invalid_request", "{query}");
+        assert_eq!(
+            response.body["request_id"].as_str().unwrap().len(),
+            36,
+            "{query}"
+        );
     }
 }
 
@@ -380,4 +392,64 @@ fn updates_of_missing_resources_return_not_found() {
         assert_eq!(response.status, StatusCode::NOT_FOUND, "{path}");
         assert_eq!(response.body["code"], "not_found", "{path}");
     }
+}
+
+#[test]
+fn text_with_nul_characters_is_rejected_before_the_database() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+
+    let created = support::run(call(
+        &app,
+        Method::POST,
+        "/api/v1/campaigns",
+        Some(&owner),
+        Some(json!({"name": "Nul\u{0}name", "rules_edition": "dnd_2014", "city_id": null})),
+    ));
+    assert_eq!(created.status, StatusCode::BAD_REQUEST, "{}", created.body);
+    assert_eq!(created.body["code"], "invalid_request");
+
+    let campaign_id = support::run(support::campaign(&app, &owner));
+    let session = support::run(support::create_session(&app, &campaign_id, &owner));
+    let entry = support::run(support::create_journal(
+        &app,
+        &campaign_id,
+        &owner,
+        session["id"].as_str().unwrap(),
+        "players",
+    ));
+    let patched = support::run(call(
+        &app,
+        Method::PATCH,
+        &uri(
+            &campaign_id,
+            &format!("/journal/{}", entry["id"].as_str().unwrap()),
+        ),
+        Some(&owner),
+        Some(json!({"body": "Nul\u{0}body", "visibility": "players",
+            "expected_revision": 1})),
+    ));
+    assert_eq!(patched.status, StatusCode::BAD_REQUEST, "{}", patched.body);
+    assert_eq!(patched.body["code"], "invalid_request");
+}
+
+#[test]
+fn the_api_reconnects_after_the_database_drops_the_connection() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+    support::run(support::campaign(&app, &owner));
+    db.drop_connections();
+
+    // The next request notices the dead socket before running work and replaces the client.
+    let recovered = support::run(call(
+        &app,
+        Method::GET,
+        "/api/v1/campaigns",
+        Some(&owner),
+        None,
+    ));
+    assert_eq!(recovered.status, StatusCode::OK, "{}", recovered.body);
+    assert_eq!(recovered.body["items"].as_array().unwrap().len(), 1);
 }

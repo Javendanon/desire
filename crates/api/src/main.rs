@@ -33,22 +33,35 @@ fn identity_binding_guard(host: IpAddr) -> Result<(), String> {
     .into())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let host: IpAddr = std::env::var("HOST")
-        .unwrap_or_else(|_| "127.0.0.1".into())
-        .parse()?;
-    identity_binding_guard(host)?;
-    let port: u16 = std::env::var("PORT")
-        .unwrap_or_else(|_| "3001".into())
-        .parse()?;
-    let database_url = std::env::var("DATABASE_URL").map_err(
-        |_| "DATABASE_URL is required: connect the API to the D08 migrations before serving",
-    )?;
-    let client = postgres::Client::connect(&database_url, postgres::NoTls)?;
-    let address = SocketAddr::new(host, port);
+fn environment<T>(name: &str, fallback: &str) -> Result<T, Box<dyn std::error::Error>>
+where
+    T: std::str::FromStr,
+    T::Err: std::error::Error + 'static,
+{
+    Ok(std::env::var(name)
+        .unwrap_or_else(|_| fallback.into())
+        .parse()?)
+}
+
+fn database_url() -> Result<String, Box<dyn std::error::Error>> {
+    std::env::var("DATABASE_URL").map_err(|_| {
+        "DATABASE_URL is required: apply the D08 migrations and point the API at that database"
+            .into()
+    })
+}
+
+/// Connection settings are kept so `Db` can replace a client the server closed.
+fn database_config(url: &str) -> Result<postgres::Config, Box<dyn std::error::Error>> {
+    Ok(url.parse()?)
+}
+
+fn migrated() -> bool {
+    std::env::args().any(|argument| argument == "--migrate")
+}
+
+async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind(address).await?;
-    let app = app(AppState::from_client(client));
+    let app = app(state);
     println!("Desire API: http://{address}");
     axum::serve(listener, app)
         .with_graceful_shutdown(wait_for_shutdown(tokio::signal::ctrl_c(), |message| {
@@ -56,6 +69,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .await?;
     Ok(())
+}
+
+/// The blocking client needs its own runtime, so it is created and dropped outside the
+/// server runtime. `state` stays owned here for the same reason: the last drop closes the
+/// connection on this thread.
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let host: IpAddr = environment("HOST", "127.0.0.1")?;
+    identity_binding_guard(host)?;
+    let port: u16 = environment("PORT", "3001")?;
+    let config = database_config(&database_url()?)?;
+    let mut client = config.connect(postgres::NoTls)?;
+    if migrated() {
+        desire_persistence::migrations::apply(&mut client)?;
+        println!("D08 migrations applied");
+        return Ok(());
+    }
+    let address = SocketAddr::new(host, port);
+    let state = AppState::with_config(config, client);
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    let served = runtime.block_on(serve(address, state.clone()));
+    runtime.shutdown_background();
+    drop(state);
+    served
 }
 
 #[cfg(test)]
@@ -89,5 +127,12 @@ mod tests {
         let result = identity_binding_guard("0.0.0.0".parse().unwrap());
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("D10"));
+    }
+
+    #[test]
+    fn socket_urls_are_accepted_as_database_settings() {
+        let config = database_config("postgresql://desire_test@%2Ftmp%2Fsocket/synthetic").unwrap();
+        assert_eq!(config.get_user(), Some("desire_test"));
+        assert_eq!(config.get_dbname(), Some("synthetic"));
     }
 }

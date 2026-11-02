@@ -12,7 +12,7 @@ use postgres::Client;
 const LIST: &str = "SELECT to_jsonb(s) FROM campaign.scenes s \
      WHERE s.campaign_id = $1::text::uuid ORDER BY s.id LIMIT $2 OFFSET $3";
 
-collection_crud!(Scene, LIST, "campaign.scenes", "scene not found");
+collection_list!(Scene, LIST);
 
 pub fn get(client: &mut Client, target: Target<'_>) -> Result<Scene, ApiError> {
     let scope = target.scope;
@@ -23,6 +23,7 @@ pub fn get(client: &mut Client, target: Target<'_>) -> Result<Scene, ApiError> {
 }
 
 /// Scenes route their writes through the D08 outbox, so they keep an explicit entry point.
+/// A key that already stored a write replays it, with the original scene and event IDs.
 pub fn create(
     client: &mut Client,
     scope: Scope<'_>,
@@ -30,6 +31,11 @@ pub fn create(
     idempotency_key: Option<String>,
 ) -> Result<Scene, ApiError> {
     access::require_dm(client, scope.caller, scope.campaign_id)?;
+    if let Some(key) = idempotency_key.as_deref()
+        && let Some(scene) = replay(client, scope, &body, key)?
+    {
+        return Ok(scene);
+    }
     let scene = Scene {
         id: next_id(client, scope.caller)?,
         campaign_id: scope.campaign_id.to_string(),
@@ -41,12 +47,30 @@ pub fn create(
     let write = SceneWrite {
         scene: scene.clone(),
         expected_revision: None,
-        event_id: event_id.clone(),
-        key: idempotency_key.unwrap_or(event_id),
+        key: idempotency_key.unwrap_or_else(|| event_id.clone()),
+        event_id,
     };
     SceneRepository::save_and_enqueue(client, &write)
         .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
     Ok(scene)
+}
+
+/// Only the client-supplied fields decide whether a retry is the same request.
+fn replay(
+    client: &mut Client,
+    scope: Scope<'_>,
+    body: &NewScene,
+    key: &str,
+) -> Result<Option<Scene>, ApiError> {
+    let stored = SceneRepository::replay(client, scope.campaign_id, key)
+        .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
+    let Some((scene, _event_id)) = stored else {
+        return Ok(None);
+    };
+    if scene.name != body.name || scene.map_version_id != body.map_version_id {
+        return Err(ApiError::idempotency_conflict(scope.caller));
+    }
+    Ok(Some(scene))
 }
 
 pub fn update(

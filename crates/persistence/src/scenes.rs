@@ -31,6 +31,31 @@ impl SceneRepository {
             .transpose()
     }
 
+    /// The scene and event an earlier write stored for this key, so a retry can replay the
+    /// first result instead of generating new identifiers that can never match.
+    pub fn replay(
+        client: &mut Client,
+        campaign: &str,
+        key: &str,
+    ) -> Result<Option<(Scene, String)>, Error> {
+        let row = client
+            .query_opt(
+                concat!(
+                    "SELECT k.request->'scene', k.event_id::text ",
+                    "FROM campaign.idempotency_keys k ",
+                    "WHERE k.campaign_id = $1::text::uuid AND k.key = $2::text::uuid"
+                ),
+                &[&campaign, &key],
+            )
+            .context(format!("read idempotency key {key} in campaign {campaign}"))?;
+        row.map(|row| {
+            let scene: Scene = serde_json::from_value(row.get(0))
+                .context("decode the scene stored for an idempotency key")?;
+            Ok((scene, row.get::<_, String>(1)))
+        })
+        .transpose()
+    }
+
     pub fn save_and_enqueue(
         client: &mut Client,
         write: &SceneWrite,

@@ -122,6 +122,8 @@ impl NewCharacter {
 #[serde(deny_unknown_fields)]
 pub struct PatchCharacter {
     pub name: String,
+    /// Required, but an explicit `null` clears the controller. Omitting it is a 400.
+    #[serde(deserialize_with = "Option::deserialize")]
     pub controller_id: Option<Id>,
     pub expected_revision: u32,
 }
@@ -140,6 +142,20 @@ fn clean_controller(value: Option<Id>, caller: &Caller) -> Result<Option<Id>, Ap
     value
         .map(|value| or_invalid(validation::id(&value, "controller_id"), caller))
         .transpose()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NewSession {
+    pub title: String,
+}
+
+impl NewSession {
+    pub fn clean(self, caller: &Caller) -> Result<Self, ApiError> {
+        Ok(Self {
+            title: or_invalid(validation::text(&self.title, "title", MAX_TITLE), caller)?,
+        })
+    }
 }
 
 #[derive(Debug, Deserialize)]

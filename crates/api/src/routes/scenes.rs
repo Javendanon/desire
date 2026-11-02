@@ -1,7 +1,9 @@
 //! Scene endpoints. Collection writes accept an optional Idempotency-Key UUID.
-use axum::Json;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 
 use crate::{
     AppState, db,
@@ -18,7 +20,6 @@ use crate::payloads::PatchScene;
 list_handler!(scenes, Scene);
 get_handler!(scenes, Scene, "scene_id");
 update_handler!(scenes, Scene, PatchScene, "scene_id");
-delete_handler!(scenes, "scene_id");
 
 /// Scene creation accepts the idempotency key because D08 writes an outbox event.
 pub async fn create(

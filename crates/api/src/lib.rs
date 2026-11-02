@@ -24,9 +24,17 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// Used by tests and other owners of an already-connected client: no reconnect settings.
     pub fn from_client(client: postgres::Client) -> Self {
         Self {
-            db: std::sync::Arc::new(std::sync::Mutex::new(client)),
+            db: db::Db::from_client(client),
+        }
+    }
+
+    /// State that can replace a connection the server closed, using the same settings.
+    pub fn with_config(config: postgres::Config, client: postgres::Client) -> Self {
+        Self {
+            db: db::Db::with_config(config, client),
         }
     }
 }

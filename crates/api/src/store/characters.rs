@@ -1,21 +1,70 @@
 //! Character CRUD. D08 had no campaign-character repository, so the SQL lives here.
-use super::{Scope, Target, execute, next_id};
+//!
+//! A trigger gives every character an actor row: uncontrolled characters are DM-only,
+//! controlled ones are player-visible. The joins below apply that rule to reads, and the
+//! update keeps the actor row in step when the controller changes.
+use super::{Scope, Target, Visible, execute, list_visible, next_id, visible_row};
 use crate::{
     access,
     error::{ApiError, INTERNAL},
     extract::Caller,
     payloads::{NewCharacter, PatchCharacter},
+    query::{Page, PageBody},
 };
 use desire_core::contracts::{campaign::Character, common::RulesEdition};
 use postgres::Client;
 
-const LIST: &str = "SELECT to_jsonb(c) FROM campaign.characters c \
+const LIST_DM: &str = "SELECT to_jsonb(c) FROM campaign.characters c \
      WHERE c.campaign_id = $1::text::uuid ORDER BY c.id LIMIT $2 OFFSET $3";
-const GET: &str = "SELECT to_jsonb(c) FROM campaign.characters c \
+const LIST_PLAYER: &str = "SELECT to_jsonb(c) FROM campaign.characters c \
+     JOIN campaign.actors a ON a.campaign_id = c.campaign_id AND a.id = c.id \
+     WHERE c.campaign_id = $1::text::uuid AND a.visibility = 'players' \
+     ORDER BY c.id LIMIT $2 OFFSET $3";
+const GET_DM: &str = "SELECT to_jsonb(c) FROM campaign.characters c \
      WHERE c.campaign_id = $1::text::uuid AND c.id = $2::text::uuid";
+const GET_PLAYER: &str = "SELECT to_jsonb(c) FROM campaign.characters c \
+     JOIN campaign.actors a ON a.campaign_id = c.campaign_id AND a.id = c.id \
+     WHERE c.campaign_id = $1::text::uuid AND c.id = $2::text::uuid \
+     AND a.visibility = 'players'";
+const UPDATE: &str = "UPDATE campaign.characters SET name = $3, \
+     controller_id = $4::text::uuid, revision = revision + 1 \
+     WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid AND revision = $5::bigint \
+     RETURNING rules_edition::text";
+const UPDATE_ACTOR: &str = "UPDATE campaign.actors SET name = $3, \
+     kind = CASE WHEN $4::text IS NULL THEN 'npc' ELSE 'character' END, \
+     visibility = CASE WHEN $4::text IS NULL THEN 'dm'::campaign.visibility \
+     ELSE 'players'::campaign.visibility END \
+     WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid";
 
-collection_list!(Character, LIST);
-member_entry!(Character, GET, "character not found");
+const MISSING: &str = "character not found";
+
+pub fn list(
+    client: &mut Client,
+    scope: Scope<'_>,
+    page: Page,
+) -> Result<PageBody<Character>, ApiError> {
+    list_visible(
+        client,
+        scope,
+        page,
+        Visible {
+            dm: LIST_DM,
+            player: LIST_PLAYER,
+        },
+    )
+}
+
+pub fn get(client: &mut Client, target: Target<'_>) -> Result<Character, ApiError> {
+    visible_row(
+        client,
+        target,
+        Visible {
+            dm: GET_DM,
+            player: GET_PLAYER,
+        },
+        MISSING,
+    )
+}
 
 pub fn create(
     client: &mut Client,
@@ -82,18 +131,20 @@ pub fn update(
     })
 }
 
+/// The character and its trigger-created actor row change in one transaction, so assigning
+/// or clearing a controller also moves the actor between DM-only and player visibility.
 fn apply_update(
     client: &mut Client,
     target: Target<'_>,
     body: &PatchCharacter,
 ) -> Result<RulesEdition, ApiError> {
     let caller = target.scope.caller;
-    let row = client
+    let mut tx = client
+        .transaction()
+        .map_err(|error| ApiError::from_postgres(&error, caller))?;
+    let row = tx
         .query_opt(
-            "UPDATE campaign.characters SET name = $3, controller_id = $4::text::uuid, \
-             revision = revision + 1 WHERE campaign_id = $1::text::uuid \
-             AND id = $2::text::uuid AND revision = $5::bigint \
-             RETURNING rules_edition::text",
+            UPDATE,
             &[
                 &target.scope.campaign_id,
                 &target.id,
@@ -106,7 +157,20 @@ fn apply_update(
     let Some(row) = row else {
         return Err(ApiError::revision_conflict(caller));
     };
-    edition_from(&row.get::<_, String>(0), caller)
+    tx.execute(
+        UPDATE_ACTOR,
+        &[
+            &target.scope.campaign_id,
+            &target.id,
+            &body.name,
+            &body.controller_id,
+        ],
+    )
+    .map_err(|error| ApiError::from_postgres(&error, caller))?;
+    let edition = edition_from(&row.get::<_, String>(0), caller)?;
+    tx.commit()
+        .map_err(|error| ApiError::from_postgres(&error, caller))?;
+    Ok(edition)
 }
 
 /// A character owns an actor row created by a trigger, so both leave in one transaction.
@@ -172,7 +236,7 @@ fn ensure_exists(client: &mut Client, target: Target<'_>) -> Result<(), ApiError
         .map_err(|error| ApiError::from_postgres(&error, caller))?;
     exists
         .map(|_| ())
-        .ok_or_else(|| ApiError::not_found(caller, "character not found"))
+        .ok_or_else(|| ApiError::not_found(caller, MISSING))
 }
 
 fn edition_name(edition: &RulesEdition) -> &'static str {

@@ -1,4 +1,4 @@
-// Typed calls for campaigns, members, scenes, characters, journal and knowledge.
+// Typed calls for campaigns, members, sessions, scenes, characters, journal and knowledge.
 import type {
   Campaign,
   CampaignKnowledge,
@@ -6,10 +6,8 @@ import type {
   Id,
   JournalEntry,
   Membership,
-  Provenance,
-  RulesEdition,
   Scene,
-  Visibility,
+  Session,
 } from '../../generated/contracts.ts';
 import {
   type ApiContext,
@@ -35,24 +33,7 @@ export type PatchJournal = Pick<JournalEntry, 'body' | 'visibility'> & {
 };
 export type NewKnowledge = Omit<CampaignKnowledge, 'id' | 'campaign_id' | 'revision'>;
 export type PatchKnowledge = NewKnowledge & { expected_revision: number };
-
-export interface KnowledgeDraft {
-  title: string;
-  body: string;
-  visibility: Visibility;
-  provenance: Provenance;
-}
-
-export interface SceneDraft {
-  name: string;
-  map_version_id: Id;
-}
-
-export interface CharacterDraft {
-  name: string;
-  controller_id: Id | null;
-  rules_edition: RulesEdition;
-}
+export type NewSession = Omit<Session, 'id' | 'campaign_id' | 'revision'>;
 
 export const CAMPAIGNS = '/campaigns';
 
@@ -129,10 +110,6 @@ export function updateScene(
   return request(context, 'PATCH', resourcePath(scenes(campaignId), sceneId), body);
 }
 
-export function deleteScene(context: ApiContext, campaignId: Id, sceneId: Id): Promise<void> {
-  return request(context, 'DELETE', resourcePath(scenes(campaignId), sceneId));
-}
-
 export function listCharacters(
   context: ApiContext,
   campaignId: Id,
@@ -174,12 +151,36 @@ export function deleteCharacter(
   return request(context, 'DELETE', resourcePath(characters(campaignId), characterId));
 }
 
+export function listSessions(
+  context: ApiContext,
+  campaignId: Id,
+  page?: PageQuery,
+): Promise<Page<Session>> {
+  return request(context, 'GET', collectionPath(sessions(campaignId), page));
+}
+
+export function createSession(
+  context: ApiContext,
+  campaignId: Id,
+  body: NewSession,
+): Promise<Session> {
+  return request(context, 'POST', sessions(campaignId), body);
+}
+
 export function listJournal(
   context: ApiContext,
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<JournalEntry>> {
   return request(context, 'GET', collectionPath(journal(campaignId), page));
+}
+
+export function getJournal(
+  context: ApiContext,
+  campaignId: Id,
+  entryId: Id,
+): Promise<JournalEntry> {
+  return request(context, 'GET', resourcePath(journal(campaignId), entryId));
 }
 
 export function createJournal(
@@ -211,10 +212,18 @@ export function listKnowledge(
   return request(context, 'GET', collectionPath(knowledge(campaignId), page));
 }
 
+export function getKnowledge(
+  context: ApiContext,
+  campaignId: Id,
+  entryId: Id,
+): Promise<CampaignKnowledge> {
+  return request(context, 'GET', resourcePath(knowledge(campaignId), entryId));
+}
+
 export function createKnowledge(
   context: ApiContext,
   campaignId: Id,
-  body: KnowledgeDraft,
+  body: NewKnowledge,
 ): Promise<CampaignKnowledge> {
   return request(context, 'POST', knowledge(campaignId), body);
 }
@@ -246,6 +255,10 @@ function scenes(campaignId: Id): string {
 
 function characters(campaignId: Id): string {
   return `${resourcePath(CAMPAIGNS, campaignId)}/characters`;
+}
+
+function sessions(campaignId: Id): string {
+  return `${resourcePath(CAMPAIGNS, campaignId)}/sessions`;
 }
 
 function journal(campaignId: Id): string {

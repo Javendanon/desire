@@ -13,32 +13,6 @@ macro_rules! collection_list {
     };
 }
 
-/// List and delete for a campaign-owned collection.
-macro_rules! collection_crud {
-    ($dto:ty, $list_sql:expr, $table:expr, $missing:expr) => {
-        collection_list!($dto, $list_sql);
-
-        pub fn delete(
-            client: &mut ::postgres::Client,
-            target: $crate::store::Target<'_>,
-        ) -> Result<(), $crate::error::ApiError> {
-            $crate::store::delete_row(client, target, $table, $missing)
-        }
-    };
-}
-
-/// One entry readable by any member of the campaign.
-macro_rules! member_entry {
-    ($dto:ty, $get_sql:expr, $missing:expr) => {
-        pub fn get(
-            client: &mut ::postgres::Client,
-            target: $crate::store::Target<'_>,
-        ) -> Result<$dto, $crate::error::ApiError> {
-            $crate::store::member_row(client, target, $get_sql, $missing)
-        }
-    };
-}
-
 /// List, read and delete with DM-only rows hidden from players.
 macro_rules! visible_crud {
     ($dto:ty, $dm_list:expr, $player_list:expr, $dm_get:expr, $player_get:expr,
@@ -110,6 +84,7 @@ pub mod journal;
 pub mod knowledge;
 pub mod members;
 pub mod scenes;
+pub mod sessions;
 
 use crate::{
     access,
@@ -251,16 +226,6 @@ pub(crate) fn list_visible<T: DeserializeOwned>(
         visible.player
     };
     page_query(client, scope, page, sql)
-}
-
-pub(crate) fn member_row<T: DeserializeOwned>(
-    client: &mut Client,
-    target: Target<'_>,
-    sql: &str,
-    missing: &str,
-) -> Result<T, ApiError> {
-    access::require_member(client, target.scope.caller, target.scope.campaign_id)?;
-    row_by_id(client, target, sql, missing)
 }
 
 /// One entry visible to the caller; hidden DM rows look absent to players.

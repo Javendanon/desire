@@ -83,7 +83,8 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
     ));
     assert_eq!(hidden.status, StatusCode::NOT_FOUND);
 
-    // Every scene create emits a D08 outbox event; hard deletion would destroy that history.
+    // Every scene create keeps a D08 outbox event that references the scene, so v1 exposes
+    // no scene deletion instead of an endpoint that can only answer 409.
     let deleted = support::run(call(
         &app,
         Method::DELETE,
@@ -91,8 +92,7 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
         Some(&owner),
         None,
     ));
-    assert_eq!(deleted.status, StatusCode::CONFLICT);
-    assert_eq!(deleted.body["code"], "resource_in_use");
+    assert_eq!(deleted.status, StatusCode::METHOD_NOT_ALLOWED);
 }
 
 #[test]
@@ -234,4 +234,143 @@ fn scene_idempotency_key_is_validated_before_the_write() {
         &[("idempotency-key", &id(500))],
     ));
     assert_eq!(accepted.status, StatusCode::CREATED, "{}", accepted.body);
+}
+
+#[test]
+fn scene_creation_replays_the_first_result_for_the_same_key() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+    let campaign_id = support::run(support::campaign(&app, &owner));
+    let key = id(500);
+    let body = json!({"name": "Dock", "map_version_id": map_version()});
+    let headers = [("idempotency-key", key.as_str())];
+
+    let first = support::run(call_with_headers(
+        &app,
+        Method::POST,
+        &uri(&campaign_id, "/scenes"),
+        Some(&owner),
+        Some(body.clone()),
+        &headers,
+    ));
+    assert_eq!(first.status, StatusCode::CREATED, "{}", first.body);
+
+    let retried = support::run(call_with_headers(
+        &app,
+        Method::POST,
+        &uri(&campaign_id, "/scenes"),
+        Some(&owner),
+        Some(body),
+        &headers,
+    ));
+    assert_eq!(retried.status, StatusCode::CREATED, "{}", retried.body);
+    assert_eq!(retried.body["id"], first.body["id"]);
+    assert_eq!(retried.body["revision"], 1);
+
+    let events: i64 = db
+        .connection()
+        .query_one(
+            "SELECT count(*) FROM campaign.outbox WHERE campaign_id = $1::text::uuid",
+            &[&campaign_id],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(events, 1);
+
+    let different = support::run(call_with_headers(
+        &app,
+        Method::POST,
+        &uri(&campaign_id, "/scenes"),
+        Some(&owner),
+        Some(json!({"name": "Harbor", "map_version_id": map_version()})),
+        &headers,
+    ));
+    assert_eq!(different.status, StatusCode::CONFLICT, "{}", different.body);
+    assert_eq!(different.body["code"], "idempotency_conflict");
+}
+
+#[test]
+fn characters_need_an_explicit_controller_on_update_and_hide_it_from_players() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+    let player = id(91);
+    let campaign_id = support::run(support::campaign(&app, &owner));
+    support::run(support::member(
+        &app,
+        &campaign_id,
+        &owner,
+        &player,
+        "player",
+    ));
+    let character = support::run(support::create_character(&app, &campaign_id, &owner));
+    let path = uri(
+        &campaign_id,
+        &format!("/characters/{}", character["id"].as_str().unwrap()),
+    );
+
+    let hidden = support::run(call(&app, Method::GET, &path, Some(&player), None));
+    assert_eq!(hidden.status, StatusCode::NOT_FOUND, "{}", hidden.body);
+
+    let omitted = support::run(call(
+        &app,
+        Method::PATCH,
+        &path,
+        Some(&owner),
+        Some(json!({"name": "Hero", "expected_revision": 1})),
+    ));
+    assert_eq!(omitted.status, StatusCode::BAD_REQUEST, "{}", omitted.body);
+    assert_eq!(omitted.body["code"], "invalid_request");
+
+    let assigned = support::run(call(
+        &app,
+        Method::PATCH,
+        &path,
+        Some(&owner),
+        Some(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
+    ));
+    assert_eq!(assigned.status, StatusCode::OK, "{}", assigned.body);
+
+    let visible = support::run(call(&app, Method::GET, &path, Some(&player), None));
+    assert_eq!(visible.status, StatusCode::OK, "{}", visible.body);
+    assert_eq!(visible.body["controller_id"], player);
+}
+
+#[test]
+fn removing_a_member_who_controls_a_character_is_a_conflict() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+    let player = id(91);
+    let campaign_id = support::run(support::campaign(&app, &owner));
+    support::run(support::member(
+        &app,
+        &campaign_id,
+        &owner,
+        &player,
+        "player",
+    ));
+    let character = support::run(support::create_character(&app, &campaign_id, &owner));
+    let assigned = support::run(call(
+        &app,
+        Method::PATCH,
+        &uri(
+            &campaign_id,
+            &format!("/characters/{}", character["id"].as_str().unwrap()),
+        ),
+        Some(&owner),
+        Some(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
+    ));
+    assert_eq!(assigned.status, StatusCode::OK, "{}", assigned.body);
+
+    let removed = support::run(call(
+        &app,
+        Method::DELETE,
+        &uri(&campaign_id, &format!("/members/{player}")),
+        Some(&owner),
+        None,
+    ));
+    assert_eq!(removed.status, StatusCode::CONFLICT, "{}", removed.body);
+    assert_eq!(removed.body["code"], "resource_in_use");
 }

@@ -4,7 +4,13 @@ import assert from 'node:assert/strict';
 import { ApiRequestError, collectionPath, resourcePath } from '../src/lib/api/client.ts';
 import {
   createCampaign,
+  createJournal,
+  createKnowledge,
   createScene,
+  createSession,
+  getJournal,
+  getKnowledge,
+  listSessions,
   listCampaigns,
   removeMember,
   updateCharacter,
@@ -169,4 +175,61 @@ test('character patches cannot send an immutable rules edition', async () => {
     captured[0].url,
     `/api/v1/campaigns/${CAMPAIGN}/characters/${SCENE}`,
   );
+});
+
+test('session, journal and knowledge calls use the generated contract shapes', async () => {
+  const captured: Capture[] = [];
+  const session = { id: USER, campaign_id: CAMPAIGN, title: 'Synthetic', revision: 1 };
+  const sessionBody = { title: session.title };
+  await createSession(context(session, 201, captured), CAMPAIGN, sessionBody);
+  assert.deepEqual(JSON.parse(String(captured[0].init.body)), sessionBody);
+  assert.equal(captured[0].url, `/api/v1/campaigns/${CAMPAIGN}/sessions`);
+
+  await listSessions(context({ items: [], limit: 20, offset: 0, has_more: false }, 200, captured), CAMPAIGN);
+  assert.equal(captured[1].url, `/api/v1/campaigns/${CAMPAIGN}/sessions`);
+
+  const entry = {
+    id: USER,
+    campaign_id: CAMPAIGN,
+    session_id: SCENE,
+    body: 'Synthetic recap',
+    visibility: 'players' as const,
+    revision: 1,
+  };
+  const journalBody = {
+    session_id: entry.session_id,
+    body: entry.body,
+    visibility: entry.visibility,
+  };
+  await createJournal(context(entry, 201, captured), CAMPAIGN, journalBody);
+  assert.deepEqual(JSON.parse(String(captured[2].init.body)), journalBody);
+
+  await getJournal(context(entry, 200, captured), CAMPAIGN, USER);
+  assert.equal(captured[3].url, `/api/v1/campaigns/${CAMPAIGN}/journal/${USER}`);
+
+  const provenance = {
+    source: 'Synthetic',
+    attribution: 'Synthetic',
+    evidence: 'synthetic' as const,
+  };
+  const knowledge = {
+    id: USER,
+    campaign_id: CAMPAIGN,
+    title: 'Synthetic lore',
+    body: 'Synthetic body',
+    visibility: 'dm' as const,
+    revision: 1,
+    provenance,
+  };
+  const knowledgeBody = {
+    title: knowledge.title,
+    body: knowledge.body,
+    visibility: knowledge.visibility,
+    provenance,
+  };
+  await createKnowledge(context(knowledge, 201, captured), CAMPAIGN, knowledgeBody);
+  assert.deepEqual(JSON.parse(String(captured[4].init.body)), knowledgeBody);
+
+  await getKnowledge(context(knowledge, 200, captured), CAMPAIGN, USER);
+  assert.equal(captured[5].url, `/api/v1/campaigns/${CAMPAIGN}/knowledge/${USER}`);
 });

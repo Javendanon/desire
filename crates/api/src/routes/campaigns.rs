@@ -1,12 +1,14 @@
 //! Campaign collection and item endpoints.
-use axum::Json;
-use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 
 use crate::{
     AppState, db,
     error::ApiError,
-    extract::{ApiJson, Caller},
+    extract::{ApiJson, ApiQuery, Caller},
     payloads::{NewCampaign, PatchCampaign},
     query::{Page, PageBody, PageQuery},
     routes::{id_path, respond},
@@ -17,7 +19,7 @@ use desire_core::contracts::campaign::Campaign;
 pub async fn list(
     State(state): State<AppState>,
     caller: Caller,
-    Query(query): Query<PageQuery>,
+    ApiQuery(query): ApiQuery<PageQuery>,
 ) -> Result<Json<PageBody<Campaign>>, ApiError> {
     let page = Page::from_query(&query, &caller)?;
     respond(&state, move |client| {

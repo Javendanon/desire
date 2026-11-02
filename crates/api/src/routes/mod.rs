@@ -7,7 +7,7 @@ macro_rules! list_handler {
             axum::extract::State(state): axum::extract::State<$crate::AppState>,
             caller: $crate::extract::Caller,
             axum::extract::Path(campaign_id): axum::extract::Path<String>,
-            axum::extract::Query(query): axum::extract::Query<$crate::query::PageQuery>,
+            $crate::extract::ApiQuery(query): $crate::extract::ApiQuery<$crate::query::PageQuery>,
         ) -> Result<axum::Json<$crate::query::PageBody<$dto>>, $crate::error::ApiError> {
             let campaign_id = $crate::routes::id_path(&caller, campaign_id, "campaign_id")?;
             let page = $crate::query::Page::from_query(&query, &caller)?;
@@ -108,6 +108,7 @@ pub mod journal;
 pub mod knowledge;
 pub mod members;
 pub mod scenes;
+pub mod sessions;
 
 use crate::{
     AppState, db,
@@ -139,6 +140,10 @@ fn campaign_routes() -> Router<AppState> {
             "/api/v1/campaigns/{campaign_id}/members/{user_id}",
             delete(members::remove),
         )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/sessions",
+            get(sessions::list).post(sessions::create),
+        )
 }
 
 fn scene_routes() -> Router<AppState> {
@@ -149,9 +154,7 @@ fn scene_routes() -> Router<AppState> {
         )
         .route(
             "/api/v1/campaigns/{campaign_id}/scenes/{scene_id}",
-            get(scenes::get)
-                .patch(scenes::update)
-                .delete(scenes::delete),
+            get(scenes::get).patch(scenes::update),
         )
 }
 

@@ -147,9 +147,16 @@ def _rule_of_three_groups(groups: Records) -> list[Finding]:
         copies = len(group.get("locations", []))
         if copies >= config.DUP_COPIES_RULE_OF_THREE:
             location = normalize(group["locations"][0]["file_path"])
-            detail = f"{copies} copies of {group['line_count']} lines (rule of three)"
+            lines = group["line_count"]
+            detail = f"{copies} copies of {lines} lines{_opener(group)} (rule of three)"
             findings.append(Finding("F9", BLOCKS, location, detail, "km-dups"))
     return findings
+
+
+def _opener(group: Record) -> str:
+    """Quote the first duplicated line so a finding names the run it reports."""
+    sample = group.get("sample") or []
+    return f" starting with `{sample[0].strip()}`" if sample else ""
 
 
 def evaluate_size(sources: list[SourceFile]) -> list[Finding]:

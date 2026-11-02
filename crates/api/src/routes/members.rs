@@ -1,12 +1,14 @@
 //! Campaign membership endpoints.
-use axum::Json;
-use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 
 use crate::{
     AppState, db,
     error::ApiError,
-    extract::{ApiJson, Caller},
+    extract::{ApiJson, ApiQuery, Caller},
     payloads::NewMember,
     query::{Page, PageBody, PageQuery},
     routes::{id_path, respond},
@@ -18,7 +20,7 @@ pub async fn list(
     State(state): State<AppState>,
     caller: Caller,
     Path(campaign_id): Path<String>,
-    Query(query): Query<PageQuery>,
+    ApiQuery(query): ApiQuery<PageQuery>,
 ) -> Result<Json<PageBody<Membership>>, ApiError> {
     let campaign_id = id_path(&caller, campaign_id, "campaign_id")?;
     let page = Page::from_query(&query, &caller)?;

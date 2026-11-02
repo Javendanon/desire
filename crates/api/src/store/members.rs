@@ -1,5 +1,5 @@
 //! Membership management. The owner's DM row cannot be removed.
-use super::{Scope, Target, decode_all, execute, query, role_name};
+use super::{Scope, Target, decode_all, execute, execute_delete, query, role_name};
 use crate::{
     access,
     error::ApiError,
@@ -52,7 +52,7 @@ pub fn remove(client: &mut Client, target: Target<'_>) -> Result<(), ApiError> {
             "the owner membership cannot be removed",
         ));
     }
-    let affected = execute(
+    let affected = execute_delete(
         client,
         "DELETE FROM campaign.memberships \
          WHERE campaign_id = $1::text::uuid AND user_id = $2::text::uuid",

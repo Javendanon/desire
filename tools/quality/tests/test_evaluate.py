@@ -64,6 +64,17 @@ class DuplicationTest(unittest.TestCase):
         )
         self.assertTrue(any(f.severity == BLOCKS for f in findings))
 
+    def test_rule_of_three_names_the_duplicated_run(self):
+        group = {
+            "line_count": 6,
+            "locations": [{"file_path": "a.rs"}, {"file_path": "b.rs"}, {"file_path": "c.rs"}],
+            "sample": ["use axum::{", "Json,", "};"],
+        }
+        findings = evaluate.evaluate_duplication(
+            {"metrics": {"duplication_percentage": 0.0}, "groups": [group]}
+        )
+        self.assertIn("starting with `use axum::{`", findings[0].detail)
+
 
 class FalsePositivesTest(unittest.TestCase):
     def test_suppresses_with_justification(self):

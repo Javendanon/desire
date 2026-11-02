@@ -9,7 +9,7 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{FromRequest, FromRequestParts, Request},
+    extract::{FromRequest, FromRequestParts, Query, Request},
     http::{HeaderMap, request::Parts},
 };
 use desire_core::contracts::common::Id;
@@ -97,5 +97,32 @@ where
                 )
             })?;
         Ok(Self(value))
+    }
+}
+
+/// Query extraction that maps unparsable values to the shared error shape, so a client
+/// always receives a `code` and a `request_id` instead of a plain-text rejection.
+pub struct ApiQuery<T>(pub T);
+
+impl<T, S> FromRequestParts<S> for ApiQuery<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let request_id = request_id_from(&parts.headers);
+        Query::<T>::from_request_parts(parts, state)
+            .await
+            .map(|Query(value)| Self(value))
+            .map_err(|rejection| {
+                ApiError::new(
+                    INVALID,
+                    "invalid_request",
+                    rejection.body_text(),
+                    request_id,
+                )
+            })
     }
 }
