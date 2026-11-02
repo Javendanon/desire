@@ -18,17 +18,27 @@ INSERT INTO campaign.campaigns (id, owner_id, name, rules_edition, revision) VAL
     (pg_temp.id(11), pg_temp.id(91), 'Second', 'dnd_2014', 1);
 INSERT INTO campaign.memberships VALUES
     (pg_temp.id(10), pg_temp.id(90), 'dm'), (pg_temp.id(11), pg_temp.id(91), 'dm');
-INSERT INTO catalog.creature_templates VALUES
-    (pg_temp.id(200), 'dnd_2014', 1, 'Synthetic sentry', 'synthetic', 'medium',
-    '{"strength":10,"dexterity":10,"constitution":10,"intelligence":10,"wisdom":10,"charisma":10}',
+INSERT INTO catalog.creature_templates (
+    id, rules_edition, revision, name, creature_type, size,
+    strength, dexterity, constitution, intelligence, wisdom, charisma,
+    armor_class, max_hp, speed_m, description, provenance
+) VALUES (
+    pg_temp.id(200), 'dnd_2014', 1, 'Synthetic sentry', 'synthetic', 'medium',
+    10, 10, 10, 10, 10, 10,
     12, 10, 9, 'Not official rules',
-    '{"source":"fixture:tabletop","attribution":"Synthetic","evidence":"synthetic"}');
+    '{"source":"fixture:tabletop","attribution":"Synthetic","evidence":"synthetic"}'
+);
 CREATE FUNCTION pg_temp.actor(value integer, scope integer) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     INSERT INTO campaign.actors VALUES (pg_temp.id(value), pg_temp.id(scope), 'dnd_2014',
         NULL, pg_temp.id(200), 'monster', 'Synthetic sentry', 'dm', 'hostile', 1);
-    INSERT INTO campaign.actor_stats SELECT pg_temp.id(scope), pg_temp.id(value),
-        abilities, armor_class, speed_m, 1 FROM catalog.creature_templates
+    INSERT INTO campaign.actor_stats (
+        campaign_id, actor_id,
+        strength, dexterity, constitution, intelligence, wisdom, charisma,
+        armor_class, speed_m, revision
+    ) SELECT pg_temp.id(scope), pg_temp.id(value),
+        strength, dexterity, constitution, intelligence, wisdom, charisma,
+        armor_class, speed_m, 1 FROM catalog.creature_templates
     WHERE id = pg_temp.id(200);
     INSERT INTO campaign.actor_state VALUES
         (pg_temp.id(scope), pg_temp.id(value), 10, 10, 0, 'active', 1);

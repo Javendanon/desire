@@ -7,10 +7,8 @@ DO $$ BEGIN
 END $$;
 SELECT pg_temp.reject($q$UPDATE campaign.actor_state SET current_hp = 11$q$, '23514');
 SELECT pg_temp.reject($q$UPDATE campaign.actor_state SET temporary_hp = -1$q$, '23514');
-SELECT pg_temp.reject($q$UPDATE campaign.actor_stats SET abilities = '{}'$q$, '23514');
-SELECT pg_temp.reject($q$UPDATE campaign.actor_stats SET abilities =
-    '{"strength":0,"dexterity":10,"constitution":10,"intelligence":10,"wisdom":10,"charisma":10}'
-    $q$, '23514');
+SELECT pg_temp.reject($q$UPDATE campaign.actor_stats SET strength = 0$q$, '23514');
+SELECT pg_temp.reject($q$UPDATE campaign.actor_stats SET strength = NULL$q$, '23502');
 SELECT pg_temp.reject($q$INSERT INTO campaign.actor_state VALUES
     (pg_temp.id(11), pg_temp.id(201), 10, 10, 0, 'active', 1)$q$, '23503');
 INSERT INTO campaign.conditions (id, campaign_id, actor_id, knowledge_entry_id,

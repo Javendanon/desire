@@ -56,7 +56,8 @@ fn seed_rows<T: Serialize>(tx: &mut Transaction<'_>, table: &str, rows: &[T]) ->
 }
 
 // Table names are private constants supplied only by this module, never user input.
-fn seed_row(tx: &mut Transaction<'_>, table: &str, data: Value) -> Result<(), Error> {
+fn seed_row(tx: &mut Transaction<'_>, table: &str, mut data: Value) -> Result<(), Error> {
+    crate::records::expand_abilities(&mut data);
     let columns = seed_columns(&data);
     let insert = format!(
         "INSERT INTO catalog.{table} ({columns}) SELECT {columns} FROM \

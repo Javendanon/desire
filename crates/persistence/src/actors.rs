@@ -73,7 +73,9 @@ pub(crate) fn template(
         )
         .context("read creature template")?
         .ok_or_else(|| Error::new(ErrorKind::Conflict, "creature template does not exist"))?;
-    records::decode(row)
+    let mut value: serde_json::Value = row.get(0);
+    records::nest_abilities(&mut value);
+    serde_json::from_value(value).context("decode creature template")
 }
 
 pub(crate) fn spawn(tx: &mut impl GenericClient, actor: &Actor) -> Result<(), Error> {
