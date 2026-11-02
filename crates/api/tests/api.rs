@@ -1,6 +1,11 @@
 //! HTTP contract and integration checks against the real persistence adapters.
 mod support;
 
+mod isolation;
+mod notes;
+mod resources;
+mod server;
+
 use axum::http::{Method, StatusCode};
 use desire_core::contracts::campaign::Campaign;
 use serde_json::json;

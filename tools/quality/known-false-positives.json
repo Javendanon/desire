@@ -20,12 +20,5 @@
     "path": "src/App.svelte",
     "contains": "onMount",
     "justification": "onMount takes a single callback; km adds up the parameters of nested callbacks (.then/.catch) and reports 4. The real callback declares no parameters. Documented per occurrence; F2 stays active."
-  },
-  {
-    "origin": "km-dups",
-    "rule": "F9",
-    "path": "crates/api/src/routes/campaigns.rs",
-    "contains": "starting with `use axum::{`",
-    "justification": "The duplicated run is the `use` header shared by the sibling route modules campaigns.rs, members.rs and scenes.rs. km counts import statements as duplicated logic, but the three modules share plumbing through macros in routes/mod.rs, not duplicated code. The group stays visible in the report; F9 remains active for logic."
   }
 ]

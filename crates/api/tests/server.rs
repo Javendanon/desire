@@ -1,6 +1,6 @@
 //! The real binary: startup against the disposable cluster, an authenticated request and a
 //! clean signal shutdown. The router tests never exercise `main`, so this covers it.
-mod support;
+use crate::support;
 
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};

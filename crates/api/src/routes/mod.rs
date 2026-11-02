@@ -1,5 +1,11 @@
 //! Route assembly. Endpoints are versioned under `/api/v1`.
 
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
+
 /// List handler for a campaign-owned collection.
 macro_rules! list_handler {
     ($resource:ident, $dto:ty) => {

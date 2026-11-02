@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Real PostgreSQL checks: the shared harness starts a socket-only disposable cluster.
 use axum::{
     Router,
@@ -13,9 +12,8 @@ use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// One test database plus a second connection for direct fixtures.
+/// Disposable database identity; fixtures and the app open their own connections.
 pub struct TestDb {
-    client: Client,
     name: String,
 }
 
@@ -29,7 +27,7 @@ impl TestDb {
         let mut client = connect(&name);
         migrations::apply(&mut client).unwrap();
         CatalogRepository::seed(&mut client, &catalog()).unwrap();
-        Self { client, name }
+        Self { name }
     }
 
     pub fn state(&self) -> AppState {
@@ -58,16 +56,6 @@ impl TestDb {
                 self.name
             ))
             .unwrap();
-    }
-
-    pub fn revoke(&self, sql: &str) {
-        self.connection().batch_execute(sql).unwrap();
-    }
-
-    // The client is only needed to keep the connection alive while the pool-free app owns
-    // another one; it is intentionally not exposed as a field.
-    pub fn keep_alive(&self) -> &Client {
-        &self.client
     }
 }
 

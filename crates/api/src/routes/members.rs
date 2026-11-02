@@ -1,9 +1,5 @@
 //! Campaign membership endpoints.
-use axum::{
-    Json,
-    extract::{Path, State},
-    http::StatusCode,
-};
+use super::{Json, Path, State, StatusCode};
 
 use crate::{
     AppState, db,

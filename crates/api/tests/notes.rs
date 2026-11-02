@@ -1,5 +1,5 @@
 //! HTTP contract and integration checks against the real persistence adapters.
-mod support;
+use crate::support;
 
 use axum::http::{Method, StatusCode};
 use serde_json::Value;

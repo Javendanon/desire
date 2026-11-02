@@ -1,4 +1,6 @@
 [package]
+# One integration target shares the database helpers; register new suites in tests/api.rs.
+autotests = false
 name = "desire-api"
 version.workspace = true
 edition.workspace = true
@@ -16,3 +18,7 @@ tokio.workspace = true
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
+
+[[test]]
+name = "api"
+path = "tests/api.rs"

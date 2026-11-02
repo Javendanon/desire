@@ -1,9 +1,5 @@
 //! Scene endpoints. Collection writes accept an optional Idempotency-Key UUID.
-use axum::{
-    Json,
-    extract::{Path, State},
-    http::StatusCode,
-};
+use super::{Json, Path, State, StatusCode};
 
 use crate::{
     AppState, db,

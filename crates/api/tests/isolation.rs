@@ -1,5 +1,5 @@
 //! Cross-campaign and role isolation for every campaign-owned resource.
-mod support;
+use crate::support;
 
 use axum::{
     Router,
