@@ -16,25 +16,37 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const chrome = spawn(chromePath, [
   '--headless=new',
+  '--no-sandbox',
+  '--disable-dev-shm-usage',
   `--remote-debugging-port=${port}`,
+  '--remote-debugging-address=127.0.0.1',
   `--user-data-dir=${mkdtempSync(join(tmpdir(), 'waterdeep-smoke-'))}`,
   '--no-first-run',
   '--enable-unsafe-swiftshader',
   'about:blank',
-], { stdio: 'ignore' });
+], { stdio: ['ignore', 'ignore', 'pipe'] });
+let chromeLog = '';
+chrome.stderr?.on('data', (chunk) => {
+  chromeLog = `${chromeLog}${chunk}`.slice(-800);
+});
+chrome.on('error', (error) => {
+  chromeLog = `failed to start ${chromePath}: ${error.message}`;
+});
 
 async function pageSocket() {
   for (let i = 0; i < 60; i++) {
-    try {
-      const pages = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      const page = pages.find((entry) => entry.type === 'page');
-      if (page) return page.webSocketDebuggerUrl;
-    } catch {
-      /* Chrome still starting */
+    for (const host of ['127.0.0.1', 'localhost']) {
+      try {
+        const pages = await (await fetch(`http://${host}:${port}/json`)).json();
+        const page = pages.find((entry) => entry.type === 'page');
+        if (page) return page.webSocketDebuggerUrl;
+      } catch {
+        /* Chrome still starting */
+      }
     }
     await sleep(200);
   }
-  throw new Error('Chrome did not start');
+  throw new Error(`Chrome did not start (${chromePath}). ${chromeLog}`);
 }
 
 const ws = new WebSocket(await pageSocket());

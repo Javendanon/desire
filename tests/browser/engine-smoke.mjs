@@ -14,7 +14,10 @@ const chrome = spawn(
   chromePath,
   [
     '--headless=new',
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
     `--remote-debugging-port=${port}`,
+    '--remote-debugging-address=127.0.0.1',
     `--user-data-dir=${mkdtempSync(join(tmpdir(), 'engine-smoke-'))}`,
     '--no-first-run',
     'about:blank',
