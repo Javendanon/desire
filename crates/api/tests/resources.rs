@@ -335,6 +335,34 @@ fn characters_need_an_explicit_controller_on_update_and_hide_it_from_players() {
     let visible = support::run(call(&app, Method::GET, &path, Some(&player), None));
     assert_eq!(visible.status, StatusCode::OK, "{}", visible.body);
     assert_eq!(visible.body["controller_id"], player);
+
+    // Clearing the controller must move the actor row back to DM-only, so the character
+    // becomes an NPC the player can no longer read.
+    let cleared = support::run(call(
+        &app,
+        Method::PATCH,
+        &path,
+        Some(&owner),
+        Some(json!({"name": "Hero", "controller_id": null, "expected_revision": 2})),
+    ));
+    assert_eq!(cleared.status, StatusCode::OK, "{}", cleared.body);
+    assert_eq!(cleared.body["controller_id"], serde_json::Value::Null);
+    assert_eq!(cleared.body["revision"], 3);
+
+    let hidden_again = support::run(call(&app, Method::GET, &path, Some(&player), None));
+    assert_eq!(
+        hidden_again.status,
+        StatusCode::NOT_FOUND,
+        "{}",
+        hidden_again.body
+    );
+    let still_visible_to_dm = support::run(call(&app, Method::GET, &path, Some(&owner), None));
+    assert_eq!(
+        still_visible_to_dm.status,
+        StatusCode::OK,
+        "{}",
+        still_visible_to_dm.body
+    );
 }
 
 #[test]

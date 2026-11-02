@@ -46,7 +46,8 @@ shared deployment; D17 owns player projections in the UI.
 | DELETE | `/campaigns/{campaign}/characters/{character}` | DM | 204; 409 if sheets/encounters reference the actor |
 | GET | `/campaigns/{campaign}/journal` | member | players see `players` entries only |
 | POST | `/campaigns/{campaign}/journal` | member | `players` entry; `dm` requires DM |
-| GET/PATCH/DELETE | `/campaigns/{campaign}/journal/{entry}` | member / DM | hidden entries return 404 |
+| GET | `/campaigns/{campaign}/journal/{entry}` | member | hidden entries return 404 |
+| PATCH/DELETE | `/campaigns/{campaign}/journal/{entry}` | DM | revision-checked update/delete |
 | GET | `/campaigns/{campaign}/knowledge` | member | players see `players` entries only |
 | POST | `/campaigns/{campaign}/knowledge` | DM | 201 knowledge entry |
 | GET | `/campaigns/{campaign}/knowledge/{entry}` | member | DM entries return 404 for players |
@@ -90,7 +91,8 @@ The server reads one extra row to compute `has_more`; there is no separate count
   same key and the same `name`/`map_version_id` replays the first result: same scene ID,
   same outbox event, one row of history. The same key with a different body returns 409
   `idempotency_conflict`. Omitting the key uses the generated event ID, so retries are
-  not deduplicated.
+  not deduplicated. The header is validated on every request but only honored on scene
+  creation: on the other endpoints it is ignored, not rejected.
 
 ## Error shape
 
@@ -107,7 +109,9 @@ Every handler error uses the D04 `ApiError` transport DTO:
 Codes: `unauthenticated` (401), `forbidden` (403), `not_found` (404),
 `invalid_request` (400), `conflict` / `revision_conflict` / `idempotency_conflict` /
 `resource_in_use` (409), `internal` (500). `x-request-id` is echoed when it is a
-canonical UUID.
+canonical UUID. This shape covers handler and store failures; a path that matches no
+route, or a method that a route does not accept, is answered by the router itself (404
+or 405 with an empty body), so a client must handle those two statuses without a `code`.
 
 ## Sanitized example
 
@@ -160,8 +164,13 @@ single-entry reads.
 - D10 authentication and realtime transport are not implemented.
 - D17 owns the final player projection and UI visibility; this API filters DM rows and
   returns 404 for hidden items as a safe default.
+- Campaigns have no DELETE in v1. Deleting a campaign means choosing what happens to its
+  memberships, scenes, actors, notes, secrets and outbox rows; that is a migration and
+  scope decision, not a handler. `POST`/`GET`/`PATCH` are exposed, `DELETE` is not.
 - Scene deletion is not exposed: the D08 outbox keeps a reference to every written
   scene. Character deletion is blocked (409) when sheets, conditions or encounters
   still reference their actor.
+- Journal entries support update and delete for a DM only; a player can create a
+  `players` entry but cannot edit or remove it afterwards.
 - No pagination totals, filtering, sorting or search.
 - Nivel20 remains read-only and untouched.
