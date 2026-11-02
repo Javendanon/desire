@@ -14,7 +14,7 @@ function fakeFetch(files: Record<string, Uint8Array>) {
     requested.push(url);
     const body = files[url];
     return body
-      ? new Response(body)
+      ? new Response(Uint8Array.from(body))
       : new Response(null, { status: 404, statusText: 'Not Found' });
   };
   return { fetcher, requested };
