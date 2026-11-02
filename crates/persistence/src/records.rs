@@ -51,16 +51,38 @@ pub(crate) fn insert<T: Serialize>(
 ) -> Result<(), Error> {
     let mut data = serde_json::to_value(record).context(format!("encode {table}"))?;
     expand_abilities(&mut data);
-    let query =
-        format!("INSERT INTO {table} SELECT * FROM jsonb_populate_record(NULL::{table}, $1)");
-    client
-        .execute(&query, &[&data])
-        .context(format!("insert {table} {}", data["id"]))?;
+    let columns = quoted_keys(&data);
+    let query = format!(
+        "INSERT INTO {table} ({columns}) SELECT {columns} FROM \
+         jsonb_populate_record(NULL::{table}, $1)"
+    );
+    client.execute(&query, &[&data]).context(format!(
+        "insert {table} {}",
+        data["id"]
+            .as_str()
+            .or(data["actor_id"].as_str())
+            .unwrap_or("?")
+    ))?;
     Ok(())
 }
 
+/// Present keys only, so an omitted column keeps its database default.
+fn quoted_keys(data: &Value) -> String {
+    data.as_object()
+        .map(|object| {
+            object
+                .keys()
+                .map(|name| format!("\"{}\"", name.replace('"', "\"\"")))
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default()
+}
+
 pub(crate) fn decode<T: DeserializeOwned>(row: Row) -> Result<T, Error> {
-    serde_json::from_value(row.get(0)).context("decode repository record")
+    let mut value: Value = row.get(0);
+    nest_abilities(&mut value);
+    serde_json::from_value(value).context("decode repository record")
 }
 
 /// Decode each returned record once, O(rows).

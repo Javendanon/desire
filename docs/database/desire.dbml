@@ -944,4 +944,4 @@ Ref: campaign.class_features.(campaign_id, actor_id, class_entry_id) > campaign.
 Ref: campaign.class_features.(campaign_id, actor_id, rules_edition) > campaign.actors.(campaign_id, id, rules_edition)
 Ref: campaign.class_features.(feature_entry_id, rules_edition) > catalog.knowledge_entries.(id, rules_edition)
 Ref: campaign.actor_visuals.(campaign_id, actor_id) > campaign.actors.(campaign_id, id)
-Ref: campaign.actor_visuals.(equipment_id) > campaign.character_equipment.(id)
+Ref: campaign.actor_visuals.(campaign_id, equipment_id) > campaign.character_equipment.(campaign_id, id)

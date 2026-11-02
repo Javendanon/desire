@@ -20,13 +20,14 @@ The user explicitly expanded the D04/D08 scope; coordination is recorded in Flow
   simultaneous entries, return existing instances without healing or respawning.
 - Public resident projection filters campaign, presence and both visibility flags,
   and returns only identity, name, kind and disposition. No hidden creature stats.
-- Migrations 0006–0009 preserve the installed 0001–0005 SQL/history. Characters,
+- Migrations 0006–0011 preserve the installed 0001–0005 SQL/history. Characters,
   journeys and conditions are backfilled; unknown character scores/HP stay absent.
+  0010 replaces the ability jsonb with six columns. 0011 adds class features and worn slots.
 - Frozen v1 JSON definitions remain byte-for-byte equivalent as parsed JSON. New
   DTOs are generated into dedicated Rust modules and TypeScript; group journeys
   require explicit protocol version 2. Existing v1 events are not repurposed.
 - [Model](../tabletop-model.md), [DBML](../database/desire.dbml) and
-  [diagram](../database/desire.mmd). DBML has 47 tables and 85 foreign keys.
+  [diagram](../database/desire.mmd). DBML has 49 tables and 91 foreign keys.
   The external copy at `/Users/javendano/dev/outputs/desire-db/desire.dbml` is current.
 
 ## RED and regression evidence

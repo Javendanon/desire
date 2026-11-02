@@ -35,9 +35,9 @@ impl SheetRepository {
         writer.row("campaign.actor_state", &write.state)?;
         writer.rows("campaign.character_classes", &write.classes)?;
         writer.rows("campaign.class_features", &write.features)?;
-        writer.rows("campaign.actor_visuals", &write.visuals)?;
         writer.rows("campaign.character_proficiencies", &write.proficiencies)?;
         writer.rows("campaign.character_equipment", &write.equipment)?;
+        writer.rows("campaign.actor_visuals", &write.visuals)?;
         writer.rows("campaign.character_spells", &write.spells)?;
         writer.rows("campaign.actor_resources", &write.resources)?;
         if let Some(concentration) = &write.concentration {

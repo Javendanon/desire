@@ -40,6 +40,37 @@ fn residents_exist_without_combat_and_keep_state_between_visits() {
 }
 
 #[test]
+fn ability_json_upgrades_into_six_columns() {
+    let mut db = support::database();
+    migrations::apply_through(&mut db, 9).unwrap();
+    db.batch_execute(include_str!("tabletop/ability_before.sql"))
+        .unwrap();
+    migrations::apply(&mut db).unwrap();
+    let scores = db
+        .query_one(
+            "SELECT strength, dexterity, constitution, intelligence, wisdom, charisma \
+             FROM campaign.actor_stats WHERE actor_id = '00000000-0000-4000-8000-0000000000ad'",
+            &[],
+        )
+        .unwrap();
+    assert_eq!(
+        (0..6)
+            .map(|index| scores.get::<_, i16>(index))
+            .collect::<Vec<_>>(),
+        vec![16, 8, 14, 10, 12, 6]
+    );
+    let gone = db
+        .query_one(
+            "SELECT count(*) FROM information_schema.columns \
+             WHERE table_schema = 'campaign' AND table_name = 'actor_stats' \
+             AND column_name = 'abilities'",
+            &[],
+        )
+        .unwrap();
+    assert_eq!(gone.get::<_, i64>(0), 0);
+}
+
+#[test]
 fn legacy_characters_travels_and_conditions_survive_upgrade() {
     let mut db = support::database();
     migrations::apply_through(&mut db, 5).unwrap();

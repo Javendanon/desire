@@ -21,6 +21,9 @@ CREATE TABLE campaign.class_features (
         REFERENCES catalog.knowledge_entries (id, rules_edition)
 );
 
+ALTER TABLE campaign.character_equipment
+    ADD CONSTRAINT equipment_campaign UNIQUE (campaign_id, id);
+
 CREATE TABLE campaign.actor_visuals (
     campaign_id uuid NOT NULL,
     actor_id uuid NOT NULL,
@@ -30,5 +33,7 @@ CREATE TABLE campaign.actor_visuals (
     equipment_id uuid,
     PRIMARY KEY (campaign_id, actor_id, slot),
     FOREIGN KEY (campaign_id, actor_id) REFERENCES campaign.actors (campaign_id, id),
-    FOREIGN KEY (equipment_id) REFERENCES campaign.character_equipment (id)
+    FOREIGN KEY (campaign_id, equipment_id)
+        REFERENCES campaign.character_equipment (campaign_id, id)
 );
+CREATE INDEX actor_visuals_equipment ON campaign.actor_visuals (equipment_id);

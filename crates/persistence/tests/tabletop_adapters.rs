@@ -34,10 +34,14 @@ fn sheet() -> SheetWrite {
         spells: vec![example("CharacterSpell")],
         resources: vec![example("ActorResource")],
         concentration: None,
-        features: Vec::new(),
-        visuals: Vec::new(),
+        features: vec![example("ClassFeature")],
+        visuals: vec![example("ActorVisual")],
     };
     write.classes[0].class_entry_id = support::id(50);
+    write.features[0].class_entry_id = support::id(50);
+    write.features[0].feature_entry_id = support::id(50);
+    write.equipment[0].id = support::id(700);
+    write.visuals[0].equipment_id = Some(support::id(700));
     write.spells[0].knowledge_entry_id = support::id(50);
     write.state.max_hp = 10;
     write.state.current_hp = 9;

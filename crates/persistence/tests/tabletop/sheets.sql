@@ -11,6 +11,8 @@ INSERT INTO campaign.character_proficiencies VALUES
     (pg_temp.id(10), pg_temp.id(203), 'skill', 'Synthetic skill', 'expertise');
 INSERT INTO campaign.character_equipment VALUES
     (pg_temp.id(700), pg_temp.id(10), pg_temp.id(203), 'Synthetic staff', 1, true, false, '', 1);
+INSERT INTO campaign.actor_visuals VALUES
+    (pg_temp.id(10), pg_temp.id(203), 'main_hand', 'synthetic://staff', pg_temp.id(700));
 INSERT INTO campaign.character_spells VALUES
     (pg_temp.id(10), pg_temp.id(203), pg_temp.id(50), 'dnd_2014', true);
 INSERT INTO campaign.actor_resources VALUES
@@ -24,6 +26,8 @@ SELECT pg_temp.reject($q$UPDATE campaign.character_classes SET level = 0$q$, '23
 SELECT pg_temp.reject($q$UPDATE campaign.character_classes SET hit_die = 7$q$, '23514');
 SELECT pg_temp.reject($q$INSERT INTO campaign.actor_visuals VALUES
     (pg_temp.id(10), pg_temp.id(203), 'wings', 'synthetic://wings', NULL)$q$, '23514');
+SELECT pg_temp.reject($q$INSERT INTO campaign.actor_visuals VALUES
+    (pg_temp.id(11), pg_temp.id(211), 'body', 'synthetic://body', pg_temp.id(700))$q$, '23503');
 SELECT pg_temp.reject($q$UPDATE campaign.actor_resources SET remaining = 4$q$, '23514');
 SELECT pg_temp.reject($q$UPDATE campaign.character_equipment SET campaign_id = pg_temp.id(11)$q$,
     '23503');

@@ -173,6 +173,9 @@ fn ci_runs_every_existing_suite() {
     let workflow = repository_file(".github/workflows/ci.yml");
     for (name, command) in [
         ("frontend-check", "corepack pnpm run test:frontend"),
+        ("frontend-check", "corepack pnpm run test:browser"),
+        ("frontend-check", "node tools/assets/parity.ts --check"),
+        ("frontend-check", "corepack pnpm run verify:waterdeep"),
         ("frontend-check", "corepack pnpm run check:tests"),
         (
             "quality-gate",

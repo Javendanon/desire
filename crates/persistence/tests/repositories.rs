@@ -3,10 +3,27 @@ mod support;
 
 use desire_core::contracts::{campaign::Campaign, common::RulesEdition};
 use desire_persistence::{CampaignRename, CampaignRepository, ErrorKind, migrations};
+use std::fs;
+use std::path::PathBuf;
+
+fn migration_count() -> i64 {
+    let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../migrations");
+    fs::read_dir(directory)
+        .expect("migrations directory")
+        .filter(|entry| {
+            entry.as_ref().ok().is_some_and(|item| {
+                item.path()
+                    .extension()
+                    .is_some_and(|extension| extension == "sql")
+            })
+        })
+        .count() as i64
+}
 
 #[test]
 fn every_migration_prefix_upgrades_to_current() {
-    for version in 0..=11 {
+    let count = migration_count();
+    for version in 0..=count as usize {
         let mut db = support::database();
         migrations::apply_through(&mut db, version).unwrap();
         migrations::apply(&mut db).unwrap();
@@ -14,7 +31,7 @@ fn every_migration_prefix_upgrades_to_current() {
             db.query_one("SELECT count(*) FROM persistence_migrations", &[])
                 .unwrap()
                 .get::<_, i64>(0),
-            11
+            count
         );
     }
 }
@@ -30,7 +47,7 @@ fn migration_history_is_independent_of_connection_search_path() {
         db.query_one("SELECT count(*) FROM public.persistence_migrations", &[])
             .unwrap()
             .get::<_, i64>(0),
-        11
+        migration_count()
     );
     assert!(
         db.query_one(
@@ -60,7 +77,9 @@ fn invalid_history_and_downgrades_are_rejected() {
         ErrorKind::InvalidMigration
     );
     assert_eq!(
-        migrations::apply_through(&mut db, 12).unwrap_err().kind,
+        migrations::apply_through(&mut db, migration_count() as usize + 1)
+            .unwrap_err()
+            .kind,
         ErrorKind::InvalidMigration
     );
 }
@@ -126,7 +145,7 @@ fn migrations_upgrade_without_replacing_saved_campaigns() {
         db.query_one("SELECT count(*) FROM persistence_migrations", &[])
             .unwrap()
             .get::<_, i64>(0),
-        11
+        migration_count()
     );
 }
 
