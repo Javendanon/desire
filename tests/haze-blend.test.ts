@@ -22,7 +22,10 @@ test('in between, the two crossfade smoothly and always sum to one', () => {
 });
 
 test('the curtain walks the slice perimeter in even steps, corners included', () => {
-  const meta = { width_m: 100, depth_m: 50, cell_m: 10, columns: 10, rows: 5 };
+  const meta = {
+    width_m: 100, depth_m: 50, origin_m: { x_m: 0, z_m: 0 },
+    cell_m: 10, columns: 10, rows: 5,
+  };
   const points = perimeter(meta, { outset: 0, step: 25 });
   assert.equal(points.length, 4 + 2 + 4 + 2);
   assert.deepEqual(points[0], [0, 0]);
@@ -31,7 +34,10 @@ test('the curtain walks the slice perimeter in even steps, corners included', ()
 });
 
 test('land share is the part of the slice near a point that stands above the water', () => {
-  const meta = { width_m: 40, depth_m: 20, cell_m: 10, columns: 4, rows: 2 };
+  const meta = {
+    width_m: 40, depth_m: 20, origin_m: { x_m: 0, z_m: 0 },
+    cell_m: 10, columns: 4, rows: 2,
+  };
   // West half sea, east half land.
   const heights = Float32Array.from([-2.5, -2.5, 1, 1, -2.5, -2.5, 1, 1]);
   const field = { heights, meta };

@@ -6,9 +6,12 @@ import { parseStress, tileSlice } from '../src/lib/diorama/stress-slice.ts';
 
 function tinySlice(): Slice {
   return {
-    meta: { width_m: 20, depth_m: 10, cell_m: 10, columns: 2, rows: 1 },
+    meta: {
+      width_m: 20, depth_m: 10, origin_m: { x_m: 0, z_m: 0 },
+      cell_m: 10, columns: 2, rows: 1,
+    },
     heights: Float32Array.from([1, -2.5]),
-    houses: [{ center: { x_m: 5, z_m: 5 }, width_m: 4, depth_m: 6, rotation_radians: 0,
+    houses: [{ id: 1, center: { x_m: 5, z_m: 5 }, width_m: 4, depth_m: 6, rotation_radians: 0,
       height_m: 6, roof_rgb: [90, 80, 70], frontage: true }],
     features: { berths: [{ x_m: 15, z_m: 5, heading_radians: 1 }], trees: [] },
     albedo: {} as HTMLImageElement,
