@@ -1,21 +1,12 @@
-// Transport for the versioned campaign API. DTOs come from the generated contracts,
-// never from a second hand-written schema.
-import type { Id } from '../../generated/contracts.ts';
+// API transport uses the generated error DTO and page metadata shared with Rust.
+import type { ApiError, Id } from '../../generated/contracts.ts';
+import type pageEnvelope from '../../../contracts/api-page.json';
 
 export const API_BASE = '/api/v1';
 
-export interface Page<T> {
-  items: T[];
-  limit: number;
-  offset: number;
-  has_more: boolean;
-}
-
-export interface ApiProblem {
-  code: string;
-  message: string;
-  request_id: string;
-}
+// Metadata is pinned by the same envelope fixture checked by Rust serialization tests.
+export type Page<T> = Omit<typeof pageEnvelope, 'items'> & { items: T[] };
+export type ApiProblem = ApiError;
 
 export class ApiRequestError extends Error {
   readonly status: number;
@@ -41,13 +32,15 @@ export interface PageQuery {
   offset?: number;
 }
 
-export async function request<T>(
-  context: ApiContext,
-  method: string,
-  path: string,
-  body?: unknown,
-  headers: Record<string, string> = {},
-): Promise<T> {
+export interface ApiRequest {
+  method: string;
+  path: string;
+  body?: unknown;
+  headers?: Record<string, string>;
+}
+
+export async function request<T>(context: ApiContext, options: ApiRequest): Promise<T> {
+  const { method, path, body, headers = {} } = options;
   const response = await context.fetch(`${context.baseUrl ?? ''}${API_BASE}${path}`, {
     method,
     signal: context.signal,

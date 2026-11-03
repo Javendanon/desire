@@ -66,6 +66,20 @@ the scene, so the only possible answer was 409; exposing the route would adverti
 deletion the API cannot perform. Archiving scenes needs a migration and a scope
 decision, not an endpoint that always fails.
 
+## Shared client contracts
+
+The TypeScript `ApiProblem` name aliases the generated D04 `ApiError`; it is not a
+second error schema. The existing DTO generator does not express generic type
+parameters, so the generic collection envelope is pinned separately by the shared
+`contracts/api-page.json` wire fixture. TypeScript derives all page metadata keys and
+types from that fixture and replaces only the generic item array. A Rust test serializes
+`Page::finish` with a real look-ahead row against the same fixture; client transport and
+TypeScript compilation check its consumer. No frozen v1 DTO is changed.
+
+The client transport takes `request(context, options)`: typed options group method,
+path, JSON body and optional headers, while caller identity and cancellation remain in
+`ApiContext`. Resource wrappers preserve the existing HTTP methods and payloads.
+
 ## Pagination
 
 Collections accept `limit` (1–100, default 20) and `offset` (0–1,000,000, default 0):

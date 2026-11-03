@@ -38,15 +38,15 @@ export type NewSession = Omit<Session, 'id' | 'campaign_id' | 'revision'>;
 export const CAMPAIGNS = '/campaigns';
 
 export function listCampaigns(context: ApiContext, page?: PageQuery): Promise<Page<Campaign>> {
-  return request(context, 'GET', collectionPath(CAMPAIGNS, page));
+  return request(context, { method: 'GET', path: collectionPath(CAMPAIGNS, page) });
 }
 
 export function createCampaign(context: ApiContext, body: NewCampaign): Promise<Campaign> {
-  return request(context, 'POST', CAMPAIGNS, body);
+  return request(context, { method: 'POST', path: CAMPAIGNS, body });
 }
 
 export function getCampaign(context: ApiContext, id: Id): Promise<Campaign> {
-  return request(context, 'GET', resourcePath(CAMPAIGNS, id));
+  return request(context, { method: 'GET', path: resourcePath(CAMPAIGNS, id) });
 }
 
 export function renameCampaign(
@@ -54,7 +54,7 @@ export function renameCampaign(
   id: Id,
   body: PatchCampaign,
 ): Promise<Campaign> {
-  return request(context, 'PATCH', resourcePath(CAMPAIGNS, id), body);
+  return request(context, { method: 'PATCH', path: resourcePath(CAMPAIGNS, id), body });
 }
 
 export function listMembers(
@@ -62,7 +62,7 @@ export function listMembers(
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<Membership>> {
-  return request(context, 'GET', collectionPath(members(campaignId), page));
+  return request(context, { method: 'GET', path: collectionPath(members(campaignId), page) });
 }
 
 export function addMember(
@@ -70,11 +70,11 @@ export function addMember(
   campaignId: Id,
   body: NewMember,
 ): Promise<Membership> {
-  return request(context, 'POST', members(campaignId), body);
+  return request(context, { method: 'POST', path: members(campaignId), body });
 }
 
 export function removeMember(context: ApiContext, campaignId: Id, userId: Id): Promise<void> {
-  return request(context, 'DELETE', resourcePath(members(campaignId), userId));
+  return request(context, { method: 'DELETE', path: resourcePath(members(campaignId), userId) });
 }
 
 export function listScenes(
@@ -82,11 +82,11 @@ export function listScenes(
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<Scene>> {
-  return request(context, 'GET', collectionPath(scenes(campaignId), page));
+  return request(context, { method: 'GET', path: collectionPath(scenes(campaignId), page) });
 }
 
 export function getScene(context: ApiContext, campaignId: Id, sceneId: Id): Promise<Scene> {
-  return request(context, 'GET', resourcePath(scenes(campaignId), sceneId));
+  return request(context, { method: 'GET', path: resourcePath(scenes(campaignId), sceneId) });
 }
 
 export function createScene(
@@ -98,7 +98,7 @@ export function createScene(
   const headers: Record<string, string> = idempotencyKey
     ? { 'idempotency-key': idempotencyKey }
     : {};
-  return request(context, 'POST', scenes(campaignId), body, headers);
+  return request(context, { method: 'POST', path: scenes(campaignId), body, headers });
 }
 
 export function updateScene(
@@ -107,7 +107,11 @@ export function updateScene(
   sceneId: Id,
   body: PatchScene,
 ): Promise<Scene> {
-  return request(context, 'PATCH', resourcePath(scenes(campaignId), sceneId), body);
+  return request(context, {
+    method: 'PATCH',
+    path: resourcePath(scenes(campaignId), sceneId),
+    body,
+  });
 }
 
 export function listCharacters(
@@ -115,7 +119,7 @@ export function listCharacters(
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<Character>> {
-  return request(context, 'GET', collectionPath(characters(campaignId), page));
+  return request(context, { method: 'GET', path: collectionPath(characters(campaignId), page) });
 }
 
 export function getCharacter(
@@ -123,7 +127,10 @@ export function getCharacter(
   campaignId: Id,
   characterId: Id,
 ): Promise<Character> {
-  return request(context, 'GET', resourcePath(characters(campaignId), characterId));
+  return request(context, {
+    method: 'GET',
+    path: resourcePath(characters(campaignId), characterId),
+  });
 }
 
 export function createCharacter(
@@ -131,7 +138,7 @@ export function createCharacter(
   campaignId: Id,
   body: NewCharacter,
 ): Promise<Character> {
-  return request(context, 'POST', characters(campaignId), body);
+  return request(context, { method: 'POST', path: characters(campaignId), body });
 }
 
 export function updateCharacter(
@@ -140,7 +147,11 @@ export function updateCharacter(
   characterId: Id,
   body: PatchCharacter,
 ): Promise<Character> {
-  return request(context, 'PATCH', resourcePath(characters(campaignId), characterId), body);
+  return request(context, {
+    method: 'PATCH',
+    path: resourcePath(characters(campaignId), characterId),
+    body,
+  });
 }
 
 export function deleteCharacter(
@@ -148,7 +159,10 @@ export function deleteCharacter(
   campaignId: Id,
   characterId: Id,
 ): Promise<void> {
-  return request(context, 'DELETE', resourcePath(characters(campaignId), characterId));
+  return request(context, {
+    method: 'DELETE',
+    path: resourcePath(characters(campaignId), characterId),
+  });
 }
 
 export function listSessions(
@@ -156,7 +170,7 @@ export function listSessions(
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<Session>> {
-  return request(context, 'GET', collectionPath(sessions(campaignId), page));
+  return request(context, { method: 'GET', path: collectionPath(sessions(campaignId), page) });
 }
 
 export function createSession(
@@ -164,7 +178,7 @@ export function createSession(
   campaignId: Id,
   body: NewSession,
 ): Promise<Session> {
-  return request(context, 'POST', sessions(campaignId), body);
+  return request(context, { method: 'POST', path: sessions(campaignId), body });
 }
 
 export function listJournal(
@@ -172,7 +186,7 @@ export function listJournal(
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<JournalEntry>> {
-  return request(context, 'GET', collectionPath(journal(campaignId), page));
+  return request(context, { method: 'GET', path: collectionPath(journal(campaignId), page) });
 }
 
 export function getJournal(
@@ -180,7 +194,7 @@ export function getJournal(
   campaignId: Id,
   entryId: Id,
 ): Promise<JournalEntry> {
-  return request(context, 'GET', resourcePath(journal(campaignId), entryId));
+  return request(context, { method: 'GET', path: resourcePath(journal(campaignId), entryId) });
 }
 
 export function createJournal(
@@ -188,7 +202,7 @@ export function createJournal(
   campaignId: Id,
   body: NewJournal,
 ): Promise<JournalEntry> {
-  return request(context, 'POST', journal(campaignId), body);
+  return request(context, { method: 'POST', path: journal(campaignId), body });
 }
 
 export function updateJournal(
@@ -197,11 +211,15 @@ export function updateJournal(
   entryId: Id,
   body: PatchJournal,
 ): Promise<JournalEntry> {
-  return request(context, 'PATCH', resourcePath(journal(campaignId), entryId), body);
+  return request(context, {
+    method: 'PATCH',
+    path: resourcePath(journal(campaignId), entryId),
+    body,
+  });
 }
 
 export function deleteJournal(context: ApiContext, campaignId: Id, entryId: Id): Promise<void> {
-  return request(context, 'DELETE', resourcePath(journal(campaignId), entryId));
+  return request(context, { method: 'DELETE', path: resourcePath(journal(campaignId), entryId) });
 }
 
 export function listKnowledge(
@@ -209,7 +227,7 @@ export function listKnowledge(
   campaignId: Id,
   page?: PageQuery,
 ): Promise<Page<CampaignKnowledge>> {
-  return request(context, 'GET', collectionPath(knowledge(campaignId), page));
+  return request(context, { method: 'GET', path: collectionPath(knowledge(campaignId), page) });
 }
 
 export function getKnowledge(
@@ -217,7 +235,7 @@ export function getKnowledge(
   campaignId: Id,
   entryId: Id,
 ): Promise<CampaignKnowledge> {
-  return request(context, 'GET', resourcePath(knowledge(campaignId), entryId));
+  return request(context, { method: 'GET', path: resourcePath(knowledge(campaignId), entryId) });
 }
 
 export function createKnowledge(
@@ -225,7 +243,7 @@ export function createKnowledge(
   campaignId: Id,
   body: NewKnowledge,
 ): Promise<CampaignKnowledge> {
-  return request(context, 'POST', knowledge(campaignId), body);
+  return request(context, { method: 'POST', path: knowledge(campaignId), body });
 }
 
 export function updateKnowledge(
@@ -234,7 +252,11 @@ export function updateKnowledge(
   entryId: Id,
   body: PatchKnowledge,
 ): Promise<CampaignKnowledge> {
-  return request(context, 'PATCH', resourcePath(knowledge(campaignId), entryId), body);
+  return request(context, {
+    method: 'PATCH',
+    path: resourcePath(knowledge(campaignId), entryId),
+    body,
+  });
 }
 
 export function deleteKnowledge(
@@ -242,7 +264,7 @@ export function deleteKnowledge(
   campaignId: Id,
   entryId: Id,
 ): Promise<void> {
-  return request(context, 'DELETE', resourcePath(knowledge(campaignId), entryId));
+  return request(context, { method: 'DELETE', path: resourcePath(knowledge(campaignId), entryId) });
 }
 
 function members(campaignId: Id): string {

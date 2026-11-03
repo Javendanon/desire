@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import pageEnvelope from '../contracts/api-page.json' with { type: 'json' };
 
-import { ApiRequestError, collectionPath, resourcePath } from '../src/lib/api/client.ts';
+import { ApiRequestError, collectionPath, request, resourcePath } from '../src/lib/api/client.ts';
 import {
   createCampaign,
   createJournal,
@@ -16,8 +17,8 @@ import {
   updateCharacter,
 } from '../src/lib/api/campaigns.ts';
 import type { PatchCharacter } from '../src/lib/api/campaigns.ts';
-import type { Page } from '../src/lib/api/client.ts';
-import type { Campaign } from '../src/generated/contracts.ts';
+import type { ApiProblem, Page } from '../src/lib/api/client.ts';
+import type { ApiError, Campaign } from '../src/generated/contracts.ts';
 
 const IDENTITY = '00000000-0000-4000-8000-00000000005a';
 const CAMPAIGN = '00000000-0000-4000-8000-000000000001';
@@ -185,7 +186,8 @@ test('session, journal and knowledge calls use the generated contract shapes', a
   assert.deepEqual(JSON.parse(String(captured[0].init.body)), sessionBody);
   assert.equal(captured[0].url, `/api/v1/campaigns/${CAMPAIGN}/sessions`);
 
-  await listSessions(context({ items: [], limit: 20, offset: 0, has_more: false }, 200, captured), CAMPAIGN);
+  const sessionPage = context({ items: [], limit: 20, offset: 0, has_more: false }, 200, captured);
+  await listSessions(sessionPage, CAMPAIGN);
   assert.equal(captured[1].url, `/api/v1/campaigns/${CAMPAIGN}/sessions`);
 
   const entry = {
@@ -232,4 +234,45 @@ test('session, journal and knowledge calls use the generated contract shapes', a
 
   await getKnowledge(context(knowledge, 200, captured), CAMPAIGN, USER);
   assert.equal(captured[5].url, `/api/v1/campaigns/${CAMPAIGN}/knowledge/${USER}`);
+});
+
+
+test('request options preserve JSON, custom headers, base URL and cancellation', async () => {
+  const captured: Capture[] = [];
+  const signal = new AbortController().signal;
+  const transport = {
+    ...context({ id: SCENE }, 201, captured), signal, baseUrl: 'https://fixture.invalid',
+  };
+  const body = { name: 'Synthetic' };
+  const result = await request<{ id: string }>(transport, {
+    method: 'POST', path: '/campaigns', body, headers: { 'idempotency-key': SCENE },
+  });
+  assert.equal(result.id, SCENE);
+  assert.equal(captured[0].url, 'https://fixture.invalid/api/v1/campaigns');
+  assert.equal(captured[0].init.method, 'POST');
+  assert.equal(captured[0].init.signal, signal);
+  assert.deepEqual(JSON.parse(String(captured[0].init.body)), body);
+  assert.deepEqual(captured[0].init.headers, {
+    'x-desire-user': IDENTITY, 'content-type': 'application/json', 'idempotency-key': SCENE,
+  });
+});
+
+
+test('pagination metadata and item decoding follow the shared wire fixture', async () => {
+  const fixture: Page<string> = pageEnvelope;
+  const page = await request<Page<string>>(context(fixture), { method: 'GET', path: '/fixture' });
+  assert.deepEqual(Object.keys(page), Object.keys(pageEnvelope));
+  assert.deepEqual(page.items, ['second', 'third']);
+  assert.equal(page.limit, pageEnvelope.limit);
+  assert.equal(page.offset, pageEnvelope.offset);
+  assert.equal(page.has_more, pageEnvelope.has_more);
+});
+
+test('client problems use the generated transport error contract', () => {
+  const generated: ApiError = {
+    code: 'invalid_request', message: 'Synthetic validation error', request_id: SCENE,
+  };
+  const problem: ApiProblem = generated;
+  const typed: ApiError = problem;
+  assert.deepEqual(new ApiRequestError(400, problem).problem, typed);
 });

@@ -18,6 +18,7 @@ pub struct Page {
     offset: u32,
 }
 
+/// Wire metadata is pinned by contracts/api-page.json and the shared serialization test.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PageBody<T> {
     pub items: Vec<T>,
