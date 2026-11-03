@@ -50,10 +50,11 @@ port or a promise of a drop-in ORM migration.
   identity checks for replay, including a concurrent retry after the first transaction
   completes. SQL and transaction implementation remain in persistence.
 - The synchronous driver still runs through `spawn_blocking`. `Db` retains connection
-  setup, reconnection and its fixed `SELECT 1` health ping; these infrastructure concerns
-  do not belong in each resource repository.
+  setup, reconnection and its bounded liveness check. `tokio-postgres` is used only for a
+  cancellable reconnection probe, because the blocking driver has no handshake deadline; these
+  infrastructure concerns do not belong in each resource repository.
 
 The architecture regression checks production API code for database execution/row-binding
-primitives and permits only the connection bridge's exact health ping. HTTP integration
+primitives. HTTP integration
 and direct repository tests exercise real PostgreSQL. Actor revision/rollback and two-client
 scene replay tests remain behavioral checks rather than being replaced by source checks.

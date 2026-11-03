@@ -61,6 +61,5 @@ pub fn rename(
         name: &body.name,
     };
     CampaignRepository::rename(client, &rename)
-        .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
-    get(client, target)
+        .map_err(|error| ApiError::from_persistence(error, scope.caller))
 }

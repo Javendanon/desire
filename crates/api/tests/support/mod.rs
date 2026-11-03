@@ -7,10 +7,11 @@ use axum::{
 use desire_api::{AppState, app};
 use desire_core::contracts::common::Provenance;
 use desire_persistence::{CatalogRepository, CatalogSeed, migrations};
-use postgres::{Client, Config, NoTls};
+use postgres::{Client, NoTls};
 use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio_postgres::Config;
 
 /// Disposable database identity; fixtures and the app open their own connections.
 pub struct TestDb {
@@ -47,6 +48,14 @@ impl TestDb {
         format!("postgresql://desire_test@{host}/{}", self.name)
     }
 
+    /// Removes this database's name, so reconnecting fails with an invalid-catalog error.
+    pub fn rename_away(&self) {
+        self.drop_connections();
+        admin_client()
+            .batch_execute(&format!("ALTER DATABASE {0} RENAME TO {0}_gone", self.name))
+            .unwrap();
+    }
+
     /// Terminates every other backend on this database, as a database restart would.
     pub fn drop_connections(&self) {
         admin_client()
@@ -68,7 +77,7 @@ fn config(name: &str) -> Config {
 }
 
 fn connect(name: &str) -> Client {
-    config(name).connect(NoTls).unwrap()
+    postgres::Config::from(config(name)).connect(NoTls).unwrap()
 }
 
 fn admin_client() -> Client {

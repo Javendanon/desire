@@ -61,12 +61,13 @@ impl CampaignRepository {
             .transpose()
     }
 
-    pub fn rename(client: &mut Client, update: &CampaignRename<'_>) -> Result<(), Error> {
-        let affected = client
-            .execute(
+    pub fn rename(client: &mut Client, update: &CampaignRename<'_>) -> Result<Campaign, Error> {
+        let row = client
+            .query_opt(
                 concat!(
-                    "UPDATE campaign.campaigns SET name = $3, revision = revision + 1 ",
-                    "WHERE id = $1::text::uuid AND revision = $2"
+                    "UPDATE campaign.campaigns c SET name = $3, revision = revision + 1 ",
+                    "WHERE id = $1::text::uuid AND revision = $2 ",
+                    "RETURNING to_jsonb(c) - 'owner_role'"
                 ),
                 &[
                     &update.campaign_id,
@@ -75,16 +76,16 @@ impl CampaignRepository {
                 ],
             )
             .context(format!("rename campaign {}", update.campaign_id))?;
-        if affected == 0 {
-            return Err(Error::new(
+        let row = row.ok_or_else(|| {
+            Error::new(
                 ErrorKind::Conflict,
                 format!(
                     "campaign {} is absent or revision changed",
                     update.campaign_id
                 ),
-            ));
-        }
-        Ok(())
+            )
+        })?;
+        crate::records::decode(row)
     }
 }
 

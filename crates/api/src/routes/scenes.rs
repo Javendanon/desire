@@ -27,7 +27,7 @@ pub async fn create(
     let campaign_id = id_path(&caller, campaign_id, "campaign_id")?;
     let body = body.clean(&caller)?;
     let key = caller.idempotency_key.clone();
-    let scene = db::blocking(&state.db, move |client| {
+    let scene = db::blocking(&state.db, caller.request_id.clone(), move |client| {
         let scope = crate::routes::scope(&caller, &campaign_id);
         store::scenes::create(client, scope, body, key)
     })

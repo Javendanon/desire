@@ -17,7 +17,7 @@ macro_rules! list_handler {
         ) -> Result<axum::Json<$crate::query::PageBody<$dto>>, $crate::error::ApiError> {
             let campaign_id = $crate::routes::id_path(&caller, campaign_id, "campaign_id")?;
             let page = $crate::query::Page::from_query(&query, &caller)?;
-            $crate::routes::respond(&state, move |client| {
+            $crate::routes::respond(&state, caller.request_id.clone(), move |client| {
                 let scope = $crate::routes::scope(&caller, &campaign_id);
                 $crate::store::$resource::list(client, scope, page)
             })
@@ -36,7 +36,7 @@ macro_rules! get_handler {
         ) -> Result<axum::Json<$dto>, $crate::error::ApiError> {
             let (campaign_id, resource_id) =
                 $crate::routes::pair_path(&caller, campaign_id, resource_id, $id_field)?;
-            $crate::routes::respond(&state, move |client| {
+            $crate::routes::respond(&state, caller.request_id.clone(), move |client| {
                 let target = $crate::routes::target(&caller, &campaign_id, &resource_id);
                 $crate::store::$resource::get(client, target)
             })
@@ -56,7 +56,7 @@ macro_rules! create_handler {
         ) -> Result<(axum::http::StatusCode, axum::Json<$dto>), $crate::error::ApiError> {
             let campaign_id = $crate::routes::id_path(&caller, campaign_id, "campaign_id")?;
             let body = body.clean(&caller)?;
-            let dto = $crate::db::blocking(&state.db, move |client| {
+            let dto = $crate::db::blocking(&state.db, caller.request_id.clone(), move |client| {
                 let scope = $crate::routes::scope(&caller, &campaign_id);
                 $crate::store::$resource::create(client, scope, body)
             })
@@ -78,7 +78,7 @@ macro_rules! update_handler {
             let (campaign_id, resource_id) =
                 $crate::routes::pair_path(&caller, campaign_id, resource_id, $id_field)?;
             let body = body.clean(&caller)?;
-            $crate::routes::respond(&state, move |client| {
+            $crate::routes::respond(&state, caller.request_id.clone(), move |client| {
                 let target = $crate::routes::target(&caller, &campaign_id, &resource_id);
                 $crate::store::$resource::update(client, target, body)
             })
@@ -97,7 +97,7 @@ macro_rules! delete_handler {
         ) -> Result<axum::http::StatusCode, $crate::error::ApiError> {
             let (campaign_id, resource_id) =
                 $crate::routes::pair_path(&caller, campaign_id, resource_id, $id_field)?;
-            $crate::db::blocking(&state.db, move |client| {
+            $crate::db::blocking(&state.db, caller.request_id.clone(), move |client| {
                 let target = $crate::routes::target(&caller, &campaign_id, &resource_id);
                 $crate::store::$resource::delete(client, target)
             })
@@ -248,10 +248,14 @@ pub(crate) fn pair_path(
 }
 
 /// Run one store call and wrap its DTO in the response body.
-pub(crate) async fn respond<T, F>(state: &AppState, work: F) -> Result<axum::Json<T>, ApiError>
+pub(crate) async fn respond<T, F>(
+    state: &AppState,
+    request_id: String,
+    work: F,
+) -> Result<axum::Json<T>, ApiError>
 where
     T: Send + 'static,
     F: FnOnce(&mut postgres::Client) -> Result<T, ApiError> + Send + 'static,
 {
-    Ok(axum::Json(db::blocking(&state.db, work).await?))
+    Ok(axum::Json(db::blocking(&state.db, request_id, work).await?))
 }

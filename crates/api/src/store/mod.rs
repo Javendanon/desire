@@ -91,17 +91,26 @@ pub(crate) fn record_target(target: Target<'_>) -> RecordTarget<'_> {
     }
 }
 
+/// A revision the column could not hold is the caller's error, not a storage failure.
+pub(crate) fn next_revision(expected: u32, caller: &Caller) -> Result<u32, ApiError> {
+    expected
+        .checked_add(1)
+        .ok_or_else(|| ApiError::invalid(caller, "expected_revision is too large"))
+}
+
+/// A missing row from a revision-guarded update means the expected revision is stale.
+pub(crate) fn updated<T>(
+    outcome: Result<Option<T>, desire_persistence::Error>,
+    caller: &Caller,
+) -> Result<T, ApiError> {
+    outcome
+        .map_err(|error| ApiError::from_persistence(error, caller))?
+        .ok_or_else(|| ApiError::revision_conflict(caller))
+}
+
 pub(crate) fn audience(role: MemberRole) -> Audience {
     match role {
         MemberRole::Dm => Audience::All,
         MemberRole::Player => Audience::Players,
-    }
-}
-
-pub(crate) fn check_revision(affected: bool, caller: &Caller) -> Result<(), ApiError> {
-    if affected {
-        Ok(())
-    } else {
-        Err(ApiError::revision_conflict(caller))
     }
 }

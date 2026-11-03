@@ -1,5 +1,5 @@
 //! Knowledge operations coordinate authorization and typed storage.
-use super::{Scope, Target, check_revision, next_id, record_target};
+use super::{Scope, Target, next_id, record_target, updated};
 use crate::{
     access,
     error::ApiError,
@@ -53,10 +53,7 @@ pub fn update(
         expected_revision: body.expected_revision,
         provenance: &body.provenance,
     };
-    let changed = NotesRepository::update_knowledge(client, &update)
-        .map_err(|error| ApiError::from_persistence(error, caller))?;
-    check_revision(changed, caller)?;
-    get(client, target)
+    updated(NotesRepository::update_knowledge(client, &update), caller)
 }
 
 pub fn delete(client: &mut Client, target: Target<'_>) -> Result<(), ApiError> {

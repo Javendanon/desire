@@ -12,7 +12,7 @@ use support::{TestDb, id};
 const START_TIMEOUT: Duration = Duration::from_secs(20);
 const EXIT_TIMEOUT: Duration = Duration::from_secs(20);
 
-fn free_port() -> u16 {
+pub(super) fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()
@@ -20,7 +20,7 @@ fn free_port() -> u16 {
         .port()
 }
 
-fn request(port: u16, head: &str) -> String {
+pub(super) fn request(port: u16, head: &str) -> String {
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
@@ -41,7 +41,7 @@ fn get(port: u16, path: &str, identity: Option<&str>) -> String {
     )
 }
 
-fn wait_until_ready(port: u16, child: &mut Child) {
+pub(super) fn wait_until_ready(port: u16, child: &mut Child) {
     let deadline = Instant::now() + START_TIMEOUT;
     while Instant::now() < deadline {
         if let Some(status) = child.try_wait().unwrap() {
@@ -55,7 +55,7 @@ fn wait_until_ready(port: u16, child: &mut Child) {
     panic!("the server did not listen on port {port} within {START_TIMEOUT:?}");
 }
 
-fn wait_for_exit(child: &mut Child) -> std::process::ExitStatus {
+pub(super) fn wait_for_exit(child: &mut Child) -> std::process::ExitStatus {
     let deadline = Instant::now() + EXIT_TIMEOUT;
     while Instant::now() < deadline {
         if let Some(status) = child.try_wait().unwrap() {

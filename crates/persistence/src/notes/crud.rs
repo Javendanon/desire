@@ -11,10 +11,10 @@ const JOURNAL_GET_DM: &str = "SELECT to_jsonb(j) FROM campaign.journal_entries j
 const JOURNAL_GET_PLAYER: &str = "SELECT to_jsonb(j) FROM campaign.journal_entries j \
      WHERE j.campaign_id = $1::text::uuid AND j.id = $2::text::uuid \
      AND j.visibility = 'players'";
-const JOURNAL_UPDATE: &str = "UPDATE campaign.journal_entries SET body = $3, \
+const JOURNAL_UPDATE: &str = "UPDATE campaign.journal_entries j SET body = $3, \
      visibility = $4::text::campaign.visibility, revision = revision + 1 \
      WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid \
-     AND revision = $5::bigint";
+     AND revision = $5::bigint RETURNING to_jsonb(j)";
 
 const KNOWLEDGE_LIST_DM: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
      WHERE k.campaign_id = $1::text::uuid ORDER BY k.id LIMIT $2 OFFSET $3";
@@ -26,11 +26,11 @@ const KNOWLEDGE_GET_DM: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
 const KNOWLEDGE_GET_PLAYER: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
      WHERE k.campaign_id = $1::text::uuid AND k.id = $2::text::uuid \
      AND k.visibility = 'players'";
-const KNOWLEDGE_UPDATE: &str = "UPDATE campaign.knowledge SET title = $3, body = $4, \
+const KNOWLEDGE_UPDATE: &str = "UPDATE campaign.knowledge k SET title = $3, body = $4, \
      visibility = $5::text::campaign.visibility, \
      provenance = $6::jsonb::catalog.provenance, revision = revision + 1 \
      WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid \
-     AND revision = $7::bigint";
+     AND revision = $7::bigint RETURNING to_jsonb(k)";
 
 pub struct JournalUpdate<'a> {
     pub target: RecordTarget<'a>,
@@ -119,9 +119,12 @@ impl NotesRepository {
         )
     }
 
-    pub fn update_journal(client: &mut Client, update: &JournalUpdate<'_>) -> Result<bool, Error> {
+    pub fn update_journal(
+        client: &mut Client,
+        update: &JournalUpdate<'_>,
+    ) -> Result<Option<JournalEntry>, Error> {
         client
-            .execute(
+            .query_opt(
                 JOURNAL_UPDATE,
                 &[
                     &update.target.campaign_id,
@@ -131,18 +134,19 @@ impl NotesRepository {
                     &i64::from(update.expected_revision),
                 ],
             )
-            .context("update journal revision")
-            .map(|affected| affected != 0)
+            .context("update journal revision")?
+            .map(records::decode)
+            .transpose()
     }
 
     pub fn update_knowledge(
         client: &mut Client,
         update: &KnowledgeUpdate<'_>,
-    ) -> Result<bool, Error> {
+    ) -> Result<Option<CampaignKnowledge>, Error> {
         let provenance =
             serde_json::to_value(update.provenance).context("encode knowledge provenance")?;
         client
-            .execute(
+            .query_opt(
                 KNOWLEDGE_UPDATE,
                 &[
                     &update.target.campaign_id,
@@ -154,8 +158,9 @@ impl NotesRepository {
                     &i64::from(update.expected_revision),
                 ],
             )
-            .context("update knowledge revision")
-            .map(|affected| affected != 0)
+            .context("update knowledge revision")?
+            .map(records::decode)
+            .transpose()
     }
 
     pub fn delete_journal(client: &mut Client, target: RecordTarget<'_>) -> Result<bool, Error> {

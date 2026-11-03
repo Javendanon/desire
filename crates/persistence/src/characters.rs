@@ -91,16 +91,7 @@ impl CharacterRepository {
             )
             .context("update character revision")?;
         let Some(row) = row else { return Ok(None) };
-        tx.execute(
-            UPDATE_ACTOR,
-            &[
-                &target.campaign_id,
-                &target.id,
-                &update.name,
-                &update.controller_id,
-            ],
-        )
-        .context("update character actor projection")?;
+        update_actor(&mut tx, update)?;
         let character = records::decode(row)?;
         tx.commit().context("commit character and actor update")?;
         Ok(Some(character))
@@ -120,6 +111,21 @@ impl CharacterRepository {
         tx.commit().context("commit character deletion")?;
         Ok(affected != 0)
     }
+}
+
+fn update_actor(tx: &mut impl GenericClient, update: &CharacterUpdate<'_>) -> Result<(), Error> {
+    let target = update.target;
+    tx.execute(
+        UPDATE_ACTOR,
+        &[
+            &target.campaign_id,
+            &target.id,
+            &update.name,
+            &update.controller_id,
+        ],
+    )
+    .context("update character actor projection")?;
+    Ok(())
 }
 
 fn remove_actor_rows(tx: &mut impl GenericClient, target: RecordTarget<'_>) -> Result<(), Error> {

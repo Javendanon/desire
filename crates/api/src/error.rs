@@ -90,15 +90,22 @@ impl ApiError {
         Self::new(INTERNAL, "internal", message, request_id)
     }
 
+    /// An infrastructure failure inside a request keeps the caller's correlation ID.
+    pub fn internal_for(request_id: &str, message: &str) -> Self {
+        Self::new(INTERNAL, "internal", message, request_id)
+    }
+
     /// A referenced record blocks deletion, rather than making its identifier invalid.
     pub fn from_persistence_delete(error: desire_persistence::Error, caller: &Caller) -> Self {
         if error.sqlstate.as_deref() == Some("23503") {
+            persistence_diagnostic(&error, caller);
             return Self::in_use(caller);
         }
         Self::from_persistence(error, caller)
     }
 
     pub fn from_persistence(error: desire_persistence::Error, caller: &Caller) -> Self {
+        persistence_diagnostic(&error, caller);
         if error.kind == ErrorKind::Conflict {
             return Self::revision_conflict(caller);
         }
@@ -132,4 +139,9 @@ impl IntoResponse for ApiError {
         };
         (self.status, Json(body)).into_response()
     }
+}
+
+/// Display is the redacted persistence diagnostic: operation and SQLSTATE, never source data.
+fn persistence_diagnostic(error: &desire_persistence::Error, caller: &Caller) {
+    eprintln!("request_id={} persistence_error={error}", caller.request_id);
 }

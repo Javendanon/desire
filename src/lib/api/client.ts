@@ -32,6 +32,11 @@ export interface PageQuery {
   offset?: number;
 }
 
+export interface RecordRef {
+  campaignId: Id;
+  id: Id;
+}
+
 export interface ApiRequest {
   method: string;
   path: string;

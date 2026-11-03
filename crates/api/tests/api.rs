@@ -2,10 +2,16 @@
 mod support;
 
 mod character_revision;
+mod db_timeout;
+mod diagnostics;
 mod idempotency;
 mod isolation;
 mod layers;
 mod notes;
+mod outage;
+mod outage_proxy;
+mod pagination_contract;
+mod patch_response;
 mod resources;
 mod scene_concurrency;
 mod server;

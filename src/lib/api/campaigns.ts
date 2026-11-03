@@ -13,6 +13,7 @@ import {
   type ApiContext,
   type Page,
   type PageQuery,
+  type RecordRef,
   collectionPath,
   request,
   resourcePath,
@@ -85,6 +86,11 @@ export function listScenes(
   return request(context, { method: 'GET', path: collectionPath(scenes(campaignId), page) });
 }
 
+export interface SceneCreation {
+  body: NewScene;
+  idempotencyKey?: Id;
+}
+
 export function getScene(context: ApiContext, campaignId: Id, sceneId: Id): Promise<Scene> {
   return request(context, { method: 'GET', path: resourcePath(scenes(campaignId), sceneId) });
 }
@@ -92,8 +98,7 @@ export function getScene(context: ApiContext, campaignId: Id, sceneId: Id): Prom
 export function createScene(
   context: ApiContext,
   campaignId: Id,
-  body: NewScene,
-  idempotencyKey?: Id,
+  { body, idempotencyKey }: SceneCreation,
 ): Promise<Scene> {
   const headers: Record<string, string> = idempotencyKey
     ? { 'idempotency-key': idempotencyKey }
@@ -103,13 +108,12 @@ export function createScene(
 
 export function updateScene(
   context: ApiContext,
-  campaignId: Id,
-  sceneId: Id,
+  record: RecordRef,
   body: PatchScene,
 ): Promise<Scene> {
   return request(context, {
     method: 'PATCH',
-    path: resourcePath(scenes(campaignId), sceneId),
+    path: resourcePath(scenes(record.campaignId), record.id),
     body,
   });
 }
@@ -143,13 +147,12 @@ export function createCharacter(
 
 export function updateCharacter(
   context: ApiContext,
-  campaignId: Id,
-  characterId: Id,
+  record: RecordRef,
   body: PatchCharacter,
 ): Promise<Character> {
   return request(context, {
     method: 'PATCH',
-    path: resourcePath(characters(campaignId), characterId),
+    path: resourcePath(characters(record.campaignId), record.id),
     body,
   });
 }
@@ -207,13 +210,12 @@ export function createJournal(
 
 export function updateJournal(
   context: ApiContext,
-  campaignId: Id,
-  entryId: Id,
+  record: RecordRef,
   body: PatchJournal,
 ): Promise<JournalEntry> {
   return request(context, {
     method: 'PATCH',
-    path: resourcePath(journal(campaignId), entryId),
+    path: resourcePath(journal(record.campaignId), record.id),
     body,
   });
 }
@@ -248,13 +250,12 @@ export function createKnowledge(
 
 export function updateKnowledge(
   context: ApiContext,
-  campaignId: Id,
-  entryId: Id,
+  record: RecordRef,
   body: PatchKnowledge,
 ): Promise<CampaignKnowledge> {
   return request(context, {
     method: 'PATCH',
-    path: resourcePath(knowledge(campaignId), entryId),
+    path: resourcePath(knowledge(record.campaignId), record.id),
     body,
   });
 }

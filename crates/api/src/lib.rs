@@ -1,7 +1,8 @@
 //! Desire HTTP API: versioned, resource-oriented handlers over the D08 adapters.
 //!
 //! Handlers parse and validate transport input, delegate authorization to `access`, and
-//! delegate SQL to `store`. No handler contains SQL or domain calculations.
+//! delegate policy to `store` and SQL to typed persistence repositories. No handler contains
+//! SQL or domain calculations.
 
 pub mod access;
 pub mod db;
@@ -32,7 +33,7 @@ impl AppState {
     }
 
     /// State that can replace a connection the server closed, using the same settings.
-    pub fn with_config(config: postgres::Config, client: postgres::Client) -> Self {
+    pub fn with_config(config: tokio_postgres::Config, client: postgres::Client) -> Self {
         Self {
             db: db::Db::with_config(config, client),
         }

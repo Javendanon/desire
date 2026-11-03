@@ -1,5 +1,5 @@
 //! Character application operations; storage and actor transactions belong to persistence.
-use super::{Scope, Target, next_id, record_target};
+use super::{Scope, Target, next_id, next_revision, record_target, updated};
 use crate::{
     access,
     error::ApiError,
@@ -40,18 +40,14 @@ pub fn update(
     let caller = target.scope.caller;
     access::require_dm(client, caller, target.scope.campaign_id)?;
     ensure_exists(client, target)?;
-    body.expected_revision
-        .checked_add(1)
-        .ok_or_else(|| ApiError::invalid(caller, "expected_revision is too large"))?;
+    next_revision(body.expected_revision, caller)?;
     let update = CharacterUpdate {
         target: record_target(target),
         name: &body.name,
         controller_id: &body.controller_id,
         expected_revision: body.expected_revision,
     };
-    CharacterRepository::update(client, &update)
-        .map_err(|error| ApiError::from_persistence(error, caller))?
-        .ok_or_else(|| ApiError::revision_conflict(caller))
+    updated(CharacterRepository::update(client, &update), caller)
 }
 
 pub fn delete(client: &mut Client, target: Target<'_>) -> Result<(), ApiError> {

@@ -1,5 +1,5 @@
 //! Scene CRUD. Writes reuse the D08 transactional outbox and idempotency path.
-use super::{Scope, Target, next_id};
+use super::{Scope, Target, next_id, next_revision};
 use crate::{
     access,
     error::ApiError,
@@ -97,10 +97,7 @@ pub fn update(
     let caller = target.scope.caller;
     access::require_dm(client, caller, target.scope.campaign_id)?;
     get(client, target)?;
-    let revision = body
-        .expected_revision
-        .checked_add(1)
-        .ok_or_else(|| ApiError::invalid(caller, "expected_revision is too large"))?;
+    let revision = next_revision(body.expected_revision, caller)?;
     let scene = Scene {
         id: target.id.to_string(),
         campaign_id: target.scope.campaign_id.to_string(),

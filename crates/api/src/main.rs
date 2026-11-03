@@ -1,6 +1,6 @@
 //! Desire HTTP server entry point.
 
-use desire_api::{AppState, app};
+use desire_api::{AppState, app, db};
 use std::net::{IpAddr, SocketAddr};
 
 fn shutdown_error_message(error: &std::io::Error) -> String {
@@ -51,8 +51,26 @@ fn database_url() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 /// Connection settings are kept so `Db` can replace a client the server closed.
-fn database_config(url: &str) -> Result<postgres::Config, Box<dyn std::error::Error>> {
-    Ok(url.parse()?)
+fn database_config(url: &str) -> Result<tokio_postgres::Config, Box<dyn std::error::Error>> {
+    let mut config: tokio_postgres::Config = url.parse()?;
+    let requested = config.get_connect_timeout().copied();
+    config.connect_timeout(requested.map_or(db::REQUEST_TIMEOUT, |t| t.min(db::REQUEST_TIMEOUT)));
+    Ok(config)
+}
+
+/// Server-side bounds for abandoned work: three default request deadlines, after which `Db`
+/// also stops waiting for it. Migrations do not use them. Options from `DATABASE_URL` win.
+const SERVER_LIMITS: &str = "-c statement_timeout=15000 -c lock_timeout=15000 \
+     -c idle_in_transaction_session_timeout=15000";
+
+fn with_server_limits(mut config: tokio_postgres::Config) -> tokio_postgres::Config {
+    let options = config
+        .get_options()
+        .map_or(SERVER_LIMITS.to_owned(), |requested| {
+            format!("{SERVER_LIMITS} {requested}")
+        });
+    config.options(&options);
+    config
 }
 
 fn migrated() -> bool {
@@ -79,12 +97,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     identity_binding_guard(host)?;
     let port: u16 = environment("PORT", "3001")?;
     let config = database_config(&database_url()?)?;
-    let mut client = config.connect(postgres::NoTls)?;
     if migrated() {
+        let mut client = db::connect_startup(&config)?;
         desire_persistence::migrations::apply(&mut client)?;
         println!("D08 migrations applied");
         return Ok(());
     }
+    let config = with_server_limits(config);
+    let client = db::connect_startup(&config)?;
     let address = SocketAddr::new(host, port);
     let state = AppState::with_config(config, client);
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -99,6 +119,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn server_limits_apply_and_url_options_can_override_them() {
+        let plain = with_server_limits("host=db".parse().unwrap());
+        assert_eq!(plain.get_options(), Some(SERVER_LIMITS));
+        let requested = "host=db options='-c statement_timeout=1'";
+        let custom = with_server_limits(requested.parse().unwrap());
+        let options = custom.get_options().unwrap();
+        assert!(options.starts_with(SERVER_LIMITS));
+        assert!(options.ends_with("-c statement_timeout=1"));
+    }
 
     #[tokio::test]
     async fn shutdown_reports_a_signal_error_with_its_cause() {

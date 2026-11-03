@@ -18,7 +18,7 @@ pub async fn list(
     ApiQuery(query): ApiQuery<PageQuery>,
 ) -> Result<Json<PageBody<Campaign>>, ApiError> {
     let page = Page::from_query(&query, &caller)?;
-    respond(&state, move |client| {
+    respond(&state, caller.request_id.clone(), move |client| {
         store::campaigns::list(client, &caller, page)
     })
     .await
@@ -30,7 +30,7 @@ pub async fn create(
     ApiJson(body): ApiJson<NewCampaign>,
 ) -> Result<(StatusCode, Json<Campaign>), ApiError> {
     let body = body.clean(&caller)?;
-    let campaign = db::blocking(&state.db, move |client| {
+    let campaign = db::blocking(&state.db, caller.request_id.clone(), move |client| {
         store::campaigns::create(client, &caller, body)
     })
     .await?;
@@ -43,7 +43,7 @@ pub async fn get(
     Path(campaign_id): Path<String>,
 ) -> Result<Json<Campaign>, ApiError> {
     let campaign_id = id_path(&caller, campaign_id, "campaign_id")?;
-    respond(&state, move |client| {
+    respond(&state, caller.request_id.clone(), move |client| {
         let target = crate::routes::target(&caller, &campaign_id, &campaign_id);
         store::campaigns::get(client, target)
     })
@@ -58,7 +58,7 @@ pub async fn rename(
 ) -> Result<Json<Campaign>, ApiError> {
     let campaign_id = id_path(&caller, campaign_id, "campaign_id")?;
     let body = body.clean(&caller)?;
-    respond(&state, move |client| {
+    respond(&state, caller.request_id.clone(), move |client| {
         let target = crate::routes::target(&caller, &campaign_id, &campaign_id);
         store::campaigns::rename(client, target, body)
     })

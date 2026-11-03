@@ -19,10 +19,40 @@ shared deployment; D17 owns player projections in the UI.
   runtime only after the first connection exists, so the blocking client never blocks
   inside a runtime. Apply the D08 migrations first
   (`DATABASE_URL=... cargo run -p desire-api -- --migrate`).
-- One blocking `postgres::Client` behind a mutex serializes requests until a pool exists.
-  Each request starts with a `SELECT 1` liveness ping: a client the server closed is
-  replaced from the same settings, so a restarted database breaks at most the request
-  already in flight. `/api/health` stays a liveness check and never touches the database.
+- One blocking `postgres::Client` serializes requests until a pool exists. Each request starts
+  with a liveness check bounded by the database deadline. A dead client is replaced after a
+  cancellable handshake probe, and the blocking connection that follows runs under the same
+  bound. `/api/health` stays a liveness check and never touches the database.
+- Every database-backed request has a 5-second deadline covering its queue wait and work, and
+  the startup connection is bounded the same way. `connect_timeout` in `DATABASE_URL` can only
+  shorten it. A database that stops answering yields 500 `internal`; service returns on a later
+  request once the database answers.
+- A deadline does not cancel work that already started: a timed-out write **may still commit**.
+  Work that had not started when the deadline passed never starts. Read the record before
+  retrying. A create generates a new ID per attempt, so list the collection first; only scenes
+  accept an idempotency key.
+- The server enforces 15-second statement, lock and idle-in-transaction limits, except during
+  migrations. A write the API stopped waiting for therefore ends by itself unless the connection
+  is lost. Options in `DATABASE_URL` can override these limits. They do not shrink with
+  `connect_timeout`, so a shorter deadline can abandon lanes before the server ends their work.
+- An operation still running after three deadlines is abandoned and later requests use a new
+  connection, so it can overlap them. Revision guards and scene idempotency still apply. At most
+  eight such lanes exist; past that, requests fail at their deadline until one ends.
+- The cap covers lanes, not connections. A probe opens one short-lived extra connection, and a
+  retired client keeps its thread and connection until its close finishes. A peer that repeatedly
+  goes silent and returns can therefore accumulate them while its sockets stay open.
+- A peer that answers the probe and then stalls the blocking handshake holds a helper thread until
+  its socket dies. At most eight can exist; past that, reconnection fails at once, until one ends.
+- The server limits travel in the `options` startup parameter. A connection pooler that rejects
+  it needs to be configured to ignore it, in which case these limits do not apply.
+- Successful `PATCH` responses for campaigns, journal and knowledge come from the update's
+  own `RETURNING` row, so a concurrent writer cannot change or remove what is reported.
+- Persistence failures reach stderr as `request_id=<id> persistence_error=<kind>: <operation>
+  (SQLSTATE <code>)`, and connection failures as `request_id=<id> database_failure="<reason>"`
+  plus `cause=<category>`: an SQLSTATE, an I/O kind, `none`, `unclassified` or the handshake cap.
+  Both use the caller's request ID, and lane events log it without a cause. Responses stay sanitized.
+  The lines carry no request bodies or credentials, but operation names can include record IDs
+  and a client's idempotency key.
 
 ## Endpoints
 
