@@ -5,6 +5,7 @@
 //! SQL or domain calculations.
 
 pub mod access;
+pub mod auth;
 pub mod db;
 pub mod error;
 pub mod extract;
@@ -28,6 +29,8 @@ pub struct AppState {
     pub db: db::Db,
     pub nivel20: nivel20::Nivel20Client,
     pub flags: FlagSource,
+    /// Tests and loopback development may keep the header seam; shared binds use bearer sessions.
+    pub dev_identity: bool,
 }
 
 impl AppState {
@@ -37,6 +40,7 @@ impl AppState {
             db: db::Db::from_client(client),
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
+            dev_identity: true,
         }
     }
 
@@ -46,6 +50,7 @@ impl AppState {
             db: db::Db::with_config(config, client),
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
+            dev_identity: false,
         }
     }
 
@@ -59,7 +64,13 @@ impl AppState {
             db: db::Db::with_config(config, client),
             nivel20,
             flags: FlagSource::from_env(),
+            dev_identity: false,
         }
+    }
+
+    pub fn with_dev_identity(mut self, allow: bool) -> Self {
+        self.dev_identity = allow;
+        self
     }
 }
 

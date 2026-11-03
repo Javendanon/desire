@@ -1,9 +1,10 @@
 //! Caller identity and JSON extraction with one failure shape.
 //!
-//! `x-desire-user` is a development seam: D10 replaces it with authenticated identity.
-//! It is accepted only because the server refuses non-loopback binds without an explicit
-//! opt-in (see `main.rs`).
+//! An opaque bearer session is the production identity. `x-desire-user` remains a
+//! loopback/test seam and is ignored when `AppState::dev_identity` is false.
 use crate::{
+    AppState,
+    auth::{password, service},
     error::{ApiError, INVALID, UNAUTHORIZED},
     ids,
 };
@@ -16,6 +17,8 @@ use desire_core::contracts::common::Id;
 use serde::de::DeserializeOwned;
 
 const CALLER_HEADER: &str = "x-desire-user";
+const AUTHORIZATION_HEADER: &str = "authorization";
+const BEARER_PREFIX: &str = "Bearer ";
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
 #[derive(Debug, Clone)]
@@ -23,19 +26,88 @@ pub struct Caller {
     pub user_id: Id,
     pub request_id: String,
     pub idempotency_key: Option<Id>,
+    /// Only the digest of the presented token, so logout can revoke this session.
+    pub session_hash: Option<String>,
 }
 
-impl<S: Send + Sync> FromRequestParts<S> for Caller {
+impl FromRequestParts<AppState> for Caller {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let request_id = request_id_from(&parts.headers);
+        let (user_id, session_hash) = identity(&parts.headers, state, &request_id).await?;
         Ok(Self {
-            user_id: caller_id(&parts.headers, &request_id)?,
+            user_id,
             idempotency_key: idempotency_key(&parts.headers, &request_id)?,
             request_id,
+            session_hash,
         })
     }
+}
+
+async fn identity(
+    headers: &HeaderMap,
+    state: &AppState,
+    request_id: &str,
+) -> Result<(Id, Option<String>), ApiError> {
+    if headers.contains_key(AUTHORIZATION_HEADER) {
+        let token = bearer_token(headers, request_id)?;
+        let hash = password::token_hash(token);
+        let user_id = service::session_user(&state.db, hash.clone(), request_id.to_string())
+            .await?
+            .ok_or_else(|| {
+                ApiError::new(
+                    UNAUTHORIZED,
+                    "unauthenticated",
+                    "the bearer session is invalid or expired",
+                    request_id,
+                )
+            })?;
+        return Ok((user_id, Some(hash)));
+    }
+    if state.dev_identity {
+        return Ok((caller_id(headers, request_id)?, None));
+    }
+    Err(ApiError::new(
+        UNAUTHORIZED,
+        "unauthenticated",
+        "a bearer session token is required",
+        request_id,
+    ))
+}
+
+fn bearer_token<'a>(headers: &'a HeaderMap, request_id: &str) -> Result<&'a str, ApiError> {
+    let value = headers
+        .get(AUTHORIZATION_HEADER)
+        .and_then(|value| value.to_str().ok())
+        .ok_or_else(|| {
+            ApiError::new(
+                UNAUTHORIZED,
+                "unauthenticated",
+                "the authorization header must be ASCII",
+                request_id,
+            )
+        })?;
+    let token = value.strip_prefix(BEARER_PREFIX).ok_or_else(|| {
+        ApiError::new(
+            UNAUTHORIZED,
+            "unauthenticated",
+            "the authorization header must use Bearer authentication",
+            request_id,
+        )
+    })?;
+    if !password::is_token(token) {
+        return Err(ApiError::new(
+            UNAUTHORIZED,
+            "unauthenticated",
+            "the bearer token is malformed",
+            request_id,
+        ));
+    }
+    Ok(token)
 }
 
 fn caller_id(headers: &HeaderMap, request_id: &str) -> Result<Id, ApiError> {
@@ -71,7 +143,7 @@ fn idempotency_key(headers: &HeaderMap, request_id: &str) -> Result<Option<Id>, 
         .map_err(|message| ApiError::new(INVALID, "invalid_request", message, request_id))
 }
 
-fn request_id_from(headers: &HeaderMap) -> String {
+pub(crate) fn request_id_from(headers: &HeaderMap) -> String {
     headers
         .get(REQUEST_ID_HEADER)
         .and_then(|value| value.to_str().ok())

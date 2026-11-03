@@ -19,18 +19,22 @@ where
     }
 }
 
-/// The header identity is a D10 placeholder, so it never leaves the local machine
-/// unless an operator explicitly opts in.
+/// The header seam is loopback-only unless an operator explicitly opts in; shared
+/// binds use the D10 bearer sessions instead.
 fn identity_binding_guard(host: IpAddr) -> Result<(), String> {
     if host.is_loopback() || std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1") {
         return Ok(());
     }
     Err(concat!(
         "refusing a non-loopback bind with the development identity header; ",
-        "D10 authentication is not implemented. ",
+        "D10 bearer authentication is available without the header. ",
         "Set DESIRE_DEV_IDENTITY=1 only on a trusted network."
     )
     .into())
+}
+
+fn dev_identity_allowed(host: IpAddr) -> bool {
+    host.is_loopback() || std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1")
 }
 
 fn environment<T>(name: &str, fallback: &str) -> Result<T, Box<dyn std::error::Error>>
@@ -94,7 +98,10 @@ async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::
 /// connection on this thread.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host: IpAddr = environment("HOST", "127.0.0.1")?;
-    identity_binding_guard(host)?;
+    let dev_identity = dev_identity_allowed(host);
+    if dev_identity {
+        identity_binding_guard(host)?;
+    }
     let port: u16 = environment("PORT", "3001")?;
     let config = database_config(&database_url()?)?;
     if migrated() {
@@ -107,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = db::connect_startup(&config)?;
     let nivel20 = Nivel20Client::from_env()?;
     let address = SocketAddr::new(host, port);
-    let state = AppState::with_nivel20(config, client, nivel20);
+    let state = AppState::with_nivel20(config, client, nivel20).with_dev_identity(dev_identity);
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
@@ -155,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn non_loopback_hosts_are_refused_without_the_opt_in() {
+    fn non_loopback_hosts_are_refused_for_the_development_header() {
         let result = identity_binding_guard("0.0.0.0".parse().unwrap());
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("D10"));

@@ -1,6 +1,7 @@
 //! HTTP contract and integration checks against the real persistence adapters.
 mod support;
 
+mod auth;
 mod character_revision;
 mod db_timeout;
 mod diagnostics;
@@ -13,6 +14,7 @@ mod outage;
 mod outage_proxy;
 mod pagination_contract;
 mod patch_response;
+mod realtime;
 mod resources;
 mod scene_concurrency;
 mod server;

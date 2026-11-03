@@ -1,7 +1,7 @@
 # Campaign API v1
 
-Status: implemented in `crates/api`. D10 replaces the development identity header before any
-shared deployment; D17 owns player projections in the UI.
+Status: implemented in `crates/api`. Bearer sessions and cursor synchronization are
+documented in [auth-realtime.md](auth-realtime.md); D17 owns player projections in the UI.
 
 ## Boundary
 
@@ -12,9 +12,10 @@ shared deployment; D17 owns player projections in the UI.
   (application operations). Business SQL and transactions live in typed repositories in
   `desire-persistence`; the API does not bind rows or SQL parameters. See
   [the database-access boundary](../database-access.md) for the driver decision and limits.
-- `x-desire-user: <uuid>` is the caller identity. It is a development seam, not
-  authentication: the server refuses a non-loopback bind unless `DESIRE_DEV_IDENTITY=1`
-  is set explicitly. D10 must replace it with authenticated identity.
+- `Authorization: Bearer <session token>` is the production identity. Sessions are
+  created by `/api/v1/auth/accounts` or `/api/v1/auth/sessions` and expire after 12 hours.
+  `x-desire-user` remains a loopback/test seam; a non-loopback bind uses bearer tokens
+  unless `DESIRE_DEV_IDENTITY=1` is set explicitly.
 - `DATABASE_URL` is required and parsed at startup; the process builds its own Tokio
   runtime only after the first connection exists, so the blocking client never blocks
   inside a runtime. Apply the D08 migrations first
@@ -60,6 +61,10 @@ shared deployment; D17 owns player projections in the UI.
 
 | Method | Path | Role | Result |
 | --- | --- | --- | --- |
+| POST | `/auth/accounts` | public | 201 account session; no role is granted |
+| POST | `/auth/sessions` | public | 200 bearer session |
+| GET | `/auth/identity` | authenticated | account identity |
+| DELETE | `/auth/sessions/current` | authenticated | 204; revokes the presented token |
 | GET | `/campaigns` | any caller | member campaigns |
 | POST | `/campaigns` | any caller | 201 campaign; owner becomes DM |
 | GET | `/campaigns/{campaign}` | member | campaign |
@@ -68,6 +73,7 @@ shared deployment; D17 owns player projections in the UI.
 | POST | `/campaigns/{campaign}/members` | DM | 201 membership |
 | DELETE | `/campaigns/{campaign}/members/{user}` | DM | 204; owner or controlled-character removal is 409 |
 | GET | `/campaigns/{campaign}/sessions` | member | sessions |
+| GET | `/campaigns/{campaign}/sync?after=N` | member | snapshot or ordered events after a stream cursor |
 | POST | `/campaigns/{campaign}/sessions` | DM | 201 session |
 | GET | `/campaigns/{campaign}/scenes` | member | scenes |
 | POST | `/campaigns/{campaign}/scenes` | DM | 201 scene, emits a D08 outbox event |
@@ -212,7 +218,10 @@ single-entry reads.
 
 ## Known gaps
 
-- D10 authentication and realtime transport are not implemented.
+- Identity and cursor synchronization are implemented; see
+  [auth-realtime.md](auth-realtime.md) for the threat model and remaining limits.
+  Login/registration rate limiting, token rotation and outbox retention are still open.
+  Travel events remain empty until D14 adds an authorized writer.
 - D17 owns the final player projection and UI visibility; this API filters DM rows and
   returns 404 for hidden items as a safe default.
 - Campaigns have no DELETE in v1. Deleting a campaign means choosing what happens to its

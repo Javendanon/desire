@@ -225,6 +225,39 @@ export interface TravelUpdated {
   kind: "travel_updated";
 }
 
+export interface AuthSession {
+  token: string;
+  token_type: "bearer";
+  expires_at: string;
+  user_id: Id;
+  username: string;
+}
+
+export interface AuthIdentity {
+  user_id: Id;
+  username: string;
+}
+
+export interface CampaignSnapshot {
+  protocol_version: 1;
+  campaign: Campaign;
+  scenes: Scene[];
+  characters: Character[];
+  journal: JournalEntry[];
+  knowledge: CampaignKnowledge[];
+  truncated: boolean;
+}
+
+export interface SyncBatch {
+  protocol_version: 1;
+  campaign_id: Id;
+  role: MemberRole;
+  revision: Revision;
+  snapshot: CampaignSnapshot | null;
+  scene_events: SceneChanged[];
+  travel_events: TravelUpdated[];
+}
+
 export interface ApiError {
   code: string;
   message: string;

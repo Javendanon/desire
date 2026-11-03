@@ -116,6 +116,7 @@ pub mod members;
 pub mod nivel20;
 pub mod scenes;
 pub mod sessions;
+pub mod sync;
 
 use crate::{
     AppState, db,
@@ -151,6 +152,7 @@ fn campaign_routes() -> Router<AppState> {
             "/api/v1/campaigns/{campaign_id}/sessions",
             get(sessions::list).post(sessions::create),
         )
+        .route("/api/v1/campaigns/{campaign_id}/sync", get(sync::batch))
 }
 
 fn scene_routes() -> Router<AppState> {
@@ -219,9 +221,21 @@ fn nivel20_routes() -> Router<AppState> {
         )
 }
 
+fn auth_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/v1/auth/accounts", post(crate::auth::routes::register))
+        .route("/api/v1/auth/sessions", post(crate::auth::routes::login))
+        .route(
+            "/api/v1/auth/sessions/current",
+            delete(crate::auth::routes::logout),
+        )
+        .route("/api/v1/auth/identity", get(crate::auth::routes::identity))
+}
+
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health::health))
+        .merge(auth_routes())
         .merge(campaign_routes())
         .merge(scene_routes())
         .merge(character_routes())

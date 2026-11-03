@@ -32,6 +32,11 @@ impl TestDb {
     }
 
     pub fn state(&self) -> AppState {
+        AppState::with_config(config(&self.name), connect(&self.name)).with_dev_identity(true)
+    }
+
+    /// Production-style state: only bearer sessions authenticate.
+    pub fn strict_state(&self) -> AppState {
         AppState::with_config(config(&self.name), connect(&self.name))
     }
 
@@ -136,6 +141,7 @@ pub fn map_version() -> String {
     id(6)
 }
 
+#[derive(Debug)]
 pub struct Response {
     pub status: StatusCode,
     pub body: Value,
@@ -148,6 +154,7 @@ pub struct ApiCall<'a> {
     caller: Option<&'a str>,
     body: Option<Value>,
     headers: &'a [(&'a str, &'a str)],
+    bearer: Option<&'a str>,
 }
 
 impl<'a> ApiCall<'a> {
@@ -158,6 +165,7 @@ impl<'a> ApiCall<'a> {
             caller: None,
             body: None,
             headers: &[],
+            bearer: None,
         }
     }
 
@@ -173,6 +181,11 @@ impl<'a> ApiCall<'a> {
 
     pub fn headers(mut self, headers: &'a [(&'a str, &'a str)]) -> Self {
         self.headers = headers;
+        self
+    }
+
+    pub fn bearer(mut self, token: &'a str) -> Self {
+        self.bearer = Some(token);
         self
     }
 }
@@ -207,10 +220,14 @@ pub async fn call(app: &Router, call: ApiCall<'_>) -> Response {
         caller,
         body,
         headers,
+        bearer,
     } = call;
     let mut request = Request::builder().method(method).uri(uri);
     if let Some(caller) = caller {
         request = request.header("x-desire-user", caller);
+    }
+    if let Some(token) = bearer {
+        request = request.header("authorization", format!("Bearer {token}"));
     }
     for (name, value) in headers {
         request = request.header(*name, *value);
@@ -308,4 +325,8 @@ async fn created(actor: Actor<'_>, resource: &str, body: Value) -> Value {
 
 pub fn app_for(db: &TestDb) -> Router {
     app(db.state())
+}
+
+pub fn strict_app_for(db: &TestDb) -> Router {
+    app(db.strict_state())
 }
