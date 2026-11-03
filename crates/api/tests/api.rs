@@ -1,9 +1,12 @@
 //! HTTP contract and integration checks against the real persistence adapters.
 mod support;
 
+mod character_revision;
+mod idempotency;
 mod isolation;
 mod notes;
 mod resources;
+mod scene_concurrency;
 mod server;
 
 use axum::http::{Method, StatusCode};

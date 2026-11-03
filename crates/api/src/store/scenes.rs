@@ -6,7 +6,7 @@ use crate::{
     payloads::{NewScene, PatchScene},
 };
 use desire_core::contracts::campaign::Scene;
-use desire_persistence::{SceneRepository, SceneWrite};
+use desire_persistence::{ErrorKind, SceneRepository, SceneWrite};
 use postgres::Client;
 
 const LIST: &str = "SELECT to_jsonb(s) FROM campaign.scenes s \
@@ -36,23 +36,42 @@ pub fn create(
     {
         return Ok(scene);
     }
+    let write = draft(client, scope, &body, idempotency_key.clone())?;
+    if let Err(error) = SceneRepository::save_and_enqueue(client, &write) {
+        // A second instance may commit after preflight. The failed transaction has ended,
+        // so replay now sees its committed result even under REPEATABLE READ.
+        let race = error.kind == ErrorKind::Conflict || error.sqlstate.as_deref() == Some("40001");
+        if idempotency_key.is_some()
+            && race
+            && let Some(scene) = replay(client, scope, &body, &write.key)?
+        {
+            return Ok(scene);
+        }
+        return Err(ApiError::from_persistence(error, scope.caller));
+    }
+    Ok(write.scene)
+}
+
+fn draft(
+    client: &mut Client,
+    scope: Scope<'_>,
+    body: &NewScene,
+    key: Option<String>,
+) -> Result<SceneWrite, ApiError> {
     let scene = Scene {
         id: next_id(client, scope.caller)?,
         campaign_id: scope.campaign_id.to_string(),
-        map_version_id: body.map_version_id,
-        name: body.name,
+        map_version_id: body.map_version_id.clone(),
+        name: body.name.clone(),
         revision: 1,
     };
     let event_id = next_id(client, scope.caller)?;
-    let write = SceneWrite {
-        scene: scene.clone(),
+    Ok(SceneWrite {
+        scene,
         expected_revision: None,
-        key: idempotency_key.unwrap_or_else(|| event_id.clone()),
+        key: key.unwrap_or_else(|| event_id.clone()),
         event_id,
-    };
-    SceneRepository::save_and_enqueue(client, &write)
-        .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
-    Ok(scene)
+    })
 }
 
 /// Only the client-supplied fields decide whether a retry is the same request.

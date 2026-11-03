@@ -55,14 +55,20 @@ fn caller_id(headers: &HeaderMap, request_id: &str) -> Result<Id, ApiError> {
 }
 
 fn idempotency_key(headers: &HeaderMap, request_id: &str) -> Result<Option<Id>, ApiError> {
-    headers
-        .get("idempotency-key")
-        .and_then(|value| value.to_str().ok())
-        .map(|value| {
-            ids::validate(value, "idempotency-key")
-                .map_err(|message| ApiError::new(INVALID, "invalid_request", message, request_id))
-        })
-        .transpose()
+    let Some(value) = headers.get("idempotency-key") else {
+        return Ok(None);
+    };
+    let value = value.to_str().map_err(|_| {
+        ApiError::new(
+            INVALID,
+            "invalid_request",
+            "idempotency-key must be ASCII",
+            request_id,
+        )
+    })?;
+    ids::validate(value, "idempotency-key")
+        .map(Some)
+        .map_err(|message| ApiError::new(INVALID, "invalid_request", message, request_id))
 }
 
 fn request_id_from(headers: &HeaderMap) -> String {

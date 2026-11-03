@@ -33,7 +33,7 @@ const UPDATE: &str = "UPDATE campaign.characters SET name = $3, \
 const UPDATE_ACTOR: &str = "UPDATE campaign.actors SET name = $3, \
      kind = CASE WHEN $4::text IS NULL THEN 'npc' ELSE 'character' END, \
      visibility = CASE WHEN $4::text IS NULL THEN 'dm'::campaign.visibility \
-     ELSE 'players'::campaign.visibility END \
+     ELSE 'players'::campaign.visibility END, revision = revision + 1 \
      WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid";
 
 const MISSING: &str = "character not found";
