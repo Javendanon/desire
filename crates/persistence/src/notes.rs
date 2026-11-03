@@ -1,10 +1,19 @@
 //! Player projections filter visibility in SQL and never join the private schema.
-use crate::{Error, error::Context, records};
+use crate::{
+    Error,
+    error::Context,
+    reads::{self, Audience, CampaignRead, FetchPage, ListRead, RecordTarget},
+    records,
+};
+use desire_core::contracts::common::{Provenance, Visibility};
 use desire_core::contracts::{
     campaign::{CampaignKnowledge, JournalEntry, Session},
     transport::{PlayerJournalEntry, PlayerKnowledge},
 };
 use postgres::Client;
+
+mod crud;
+pub use crud::{JournalUpdate, KnowledgeUpdate};
 
 pub struct NotesRepository;
 

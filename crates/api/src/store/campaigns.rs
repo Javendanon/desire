@@ -1,5 +1,5 @@
 //! Campaign reads and writes. Creation also inserts the owner's DM membership.
-use super::{Target, decode_all, next_id, query};
+use super::{Target, next_id, window};
 use crate::{
     access,
     error::ApiError,
@@ -16,16 +16,9 @@ pub fn list(
     caller: &Caller,
     page: Page,
 ) -> Result<PageBody<Campaign>, ApiError> {
-    let (limit, offset) = page.fetch();
-    let rows = query(
-        client,
-        "SELECT to_jsonb(c) - 'owner_role' FROM campaign.campaigns c \
-         JOIN campaign.memberships m ON m.campaign_id = c.id \
-         WHERE m.user_id = $1::text::uuid ORDER BY c.id LIMIT $2 OFFSET $3",
-        &[&caller.user_id, &limit, &offset],
-        caller,
-    )?;
-    Ok(page.finish(decode_all(rows, caller)?))
+    let rows = CampaignRepository::list_for_user(client, &caller.user_id, window(page))
+        .map_err(|error| ApiError::from_persistence(error, caller))?;
+    Ok(page.finish(rows))
 }
 
 pub fn get(client: &mut Client, target: Target<'_>) -> Result<Campaign, ApiError> {

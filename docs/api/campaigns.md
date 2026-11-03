@@ -8,8 +8,10 @@ shared deployment; D17 owns player projections in the UI.
 - Base path: `/api/v1`. Liveness stays at `/api/health`.
 - Responses reuse the generated D04 DTOs in `crates/core/src/contracts/`. Requests are
   hand-written payloads because create/update shapes differ from stored records.
-- Handlers parse input, then call `access` (membership/role policy) and `store` (SQL).
-  No handler contains SQL or domain calculations.
+- Handlers parse input, then call `access` (membership/role policy) and `store`
+  (application operations). Business SQL and transactions live in typed repositories in
+  `desire-persistence`; the API does not bind rows or SQL parameters. See
+  [the database-access boundary](../database-access.md) for the driver decision and limits.
 - `x-desire-user: <uuid>` is the caller identity. It is a development seam, not
   authentication: the server refuses a non-loopback bind unless `DESIRE_DEV_IDENTITY=1`
   is set explicitly. D10 must replace it with authenticated identity.

@@ -17,6 +17,22 @@ pub struct SceneWrite {
 pub struct SceneRepository;
 
 impl SceneRepository {
+    pub fn list(
+        client: &mut Client,
+        campaign: &str,
+        page: crate::FetchPage,
+    ) -> Result<Vec<Scene>, Error> {
+        crate::reads::list(
+            client,
+            crate::reads::ListRead {
+                sql: "SELECT to_jsonb(s) FROM campaign.scenes s \
+                  WHERE s.campaign_id = $1::text::uuid ORDER BY s.id LIMIT $2 OFFSET $3",
+                campaign_id: campaign,
+                page,
+            },
+        )
+    }
+
     pub fn get(client: &mut Client, campaign: &str, id: &str) -> Result<Option<Scene>, Error> {
         client
             .query_opt(

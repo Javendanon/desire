@@ -4,6 +4,7 @@ mod support;
 mod character_revision;
 mod idempotency;
 mod isolation;
+mod layers;
 mod notes;
 mod resources;
 mod scene_concurrency;

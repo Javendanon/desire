@@ -90,24 +90,19 @@ impl ApiError {
         Self::new(INTERNAL, "internal", message, request_id)
     }
 
+    /// A referenced record blocks deletion, rather than making its identifier invalid.
+    pub fn from_persistence_delete(error: desire_persistence::Error, caller: &Caller) -> Self {
+        if error.sqlstate.as_deref() == Some("23503") {
+            return Self::in_use(caller);
+        }
+        Self::from_persistence(error, caller)
+    }
+
     pub fn from_persistence(error: desire_persistence::Error, caller: &Caller) -> Self {
         if error.kind == ErrorKind::Conflict {
             return Self::revision_conflict(caller);
         }
         Self::from_sqlstate(error.sqlstate.as_deref(), caller)
-    }
-
-    /// Deletes treat a foreign-key reference as a conflict, not as invalid input.
-    pub fn from_delete(error: &postgres::Error, caller: &Caller) -> Self {
-        if error.code().map(|code| code.code()) == Some("23503") {
-            return Self::in_use(caller);
-        }
-        Self::from_postgres(error, caller)
-    }
-
-    pub fn from_postgres(error: &postgres::Error, caller: &Caller) -> Self {
-        let sqlstate = error.code().map(|code| code.code());
-        Self::from_sqlstate(sqlstate, caller)
     }
 
     fn from_sqlstate(sqlstate: Option<&str>, caller: &Caller) -> Self {

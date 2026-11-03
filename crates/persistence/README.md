@@ -20,8 +20,9 @@ D08 implements the D04 v1 contract without changing generated DTOs or domain cod
   a missing owner or subsequent owner demotion at commit.
 - Initial repositories cover campaign creation/read/CAS rename, catalog seeding,
   scene create/update/read with transactional outbox/idempotency, sessions, journal,
-  campaign knowledge, and separately accessed secrets. Remaining CRUD and HTTP
-  validation belong to D09, identity and transport to D10, not this crate.
+  campaign knowledge, and separately accessed secrets. D09 extends these repositories with typed collection, character, membership and note
+  CRUD. HTTP validation/authorization belongs to D09; identity and transport to D10.
+  See [the database-access boundary](../../docs/database-access.md).
 - `SceneWrite.expected_revision = None` means create at revision 1; updates require
   exactly the previous revision plus one. A per-campaign stream row lock serializes
   concurrent writers. Entity write, stream increment, event, and idempotency key

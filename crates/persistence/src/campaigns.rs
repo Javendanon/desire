@@ -6,6 +6,22 @@ use postgres::Client;
 pub struct CampaignRepository;
 
 impl CampaignRepository {
+    pub fn list_for_user(
+        client: &mut Client,
+        user: &str,
+        page: crate::FetchPage,
+    ) -> Result<Vec<Campaign>, Error> {
+        let rows = client
+            .query(
+                "SELECT to_jsonb(c) - 'owner_role' FROM campaign.campaigns c \
+             JOIN campaign.memberships m ON m.campaign_id = c.id \
+             WHERE m.user_id = $1::text::uuid ORDER BY c.id LIMIT $2 OFFSET $3",
+                &[&user, &page.limit, &page.offset],
+            )
+            .context("list campaigns for member")?;
+        crate::records::decode_all(rows)
+    }
+
     pub fn create(client: &mut Client, campaign: &Campaign) -> Result<(), Error> {
         let mut tx = client.transaction().context("begin campaign creation")?;
         let data = serde_json::to_value(campaign).context("encode campaign")?;

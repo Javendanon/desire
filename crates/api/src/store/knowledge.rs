@@ -1,58 +1,20 @@
-//! Campaign knowledge CRUD. Only a DM writes lore; players read `players` entries.
-use super::{Scope, next_id};
+//! Knowledge operations coordinate authorization and typed storage.
+use super::{Scope, Target, check_revision, next_id, record_target};
 use crate::{
     access,
     error::ApiError,
     payloads::{NewKnowledge, PatchKnowledge},
 };
-use desire_core::contracts::{campaign::CampaignKnowledge, common::Visibility};
-use desire_persistence::NotesRepository;
+use desire_core::contracts::campaign::CampaignKnowledge;
+use desire_persistence::{KnowledgeUpdate, NotesRepository};
 use postgres::Client;
 
-const LIST_DM: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
-     WHERE k.campaign_id = $1::text::uuid ORDER BY k.id LIMIT $2 OFFSET $3";
-const LIST_PLAYER: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
-     WHERE k.campaign_id = $1::text::uuid AND k.visibility = 'players' \
-     ORDER BY k.id LIMIT $2 OFFSET $3";
-const GET_DM: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
-     WHERE k.campaign_id = $1::text::uuid AND k.id = $2::text::uuid";
-const GET_PLAYER: &str = "SELECT to_jsonb(k) FROM campaign.knowledge k \
-     WHERE k.campaign_id = $1::text::uuid AND k.id = $2::text::uuid \
-     AND k.visibility = 'players'";
-const UPDATE: &str = "UPDATE campaign.knowledge SET title = $3, body = $4, \
-     visibility = $5::text::campaign.visibility, \
-     provenance = $6::jsonb::catalog.provenance, revision = revision + 1 \
-     WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid \
-     AND revision = $7::bigint";
-
-visible_crud!(
+visible_reads!(
     CampaignKnowledge,
-    LIST_DM,
-    LIST_PLAYER,
-    GET_DM,
-    GET_PLAYER,
-    "campaign.knowledge",
+    NotesRepository,
+    list_knowledge,
+    get_knowledge,
     "knowledge entry not found"
-);
-revisioned_update!(
-    PatchKnowledge,
-    CampaignKnowledge,
-    UPDATE,
-    target,
-    caller,
-    campaign_id,
-    id,
-    body,
-    &[
-        &campaign_id as &(dyn ::postgres::types::ToSql + Sync),
-        &id,
-        &body.title,
-        &body.body,
-        &visibility_name(&body.visibility),
-        &serde_json::to_value(&body.provenance)
-            .map_err(|_| ApiError::internal("provenance cannot be encoded"))?,
-        &i64::from(body.expected_revision)
-    ]
 );
 
 pub fn create(
@@ -75,9 +37,35 @@ pub fn create(
     Ok(entry)
 }
 
-fn visibility_name(visibility: &Visibility) -> &'static str {
-    match visibility {
-        Visibility::Players => "players",
-        Visibility::Dm => "dm",
+pub fn update(
+    client: &mut Client,
+    target: Target<'_>,
+    body: PatchKnowledge,
+) -> Result<CampaignKnowledge, ApiError> {
+    let caller = target.scope.caller;
+    access::require_dm(client, caller, target.scope.campaign_id)?;
+    get(client, target)?;
+    let update = KnowledgeUpdate {
+        target: record_target(target),
+        title: &body.title,
+        body: &body.body,
+        visibility: body.visibility,
+        expected_revision: body.expected_revision,
+        provenance: &body.provenance,
+    };
+    let changed = NotesRepository::update_knowledge(client, &update)
+        .map_err(|error| ApiError::from_persistence(error, caller))?;
+    check_revision(changed, caller)?;
+    get(client, target)
+}
+
+pub fn delete(client: &mut Client, target: Target<'_>) -> Result<(), ApiError> {
+    let caller = target.scope.caller;
+    access::require_dm(client, caller, target.scope.campaign_id)?;
+    let removed = NotesRepository::delete_knowledge(client, record_target(target))
+        .map_err(|error| ApiError::from_persistence_delete(error, caller))?;
+    if !removed {
+        return Err(ApiError::not_found(caller, "knowledge entry not found"));
     }
+    Ok(())
 }

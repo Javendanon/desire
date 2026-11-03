@@ -5,10 +5,7 @@ use desire_core::contracts::campaign::Session;
 use desire_persistence::NotesRepository;
 use postgres::Client;
 
-const LIST: &str = "SELECT to_jsonb(s) FROM campaign.sessions s \
-     WHERE s.campaign_id = $1::text::uuid ORDER BY s.id LIMIT $2 OFFSET $3";
-
-collection_list!(Session, LIST);
+collection_list!(Session, NotesRepository, list_sessions);
 
 pub fn create(
     client: &mut Client,

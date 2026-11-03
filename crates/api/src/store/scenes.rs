@@ -9,10 +9,7 @@ use desire_core::contracts::campaign::Scene;
 use desire_persistence::{ErrorKind, SceneRepository, SceneWrite};
 use postgres::Client;
 
-const LIST: &str = "SELECT to_jsonb(s) FROM campaign.scenes s \
-     WHERE s.campaign_id = $1::text::uuid ORDER BY s.id LIMIT $2 OFFSET $3";
-
-collection_list!(Scene, LIST);
+collection_list!(Scene, SceneRepository, list);
 
 pub fn get(client: &mut Client, target: Target<'_>) -> Result<Scene, ApiError> {
     let scope = target.scope;
