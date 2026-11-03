@@ -17,6 +17,8 @@ The [D04 model](modelo-de-datos.md) defines identities, revisions, authorization
 
 PostgreSQL is the runtime storage, not a cache or an alternative to JSON authoring. D08 owns the database delivery.
 D08 imports validated D07 seed releases into `knowledge_entries` through migrations and repositories.
+This supersedes the import responsibility in the D07 row of [the coordination table](desarrollo-paralelo.md#propiedad-inicial-de-archivos).
+D07 publishes and validates the seed. D08 owns the import.
 Runtime writes never rewrite the seed. Editorial changes enter through D07 review and a new seed release.
 Campaign notes remain separate `CampaignKnowledge` records. They never enter the shared catalog seed.
 
@@ -41,22 +43,24 @@ D08 validates the complete release before import, including D07 licensing eviden
 D08 imports a release atomically and records its Git commit. Failed imports leave the active catalog unchanged.
 Repeating an identical ID/revision/payload is a no-op.
 A different payload at the same ID/revision is an error. A higher revision preserves previously referenced catalog versions.
+D08 retains catalog versions as separate rows keyed by `(id, revision)`, not in-place updates or import logs alone.
+For `knowledge_entries`, this supersedes the UUID-only primary key in the D04 migration outline. D08 owns the migration and reference constraints.
 Imports must not delete referenced entries, downgrade revisions, overwrite campaign notes, or silently replace conflicting data.
 D08 owns relational checks and import failure tests. D09 owns API validation and permission tests. D15 owns consumer integration tests.
 
 ## Pending fields and delivery work
 
-These items have assigned owners. They do not reopen the JSON/PostgreSQL decision or add fields to the current closed DTO.
+These items have assigned owners. They do not reopen the JSON/PostgreSQL decision or add fields to `KnowledgeEntry`.
 D28 defines the contract, not implementation readiness. D07 and D08 must deliver their listed work before runtime import.
-Revision-pinned reads require the D04 selector below, D08 repository support, and D09 API validation before D15 integration.
+Revision-pinned reads require the new D04 selector below, D08 repository support, and D09 API validation before D15 integration.
 
 | Pending item | Owner and card | Required delivery |
 | --- | --- | --- |
 | Seed file paths, JSON envelope, release inventory | D07 seed publisher — D07 | Publish the package layout and validator under its existing content/tools scope |
 | License identifier and permission evidence for each distributed source | D07 content editor — D07 | Define seed-only metadata and record distribution rights outside `KnowledgeEntry` |
-| Imported Git commit, import outcome, retained ID/revision keys | D08 persistence implementer — D08 | Define database bookkeeping fields, constraints and transactional loader tests |
-| Revision selector for catalog references | D04 contract owner — D04 | Define the revision field alongside `Condition.knowledge_entry_id` and regenerate DTOs for D08/D09 |
-| Revision-pinned consumer reads | D08 repositories — D08; D09 API — D09; D15 UI — D15 | Store and query the D04 ID/revision pair, validate it in the API, and consume it without a client-side latest-version fallback |
+| Imported Git commit, import outcome, retained ID/revision keys | D08 persistence implementer — D08 | Define database bookkeeping fields, retain catalog rows keyed by `(id, revision)`, and deliver reference constraints and transactional loader tests |
+| Revision selector for catalog references | D04 contract owner — D04 | Add `knowledge_entry_revision` beside `Condition.knowledge_entry_id` for the referenced `KnowledgeEntry.revision`. Do not reuse `Condition.revision`, which is the condition's own optimistic-concurrency revision. Version the closed contract under D04 rules and regenerate Rust/TS DTOs for D08/D09/D15 |
+| Revision-pinned consumer reads | D08 repositories — D08; D09 API — D09; D15 UI — D15 | Store and query `knowledge_entry_id` plus `knowledge_entry_revision`, validate that pair in the API, and consume it without a client-side latest-version fallback |
 
 ## Verification
 
