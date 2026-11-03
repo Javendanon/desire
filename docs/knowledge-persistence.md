@@ -6,9 +6,12 @@ This contract separates D07 editorial content from D08 runtime persistence. It d
 ## Canonical seed and runtime storage
 
 The canonical seed is UTF-8 JSON, versioned in Git under `content/knowledge/`. D07 owns its publication and validation.
-Git commits identify seed releases. Each entry retains its stable UUID and positive `revision` across releases.
+Git commits identify seed releases, not entry revisions or wire schema versions.
+Each entry retains its stable UUID. Unchanged entries keep their positive `revision` across releases.
+D07 increments the entry revision for every editorial change, including provenance changes.
 Entry fields follow [`KnowledgeEntry`](../contracts/schema.json): `id`, `revision`, `rules_edition`, `language`,
 `title`, `body`, and `provenance` (`source`, `attribution`, `evidence`). D04 owns this closed wire schema.
+D07 keeps package metadata outside entry objects. D08 rejects unknown entry fields before import.
 The [D04 model](modelo-de-datos.md) defines identities, revisions, authorization, and migration constraints.
 `contracts/examples.json` is synthetic test data, not the canonical seed or an API response.
 
@@ -34,7 +37,9 @@ Private records never reach player clients.
 
 ## Import and version rules
 
-D08 imports a release atomically and records its Git commit. Repeating an identical ID/revision/payload is a no-op.
+D08 validates the complete release before import, including D07 licensing evidence and D04 relational constraints.
+D08 imports a release atomically and records its Git commit. Failed imports leave the active catalog unchanged.
+Repeating an identical ID/revision/payload is a no-op.
 A different payload at the same ID/revision is an error. A higher revision preserves previously referenced catalog versions.
 Imports must not delete referenced entries, downgrade revisions, overwrite campaign notes, or silently replace conflicting data.
 D08 owns relational checks and import failure tests. D09 owns API validation and permission tests. D15 owns consumer integration tests.
@@ -42,6 +47,8 @@ D08 owns relational checks and import failure tests. D09 owns API validation and
 ## Pending fields and delivery work
 
 These items have assigned owners. They do not reopen the JSON/PostgreSQL decision or add fields to the current closed DTO.
+D28 defines the contract, not implementation readiness. D07 and D08 must deliver their listed work before runtime import.
+Revision-pinned reads require the D04 selector below, D08 repository support, and D09 API validation before D15 integration.
 
 | Pending item | Owner and card | Required delivery |
 | --- | --- | --- |
@@ -49,6 +56,7 @@ These items have assigned owners. They do not reopen the JSON/PostgreSQL decisio
 | License identifier and permission evidence for each distributed source | D07 content editor — D07 | Define seed-only metadata and record distribution rights outside `KnowledgeEntry` |
 | Imported Git commit, import outcome, retained ID/revision keys | D08 persistence implementer — D08 | Define database bookkeeping fields, constraints and transactional loader tests |
 | Revision selector for catalog references | D04 contract owner — D04 | Define the revision field alongside `Condition.knowledge_entry_id` and regenerate DTOs for D08/D09 |
+| Revision-pinned consumer reads | D08 repositories — D08; D09 API — D09; D15 UI — D15 | Store and query the D04 ID/revision pair, validate it in the API, and consume it without a client-side latest-version fallback |
 
 ## Verification
 
