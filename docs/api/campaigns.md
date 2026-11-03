@@ -23,9 +23,11 @@ shared deployment; D17 owns player projections in the UI.
   with a liveness check bounded by the database deadline. A dead client is replaced after a
   cancellable handshake probe, and the blocking connection that follows runs under the same
   bound. `/api/health` stays a liveness check and never touches the database.
-- Every database-backed request has a 5-second deadline covering its queue wait and work, and
-  the startup connection is bounded the same way. `connect_timeout` in `DATABASE_URL` can only
-  shorten it. A database that stops answering yields 500 `internal`; service returns on a later
+- Every database-backed request has a 5-second deadline covering its queue wait and work.
+- The startup connection has one deadline of the same length across both of its handshakes, so
+  each must take under half of it. A reconnection gives each handshake the full deadline; its
+  request can fail first, and the restored client then serves later requests. `connect_timeout`
+  in `DATABASE_URL` can only shorten the deadline. A database that stops answering yields 500 `internal`; service returns on a later
   request once the database answers.
 - A deadline does not cancel work that already started: a timed-out write **may still commit**.
   Work that had not started when the deadline passed never starts. Read the record before
@@ -79,17 +81,20 @@ shared deployment; D17 owns player projections in the UI.
 | GET | `/campaigns/{campaign}/journal` | member | players see `players` entries only |
 | POST | `/campaigns/{campaign}/journal` | member | `players` entry; `dm` requires DM |
 | GET | `/campaigns/{campaign}/journal/{entry}` | member | hidden entries return 404 |
-| PATCH/DELETE | `/campaigns/{campaign}/journal/{entry}` | DM | revision-checked update/delete |
+| PATCH/DELETE | `/campaigns/{campaign}/journal/{entry}` | DM | revision-checked update; delete has no revision check |
 | GET | `/campaigns/{campaign}/knowledge` | member | players see `players` entries only |
 | POST | `/campaigns/{campaign}/knowledge` | DM | 201 knowledge entry |
 | GET | `/campaigns/{campaign}/knowledge/{entry}` | member | DM entries return 404 for players |
-| PATCH/DELETE | `/campaigns/{campaign}/knowledge/{entry}` | DM | revision-checked update/delete |
+| PATCH/DELETE | `/campaigns/{campaign}/knowledge/{entry}` | DM | revision-checked update; delete has no revision check |
 
 Non-members receive 404, not 403, so campaign existence is not leaked. A member with the
 wrong role receives 403, and rows hidden from players also return 404. Deletes that
 violate a foreign key return 409 `resource_in_use`. Updates of a missing campaign-owned
 row return 404 before any revision check; stale `expected_revision` values return 409
 `revision_conflict`.
+
+Only `PATCH` checks `expected_revision`. `DELETE` takes no revision, so it can remove a record
+another client just edited; a record already removed returns 404.
 
 Scenes have no DELETE in v1. Every scene write keeps a D08 outbox event that references
 the scene, so the only possible answer was 409; exposing the route would advertise

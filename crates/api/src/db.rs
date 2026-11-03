@@ -10,7 +10,7 @@ use std::{
 use tokio::{
     runtime,
     sync::{OwnedSemaphorePermit, Semaphore},
-    time::{Instant, timeout, timeout_at},
+    time::{Instant, timeout_at},
 };
 use tokio_postgres::Config;
 
@@ -117,18 +117,18 @@ fn deadline_of(config: &Config) -> Duration {
 
 /// Completes a full handshake under a deadline that really cancels: the async driver drops the
 /// socket. The blocking client has no such bound, so it only connects after this succeeds.
-fn probe(config: &Config, budget: Duration) -> Result<(), Fault> {
+fn probe(config: &Config, deadline: Instant) -> Result<(), Fault> {
     let runtime = runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|_| Fault::from(NOT_RESTORED))?;
     runtime.block_on(async {
-        let attempt = timeout(budget, config.connect(tokio_postgres::NoTls)).await;
+        let attempt = timeout_at(deadline, config.connect(tokio_postgres::NoTls)).await;
         let (client, connection) = attempt
             .map_err(|_| Fault::from(CONNECT_TIMED_OUT))?
             .map_err(|error| not_restored(&error))?;
         drop(client);
-        let _closed = timeout(budget, connection).await;
+        let _closed = timeout_at(deadline, connection).await;
         Ok(())
     })
 }
@@ -136,8 +136,10 @@ fn probe(config: &Config, budget: Duration) -> Result<(), Fault> {
 /// A peer can still go silent after the probe, and the blocking handshake cannot be cancelled.
 /// That attempt keeps its thread and permit until the socket dies; the caller still gets an
 /// answer. Past the cap, attempts fail at once instead of adding threads.
-fn connect(config: &Config, budget: Duration, slots: &Arc<Semaphore>) -> Result<Client, Fault> {
-    probe(config, budget)?;
+fn handshake(config: &Config, wait: Duration, slots: &Arc<Semaphore>) -> Result<Client, Fault> {
+    if wait.is_zero() {
+        return Err(CONNECT_TIMED_OUT.into());
+    }
     let permit = slots.clone().try_acquire_owned().map_err(|_| Fault {
         message: NOT_RESTORED,
         cause: "handshake cap reached".into(),
@@ -150,17 +152,30 @@ fn connect(config: &Config, budget: Duration, slots: &Arc<Semaphore>) -> Result<
             let _late = sent.send(blocking.connect(NoTls));
         })
         .map_err(|_| Fault::from(NOT_RESTORED))?;
-    match received.recv_timeout(budget) {
+    match received.recv_timeout(wait) {
         Ok(result) => result.map_err(|error| not_restored(&error)),
         Err(_) => Err(CONNECT_TIMED_OUT.into()),
     }
 }
 
-/// Startup has no request to fail: `main` exits when the database does not answer in time.
+/// Startup has no request to fail: `main` exits when the database does not answer in time, so
+/// one deadline covers both handshakes.
 pub fn connect_startup(config: &Config) -> Result<Client, String> {
+    let deadline = Instant::now() + deadline_of(config);
     let slots = Arc::new(Semaphore::new(1));
-    connect(config, deadline_of(config), &slots)
+    probe(config, deadline)
+        .and_then(|()| {
+            let wait = deadline.saturating_duration_since(Instant::now());
+            handshake(config, wait, &slots)
+        })
         .map_err(|Fault { message, cause }| format!("{message} (cause: {cause})"))
+}
+
+/// Its caller already has an answer by its own deadline. Each handshake gets the full limit, so
+/// a slow but healthy database still restores the client for later requests.
+fn reconnect(config: &Config, link: &Link) -> Result<Client, Fault> {
+    probe(config, Instant::now() + link.timeout)?;
+    handshake(config, link.timeout, &link.handshakes)
 }
 
 fn open<'a>(slot: &'a mut Option<Client>, link: &Link) -> Result<&'a mut Client, Fault> {
@@ -171,7 +186,7 @@ fn open<'a>(slot: &'a mut Option<Client>, link: &Link) -> Result<&'a mut Client,
         retire(slot.take());
         let config = link.config.as_ref();
         let config = config.ok_or("the database connection is closed")?;
-        *slot = Some(connect(config, link.timeout, &link.handshakes)?);
+        *slot = Some(reconnect(config, link)?);
     }
     Ok(slot.as_mut().ok_or("the database connection is closed")?)
 }

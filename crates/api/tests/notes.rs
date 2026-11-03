@@ -25,19 +25,16 @@ fn sessions_are_created_by_dms_and_listed_by_members() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
 
     let forbidden = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/sessions"),
-        Some(&player),
-        Some(serde_json::json!({"title": "Player session"})),
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/sessions"))
+            .by(&player)
+            .json(serde_json::json!({"title": "Player session"})),
     ));
     assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
 
@@ -46,10 +43,7 @@ fn sessions_are_created_by_dms_and_listed_by_members() {
 
     let list = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, "/sessions"),
-        Some(&player),
-        None,
+        support::ApiCall::new(Method::GET, &uri(&campaign_id, "/sessions")).by(&player),
     ));
     assert_eq!(list.status, StatusCode::OK, "{}", list.body);
     assert_eq!(list.body["items"].as_array().unwrap().len(), 1);
@@ -63,9 +57,7 @@ fn journal_entries_filter_dm_visibility_for_players() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
@@ -74,9 +66,7 @@ fn journal_entries_filter_dm_visibility_for_players() {
 
     for visibility in ["players", "dm"] {
         let created = support::run(support::create_journal(
-            &app,
-            &campaign_id,
-            &owner,
+            support::Actor::new(&app, &campaign_id, &owner),
             &session_id,
             visibility,
         ));
@@ -85,40 +75,31 @@ fn journal_entries_filter_dm_visibility_for_players() {
 
     let player_list = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, "/journal"),
-        Some(&player),
-        None,
+        support::ApiCall::new(Method::GET, &uri(&campaign_id, "/journal")).by(&player),
     ));
     assert_eq!(player_list.status, StatusCode::OK);
     assert_eq!(player_list.body["items"].as_array().unwrap().len(), 1);
 
     let dm_list = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, "/journal"),
-        Some(&owner),
-        None,
+        support::ApiCall::new(Method::GET, &uri(&campaign_id, "/journal")).by(&owner),
     ));
     assert_eq!(dm_list.body["items"].as_array().unwrap().len(), 2);
     let dm_entry_id = hidden_id(&dm_list.body, "dm");
 
     let player_creates_dm = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/journal"),
-        Some(&player),
-        Some(
-            serde_json::json!({"session_id": session_id, "body": "Player secret",
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/journal"))
+            .by(&player)
+            .json(
+                serde_json::json!({"session_id": session_id, "body": "Player secret",
             "visibility": "dm"}),
-        ),
+            ),
     ));
     assert_eq!(player_creates_dm.status, StatusCode::FORBIDDEN);
 
     let player_entry = support::run(support::create_journal(
-        &app,
-        &campaign_id,
-        &player,
+        support::Actor::new(&app, &campaign_id, &player),
         &session_id,
         "players",
     ));
@@ -126,10 +107,11 @@ fn journal_entries_filter_dm_visibility_for_players() {
 
     let hidden = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, &format!("/journal/{dm_entry_id}")),
-        Some(&player),
-        None,
+        support::ApiCall::new(
+            Method::GET,
+            &uri(&campaign_id, &format!("/journal/{dm_entry_id}")),
+        )
+        .by(&player),
     ));
     assert_eq!(hidden.status, StatusCode::NOT_FOUND, "{}", hidden.body);
     assert_eq!(hidden.body["code"], "not_found");
@@ -147,13 +129,12 @@ fn journal_sessions_must_belong_to_the_campaign() {
 
     let rejected = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/journal"),
-        Some(&owner),
-        Some(
-            serde_json::json!({"session_id": foreign_id, "body": "Synthetic recap",
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/journal"))
+            .by(&owner)
+            .json(
+                serde_json::json!({"session_id": foreign_id, "body": "Synthetic recap",
             "visibility": "players"}),
-        ),
+            ),
     ));
     assert_eq!(
         rejected.status,
@@ -172,57 +153,47 @@ fn knowledge_filters_dm_entries_and_only_dms_write() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
 
     let forbidden = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/knowledge"),
-        Some(&player),
-        Some(serde_json::json!({"title": "Player lore", "body": "Body",
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/knowledge"))
+            .by(&player)
+            .json(serde_json::json!({"title": "Player lore", "body": "Body",
             "visibility": "players", "provenance": support::provenance()})),
     ));
     assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
 
     for visibility in ["players", "dm"] {
         support::run(support::create_knowledge(
-            &app,
-            &campaign_id,
-            &owner,
+            support::Actor::new(&app, &campaign_id, &owner),
             visibility,
         ));
     }
 
     let player_list = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, "/knowledge"),
-        Some(&player),
-        None,
+        support::ApiCall::new(Method::GET, &uri(&campaign_id, "/knowledge")).by(&player),
     ));
     assert_eq!(player_list.status, StatusCode::OK);
     assert_eq!(player_list.body["items"].as_array().unwrap().len(), 1);
 
     let dm_list = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, "/knowledge"),
-        Some(&owner),
-        None,
+        support::ApiCall::new(Method::GET, &uri(&campaign_id, "/knowledge")).by(&owner),
     ));
     let dm_entry_id = hidden_id(&dm_list.body, "dm");
 
     let hidden = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, &format!("/knowledge/{dm_entry_id}")),
-        Some(&player),
-        None,
+        support::ApiCall::new(
+            Method::GET,
+            &uri(&campaign_id, &format!("/knowledge/{dm_entry_id}")),
+        )
+        .by(&player),
     ));
     assert_eq!(hidden.status, StatusCode::NOT_FOUND, "{}", hidden.body);
     assert_eq!(hidden.body["code"], "not_found");
@@ -238,9 +209,7 @@ fn note_updates_and_deletes_use_expected_revisions() {
     let session_id = session["id"].as_str().unwrap().to_string();
 
     let journal = support::run(support::create_journal(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &session_id,
         "players",
     ));
@@ -248,10 +217,12 @@ fn note_updates_and_deletes_use_expected_revisions() {
 
     let updated = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/journal/{journal_id}")),
-        Some(&owner),
-        Some(serde_json::json!({"body": "Edited", "visibility": "dm",
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/journal/{journal_id}")),
+        )
+        .by(&owner)
+        .json(serde_json::json!({"body": "Edited", "visibility": "dm",
             "expected_revision": 1})),
     ));
     assert_eq!(updated.status, StatusCode::OK, "{}", updated.body);
@@ -261,37 +232,40 @@ fn note_updates_and_deletes_use_expected_revisions() {
 
     let stale = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/journal/{journal_id}")),
-        Some(&owner),
-        Some(serde_json::json!({"body": "Stale", "visibility": "dm",
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/journal/{journal_id}")),
+        )
+        .by(&owner)
+        .json(serde_json::json!({"body": "Stale", "visibility": "dm",
             "expected_revision": 1})),
     ));
     assert_eq!(stale.status, StatusCode::CONFLICT);
 
     let deleted = support::run(call(
         &app,
-        Method::DELETE,
-        &uri(&campaign_id, &format!("/journal/{journal_id}")),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::DELETE,
+            &uri(&campaign_id, &format!("/journal/{journal_id}")),
+        )
+        .by(&owner),
     ));
     assert_eq!(deleted.status, StatusCode::NO_CONTENT);
 
     let knowledge = support::run(support::create_knowledge(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         "players",
     ));
     let knowledge_id = knowledge["id"].as_str().unwrap().to_string();
 
     let updated = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/knowledge/{knowledge_id}")),
-        Some(&owner),
-        Some(serde_json::json!({"title": "Edited", "body": "New body",
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/knowledge/{knowledge_id}")),
+        )
+        .by(&owner)
+        .json(serde_json::json!({"title": "Edited", "body": "New body",
             "visibility": "dm", "provenance": support::provenance(),
             "expected_revision": 1})),
     ));
@@ -301,10 +275,12 @@ fn note_updates_and_deletes_use_expected_revisions() {
 
     let stale = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/knowledge/{knowledge_id}")),
-        Some(&owner),
-        Some(
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/knowledge/{knowledge_id}")),
+        )
+        .by(&owner)
+        .json(
             serde_json::json!({"title": "Stale", "body": "Body", "visibility": "dm",
             "provenance": support::provenance(), "expected_revision": 1}),
         ),
@@ -313,20 +289,18 @@ fn note_updates_and_deletes_use_expected_revisions() {
 
     let deleted = support::run(call(
         &app,
-        Method::DELETE,
-        &uri(&campaign_id, &format!("/knowledge/{knowledge_id}")),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::DELETE,
+            &uri(&campaign_id, &format!("/knowledge/{knowledge_id}")),
+        )
+        .by(&owner),
     ));
     assert_eq!(deleted.status, StatusCode::NO_CONTENT);
 
     let other_campaign = support::run(support::campaign(&app, &id(95)));
     let hidden = support::run(call(
         &app,
-        Method::GET,
-        &uri(&other_campaign, "/knowledge"),
-        Some(&id(95)),
-        None,
+        support::ApiCall::new(Method::GET, &uri(&other_campaign, "/knowledge")).by(&id(95)),
     ));
     assert_eq!(hidden.status, StatusCode::OK);
     assert_eq!(hidden.body["items"].as_array().unwrap().len(), 0);

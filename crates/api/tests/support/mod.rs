@@ -141,25 +141,73 @@ pub struct Response {
     pub body: Value,
 }
 
-/// Dispatch one HTTP request through the real router, with an optional caller identity.
-pub async fn call(
-    app: &Router,
+/// One HTTP request for the real router; the caller, body and headers are optional.
+pub struct ApiCall<'a> {
     method: Method,
-    uri: &str,
-    caller: Option<&str>,
+    uri: &'a str,
+    caller: Option<&'a str>,
     body: Option<Value>,
-) -> Response {
-    call_with_headers(app, method, uri, caller, body, &[]).await
+    headers: &'a [(&'a str, &'a str)],
 }
 
-pub async fn call_with_headers(
-    app: &Router,
-    method: Method,
-    uri: &str,
-    caller: Option<&str>,
-    body: Option<Value>,
-    headers: &[(&str, &str)],
-) -> Response {
+impl<'a> ApiCall<'a> {
+    pub fn new(method: Method, uri: &'a str) -> Self {
+        Self {
+            method,
+            uri,
+            caller: None,
+            body: None,
+            headers: &[],
+        }
+    }
+
+    pub fn by(mut self, caller: &'a str) -> Self {
+        self.caller = Some(caller);
+        self
+    }
+
+    pub fn json(mut self, body: Value) -> Self {
+        self.body = Some(body);
+        self
+    }
+
+    pub fn headers(mut self, headers: &'a [(&'a str, &'a str)]) -> Self {
+        self.headers = headers;
+        self
+    }
+}
+
+/// Who acts, where: the context shared by the fixture helpers.
+#[derive(Clone, Copy)]
+pub struct Actor<'a> {
+    app: &'a Router,
+    campaign_id: &'a str,
+    caller: &'a str,
+}
+
+impl<'a> Actor<'a> {
+    pub fn new(app: &'a Router, campaign_id: &'a str, caller: &'a str) -> Self {
+        Self {
+            app,
+            campaign_id,
+            caller,
+        }
+    }
+
+    fn path(self, resource: &str) -> String {
+        format!("/api/v1/campaigns/{}/{resource}", self.campaign_id)
+    }
+}
+
+/// Dispatch one HTTP request through the real router.
+pub async fn call(app: &Router, call: ApiCall<'_>) -> Response {
+    let ApiCall {
+        method,
+        uri,
+        caller,
+        body,
+        headers,
+    } = call;
     let mut request = Request::builder().method(method).uri(uri);
     if let Some(caller) = caller {
         request = request.header("x-desire-user", caller);
@@ -192,13 +240,12 @@ pub async fn call_with_headers(
 pub async fn campaign(app: &Router, owner: &str) -> String {
     let response = call(
         app,
-        Method::POST,
-        "/api/v1/campaigns",
-        Some(owner),
-        Some(
-            json!({"name": "Synthetic campaign", "rules_edition": "dnd_2014",
+        ApiCall::new(Method::POST, "/api/v1/campaigns")
+            .by(owner)
+            .json(
+                json!({"name": "Synthetic campaign", "rules_edition": "dnd_2014",
             "city_id": id(3)}),
-        ),
+            ),
     )
     .await;
     assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
@@ -206,25 +253,20 @@ pub async fn campaign(app: &Router, owner: &str) -> String {
 }
 
 /// Add a member through the API so the membership row matches production paths.
-pub async fn member(app: &Router, campaign_id: &str, owner: &str, user_id: &str, role: &str) {
-    let response = call(
-        app,
-        Method::POST,
-        &format!("/api/v1/campaigns/{campaign_id}/members"),
-        Some(owner),
-        Some(json!({"user_id": user_id, "role": role})),
-    )
-    .await;
-    assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
+pub async fn member(actor: Actor<'_>, user_id: &str, role: &str) {
+    let body = json!({"user_id": user_id, "role": role});
+    created(actor, "members", body).await;
 }
 
 pub async fn create_character(app: &Router, campaign_id: &str, caller: &str) -> Value {
     let response = call(
         app,
-        Method::POST,
-        &format!("/api/v1/campaigns/{campaign_id}/characters"),
-        Some(caller),
-        Some(json!({"name": "Synthetic hero", "controller_id": null,
+        ApiCall::new(
+            Method::POST,
+            &format!("/api/v1/campaigns/{campaign_id}/characters"),
+        )
+        .by(caller)
+        .json(json!({"name": "Synthetic hero", "controller_id": null,
             "rules_edition": "dnd_2014"})),
     )
     .await;
@@ -233,60 +275,33 @@ pub async fn create_character(app: &Router, campaign_id: &str, caller: &str) -> 
 }
 
 pub async fn create_scene(app: &Router, campaign_id: &str, caller: &str) -> Value {
-    created(
-        app,
-        &format!("/api/v1/campaigns/{campaign_id}/scenes"),
-        caller,
-        json!({"name": "Dock", "map_version_id": map_version()}),
-    )
-    .await
+    let body = json!({"name": "Dock", "map_version_id": map_version()});
+    created(Actor::new(app, campaign_id, caller), "scenes", body).await
 }
 
 pub async fn create_session(app: &Router, campaign_id: &str, caller: &str) -> Value {
-    created(
-        app,
-        &format!("/api/v1/campaigns/{campaign_id}/sessions"),
-        caller,
-        json!({"title": "Synthetic session"}),
-    )
-    .await
+    let body = json!({"title": "Synthetic session"});
+    created(Actor::new(app, campaign_id, caller), "sessions", body).await
 }
 
-pub async fn create_journal(
-    app: &Router,
-    campaign_id: &str,
-    caller: &str,
-    session_id: &str,
-    visibility: &str,
-) -> Value {
-    created(
-        app,
-        &format!("/api/v1/campaigns/{campaign_id}/journal"),
-        caller,
-        json!({"session_id": session_id, "body": "Synthetic recap",
-            "visibility": visibility}),
-    )
-    .await
+pub async fn create_journal(actor: Actor<'_>, session_id: &str, visibility: &str) -> Value {
+    let body = json!({"session_id": session_id, "body": "Synthetic recap",
+        "visibility": visibility});
+    created(actor, "journal", body).await
 }
 
-pub async fn create_knowledge(
-    app: &Router,
-    campaign_id: &str,
-    caller: &str,
-    visibility: &str,
-) -> Value {
-    created(
-        app,
-        &format!("/api/v1/campaigns/{campaign_id}/knowledge"),
-        caller,
-        json!({"title": "Synthetic lore", "body": "Synthetic body",
-            "visibility": visibility, "provenance": provenance()}),
-    )
-    .await
+pub async fn create_knowledge(actor: Actor<'_>, visibility: &str) -> Value {
+    let body = json!({"title": "Synthetic lore", "body": "Synthetic body",
+        "visibility": visibility, "provenance": provenance()});
+    created(actor, "knowledge", body).await
 }
 
-async fn created(app: &Router, path: &str, caller: &str, body: Value) -> Value {
-    let response = call(app, Method::POST, path, Some(caller), Some(body)).await;
+async fn created(actor: Actor<'_>, resource: &str, body: Value) -> Value {
+    let path = actor.path(resource);
+    let request = ApiCall::new(Method::POST, &path)
+        .by(actor.caller)
+        .json(body);
+    let response = call(actor.app, request).await;
     assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
     response.body
 }

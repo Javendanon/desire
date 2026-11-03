@@ -53,9 +53,11 @@ pub fn update(
 pub fn delete(client: &mut Client, target: Target<'_>) -> Result<(), ApiError> {
     let caller = target.scope.caller;
     access::require_dm(client, caller, target.scope.campaign_id)?;
-    ensure_exists(client, target)?;
-    CharacterRepository::delete(client, record_target(target))
+    let removed = CharacterRepository::delete(client, record_target(target))
         .map_err(|error| ApiError::from_persistence_delete(error, caller))?;
+    if !removed {
+        return Err(ApiError::not_found(caller, MISSING));
+    }
     Ok(())
 }
 

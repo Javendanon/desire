@@ -54,9 +54,7 @@ fn campaign(_router: &axum::Router, campaign: &str, _owner: &str) -> NoteFixture
 fn journal(router: &axum::Router, campaign: &str, owner: &str) -> NoteFixture {
     let session = support::run(support::create_session(router, campaign, owner));
     let row = support::run(support::create_journal(
-        router,
-        campaign,
-        owner,
+        support::Actor::new(router, campaign, owner),
         session["id"].as_str().unwrap(),
         "players",
     ));
@@ -72,7 +70,8 @@ fn journal(router: &axum::Router, campaign: &str, owner: &str) -> NoteFixture {
 
 fn knowledge(router: &axum::Router, campaign: &str, owner: &str) -> NoteFixture {
     let row = support::run(support::create_knowledge(
-        router, campaign, owner, "players",
+        support::Actor::new(router, campaign, owner),
+        "players",
     ));
     let id = row["id"].as_str().unwrap().to_owned();
     (
@@ -85,7 +84,7 @@ fn knowledge(router: &axum::Router, campaign: &str, owner: &str) -> NoteFixture 
     )
 }
 
-fn wait_for_lock(client: &mut Client, application: &str) -> bool {
+pub(crate) fn wait_for_lock(client: &mut Client, application: &str) -> bool {
     let deadline = Instant::now() + Duration::from_secs(10);
     while Instant::now() < deadline {
         let blocked: bool = client
@@ -114,10 +113,9 @@ fn patch(f: &Fixture) -> thread::JoinHandle<support::Response> {
         let router = app(AppState::from_client(client));
         support::run(call(
             &router,
-            Method::PATCH,
-            &path,
-            Some(&owner),
-            Some(body),
+            support::ApiCall::new(Method::PATCH, &path)
+                .by(&owner)
+                .json(body),
         ))
     })
 }
@@ -210,9 +208,17 @@ fn patch_responses_equal_a_later_get() {
     for build in [campaign as Build, journal, knowledge] {
         let f = Fixture::new(build);
         let router = support::app_for(&f.db);
-        let body = Some(f.body.clone());
-        let patched = support::run(call(&router, Method::PATCH, &f.path, Some(&f.owner), body));
-        let read = support::run(call(&router, Method::GET, &f.path, Some(&f.owner), None));
+        let body = f.body.clone();
+        let patched = support::run(call(
+            &router,
+            support::ApiCall::new(Method::PATCH, &f.path)
+                .by(&f.owner)
+                .json(body),
+        ));
+        let read = support::run(call(
+            &router,
+            support::ApiCall::new(Method::GET, &f.path).by(&f.owner),
+        ));
         assert_eq!(patched.status, StatusCode::OK, "{}", patched.body);
         assert_eq!(patched.body, read.body);
     }

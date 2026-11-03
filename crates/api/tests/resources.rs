@@ -4,7 +4,7 @@ use crate::support;
 use axum::http::{Method, StatusCode};
 use desire_core::contracts::campaign::{Character, Scene};
 use serde_json::json;
-use support::{TestDb, call, call_with_headers, id, map_version, uri};
+use support::{TestDb, call, id, map_version, uri};
 
 #[test]
 fn scenes_are_created_read_updated_and_isolated_by_campaign() {
@@ -14,28 +14,24 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
 
     let forbidden = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&player),
-        Some(json!({"name": "Dock", "map_version_id": map_version()})),
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&player)
+            .json(json!({"name": "Dock", "map_version_id": map_version()})),
     ));
     assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
 
     let created = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(json!({"name": "Dock", "map_version_id": map_version()})),
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(json!({"name": "Dock", "map_version_id": map_version()})),
     ));
     assert_eq!(created.status, StatusCode::CREATED);
     let scene: Scene = serde_json::from_value(created.body.clone()).unwrap();
@@ -43,20 +39,23 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
 
     let read = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
-        Some(&player),
-        None,
+        support::ApiCall::new(
+            Method::GET,
+            &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
+        )
+        .by(&player),
     ));
     assert_eq!(read.status, StatusCode::OK);
     assert_eq!(read.body["name"], "Dock");
 
     let updated = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
-        Some(&owner),
-        Some(json!({"name": "Harbor", "map_version_id": map_version(),
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
+        )
+        .by(&owner)
+        .json(json!({"name": "Harbor", "map_version_id": map_version(),
             "expected_revision": 1})),
     ));
     assert_eq!(updated.status, StatusCode::OK);
@@ -65,10 +64,12 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
 
     let stale = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
-        Some(&owner),
-        Some(json!({"name": "Stale", "map_version_id": map_version(),
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
+        )
+        .by(&owner)
+        .json(json!({"name": "Stale", "map_version_id": map_version(),
             "expected_revision": 1})),
     ));
     assert_eq!(stale.status, StatusCode::CONFLICT);
@@ -76,10 +77,11 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
     let other_campaign = support::run(support::campaign(&app, &id(95)));
     let hidden = support::run(call(
         &app,
-        Method::GET,
-        &uri(&other_campaign, &format!("/scenes/{}", scene.id)),
-        Some(&id(95)),
-        None,
+        support::ApiCall::new(
+            Method::GET,
+            &uri(&other_campaign, &format!("/scenes/{}", scene.id)),
+        )
+        .by(&id(95)),
     ));
     assert_eq!(hidden.status, StatusCode::NOT_FOUND);
 
@@ -87,10 +89,11 @@ fn scenes_are_created_read_updated_and_isolated_by_campaign() {
     // no scene deletion instead of an endpoint that can only answer 409.
     let deleted = support::run(call(
         &app,
-        Method::DELETE,
-        &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::DELETE,
+            &uri(&campaign_id, &format!("/scenes/{}", scene.id)),
+        )
+        .by(&owner),
     ));
     assert_eq!(deleted.status, StatusCode::METHOD_NOT_ALLOWED);
 }
@@ -104,19 +107,19 @@ fn scenes_of_unknown_or_foreign_ids_return_not_found() {
 
     let unknown = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, &format!("/scenes/{}", id(999))),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::GET,
+            &uri(&campaign_id, &format!("/scenes/{}", id(999))),
+        )
+        .by(&owner),
     ));
     assert_eq!(unknown.status, StatusCode::NOT_FOUND);
 
     let missing_map = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(json!({"name": "Orphan", "map_version_id": id(998)})),
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(json!({"name": "Orphan", "map_version_id": id(998)})),
     ));
     assert_eq!(missing_map.status, StatusCode::BAD_REQUEST);
     assert_eq!(missing_map.body["code"], "invalid_request");
@@ -130,19 +133,16 @@ fn characters_enforce_membership_edition_and_revisions() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
 
     let outsider_controller = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/characters"),
-        Some(&owner),
-        Some(json!({"name": "Npc", "controller_id": id(93),
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/characters"))
+            .by(&owner)
+            .json(json!({"name": "Npc", "controller_id": id(93),
             "rules_edition": "dnd_2014"})),
     ));
     assert_eq!(
@@ -154,10 +154,9 @@ fn characters_enforce_membership_edition_and_revisions() {
 
     let forbidden = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/characters"),
-        Some(&player),
-        Some(json!({"name": "Hero", "controller_id": player,
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/characters"))
+            .by(&player)
+            .json(json!({"name": "Hero", "controller_id": player,
             "rules_edition": "dnd_2014"})),
     ));
     assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
@@ -169,10 +168,12 @@ fn characters_enforce_membership_edition_and_revisions() {
 
     let updated = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/characters/{character_id}")),
-        Some(&owner),
-        Some(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/characters/{character_id}")),
+        )
+        .by(&owner)
+        .json(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
     ));
     assert_eq!(updated.status, StatusCode::OK);
     assert_eq!(updated.body["controller_id"], player);
@@ -180,28 +181,32 @@ fn characters_enforce_membership_edition_and_revisions() {
 
     let stale = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(&campaign_id, &format!("/characters/{character_id}")),
-        Some(&owner),
-        Some(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(&campaign_id, &format!("/characters/{character_id}")),
+        )
+        .by(&owner)
+        .json(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
     ));
     assert_eq!(stale.status, StatusCode::CONFLICT);
 
     let deleted = support::run(call(
         &app,
-        Method::DELETE,
-        &uri(&campaign_id, &format!("/characters/{character_id}")),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::DELETE,
+            &uri(&campaign_id, &format!("/characters/{character_id}")),
+        )
+        .by(&owner),
     ));
     assert_eq!(deleted.status, StatusCode::NO_CONTENT);
 
     let gone = support::run(call(
         &app,
-        Method::GET,
-        &uri(&campaign_id, &format!("/characters/{character_id}")),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::GET,
+            &uri(&campaign_id, &format!("/characters/{character_id}")),
+        )
+        .by(&owner),
     ));
     assert_eq!(gone.status, StatusCode::NOT_FOUND);
 }
@@ -214,24 +219,22 @@ fn scene_idempotency_key_is_validated_before_the_write() {
     let campaign_id = support::run(support::campaign(&app, &owner));
     let body = json!({"name": "Dock", "map_version_id": map_version()});
 
-    let invalid = support::run(call_with_headers(
+    let invalid = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(body.clone()),
-        &[("idempotency-key", "not-a-uuid")],
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(body.clone())
+            .headers(&[("idempotency-key", "not-a-uuid")]),
     ));
     assert_eq!(invalid.status, StatusCode::BAD_REQUEST);
     assert_eq!(invalid.body["code"], "invalid_request");
 
-    let accepted = support::run(call_with_headers(
+    let accepted = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(body),
-        &[("idempotency-key", &id(500))],
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(body)
+            .headers(&[("idempotency-key", &id(500))]),
     ));
     assert_eq!(accepted.status, StatusCode::CREATED, "{}", accepted.body);
 }
@@ -246,23 +249,21 @@ fn scene_creation_replays_the_first_result_for_the_same_key() {
     let body = json!({"name": "Dock", "map_version_id": map_version()});
     let headers = [("idempotency-key", key.as_str())];
 
-    let first = support::run(call_with_headers(
+    let first = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(body.clone()),
-        &headers,
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(body.clone())
+            .headers(&headers),
     ));
     assert_eq!(first.status, StatusCode::CREATED, "{}", first.body);
 
-    let retried = support::run(call_with_headers(
+    let retried = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(body),
-        &headers,
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(body)
+            .headers(&headers),
     ));
     assert_eq!(retried.status, StatusCode::CREATED, "{}", retried.body);
     assert_eq!(retried.body["id"], first.body["id"]);
@@ -278,13 +279,12 @@ fn scene_creation_replays_the_first_result_for_the_same_key() {
         .get(0);
     assert_eq!(events, 1);
 
-    let different = support::run(call_with_headers(
+    let different = support::run(call(
         &app,
-        Method::POST,
-        &uri(&campaign_id, "/scenes"),
-        Some(&owner),
-        Some(json!({"name": "Harbor", "map_version_id": map_version()})),
-        &headers,
+        support::ApiCall::new(Method::POST, &uri(&campaign_id, "/scenes"))
+            .by(&owner)
+            .json(json!({"name": "Harbor", "map_version_id": map_version()}))
+            .headers(&headers),
     ));
     assert_eq!(different.status, StatusCode::CONFLICT, "{}", different.body);
     assert_eq!(different.body["code"], "idempotency_conflict");
@@ -298,9 +298,7 @@ fn characters_need_an_explicit_controller_on_update_and_hide_it_from_players() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
@@ -310,29 +308,33 @@ fn characters_need_an_explicit_controller_on_update_and_hide_it_from_players() {
         &format!("/characters/{}", character["id"].as_str().unwrap()),
     );
 
-    let hidden = support::run(call(&app, Method::GET, &path, Some(&player), None));
+    let hidden = support::run(call(
+        &app,
+        support::ApiCall::new(Method::GET, &path).by(&player),
+    ));
     assert_eq!(hidden.status, StatusCode::NOT_FOUND, "{}", hidden.body);
 
     let omitted = support::run(call(
         &app,
-        Method::PATCH,
-        &path,
-        Some(&owner),
-        Some(json!({"name": "Hero", "expected_revision": 1})),
+        support::ApiCall::new(Method::PATCH, &path)
+            .by(&owner)
+            .json(json!({"name": "Hero", "expected_revision": 1})),
     ));
     assert_eq!(omitted.status, StatusCode::BAD_REQUEST, "{}", omitted.body);
     assert_eq!(omitted.body["code"], "invalid_request");
 
     let assigned = support::run(call(
         &app,
-        Method::PATCH,
-        &path,
-        Some(&owner),
-        Some(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
+        support::ApiCall::new(Method::PATCH, &path)
+            .by(&owner)
+            .json(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
     ));
     assert_eq!(assigned.status, StatusCode::OK, "{}", assigned.body);
 
-    let visible = support::run(call(&app, Method::GET, &path, Some(&player), None));
+    let visible = support::run(call(
+        &app,
+        support::ApiCall::new(Method::GET, &path).by(&player),
+    ));
     assert_eq!(visible.status, StatusCode::OK, "{}", visible.body);
     assert_eq!(visible.body["controller_id"], player);
 
@@ -340,23 +342,28 @@ fn characters_need_an_explicit_controller_on_update_and_hide_it_from_players() {
     // becomes an NPC the player can no longer read.
     let cleared = support::run(call(
         &app,
-        Method::PATCH,
-        &path,
-        Some(&owner),
-        Some(json!({"name": "Hero", "controller_id": null, "expected_revision": 2})),
+        support::ApiCall::new(Method::PATCH, &path)
+            .by(&owner)
+            .json(json!({"name": "Hero", "controller_id": null, "expected_revision": 2})),
     ));
     assert_eq!(cleared.status, StatusCode::OK, "{}", cleared.body);
     assert_eq!(cleared.body["controller_id"], serde_json::Value::Null);
     assert_eq!(cleared.body["revision"], 3);
 
-    let hidden_again = support::run(call(&app, Method::GET, &path, Some(&player), None));
+    let hidden_again = support::run(call(
+        &app,
+        support::ApiCall::new(Method::GET, &path).by(&player),
+    ));
     assert_eq!(
         hidden_again.status,
         StatusCode::NOT_FOUND,
         "{}",
         hidden_again.body
     );
-    let still_visible_to_dm = support::run(call(&app, Method::GET, &path, Some(&owner), None));
+    let still_visible_to_dm = support::run(call(
+        &app,
+        support::ApiCall::new(Method::GET, &path).by(&owner),
+    ));
     assert_eq!(
         still_visible_to_dm.status,
         StatusCode::OK,
@@ -373,31 +380,32 @@ fn removing_a_member_who_controls_a_character_is_a_conflict() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
     let character = support::run(support::create_character(&app, &campaign_id, &owner));
     let assigned = support::run(call(
         &app,
-        Method::PATCH,
-        &uri(
-            &campaign_id,
-            &format!("/characters/{}", character["id"].as_str().unwrap()),
-        ),
-        Some(&owner),
-        Some(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
+        support::ApiCall::new(
+            Method::PATCH,
+            &uri(
+                &campaign_id,
+                &format!("/characters/{}", character["id"].as_str().unwrap()),
+            ),
+        )
+        .by(&owner)
+        .json(json!({"name": "Hero", "controller_id": player, "expected_revision": 1})),
     ));
     assert_eq!(assigned.status, StatusCode::OK, "{}", assigned.body);
 
     let removed = support::run(call(
         &app,
-        Method::DELETE,
-        &uri(&campaign_id, &format!("/members/{player}")),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::DELETE,
+            &uri(&campaign_id, &format!("/members/{player}")),
+        )
+        .by(&owner),
     ));
     assert_eq!(removed.status, StatusCode::CONFLICT, "{}", removed.body);
     assert_eq!(removed.body["code"], "resource_in_use");

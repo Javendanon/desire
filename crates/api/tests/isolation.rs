@@ -23,26 +23,23 @@ fn fixtures(app: &Router, campaign_id: &str, owner: &str, player: &str) -> Vec<R
     let session = support::run(support::create_session(app, campaign_id, owner));
     let session_id = session["id"].as_str().unwrap().to_string();
     let recap = support::run(support::create_journal(
-        app,
-        campaign_id,
-        owner,
+        support::Actor::new(app, campaign_id, owner),
         &session_id,
         "players",
     ));
     let secret = support::run(support::create_journal(
-        app,
-        campaign_id,
-        owner,
+        support::Actor::new(app, campaign_id, owner),
         &session_id,
         "dm",
     ));
     let lore = support::run(support::create_knowledge(
-        app,
-        campaign_id,
-        owner,
+        support::Actor::new(app, campaign_id, owner),
         "players",
     ));
-    let hidden_lore = support::run(support::create_knowledge(app, campaign_id, owner, "dm"));
+    let hidden_lore = support::run(support::create_knowledge(
+        support::Actor::new(app, campaign_id, owner),
+        "dm",
+    ));
 
     assert_eq!(character["controller_id"], Value::Null);
     let provenance = json!({"source": "Synthetic", "attribution": "Synthetic",
@@ -113,22 +110,30 @@ fn non_members_and_foreign_dms_cannot_touch_another_campaign() {
     for row in fixtures(&app, &campaign_id, &owner, &id(91)) {
         let path = uri(&campaign_id, &row.suffix);
         for caller in [&outsider, &other_dm] {
-            let read = support::run(call(&app, Method::GET, &path, Some(caller), None));
+            let read = support::run(call(
+                &app,
+                support::ApiCall::new(Method::GET, &path).by(caller),
+            ));
             assert_denied(&read, StatusCode::NOT_FOUND, "not_found", &path);
             let patched = support::run(call(
                 &app,
-                Method::PATCH,
-                &path,
-                Some(caller),
-                Some(row.patch.clone()),
+                support::ApiCall::new(Method::PATCH, &path)
+                    .by(caller)
+                    .json(row.patch.clone()),
             ));
             assert_denied(&patched, StatusCode::NOT_FOUND, "not_found", &path);
             if row.deletable {
-                let deleted = support::run(call(&app, Method::DELETE, &path, Some(caller), None));
+                let deleted = support::run(call(
+                    &app,
+                    support::ApiCall::new(Method::DELETE, &path).by(caller),
+                ));
                 assert_denied(&deleted, StatusCode::NOT_FOUND, "not_found", &path);
             }
         }
-        let unchanged = support::run(call(&app, Method::GET, &path, Some(&owner), None));
+        let unchanged = support::run(call(
+            &app,
+            support::ApiCall::new(Method::GET, &path).by(&owner),
+        ));
         assert_eq!(
             unchanged.status,
             StatusCode::OK,
@@ -147,16 +152,17 @@ fn players_cannot_write_and_only_read_player_visible_rows() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
 
     for row in fixtures(&app, &campaign_id, &owner, &player) {
         let path = uri(&campaign_id, &row.suffix);
-        let read = support::run(call(&app, Method::GET, &path, Some(&player), None));
+        let read = support::run(call(
+            &app,
+            support::ApiCall::new(Method::GET, &path).by(&player),
+        ));
         let expected = if row.player_reads {
             StatusCode::OK
         } else {
@@ -166,14 +172,16 @@ fn players_cannot_write_and_only_read_player_visible_rows() {
 
         let patched = support::run(call(
             &app,
-            Method::PATCH,
-            &path,
-            Some(&player),
-            Some(row.patch.clone()),
+            support::ApiCall::new(Method::PATCH, &path)
+                .by(&player)
+                .json(row.patch.clone()),
         ));
         assert_denied(&patched, StatusCode::FORBIDDEN, "forbidden", &path);
         if row.deletable {
-            let deleted = support::run(call(&app, Method::DELETE, &path, Some(&player), None));
+            let deleted = support::run(call(
+                &app,
+                support::ApiCall::new(Method::DELETE, &path).by(&player),
+            ));
             assert_denied(&deleted, StatusCode::FORBIDDEN, "forbidden", &path);
         }
     }
@@ -187,9 +195,7 @@ fn player_collections_hide_dm_only_rows() {
     let player = id(91);
     let campaign_id = support::run(support::campaign(&app, &owner));
     support::run(support::member(
-        &app,
-        &campaign_id,
-        &owner,
+        support::Actor::new(&app, &campaign_id, &owner),
         &player,
         "player",
     ));
@@ -200,7 +206,10 @@ fn player_collections_hide_dm_only_rows() {
         [("characters", 0, 1), ("journal", 1, 2), ("knowledge", 1, 2)]
     {
         let path = uri(&campaign_id, &format!("/{collection}"));
-        let as_player = support::run(call(&app, Method::GET, &path, Some(&player), None));
+        let as_player = support::run(call(
+            &app,
+            support::ApiCall::new(Method::GET, &path).by(&player),
+        ));
         assert_eq!(
             as_player.status,
             StatusCode::OK,
@@ -213,7 +222,10 @@ fn player_collections_hide_dm_only_rows() {
             "{path}: {}",
             as_player.body
         );
-        let as_dm = support::run(call(&app, Method::GET, &path, Some(&owner), None));
+        let as_dm = support::run(call(
+            &app,
+            support::ApiCall::new(Method::GET, &path).by(&owner),
+        ));
         assert_eq!(
             as_dm.body["items"].as_array().unwrap().len(),
             dm_count,
@@ -232,16 +244,20 @@ fn deleting_missing_rows_returns_not_found() {
 
     for collection in ["characters", "journal", "knowledge"] {
         let path = uri(&campaign_id, &format!("/{collection}/{}", id(999)));
-        let response = support::run(call(&app, Method::DELETE, &path, Some(&owner), None));
+        let response = support::run(call(
+            &app,
+            support::ApiCall::new(Method::DELETE, &path).by(&owner),
+        ));
         assert_denied(&response, StatusCode::NOT_FOUND, "not_found", &path);
     }
 
     let member = support::run(call(
         &app,
-        Method::DELETE,
-        &uri(&campaign_id, &format!("/members/{}", id(998))),
-        Some(&owner),
-        None,
+        support::ApiCall::new(
+            Method::DELETE,
+            &uri(&campaign_id, &format!("/members/{}", id(998))),
+        )
+        .by(&owner),
     ));
     assert_denied(&member, StatusCode::NOT_FOUND, "not_found", "members");
 }

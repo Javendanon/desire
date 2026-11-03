@@ -1,5 +1,5 @@
 //! Two API instances must agree on retries after both miss the initial replay lookup.
-use crate::support::{self, TestDb, call_with_headers, id, map_version, uri};
+use crate::support::{self, TestDb, call, id, map_version, uri};
 use axum::http::{Method, StatusCode};
 use desire_api::{AppState, app};
 use postgres::Client;
@@ -30,14 +30,13 @@ fn spawn_request(
         .unwrap();
     thread::spawn(move || {
         let router = app(AppState::from_client(client));
-        support::run(call_with_headers(
+        support::run(call(
             &router,
-            Method::POST,
-            &request.path,
-            Some(&request.owner),
-            Some(json!({"name":request.name,
-                "map_version_id":map_version()})),
-            &[("idempotency-key", &request.key)],
+            support::ApiCall::new(Method::POST, &request.path)
+                .by(&request.owner)
+                .json(json!({"name":request.name,
+                "map_version_id":map_version()}))
+                .headers(&[("idempotency-key", &request.key)]),
         ))
     })
 }

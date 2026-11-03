@@ -171,7 +171,7 @@ async fn late_write(proxy: &Proxy, state: &AppState) -> Result<(), ApiError> {
 
 /// Forwards odd connections and parks even ones: every probe succeeds, then the real
 /// handshake hangs.
-fn stalling_every_second_connection() -> u16 {
+fn stalling_every_second_connection(delay: Duration) -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let path = format!(
@@ -183,6 +183,7 @@ fn stalling_every_second_connection() -> u16 {
         for (index, stream) in listener.incoming().enumerate() {
             let tcp = stream.unwrap();
             if index % 2 == 0 {
+                thread::sleep(delay);
                 forward(tcp, UnixStream::connect(&path).unwrap());
             } else {
                 parked.push(tcp);
@@ -199,9 +200,9 @@ fn forward(tcp: std::net::TcpStream, unix: UnixStream) {
     thread::spawn(move || std::io::copy(&mut unix_in, &mut tcp_out));
 }
 
-fn stalling_config(test_db: &TestDb) -> tokio_postgres::Config {
+fn stalling_config(test_db: &TestDb, delay: Duration) -> tokio_postgres::Config {
     let name = test_db.url().rsplit('/').next().unwrap().to_owned();
-    let port = stalling_every_second_connection();
+    let port = stalling_every_second_connection(delay);
     let url = format!("postgresql://desire_test@127.0.0.1:{port}/{name}?connect_timeout=1");
     url.parse().unwrap()
 }
@@ -210,7 +211,7 @@ fn stalling_config(test_db: &TestDb) -> tokio_postgres::Config {
 fn late_handshakes_stop_adding_threads_at_their_cap() {
     within_watchdog(|| {
         let test_db = TestDb::new();
-        let mut config = stalling_config(&test_db);
+        let mut config = stalling_config(&test_db, Duration::ZERO);
         config.connect_timeout(DEADLINE / 2);
         let state = AppState::with_config(config, test_db.connection());
         test_db.drop_connections();
@@ -231,7 +232,7 @@ fn late_handshakes_stop_adding_threads_at_their_cap() {
 fn startup_stays_bounded_when_the_peer_goes_silent_after_the_probe() {
     within_watchdog(|| {
         let test_db = TestDb::new();
-        let config = stalling_config(&test_db);
+        let config = stalling_config(&test_db, Duration::ZERO);
         let start = Instant::now();
         let outcome = db::connect_startup(&config);
         assert!(
@@ -240,6 +241,54 @@ fn startup_stays_bounded_when_the_peer_goes_silent_after_the_probe() {
             start.elapsed()
         );
         assert!(outcome.err().unwrap().contains("timed out"));
+    });
+}
+
+/// Forwards every connection after a delay: slow, but healthy.
+fn slow_port(delay: Duration) -> u16 {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let path = format!(
+        "{}/.s.PGSQL.5432",
+        std::env::var("DESIRE_TEST_SOCKET").unwrap()
+    );
+    thread::spawn(move || {
+        for stream in listener.incoming() {
+            thread::sleep(delay);
+            forward(stream.unwrap(), UnixStream::connect(&path).unwrap());
+        }
+    });
+    port
+}
+
+#[test]
+fn a_slow_but_healthy_database_still_restores_the_client() {
+    within_watchdog(|| {
+        let test_db = TestDb::new();
+        let name = test_db.url().rsplit('/').next().unwrap().to_owned();
+        let port = slow_port(DEADLINE * 3 / 5);
+        let url = format!("postgresql://desire_test@127.0.0.1:{port}/{name}");
+        let mut config: tokio_postgres::Config = url.parse().unwrap();
+        config.connect_timeout(DEADLINE);
+        let state = AppState::with_config(config, test_db.connection());
+        test_db.drop_connections();
+        support::run(async {
+            recovery(&state).await;
+        });
+    });
+}
+
+#[test]
+fn startup_shares_one_deadline_across_a_slow_probe_and_a_silent_handshake() {
+    within_watchdog(|| {
+        let test_db = TestDb::new();
+        let mut config = stalling_config(&test_db, Duration::from_millis(1400));
+        config.connect_timeout(Duration::from_secs(2));
+        let start = Instant::now();
+        let outcome = db::connect_startup(&config);
+        let elapsed = start.elapsed();
+        assert!(outcome.err().unwrap().contains("timed out"));
+        assert!(elapsed < Duration::from_secs(3), "{elapsed:?}");
     });
 }
 
