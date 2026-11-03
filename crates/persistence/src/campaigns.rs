@@ -6,6 +6,22 @@ use postgres::Client;
 pub struct CampaignRepository;
 
 impl CampaignRepository {
+    pub fn list_for_user(
+        client: &mut Client,
+        user: &str,
+        page: crate::FetchPage,
+    ) -> Result<Vec<Campaign>, Error> {
+        let rows = client
+            .query(
+                "SELECT to_jsonb(c) - 'owner_role' FROM campaign.campaigns c \
+             JOIN campaign.memberships m ON m.campaign_id = c.id \
+             WHERE m.user_id = $1::text::uuid ORDER BY c.id LIMIT $2 OFFSET $3",
+                &[&user, &page.limit, &page.offset],
+            )
+            .context("list campaigns for member")?;
+        crate::records::decode_all(rows)
+    }
+
     pub fn create(client: &mut Client, campaign: &Campaign) -> Result<(), Error> {
         let mut tx = client.transaction().context("begin campaign creation")?;
         let data = serde_json::to_value(campaign).context("encode campaign")?;
@@ -45,12 +61,13 @@ impl CampaignRepository {
             .transpose()
     }
 
-    pub fn rename(client: &mut Client, update: &CampaignRename<'_>) -> Result<(), Error> {
-        let affected = client
-            .execute(
+    pub fn rename(client: &mut Client, update: &CampaignRename<'_>) -> Result<Campaign, Error> {
+        let row = client
+            .query_opt(
                 concat!(
-                    "UPDATE campaign.campaigns SET name = $3, revision = revision + 1 ",
-                    "WHERE id = $1::text::uuid AND revision = $2"
+                    "UPDATE campaign.campaigns c SET name = $3, revision = revision + 1 ",
+                    "WHERE id = $1::text::uuid AND revision = $2 ",
+                    "RETURNING to_jsonb(c) - 'owner_role'"
                 ),
                 &[
                     &update.campaign_id,
@@ -59,16 +76,16 @@ impl CampaignRepository {
                 ],
             )
             .context(format!("rename campaign {}", update.campaign_id))?;
-        if affected == 0 {
-            return Err(Error::new(
+        let row = row.ok_or_else(|| {
+            Error::new(
                 ErrorKind::Conflict,
                 format!(
                     "campaign {} is absent or revision changed",
                     update.campaign_id
                 ),
-            ));
-        }
-        Ok(())
+            )
+        })?;
+        crate::records::decode(row)
     }
 }
 

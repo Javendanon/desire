@@ -230,8 +230,13 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "desire-core",
+ "desire-persistence",
+ "postgres",
  "serde",
+ "serde_json",
  "tokio",
+ "tokio-postgres",
+ "tower",
 ]
 
 [[package]]

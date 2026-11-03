@@ -1,4 +1,6 @@
 [package]
+# One integration target shares the database helpers; register new suites in tests/api.rs.
+autotests = false
 name = "desire-api"
 version.workspace = true
 edition.workspace = true
@@ -7,6 +9,17 @@ publish.workspace = true
 
 [dependencies]
 desire-core.workspace = true
+desire-persistence = { path = "../persistence" }
 axum.workspace = true
+postgres = "0.19.12"
+tokio-postgres = "0.7.18"
 serde.workspace = true
-tokio.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+
+[[test]]
+name = "api"
+path = "tests/api.rs"

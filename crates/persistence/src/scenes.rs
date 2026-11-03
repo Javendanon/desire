@@ -17,6 +17,22 @@ pub struct SceneWrite {
 pub struct SceneRepository;
 
 impl SceneRepository {
+    pub fn list(
+        client: &mut Client,
+        campaign: &str,
+        page: crate::FetchPage,
+    ) -> Result<Vec<Scene>, Error> {
+        crate::reads::list(
+            client,
+            crate::reads::ListRead {
+                sql: "SELECT to_jsonb(s) FROM campaign.scenes s \
+                  WHERE s.campaign_id = $1::text::uuid ORDER BY s.id LIMIT $2 OFFSET $3",
+                campaign_id: campaign,
+                page,
+            },
+        )
+    }
+
     pub fn get(client: &mut Client, campaign: &str, id: &str) -> Result<Option<Scene>, Error> {
         client
             .query_opt(
@@ -29,6 +45,31 @@ impl SceneRepository {
             .context(format!("read scene {id} in campaign {campaign}"))?
             .map(records::decode)
             .transpose()
+    }
+
+    /// The scene and event an earlier write stored for this key, so a retry can replay the
+    /// first result instead of generating new identifiers that can never match.
+    pub fn replay(
+        client: &mut Client,
+        campaign: &str,
+        key: &str,
+    ) -> Result<Option<(Scene, String)>, Error> {
+        let row = client
+            .query_opt(
+                concat!(
+                    "SELECT k.request->'scene', k.event_id::text ",
+                    "FROM campaign.idempotency_keys k ",
+                    "WHERE k.campaign_id = $1::text::uuid AND k.key = $2::text::uuid"
+                ),
+                &[&campaign, &key],
+            )
+            .context(format!("read idempotency key {key} in campaign {campaign}"))?;
+        row.map(|row| {
+            let scene: Scene = serde_json::from_value(row.get(0))
+                .context("decode the scene stored for an idempotency key")?;
+            Ok((scene, row.get::<_, String>(1)))
+        })
+        .transpose()
     }
 
     pub fn save_and_enqueue(
