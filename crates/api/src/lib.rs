@@ -9,6 +9,7 @@ pub mod db;
 pub mod error;
 pub mod extract;
 pub mod ids;
+pub mod nivel20;
 pub mod payloads;
 pub mod query;
 pub mod routes;
@@ -22,6 +23,7 @@ pub use error::ApiError;
 #[derive(Clone)]
 pub struct AppState {
     pub db: db::Db,
+    pub nivel20: nivel20::Nivel20Client,
 }
 
 impl AppState {
@@ -29,6 +31,7 @@ impl AppState {
     pub fn from_client(client: postgres::Client) -> Self {
         Self {
             db: db::Db::from_client(client),
+            nivel20: nivel20::Nivel20Client::default(),
         }
     }
 
@@ -36,6 +39,19 @@ impl AppState {
     pub fn with_config(config: tokio_postgres::Config, client: postgres::Client) -> Self {
         Self {
             db: db::Db::with_config(config, client),
+            nivel20: nivel20::Nivel20Client::default(),
+        }
+    }
+
+    /// Production keeps the source base URL out of request bodies.
+    pub fn with_nivel20(
+        config: tokio_postgres::Config,
+        client: postgres::Client,
+        nivel20: nivel20::Nivel20Client,
+    ) -> Self {
+        Self {
+            db: db::Db::with_config(config, client),
+            nivel20,
         }
     }
 }

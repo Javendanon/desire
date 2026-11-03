@@ -7,6 +7,7 @@ mod encounters;
 mod error;
 mod memberships;
 pub mod migrations;
+mod nivel20;
 mod notes;
 mod presence;
 mod reads;
@@ -32,4 +33,5 @@ pub use travel::{PartyRepository, TravelRepository};
 
 pub use characters::{CharacterRepository, CharacterUpdate};
 pub use memberships::MembershipRepository;
+pub use nivel20::{Nivel20Mapping, Nivel20Repository, Nivel20Save};
 pub use reads::{Audience, CampaignRead, FetchPage, RecordTarget, next_id};

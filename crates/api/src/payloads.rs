@@ -2,6 +2,7 @@
 use crate::{
     error::ApiError,
     extract::Caller,
+    nivel20::{CampaignPath, parse_path},
     validation::{self, MAX_BODY, MAX_NAME, MAX_TITLE, or_invalid},
 };
 use desire_core::contracts::common::{Id, MemberRole, Provenance, RulesEdition, Visibility};
@@ -149,7 +150,6 @@ fn clean_controller(value: Option<Id>, caller: &Caller) -> Result<Option<Id>, Ap
 pub struct NewSession {
     pub title: String,
 }
-
 impl NewSession {
     pub fn clean(self, caller: &Caller) -> Result<Self, ApiError> {
         Ok(Self {
@@ -233,5 +233,17 @@ impl PatchKnowledge {
             visibility: self.visibility,
             provenance: or_invalid(validation::provenance(&self.provenance), caller)?,
         })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Nivel20Source {
+    pub source_path: String,
+}
+
+impl Nivel20Source {
+    pub fn clean(self, caller: &Caller) -> Result<CampaignPath, ApiError> {
+        or_invalid(parse_path(&self.source_path), caller)
     }
 }

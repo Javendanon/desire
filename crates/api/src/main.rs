@@ -1,6 +1,6 @@
 //! Desire HTTP server entry point.
 
-use desire_api::{AppState, app, db};
+use desire_api::{AppState, app, db, nivel20::Nivel20Client};
 use std::net::{IpAddr, SocketAddr};
 
 fn shutdown_error_message(error: &std::io::Error) -> String {
@@ -105,8 +105,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let config = with_server_limits(config);
     let client = db::connect_startup(&config)?;
+    let nivel20 = Nivel20Client::from_env()?;
     let address = SocketAddr::new(host, port);
-    let state = AppState::with_config(config, client);
+    let state = AppState::with_nivel20(config, client, nivel20);
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;

@@ -14,6 +14,8 @@ pub const FORBIDDEN: StatusCode = StatusCode::FORBIDDEN;
 pub const NOT_FOUND: StatusCode = StatusCode::NOT_FOUND;
 pub const CONFLICT: StatusCode = StatusCode::CONFLICT;
 pub const INTERNAL: StatusCode = StatusCode::INTERNAL_SERVER_ERROR;
+pub const BAD_GATEWAY: StatusCode = StatusCode::BAD_GATEWAY;
+pub const UNAVAILABLE: StatusCode = StatusCode::SERVICE_UNAVAILABLE;
 
 #[derive(Debug)]
 pub struct ApiError {
@@ -93,6 +95,53 @@ impl ApiError {
     /// An infrastructure failure inside a request keeps the caller's correlation ID.
     pub fn internal_for(request_id: &str, message: &str) -> Self {
         Self::new(INTERNAL, "internal", message, request_id)
+    }
+
+    /// The source session expired, rejected the read, or redirected to a login page. The
+    /// adapter never retries, never bypasses the perimeter and never handles credentials.
+    pub fn source_requires_session(caller: &Caller) -> Self {
+        Self::new(
+            BAD_GATEWAY,
+            "source_requires_session",
+            "Nivel20 requires an interactive session or refused the read; no retry was made",
+            &caller.request_id,
+        )
+    }
+
+    pub fn source_unavailable(caller: &Caller) -> Self {
+        Self::new(
+            UNAVAILABLE,
+            "source_unavailable",
+            "Nivel20 is unavailable; local campaign data remains readable",
+            &caller.request_id,
+        )
+    }
+
+    pub fn source_rate_limited(caller: &Caller) -> Self {
+        Self::new(
+            UNAVAILABLE,
+            "source_rate_limited",
+            "Nivel20 rate-limited the read; no retry was made",
+            &caller.request_id,
+        )
+    }
+
+    pub fn source_rejected(caller: &Caller) -> Self {
+        Self::new(
+            BAD_GATEWAY,
+            "source_rejected",
+            "Nivel20 returned a response the adapter does not understand",
+            &caller.request_id,
+        )
+    }
+
+    pub fn source_not_found(caller: &Caller) -> Self {
+        Self::new(
+            NOT_FOUND,
+            "source_not_found",
+            "Nivel20 did not find that campaign",
+            &caller.request_id,
+        )
     }
 
     /// A referenced record blocks deletion, rather than making its identifier invalid.
