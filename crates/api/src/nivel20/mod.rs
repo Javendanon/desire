@@ -136,9 +136,16 @@ fn agent() -> Agent {
 
 fn validate_base_url(base_url: String) -> Result<String, String> {
     let trimmed = base_url.trim().trim_end_matches('/');
-    let absolute = trimmed.starts_with("http://") || trimmed.starts_with("https://");
-    if !absolute || trimmed.contains(char::is_whitespace) || trimmed.contains(['?', '#']) {
-        return Err("NIVEL20_BASE_URL must be an absolute HTTP(S) base URL".into());
+    let invalid = "NIVEL20_BASE_URL must be an absolute HTTP(S) base URL without credentials";
+    let uri = trimmed.parse::<ureq::http::Uri>().map_err(|_| invalid)?;
+    let authority = uri.authority().ok_or(invalid)?;
+    if !matches!(uri.scheme_str(), Some("http" | "https"))
+        || authority.host().is_empty()
+        || authority.as_str().contains('@')
+        || trimmed.contains(char::is_whitespace)
+        || trimmed.contains(['?', '#'])
+    {
+        return Err(invalid.into());
     }
     Ok(trimmed.to_string())
 }

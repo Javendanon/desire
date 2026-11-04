@@ -1,6 +1,6 @@
 //! Read-only Nivel20 snapshots: one external campaign maps to one local campaign.
-use crate::{Error, error::Context, records};
-use postgres::Client;
+use crate::{Error, ErrorKind, error::Context, records};
+use postgres::{Client, GenericClient, IsolationLevel};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -20,12 +20,22 @@ pub struct Nivel20Save<'a> {
     pub source_path: &'a str,
     pub external_updated_at: Option<&'a str>,
     pub snapshot: &'a Value,
+    pub expected_imported_at: Option<&'a str>,
+}
+
+/// The snapshot observed under the lock and the final stored row.
+pub struct Nivel20Saved {
+    pub previous: Option<Nivel20Mapping>,
+    pub stored: Nivel20Mapping,
 }
 
 pub struct Nivel20Repository;
 
 impl Nivel20Repository {
-    pub fn get(client: &mut Client, campaign_id: &str) -> Result<Option<Nivel20Mapping>, Error> {
+    pub fn get(
+        client: &mut impl GenericClient,
+        campaign_id: &str,
+    ) -> Result<Option<Nivel20Mapping>, Error> {
         let row = client
             .query_opt(
                 concat!(
@@ -49,8 +59,40 @@ impl Nivel20Repository {
         Ok(row.map(|row| row.get(0)))
     }
 
-    /// Replacing the snapshot keeps the row id stable and bumps `imported_at`.
-    pub fn save(client: &mut Client, save: &Nivel20Save<'_>) -> Result<Nivel20Mapping, Error> {
+    /// READ COMMITTED refreshes the mapping read after a parent lock wait, even on first import.
+    pub fn save(client: &mut Client, save: &Nivel20Save<'_>) -> Result<Nivel20Saved, Error> {
+        let mut transaction = client
+            .build_transaction()
+            .isolation_level(IsolationLevel::ReadCommitted)
+            .start()
+            .context("begin Nivel20 import")?;
+        transaction
+            .query_one(
+                "SELECT id FROM campaign.campaigns WHERE id = $1::text::uuid FOR UPDATE",
+                &[&save.campaign_id],
+            )
+            .context("lock Nivel20 import campaign")?;
+        let previous = Self::get(&mut transaction, save.campaign_id)?;
+        let stored = match previous.as_ref() {
+            Some(row) if row.external_id == save.external_id && row.snapshot == *save.snapshot => {
+                row.clone()
+            }
+            _ => {
+                let revision = previous.as_ref().map(|row| row.imported_at.as_str());
+                if revision != save.expected_imported_at {
+                    return Err(Error::new(ErrorKind::Conflict, "stale Nivel20 import"));
+                }
+                Self::write(&mut transaction, save)?
+            }
+        };
+        transaction.commit().context("commit Nivel20 import")?;
+        Ok(Nivel20Saved { previous, stored })
+    }
+
+    fn write(
+        client: &mut impl GenericClient,
+        save: &Nivel20Save<'_>,
+    ) -> Result<Nivel20Mapping, Error> {
         let row = client
             .query_one(
                 concat!(
@@ -61,7 +103,9 @@ impl Nivel20Repository {
                     "external_id = EXCLUDED.external_id, ",
                     "source_path = EXCLUDED.source_path, ",
                     "external_updated_at = EXCLUDED.external_updated_at, ",
-                    "snapshot = EXCLUDED.snapshot, imported_at = now() ",
+                    "snapshot = EXCLUDED.snapshot, ",
+                    "imported_at = GREATEST(clock_timestamp(), ",
+                    "nivel20_campaigns.imported_at + interval '1 microsecond') ",
                     "RETURNING to_jsonb(nivel20_campaigns)"
                 ),
                 &[

@@ -3,7 +3,7 @@ use super::Scope;
 use crate::{
     access,
     error::ApiError,
-    nivel20::{CampaignMetadata, StoredImport},
+    nivel20::{CampaignMetadata, ChangeStatus, ImportReport, StoredImport, compare},
 };
 use desire_persistence::{Nivel20Mapping, Nivel20Repository, Nivel20Save};
 use postgres::Client;
@@ -28,21 +28,27 @@ pub fn external_owner(
 pub fn save(
     client: &mut Client,
     scope: Scope<'_>,
-    source_path: &str,
-    campaign: CampaignMetadata,
-) -> Result<StoredImport, ApiError> {
+    mut report: ImportReport,
+) -> Result<ImportReport, ApiError> {
     access::require_dm(client, scope.caller, scope.campaign_id)?;
-    let snapshot = serde_json::to_value(&campaign).map_err(|_| internal(scope, "encode"))?;
+    let campaign = &report.campaign;
+    let snapshot = serde_json::to_value(campaign).map_err(|_| internal(scope, "encode"))?;
     let save = Nivel20Save {
         campaign_id: scope.campaign_id,
         external_id: campaign.id,
-        source_path,
+        source_path: &report.source_path,
         external_updated_at: campaign.updated_at.as_deref(),
         snapshot: &snapshot,
+        expected_imported_at: report.previous.as_ref().map(|row| row.imported_at.as_str()),
     };
-    let mapping = Nivel20Repository::save(client, &save)
+    let saved = Nivel20Repository::save(client, &save)
         .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
-    decode(mapping, scope)
+    report.previous = saved.previous.map(|row| decode(row, scope)).transpose()?;
+    (report.status, report.changed_fields) =
+        compare(report.previous.as_ref(), campaign.id, campaign);
+    report.imported = report.status != ChangeStatus::Unchanged;
+    report.stored = Some(decode(saved.stored, scope)?);
+    Ok(report)
 }
 
 /// The stored JSON is the adapter's own output; an unreadable row is an internal fault.

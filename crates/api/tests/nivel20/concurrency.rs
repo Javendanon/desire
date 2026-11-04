@@ -54,12 +54,12 @@ fn overlapping_imports(
     }
     let bodies = [delayed, winner].map(|name| source_body(name, "2026-10-01T00:00:00Z"));
     let (base_url, pending) = controlled_source(bodies.into());
-    let app = router_with(&db, &base_url);
-    support::run(drive_overlap(&app, &campaign, &owner, pending))
+    let apps = [router_with(&db, &base_url), router_with(&db, &base_url)];
+    support::run(drive_overlap(&apps, &campaign, &owner, pending))
 }
 
 async fn drive_overlap(
-    app: &Router,
+    apps: &[Router; 2],
     campaign: &str,
     owner: &str,
     pending: Vec<PendingRead>,
@@ -67,11 +67,11 @@ async fn drive_overlap(
     let mut pending = pending.into_iter();
     let delayed = pending.next().unwrap();
     let winner = pending.next().unwrap();
-    let delayed_app = app.clone();
+    let delayed_app = apps[0].clone();
     let request = source_call(Method::POST, campaign, owner, "/import");
     let delayed_response = tokio::spawn(async move { call(&delayed_app, request).await });
     delayed.accepted.await.unwrap();
-    let winner_app = app.clone();
+    let winner_app = apps[1].clone();
     let request = source_call(Method::POST, campaign, owner, "/import");
     let winner_response = tokio::spawn(async move { call(&winner_app, request).await });
     winner.accepted.await.unwrap();
@@ -80,7 +80,7 @@ async fn drive_overlap(
     delayed.release.send(()).unwrap();
     let delayed_response = delayed_response.await.unwrap();
     let local = call(
-        app,
+        &apps[0],
         ApiCall::new(
             Method::GET,
             &format!("/api/v1/campaigns/{campaign}/nivel20"),
@@ -120,7 +120,7 @@ fn out_of_order_source_responses_cannot_overwrite_a_newer_import() {
         assert_eq!(winner.status, StatusCode::OK, "{}", winner.body);
         assert_eq!(winner.body["imported"], true);
         assert_eq!(delayed.status, StatusCode::CONFLICT, "{}", delayed.body);
-        assert_eq!(delayed.body["code"], "conflict");
+        assert_eq!(delayed.body["code"], "revision_conflict");
         assert_eq!(local, winner.body["stored"]);
         assert_eq!(local["campaign"]["name"], "New response");
     }

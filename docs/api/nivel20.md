@@ -10,7 +10,8 @@ combat state and any HTML fragment are out of scope and are not parsed.
 ## Boundary
 
 - Base path `/api/v1`. Source origin: `NIVEL20_BASE_URL` (default `https://nivel20.com`),
-  validated at startup; it is never taken from a request body.
+  parsed structurally at startup; URL userinfo (including empty or percent-encoded userinfo)
+  is rejected before any request. It is never taken from a request body.
 - `GET /api/v1/campaigns/{campaign_id}/nivel20` returns the last imported snapshot. It never
   contacts Nivel20, so it keeps working while the source is down or the session expired.
 - `POST /api/v1/campaigns/{campaign_id}/nivel20/preview` reads the source once and returns
@@ -52,6 +53,19 @@ reimport would overwrite (`external_id`, `game_id`, `name`, `description`, `crea
 An `unchanged` import writes nothing: it keeps `imported_at`, so a repeated import is
 idempotent and cannot make the change history look newer than the data. `preview` always
 reports `stored: null` and `imported: false`; only `import` fills them.
+
+The final comparison, no-op decision and write run in one READ COMMITTED database transaction,
+locking only the local campaign row (also for the first import). The isolation level is explicit,
+so the mapping read sees the latest committed row after a lock wait even when the session's
+default is REPEATABLE READ. Network I/O happens before this
+transaction. `imported_at` is the expected revision captured before the source read; every
+changed write advances it monotonically. If another import has already stored identical
+metadata, the delayed request returns `unchanged` with that row and its original timestamp.
+If the stored revision changed and the delayed response differs, import returns 409
+`revision_conflict`, preserving the newer row. This applies even when the delayed response
+looked unchanged against the pre-network snapshot. There is no automatic retry; the user
+can preview again. `previous` and `changed_fields` on successful imports describe the row
+observed inside the transaction, not the earlier pre-network read.
 
 ## Session, CSRF and credentials
 
@@ -122,8 +136,5 @@ curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/nivel20/preview
   bridge/extension delivering already-normalized data is the documented next option; it
   must not forward cookies either.
 - `description` is stored in the snapshot but not projected into any local domain table.
-- Import reads the stored row, then the source, then writes; it is not one transaction. Two
-  concurrent imports of the same campaign can both report `changed` and the last write wins.
-  That is acceptable for a DM action; a row lock is the fix if a concurrent sync ever exists.
 - One source read is bounded at 8 s (connect + body) and the request deadline for database
   work does not shorten it, so a slow source can hold a request for that long.

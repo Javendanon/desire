@@ -5,10 +5,7 @@ use crate::{
     AppState, db,
     error::ApiError,
     extract::{ApiJson, Caller},
-    nivel20::{
-        CampaignMetadata, CampaignPath, ChangeStatus, ImportReport, Nivel20Error, StoredImport,
-        compare,
-    },
+    nivel20::{CampaignMetadata, CampaignPath, ImportReport, Nivel20Error, StoredImport, compare},
     payloads::Nivel20Source,
     routes::id_path,
     store::{self, Scope},
@@ -76,14 +73,8 @@ pub async fn import(
     let previous = previous(&state, &caller, &campaign_id).await?;
     ensure_unmapped(&target).await?;
     let current = read_source(&target).await?;
-    let mut report = report(&target, current, previous);
-    if report.status == ChangeStatus::Unchanged {
-        report.stored = report.previous.clone();
-        return Ok(Json(report));
-    }
-    report.stored = Some(save(&target, &report.campaign).await?);
-    report.imported = true;
-    Ok(Json(report))
+    let report = report(&target, current, previous);
+    Ok(Json(save(&target, report).await?))
 }
 
 async fn previous(
@@ -150,11 +141,9 @@ fn enabled(state: &AppState, caller: &Caller) -> Result<(), ApiError> {
     Err(ApiError::not_found(caller, "Nivel20 import is disabled"))
 }
 
-async fn save(target: &Target<'_>, current: &CampaignMetadata) -> Result<StoredImport, ApiError> {
+async fn save(target: &Target<'_>, report: ImportReport) -> Result<ImportReport, ApiError> {
     let request_id = target.caller.request_id.clone();
     let campaign_id = target.campaign_id.to_string();
-    let source_path = target.source.path.clone();
-    let current = current.clone();
     let caller = target.caller.clone();
     db::blocking(&target.state.db, request_id, move |client| {
         store::nivel20::save(
@@ -163,8 +152,7 @@ async fn save(target: &Target<'_>, current: &CampaignMetadata) -> Result<StoredI
                 caller: &caller,
                 campaign_id: &campaign_id,
             },
-            &source_path,
-            current,
+            report,
         )
     })
     .await
