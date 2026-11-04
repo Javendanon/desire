@@ -17,7 +17,10 @@ combat state and any HTML fragment are out of scope and are not parsed.
   what an import would change. It writes nothing.
 - `POST /api/v1/campaigns/{campaign_id}/nivel20/import` reads the source once and stores the
   snapshot when it is new or changed.
-- All three require the campaign DM; a non-member receives 404, a player 403.
+- All three require the campaign DM; a non-member receives 404, a player 403. All three also
+  require the `nivel20_import` runtime flag (`docs/flags.md`), which is off by default: while it
+  is off, or the flags file is missing or malformed, every route answers 404 and no outbound
+  request is made.
 - Request body: `{"source_path": "/games/dnd-5/campaigns/<id>-<slug>"}`. Only the path shown
   in the browser is accepted: absolute URLs, query strings, fragments, traversal and a
   non-numeric campaign id are 400 `invalid_request`. The numeric id in the path is the
@@ -31,7 +34,9 @@ combat state and any HTML fragment are out of scope and are not parsed.
 `campaign_id` (primary key, references `campaign.campaigns`), `external_id` (unique,
 `> 0`), `source_path`, `external_updated_at`, `snapshot` (`jsonb`) and `imported_at`.
 A second local campaign importing an external id that is already mapped gets 409
-`conflict`; that is the mapping invariant, not a bug.
+`conflict`; that is the mapping invariant, not a bug. `preview` resolves the mapping too, so a
+conflicting import is visible before the write instead of only when the import runs, and no row
+is stored for the second campaign.
 
 The response DTO is `CampaignMetadata`: `id`, `game_id`, `name`, `description`,
 `created_at`, `updated_at`, `url`. Unknown fields are ignored, `name` is required and must
@@ -59,7 +64,9 @@ Consequence for an expired session: the unverified reads this adapter uses are a
 so expiry shows up as 401/403 from the perimeter, not as a reason to re-authenticate inside
 the backend. `Nivel20Error::SessionExpired` / `AccessDenied` / `Redirected` map to
 `source_requires_session` (502) and end the operation. Redirects are disabled
-(`max_redirects(0)`): a login redirect is a refusal to report, not something to follow.
+(`max_redirects(0)`): a login redirect is a refusal to report, not something to follow, and
+`a_login_redirect_is_a_session_error_and_is_not_followed` proves the `Location` target is never
+contacted.
 
 ## Source failures
 
@@ -70,7 +77,7 @@ the backend. `Nivel20Error::SessionExpired` / `AccessDenied` / `Redirected` map 
 | 404 | 404 | `source_not_found` | none |
 | 429 | 503 | `source_rate_limited` | none |
 | 5xx, timeout (8 s), connection failure | 503 | `source_unavailable` | none |
-| non-JSON, oversized (> 200 KB), wrong id, other 2xx | 502 | `source_rejected` | none |
+| non-JSON, oversized (> 200 KB), wrong id, other 2xx (e.g. 202), unexpected 4xx (e.g. 406) | 502 | `source_rejected` | none |
 
 There is no background polling, no backoff loop, no 403/CAPTCHA evasion and no second
 attempt of any kind: one request per call, and the caller decides when to call again. The

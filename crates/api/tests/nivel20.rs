@@ -6,11 +6,13 @@ use axum::{
     http::{Method, StatusCode},
 };
 use desire_api::{AppState, app, nivel20::Nivel20Client};
+use desire_core::flags::FlagSource;
 use serde_json::{Value, json};
 use std::{
     io::{Read, Write},
     net::TcpListener,
-    sync::{Arc, Mutex},
+    path::PathBuf,
+    sync::{Arc, Mutex, OnceLock},
     thread,
 };
 use support::{ApiCall, TestDb, call, id};
@@ -25,6 +27,12 @@ struct FakeSource {
 
 impl FakeSource {
     fn start(responses: Vec<(u16, String)>) -> Self {
+        Self::start_with(responses, None)
+    }
+
+    /// `location` is sent as the `Location` header of the response, so a followed redirect
+    /// would reach the target the test inspects.
+    fn start_with(responses: Vec<(u16, String)>, location: Option<String>) -> Self {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
         let requests = Arc::new(Mutex::new(Vec::new()));
@@ -35,7 +43,7 @@ impl FakeSource {
                 let request = read_request(&mut stream);
                 recorded.lock().unwrap().push(request.clone());
                 let (status, body) = request_answer(&request, status, body);
-                write_response(&mut stream, status, &body);
+                write_response(&mut stream, status, &body, location.as_deref());
             }
         });
         Self { base_url, requests }
@@ -46,10 +54,16 @@ impl FakeSource {
     }
 }
 
-fn write_response(stream: &mut std::net::TcpStream, status: u16, body: &str) {
+fn write_response(
+    stream: &mut std::net::TcpStream,
+    status: u16,
+    body: &str,
+    location: Option<&str>,
+) {
+    let redirect = location.map_or_else(String::new, |url| format!("location: {url}\r\n"));
     let response = format!(
         "HTTP/1.1 {status} {}\r\ncontent-type: application/json\r\n\
-         content-length: {}\r\nconnection: close\r\n\r\n{body}",
+         {redirect}content-length: {}\r\nconnection: close\r\n\r\n{body}",
         reason(status),
         body.len()
     );
@@ -86,9 +100,12 @@ fn request_answer(request: &str, status: u16, body: String) -> (u16, String) {
 fn reason(status: u16) -> &'static str {
     match status {
         200 => "OK",
+        202 => "Accepted",
+        302 => "Found",
         401 => "Unauthorized",
         403 => "Forbidden",
         404 => "Not Found",
+        406 => "Not Acceptable",
         429 => "Too Many Requests",
         500 => "Internal Server Error",
         _ => "Response",
@@ -115,7 +132,21 @@ fn router(db: &TestDb, source: &FakeSource) -> Router {
 fn router_with(db: &TestDb, base_url: &str) -> Router {
     let mut state: AppState = db.state();
     state.nivel20 = Nivel20Client::new(base_url).unwrap();
+    state.flags = flags_on();
     app(state)
+}
+
+/// One flags file per test process with the import flag on; each test owns its own server, so
+/// the flag is injected through the state instead of the shared process environment.
+fn flags_on() -> FlagSource {
+    static PATH: OnceLock<PathBuf> = OnceLock::new();
+    let path = PATH.get_or_init(|| {
+        let path =
+            std::env::temp_dir().join(format!("desire-nivel20-flags-{}.txt", std::process::id()));
+        std::fs::write(&path, "nivel20_import = on\n").unwrap();
+        path
+    });
+    FlagSource::file(path)
 }
 
 /// A port that no process listens on: the source is unreachable, as when Nivel20 is down.
@@ -309,6 +340,121 @@ fn source_session_and_perimeter_errors_are_not_retried_or_bypassed() {
 }
 
 #[test]
+fn a_login_redirect_is_a_session_error_and_is_not_followed() {
+    let db = TestDb::new();
+    let owner = id(90);
+    let trap = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    trap.set_nonblocking(true).unwrap();
+    let location = format!("http://{}/users/sign_in", trap.local_addr().unwrap());
+    let source = FakeSource::start_with(
+        vec![(302, json!({"error": "login"}).to_string())],
+        Some(location),
+    );
+    let app = router(&db, &source);
+    let campaign = support::run(support::campaign(&app, &owner));
+
+    let response = support::run(call(
+        &app,
+        source_call(Method::POST, &campaign, &owner, "/preview"),
+    ));
+    assert_eq!(
+        response.status,
+        StatusCode::BAD_GATEWAY,
+        "{}",
+        response.body
+    );
+    assert_eq!(response.body["code"], "source_requires_session");
+    assert_eq!(
+        source.requests().len(),
+        1,
+        "a login redirect must not be followed"
+    );
+    assert!(
+        trap.accept().is_err(),
+        "the adapter followed the Location header"
+    );
+
+    let absent = support::run(call(
+        &app,
+        ApiCall::new(
+            Method::GET,
+            &format!("/api/v1/campaigns/{campaign}/nivel20"),
+        )
+        .by(&owner),
+    ));
+    assert_eq!(absent.status, StatusCode::NOT_FOUND);
+}
+
+#[test]
+fn an_unexpected_source_status_is_a_rejected_response_not_an_outage() {
+    for status in [202, 406] {
+        let db = TestDb::new();
+        let owner = id(90);
+        let source = FakeSource::start(vec![(status, json!({"error": "synthetic"}).to_string())]);
+        let app = router(&db, &source);
+        let campaign = support::run(support::campaign(&app, &owner));
+
+        let response = support::run(call(
+            &app,
+            source_call(Method::POST, &campaign, &owner, "/preview"),
+        ));
+        assert_eq!(
+            response.status,
+            StatusCode::BAD_GATEWAY,
+            "status {status}: {}",
+            response.body
+        );
+        assert_eq!(response.body["code"], "source_rejected", "status {status}");
+    }
+}
+
+#[test]
+fn the_import_routes_stay_hidden_and_offline_while_the_flag_is_off() {
+    let db = TestDb::new();
+    let owner = id(90);
+    let source = FakeSource::start(Vec::new());
+    let campaign = support::run(support::campaign(&support::app_for(&db), &owner));
+
+    let malformed = std::env::temp_dir().join(format!(
+        "desire-nivel20-bad-flags-{}.txt",
+        std::process::id()
+    ));
+    std::fs::write(&malformed, "nivel20_import = yes\n").unwrap();
+
+    for flags in [FlagSource::none(), FlagSource::file(malformed)] {
+        let mut state: AppState = db.state();
+        state.nivel20 = Nivel20Client::new(&source.base_url).unwrap();
+        state.flags = flags;
+        let app = app(state);
+
+        let stored = support::run(call(
+            &app,
+            ApiCall::new(
+                Method::GET,
+                &format!("/api/v1/campaigns/{campaign}/nivel20"),
+            )
+            .by(&owner),
+        ));
+        let preview = support::run(call(
+            &app,
+            source_call(Method::POST, &campaign, &owner, "/preview"),
+        ));
+        let imported = support::run(call(
+            &app,
+            source_call(Method::POST, &campaign, &owner, "/import"),
+        ));
+
+        for response in [stored, preview, imported] {
+            assert_eq!(response.status, StatusCode::NOT_FOUND, "{}", response.body);
+        }
+        assert!(
+            source.requests().is_empty(),
+            "a disabled feature must not contact the source"
+        );
+    }
+}
+
+#[test]
 fn malformed_source_payloads_and_paths_fail_without_writes() {
     let db = TestDb::new();
     let owner = id(90);
@@ -396,6 +542,10 @@ fn one_external_campaign_maps_to_one_local_campaign() {
             200,
             source_body("Synthetic campaign", "2026-10-03T22:38:30.000-03:00"),
         ),
+        (
+            200,
+            source_body("Synthetic campaign", "2026-10-03T22:38:30.000-03:00"),
+        ),
     ]);
     let app = router(&db, &source);
     let first = support::run(support::campaign(&app, &owner));
@@ -404,12 +554,25 @@ fn one_external_campaign_maps_to_one_local_campaign() {
     let imported = support::run(import_with(&app, &first, &owner));
     assert_eq!(imported["status"], "new");
 
+    let preview = support::run(call(
+        &app,
+        source_call(Method::POST, &second, &owner, "/preview"),
+    ));
+    assert_eq!(preview.status, StatusCode::CONFLICT, "{}", preview.body);
+    assert_eq!(preview.body["code"], "conflict");
+
     let duplicate = support::run(call(
         &app,
         source_call(Method::POST, &second, &owner, "/import"),
     ));
     assert_eq!(duplicate.status, StatusCode::CONFLICT);
     assert_eq!(duplicate.body["code"], "conflict");
+
+    let unwritten = support::run(call(
+        &app,
+        ApiCall::new(Method::GET, &format!("/api/v1/campaigns/{second}/nivel20")).by(&owner),
+    ));
+    assert_eq!(unwritten.status, StatusCode::NOT_FOUND);
 }
 
 #[test]

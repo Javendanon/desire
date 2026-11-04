@@ -15,6 +15,16 @@ pub fn previous(client: &mut Client, scope: Scope<'_>) -> Result<Option<StoredIm
     stored.map(|mapping| decode(mapping, scope)).transpose()
 }
 
+pub fn external_owner(
+    client: &mut Client,
+    scope: Scope<'_>,
+    external_id: i64,
+) -> Result<Option<String>, ApiError> {
+    access::require_dm(client, scope.caller, scope.campaign_id)?;
+    Nivel20Repository::external_owner(client, external_id)
+        .map_err(|error| ApiError::from_persistence(error, scope.caller))
+}
+
 pub fn save(
     client: &mut Client,
     scope: Scope<'_>,

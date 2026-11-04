@@ -16,14 +16,18 @@ pub mod routes;
 pub mod store;
 pub mod validation;
 
+use desire_core::flags::FlagSource;
+
 pub use error::ApiError;
 
 /// Shared process state. A single blocking client serializes database work for now; a
-/// pool replaces it when concurrent throughput matters.
+/// pool replaces it when concurrent throughput matters. `flags` is read per request, so an
+/// operator can switch a runtime feature off without a restart.
 #[derive(Clone)]
 pub struct AppState {
     pub db: db::Db,
     pub nivel20: nivel20::Nivel20Client,
+    pub flags: FlagSource,
 }
 
 impl AppState {
@@ -32,6 +36,7 @@ impl AppState {
         Self {
             db: db::Db::from_client(client),
             nivel20: nivel20::Nivel20Client::default(),
+            flags: FlagSource::from_env(),
         }
     }
 
@@ -40,6 +45,7 @@ impl AppState {
         Self {
             db: db::Db::with_config(config, client),
             nivel20: nivel20::Nivel20Client::default(),
+            flags: FlagSource::from_env(),
         }
     }
 
@@ -52,6 +58,7 @@ impl AppState {
         Self {
             db: db::Db::with_config(config, client),
             nivel20,
+            flags: FlagSource::from_env(),
         }
     }
 }

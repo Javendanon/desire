@@ -68,7 +68,14 @@ from a diff, so the reviewer raises it as a blocking finding (coordinated with D
 
 | Flag | Default | Where the default lives | Purpose |
 | --- | --- | --- | --- |
-| *(none yet)* | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | — |
+| `nivel20_import` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | Enable the read-only Nivel20 import endpoints (`crates/api/src/routes/nivel20.rs`) |
+
+`nivel20_import` gates the three Nivel20 routes. With the flag off, or with the flags file
+missing or malformed, `GET .../nivel20`, `POST .../nivel20/preview` and
+`POST .../nivel20/import` answer 404 and no outbound request is made: the feature is
+revertible in a running server without a deploy. `AppState::flags` carries the
+`FlagSource`; production fills it from `DESIRE_FLAGS_FILE`.
 
 The tests in `crates/core/tests/flags.rs` use a test-only flag, `sector_labels`, which is not part
 of `REGISTRY`.
+

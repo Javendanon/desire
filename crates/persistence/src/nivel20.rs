@@ -38,6 +38,17 @@ impl Nivel20Repository {
         row.map(records::decode).transpose()
     }
 
+    /// The local campaign that already owns an external id, if any. O(1) via the unique index.
+    pub fn external_owner(client: &mut Client, external_id: i64) -> Result<Option<String>, Error> {
+        let row = client
+            .query_opt(
+                "SELECT campaign_id::text FROM campaign.nivel20_campaigns WHERE external_id = $1",
+                &[&external_id],
+            )
+            .context(format!("read Nivel20 owner of {external_id}"))?;
+        Ok(row.map(|row| row.get(0)))
+    }
+
     /// Replacing the snapshot keeps the row id stable and bumps `imported_at`.
     pub fn save(client: &mut Client, save: &Nivel20Save<'_>) -> Result<Nivel20Mapping, Error> {
         let row = client
