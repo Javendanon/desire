@@ -120,7 +120,7 @@ pnpm dev:api
 only connects. Without `DATABASE_URL` the binary exits with an explicit error. Requests
 need a D10 bearer session (`Authorization: Bearer <token>`); create one through
 `/api/v1/auth/accounts` or `/api/v1/auth/sessions`. The legacy `x-desire-user` header is
-only available when `DESIRE_DEV_IDENTITY=1` is set explicitly.
+only available when `DESIRE_DEV_IDENTITY=1` is set and the server binds to loopback.
 
 In two separate terminals:
 

@@ -23,8 +23,8 @@ the synchronization protocol and the limits that remain open.
 - Requests authenticate with `Authorization: Bearer <token>`. An absent, malformed,
   expired or revoked token is `401 unauthenticated`.
 - The legacy `x-desire-user` header is disabled by default, including on loopback.
-  Setting `DESIRE_DEV_IDENTITY=1` explicitly turns it back on for tests and local
-  development; a shared deployment must use bearer sessions.
+  `DESIRE_DEV_IDENTITY=1` turns it back on only for a loopback bind; a non-loopback
+  bind never trusts the header, so a shared deployment must use bearer sessions.
 
 There is no password reset, account deletion, token refresh or multiple-device
 session listing in this change.
@@ -68,6 +68,8 @@ endpoints. `private.dm_secrets` is never joined into a snapshot or event.
   not an entity revision.
 - A repeated request with the same cursor is a pure read: it returns the same event
   IDs. Clients also deduplicate by `event_id`.
+- A cursor at the current revision returns an empty batch, even when the campaign's
+  latest writes emitted no scene event; a caught-up client is never sent a new snapshot.
 - A cursor that is ahead of the server, older than retained history, or farther than
   500 events behind receives a fresh snapshot instead of a silent gap.
 - Event IDs and stream revisions are assigned in the same transaction as the scene
@@ -116,7 +118,7 @@ curl -s 'http://127.0.0.1:3001/api/v1/campaigns/<campaign>/sync?after=7' \
 | Concurrent writes | Expected revisions and one transaction per entity plus its event | No automatic merge of two accepted edits; the losing writer retries |
 | Snapshot memory | 500-row cap per collection plus `truncated` | A campaign above the cap needs the paginated endpoints; sync does not paginate a snapshot |
 | Session table growth | Expired sessions fail authentication | Expired rows are not swept automatically |
-| Development identity | Header is off by default, including loopback; only `DESIRE_DEV_IDENTITY=1` enables it | That opt-in is unsafe on a shared network by design |
+| Development identity | Header is off by default and, with `DESIRE_DEV_IDENTITY=1`, only enabled on a loopback bind | A shared bind never trusts the header, so the opt-in cannot grant DM rights on a network |
 
 No real password, token, Nivel20 credential or secret belongs in documentation,
 fixtures, logs or commits. The examples above use synthetic values only.

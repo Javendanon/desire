@@ -19,9 +19,13 @@ where
     }
 }
 
-/// The header seam is off by default, including on loopback, so the shared server always
-/// starts behind the D10 bearer sessions. An operator opts in explicitly for local tests.
-fn dev_identity_allowed(_host: IpAddr) -> bool {
+/// The header seam needs an explicit opt-in and a loopback bind: on a shared network a player
+/// could otherwise attach the owner's header and act as DM.
+fn dev_identity_allowed(host: IpAddr, opted_in: bool) -> bool {
+    opted_in && host.is_loopback()
+}
+
+fn dev_identity_opt_in() -> bool {
     std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1")
 }
 
@@ -86,7 +90,7 @@ async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::
 /// connection on this thread.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host: IpAddr = environment("HOST", "127.0.0.1")?;
-    let dev_identity = dev_identity_allowed(host);
+    let dev_identity = dev_identity_allowed(host, dev_identity_opt_in());
     let port: u16 = environment("PORT", "3001")?;
     let config = database_config(&database_url()?)?;
     if migrated() {
@@ -138,6 +142,17 @@ mod tests {
         let mut reported = Vec::new();
         wait_for_shutdown(async { Ok(()) }, |message| reported.push(message)).await;
         assert!(reported.is_empty());
+    }
+
+    #[test]
+    fn the_header_seam_needs_an_opt_in_and_a_loopback_bind() {
+        let loopback: IpAddr = "127.0.0.1".parse().unwrap();
+        let any: IpAddr = "0.0.0.0".parse().unwrap();
+        let shared: IpAddr = "192.0.2.10".parse().unwrap();
+        assert!(!dev_identity_allowed(loopback, false));
+        assert!(dev_identity_allowed(loopback, true));
+        assert!(!dev_identity_allowed(any, true));
+        assert!(!dev_identity_allowed(shared, true));
     }
 
     #[test]

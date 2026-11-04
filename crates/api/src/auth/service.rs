@@ -26,17 +26,15 @@ pub async fn register(
     let token = password::random_token()
         .map_err(|message| ApiError::internal_for(&request_id, &message))?;
     let session_hash = password::token_hash(&token);
-    let username = credentials.username;
+    let registration = Registration {
+        username: credentials.username,
+        password_hash,
+        token,
+        session_hash,
+    };
     let error_id = request_id.clone();
     db::blocking(db, request_id, move |client| {
-        register_in(
-            client,
-            &error_id,
-            &username,
-            &password_hash,
-            token,
-            &session_hash,
-        )
+        register_in(client, &error_id, registration)
     })
     .await
 }
@@ -136,22 +134,27 @@ async fn session_for_account(
     .await
 }
 
+/// The account row and its first session share one registration input.
+struct Registration {
+    username: String,
+    password_hash: String,
+    token: String,
+    session_hash: String,
+}
+
 fn register_in(
     client: &mut Client,
     request_id: &str,
-    username: &str,
-    password_hash: &str,
-    token: String,
-    session_hash: &str,
+    registration: Registration,
 ) -> Result<AuthSession, ApiError> {
     let account = Account {
         id: desire_persistence::next_id(client)
             .map_err(|error| ApiError::from_persistence_request(error, request_id))?,
-        username: username.to_string(),
-        password_hash: password_hash.to_string(),
+        username: registration.username,
+        password_hash: registration.password_hash,
     };
     let session = NewSession {
-        token_hash: session_hash,
+        token_hash: &registration.session_hash,
         account_id: &account.id,
     };
     let expires_at = IdentityRepository::register(client, &account, &session).map_err(|error| {
@@ -165,7 +168,7 @@ fn register_in(
         }
         ApiError::from_persistence_request(error, request_id)
     })?;
-    Ok(session_for(token, expires_at, &account))
+    Ok(session_for(registration.token, expires_at, &account))
 }
 
 fn session_for(token: String, expires_at: String, account: &Account) -> AuthSession {

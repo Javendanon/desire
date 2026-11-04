@@ -120,6 +120,36 @@ fn a_stale_snapshot_cursor_recovers_with_a_fresh_snapshot() {
 }
 
 #[test]
+fn a_caught_up_cursor_without_scene_events_returns_an_empty_batch() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+    let campaign = support::run(support::campaign(&app, &owner));
+    let session = support::run(support::create_session(&app, &campaign, &owner));
+    support::run(support::create_journal(
+        Actor::new(&app, &campaign, &owner),
+        session["id"].as_str().unwrap(),
+        "players",
+    ));
+
+    let snapshot = sync(&app, &campaign, &owner, None);
+    assert_eq!(snapshot.body["revision"], 1, "{}", snapshot.body);
+    assert!(snapshot.body["snapshot"].is_object(), "{}", snapshot.body);
+
+    // A journal write advances the stream without a scene event, so the cursor is at 1 with
+    // no retained scene event. A client already at that cursor has nothing left to fetch.
+    let caught_up = sync(&app, &campaign, &owner, Some(1));
+    assert_eq!(caught_up.status, StatusCode::OK, "{}", caught_up.body);
+    assert_eq!(caught_up.body["revision"], 1, "{}", caught_up.body);
+    assert!(
+        caught_up.body["snapshot"].is_null(),
+        "a caught-up cursor must not resend the snapshot: {}",
+        caught_up.body
+    );
+    assert!(event_ids(&caught_up.body).is_empty());
+}
+
+#[test]
 fn cursor_catch_up_recovers_non_scene_changes_even_before_a_later_scene_write() {
     let db = TestDb::new();
     let app = support::app_for(&db);

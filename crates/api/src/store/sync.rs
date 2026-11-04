@@ -8,7 +8,7 @@ use desire_core::{
         transport::{CampaignSnapshot, SyncBatch, TravelUpdated},
     },
 };
-use desire_persistence::{CampaignRead, FetchPage, RealtimeRepository};
+use desire_persistence::{CampaignRead, FetchPage, RealtimeRepository, SnapshotRows};
 use postgres::Client;
 
 const SNAPSHOT_LIMIT: i64 = 500;
@@ -35,11 +35,13 @@ fn event_or_snapshot(
 ) -> Result<SyncBatch, ApiError> {
     let window = RealtimeRepository::event_window(client, scope.campaign_id, after, EVENT_LIMIT)
         .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
-    if !resumable(after, window.revision, window.oldest_scene) {
-        return snapshot_batch(client, scope, role);
-    }
+    // A cursor at the current revision has nothing left to fetch, even when the campaign has no
+    // retained scene event to prove it: non-scene writes advance the stream without one.
     if after == window.revision {
         return Ok(empty_batch(scope, role, window.revision));
+    }
+    if !resumable(after, window.revision, window.oldest_scene) {
+        return snapshot_batch(client, scope, role);
     }
     // Non-scene writes advance the cursor without an outbox row, so a short list is a gap.
     let expected = u64::from(window.revision) - u64::from(after);
@@ -96,38 +98,27 @@ fn snapshot_batch(
     let rows = RealtimeRepository::snapshot(client, read, page)
         .map_err(|error| ApiError::from_persistence(error, caller))?
         .ok_or_else(|| ApiError::not_found(caller, "campaign not found"))?;
-    let snapshot = assemble(
-        rows.campaign,
-        rows.scenes,
-        rows.characters,
-        rows.journal,
-        rows.knowledge,
-    );
+    let revision = rows.revision;
+    let snapshot = assemble(rows);
     Ok(SyncBatch {
         protocol_version: PROTOCOL_VERSION,
         campaign_id: scope.campaign_id.to_string(),
         role,
-        revision: rows.revision,
+        revision,
         snapshot: Some(snapshot),
         scene_events: Vec::new(),
         travel_events: Vec::new(),
     })
 }
 
-fn assemble(
-    campaign: desire_core::contracts::campaign::Campaign,
-    scenes: Vec<desire_core::contracts::campaign::Scene>,
-    characters: Vec<desire_core::contracts::campaign::Character>,
-    journal: Vec<desire_core::contracts::campaign::JournalEntry>,
-    knowledge: Vec<desire_core::contracts::campaign::CampaignKnowledge>,
-) -> CampaignSnapshot {
-    let (scenes, scenes_more) = bounded(scenes);
-    let (characters, characters_more) = bounded(characters);
-    let (journal, journal_more) = bounded(journal);
-    let (knowledge, knowledge_more) = bounded(knowledge);
+fn assemble(rows: SnapshotRows) -> CampaignSnapshot {
+    let (scenes, scenes_more) = bounded(rows.scenes);
+    let (characters, characters_more) = bounded(rows.characters);
+    let (journal, journal_more) = bounded(rows.journal);
+    let (knowledge, knowledge_more) = bounded(rows.knowledge);
     CampaignSnapshot {
         protocol_version: PROTOCOL_VERSION,
-        campaign,
+        campaign: rows.campaign,
         scenes,
         characters,
         journal,
