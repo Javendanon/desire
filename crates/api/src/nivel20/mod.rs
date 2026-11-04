@@ -236,6 +236,21 @@ mod tests {
     }
 
     #[test]
+    fn credential_bearing_base_urls_fail_construction_without_a_request() {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let address = listener.local_addr().unwrap();
+        for userinfo in ["user:pass", "user", ":pass", "", "us%65r:p%40ss"] {
+            let base_url = format!("http://{userinfo}@{address}");
+            assert!(Nivel20Client::new(base_url).is_err());
+        }
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+    }
+
+    #[test]
     fn invalid_base_urls_are_rejected() {
         for value in [
             "",
