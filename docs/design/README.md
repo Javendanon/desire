@@ -42,7 +42,7 @@ corepack pnpm vite --port 5199 --strictPort --host 127.0.0.1
 ```
 
 `design.html` is a second Vite entry used only in development; `vite build` still builds the app
-from `index.html`, and `src/App.svelte` is unchanged.
+from `index.html`, whose composition is described in [the campaign hub](../campaign-hub.md).
 
 ## What this direction never does
 
