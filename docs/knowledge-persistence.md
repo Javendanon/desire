@@ -46,17 +46,15 @@ Private records never reach player clients.
 D08 validates the complete release before import, including D07 licensing evidence and D04 relational constraints.
 D08 imports a release atomically and records its Git commit. Failed imports leave the active catalog unchanged.
 Repeating an identical ID/revision/payload is a no-op; payload includes entry, sidecar and resolved source metadata.
-A different payload at the same ID/revision is an error.
-Keep the shipped `catalog.knowledge_entries` keys: `PRIMARY KEY (id)` and `UNIQUE (id, rules_edition)`.
-A higher revision atomically replaces that ID's entry and metadata in place, with its `rules_edition` unchanged.
-There is one runtime row per ID, not retained rows keyed by `(id, revision)`; Git retains editorial history.
-All catalog references select `(entry_id, rules_edition)`, not revision. This includes `Condition`/`ActorCondition`,
-`CharacterSpell`, `ActorConcentration`, `CharacterClass.class_entry_id`/`subclass_entry_id`, and `ClassFeature.feature_entry_id`.
-Existing references therefore read the updated catalog text; neither the database nor DTOs gain revision selectors.
-Map-version retention is unchanged. The [D04 model](modelo-de-datos.md) still pins catalog entries by
-ID/revision, which contradicts the shipped keys above; reconciling that normative sentence and its
-migration outline is D04 work listed below. Until then the model text is stale for knowledge entries,
-while these rules describe the keys the migrations actually enforce.
+The [current loader](../crates/persistence/src/catalog.rs) rejects any changed installed row with
+`SeedMismatch`, including a higher revision for the same ID; the transaction rolls back.
+This rejection remains in force until D04/D08 approve a retention contract and migration plan and D08 implements them.
+The [D04 model](modelo-de-datos.md#identidades-revisiones-y-ownership) requires catalog entries to be pinned
+by ID/revision. The shipped `catalog.knowledge_entries` table instead has `PRIMARY KEY (id)` and
+`UNIQUE (id, rules_edition)`, and its foreign keys select ID/edition without a revision selector.
+Those keys describe storage shape, not permission to replace installed content or change campaign references.
+The model/implementation discrepancy is a pending D04/D08 decision below; D28 does not choose its resolution,
+change the model's retention requirement, or authorize in-place updates. Map-version retention is unchanged.
 Imports must not delete referenced entries, downgrade revisions, overwrite campaign notes, or silently replace conflicting data.
 D08 owns relational checks and import failure tests. D09 owns API validation and permission tests. D15 owns consumer integration tests.
 
@@ -64,7 +62,8 @@ D08 owns relational checks and import failure tests. D09 owns API validation and
 
 These items have assigned owners and cards. They do not reopen the JSON/PostgreSQL decision.
 D28 defines the contract, not implementation readiness. The existing D08 loader rejects changed installed rows
-and imports knowledge only as `KnowledgeEntry` DTOs; higher-revision updates and D07 package ingestion remain D08 work.
+and imports knowledge only as `KnowledgeEntry` DTOs. D07 package ingestion remains D08 work;
+revision retention and any required schema, reference or loader changes require the D04/D08 decision below.
 D08 stores the complete sidecar and source registry in PostgreSQL, joined by entry ID and `source_id`.
 D04 defines a new generated catalog read DTO, without extending `KnowledgeEntry` or `PlayerKnowledge`.
 D09 serves that DTO under `/api/v1` and runs the normative D07 search fixtures; D15 reads only this API.
@@ -80,8 +79,9 @@ All runtime metadata rows below require D04 contract, D08 storage and D09 exposu
 | `source_id`, `license`, `source_locator` | D07 licensing evidence — D07; D04 contracts — D04; D08 storage — D08; D09 API — D09 | Retain and expose attribution metadata outside `KnowledgeEntry`; join the source registry on `source_id` |
 | `edition_verification.status`, `edition_verification.citation` | D04 contracts — D04; D08 storage — D08; D09 API — D09 | Preserve and expose the verification state and citation, including `pending_review`; do not upgrade evidence on import |
 | Source registry: `id`, `name`, `rules_edition`, `license`, `license_url`, `url`, `document_url`, `document_sha256`, `synthetic` | D07 source evidence — D07; D04 contracts — D04; D08 storage — D08; D09 API — D09 | Validate, store and expose source metadata with catalog reads, including license URLs and document evidence; reject synthetic canon sources |
-| Coordination-table split and model retention rule | D00 coordination protocol — D00, with the D07 and D08 owners; D04 data model — D04 | Record the D07 publication / D08 import boundary in `docs/desarrollo-paralelo.md`, and restate catalog-entry retention by ID/edition with its rationale in `docs/modelo-de-datos.md`, replacing the ID/revision pin for entries while map versions stay pinned |
-| Imported Git commit and import outcome | D08 persistence implementer — D08 | Store release bookkeeping and implement same-revision conflict rejection, higher-revision in-place updates and transactional failure tests, including sidecar/source changes |
+| Coordination-table split | D00 coordination protocol — D00, with the D07 and D08 owners | Record the D07 publication / D08 import boundary in `docs/desarrollo-paralelo.md` |
+| Catalog revision retention discrepancy | D04 domain contract — D04; D08 persistence — D08 | Resolve the model's ID/revision pinning against the shipped ID/edition references through an approved retention contract and migration plan covering existing campaign references, historical reads and transactional tests. Preserve rejection of changed installed rows until approval and implementation; no update policy is predetermined by D28 |
+| Imported Git commit and import outcome | D08 persistence implementer — D08 | Store release bookkeeping and test atomic package imports, including sidecar/source conflicts; preserve changed-row rejection pending the D04/D08 retention decision |
 | Catalog consumer integration | D09 API — D09; D15 UI — D15 | Serve and consume the new catalog read DTO and all four normative filters (`kind`, `rules_edition`, `language`, `translation_status`); verify D07 fixtures through the runtime path |
 
 ## Verification
