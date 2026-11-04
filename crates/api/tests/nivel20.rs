@@ -2,6 +2,7 @@
 use crate::support;
 
 mod concurrency;
+mod database_concurrency;
 
 use axum::{
     Router,
