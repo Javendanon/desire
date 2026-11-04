@@ -34,9 +34,10 @@ combat state and any HTML fragment are out of scope and are not parsed.
 `campaign_id` (primary key, references `campaign.campaigns`), `external_id` (unique,
 `> 0`), `source_path`, `external_updated_at`, `snapshot` (`jsonb`) and `imported_at`.
 A second local campaign importing an external id that is already mapped gets 409
-`conflict`; that is the mapping invariant, not a bug. `preview` resolves the mapping too, so a
-conflicting import is visible before the write instead of only when the import runs, and no row
-is stored for the second campaign.
+`conflict`; that is the mapping invariant, not a bug. Both `preview` and `import` resolve the
+mapping **before** the source read: a conflicting request is rejected without contacting
+Nivel20 (so it still answers 409 while the source is down), no row is stored for the second
+campaign, and a request that cannot be imported never reaches the source.
 
 The response DTO is `CampaignMetadata`: `id`, `game_id`, `name`, `description`,
 `created_at`, `updated_at`, `url`. Unknown fields are ignored, `name` is required and must

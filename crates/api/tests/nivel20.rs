@@ -533,20 +533,11 @@ fn import_requires_the_dm_role_and_a_known_campaign() {
 fn one_external_campaign_maps_to_one_local_campaign() {
     let db = TestDb::new();
     let owner = id(90);
-    let source = FakeSource::start(vec![
-        (
-            200,
-            source_body("Synthetic campaign", "2026-10-03T22:38:30.000-03:00"),
-        ),
-        (
-            200,
-            source_body("Synthetic campaign", "2026-10-03T22:38:30.000-03:00"),
-        ),
-        (
-            200,
-            source_body("Synthetic campaign", "2026-10-03T22:38:30.000-03:00"),
-        ),
-    ]);
+    // One response: a local mapping conflict must be decided without a second source read.
+    let source = FakeSource::start(vec![(
+        200,
+        source_body("Synthetic campaign", "2026-10-03T22:38:30.000-03:00"),
+    )]);
     let app = router(&db, &source);
     let first = support::run(support::campaign(&app, &owner));
     let second = support::run(support::campaign(&app, &owner));
@@ -567,6 +558,11 @@ fn one_external_campaign_maps_to_one_local_campaign() {
     ));
     assert_eq!(duplicate.status, StatusCode::CONFLICT);
     assert_eq!(duplicate.body["code"], "conflict");
+    assert_eq!(
+        source.requests().len(),
+        1,
+        "a local mapping conflict must not contact the source"
+    );
 
     let unwritten = support::run(call(
         &app,

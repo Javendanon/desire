@@ -53,8 +53,8 @@ pub async fn preview(
         source: &source,
     };
     let previous = previous(&state, &caller, &campaign_id).await?;
-    let current = read_source(&target).await?;
     ensure_unmapped(&target).await?;
+    let current = read_source(&target).await?;
     Ok(Json(report(&target, current, previous)))
 }
 
@@ -74,8 +74,8 @@ pub async fn import(
         source: &source,
     };
     let previous = previous(&state, &caller, &campaign_id).await?;
-    let current = read_source(&target).await?;
     ensure_unmapped(&target).await?;
+    let current = read_source(&target).await?;
     let mut report = report(&target, current, previous);
     if report.status == ChangeStatus::Unchanged {
         report.stored = report.previous.clone();
@@ -106,7 +106,9 @@ async fn previous(
     .await
 }
 
-/// One external campaign belongs to one local campaign: report the conflict before any write.
+/// One external campaign belongs to one local campaign. The mapping is local state, so the
+/// conflict is reported before the source read: it does not depend on Nivel20 being reachable
+/// and a request that cannot be imported never reaches the source.
 async fn ensure_unmapped(target: &Target<'_>) -> Result<(), ApiError> {
     let request_id = target.caller.request_id.clone();
     let campaign_id = target.campaign_id.to_string();
