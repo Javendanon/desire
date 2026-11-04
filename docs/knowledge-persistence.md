@@ -17,7 +17,9 @@ The [D04 model](modelo-de-datos.md) defines identities, revisions, authorization
 
 PostgreSQL is the runtime storage, not a cache or an alternative to JSON authoring. D08 owns the database delivery.
 D08 imports validated D07 seed releases into `catalog.knowledge_entries` through migrations and repositories.
-The [coordination table](desarrollo-paralelo.md#propiedad-inicial-de-archivos) assigns seed publication and validation to D07 and runtime import to D08.
+This document assigns seed publication and validation to D07 and runtime import to D08; the
+[coordination table](desarrollo-paralelo.md#propiedad-inicial-de-archivos) still groups both under D07 until D00 records the split.
+The table entry and the D04 model wording are pending items below, not part of this delivery.
 Runtime writes never rewrite the seed. Editorial changes enter through D07 review and a new seed release.
 Campaign notes remain separate `CampaignKnowledge` records. They never enter the shared catalog seed.
 
@@ -51,7 +53,10 @@ There is one runtime row per ID, not retained rows keyed by `(id, revision)`; Gi
 All catalog references select `(entry_id, rules_edition)`, not revision. This includes `Condition`/`ActorCondition`,
 `CharacterSpell`, `ActorConcentration`, `CharacterClass.class_entry_id`/`subclass_entry_id`, and `ClassFeature.feature_entry_id`.
 Existing references therefore read the updated catalog text; neither the database nor DTOs gain revision selectors.
-Map-version retention is unchanged. The D04 model and migration outline use this same knowledge-entry rule.
+Map-version retention is unchanged. The [D04 model](modelo-de-datos.md) still pins catalog entries by
+ID/revision, which contradicts the shipped keys above; reconciling that normative sentence and its
+migration outline is D04 work listed below. Until then the model text is stale for knowledge entries,
+while these rules describe the keys the migrations actually enforce.
 Imports must not delete referenced entries, downgrade revisions, overwrite campaign notes, or silently replace conflicting data.
 D08 owns relational checks and import failure tests. D09 owns API validation and permission tests. D15 owns consumer integration tests.
 
@@ -75,6 +80,7 @@ All runtime metadata rows below require D04 contract, D08 storage and D09 exposu
 | `source_id`, `license`, `source_locator` | D07 licensing evidence — D07; D04 contracts — D04; D08 storage — D08; D09 API — D09 | Retain and expose attribution metadata outside `KnowledgeEntry`; join the source registry on `source_id` |
 | `edition_verification.status`, `edition_verification.citation` | D04 contracts — D04; D08 storage — D08; D09 API — D09 | Preserve and expose the verification state and citation, including `pending_review`; do not upgrade evidence on import |
 | Source registry: `id`, `name`, `rules_edition`, `license`, `license_url`, `url`, `document_url`, `document_sha256`, `synthetic` | D07 source evidence — D07; D04 contracts — D04; D08 storage — D08; D09 API — D09 | Validate, store and expose source metadata with catalog reads, including license URLs and document evidence; reject synthetic canon sources |
+| Coordination-table split and model retention rule | D00 coordination protocol — D00, with the D07 and D08 owners; D04 data model — D04 | Record the D07 publication / D08 import boundary in `docs/desarrollo-paralelo.md`, and restate catalog-entry retention by ID/edition with its rationale in `docs/modelo-de-datos.md`, replacing the ID/revision pin for entries while map versions stay pinned |
 | Imported Git commit and import outcome | D08 persistence implementer — D08 | Store release bookkeeping and implement same-revision conflict rejection, higher-revision in-place updates and transactional failure tests, including sidecar/source changes |
 | Catalog consumer integration | D09 API — D09; D15 UI — D15 | Serve and consume the new catalog read DTO and all four normative filters (`kind`, `rules_edition`, `language`, `translation_status`); verify D07 fixtures through the runtime path |
 

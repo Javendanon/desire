@@ -65,8 +65,8 @@ invadir el alcance de otra tarjeta, conservando una sola persona responsable.
 | D04 | `docs/modelo-de-datos.md` y fuente única de contratos compartidos |
 | D05 | `docs/maps/waterdeep/`, referencias y calibración |
 | D06 | Evidencia de APIs Nivel20, sin escrituras ni credenciales persistidas |
-| D07 | `content/knowledge/`, canonical seed publication and validation |
-| D08 | `crates/persistence/`, migrations, knowledge seed import and repositories |
+| D07 | `content/knowledge/` e importación de conocimiento |
+| D08 | `crates/persistence/`, migraciones y repositorios |
 | D09 | Handlers y servicios API por recurso en `crates/api/` |
 | D10 | Módulos auth/realtime y transporte versionado |
 | D11 | `src/lib/engine/` y host del visor |

@@ -50,12 +50,8 @@ Los objetos rechazan campos desconocidos también mediante `deny_unknown_fields`
 - Datos mutables: `revision` es entero positivo hasta `4294967295`; incrementa en una
   transacción. Update exige revisión esperada; conflicto se devuelve como 409, sin
   sobrescribir. No reciclar revisiones ni desbordarlas silenciosamente.
-- Map versions remain immutable and pinned by ID/revision; editorial changes do not
-  alter geometry used by a saved session. Knowledge entries instead retain one runtime
-  row per UUID with `UNIQUE (id, rules_edition)`. A higher revision replaces the entry
-  and metadata in place without changing its edition. All catalog references select
-  ID/edition and read updated text, not a historical revision. See the
-  [D28 persistence handoff](knowledge-persistence.md) for import rules and delivery owners.
+- Versiones de mapa y entradas de catálogo se fijan por ID/revisión. Un cambio editorial
+  crea otra versión, no altera la geometría utilizada por una sesión ya guardada.
 - El borrado de contenido referenciado se restringe; archivar campaña o usar tombstone
   de sincronización. Nada de cascadas destructivas sobre el catálogo compartido.
 
@@ -177,12 +173,8 @@ unicidad de Membership ni propietario como miembro DM; son restricciones de D08.
 
 1. `0001_catalog`: worlds, eras, cities, districts, places, place_anchors, maps,
    map_versions, chunks, knowledge_entries. UUID PK, UNIQUE(map_id, revision), FKs, CHECK edición/revisión,
-   escala positiva y valores finitos.
-   Knowledge imports retain `PRIMARY KEY (id)` and `UNIQUE (id, rules_edition)`.
-   Identical ID/revision/payload is a no-op; same-revision differences and downgrades
-   fail. D08 must implement atomic higher-revision updates in place, preserving edition
-   and existing ID/edition foreign keys. The shipped append-only loader does not yet
-   implement these updates or D07 sidecar ingestion; both remain D08 delivery work.
+   escala positiva y valores finitos. Contenido inicial se importa de forma idempotente
+   por ID estable y revisión; diferencias se reportan, no se pisan silenciosamente.
 2. `0002_campaign`: campañas y miembros (puente a identidad D10), escenas, personajes,
    overrides y condiciones. FKs compuestas `(campaign_id, id)` para impedir referencias
    entre campañas; índice por campaña. Constraints para edición y distrito/ciudad;
