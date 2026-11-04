@@ -1,6 +1,8 @@
 //! D19 read-only Nivel20 import: preview, idempotent import, mapping and source failures.
 use crate::support;
 
+mod concurrency;
+
 use axum::{
     Router,
     http::{Method, StatusCode},
