@@ -27,6 +27,7 @@ impl Fixture {
         let port = server::free_port();
         let mut child = Command::new(env!("CARGO_BIN_EXE_desire-api"))
             .env("DATABASE_URL", db.url())
+            .env("DESIRE_DEV_IDENTITY", "1")
             .env("HOST", "127.0.0.1")
             .env("PORT", port.to_string())
             .stdout(Stdio::null())

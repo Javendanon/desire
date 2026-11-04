@@ -1,7 +1,7 @@
 //! Caller identity and JSON extraction with one failure shape.
 //!
-//! An opaque bearer session is the production identity. `x-desire-user` remains a
-//! loopback/test seam and is ignored when `AppState::dev_identity` is false.
+//! An opaque bearer session is the production identity. `x-desire-user` remains an
+//! explicit dev/test seam and is ignored when `AppState::dev_identity` is false.
 use crate::{
     AppState,
     auth::{password, service},

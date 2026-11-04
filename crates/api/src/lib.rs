@@ -29,7 +29,7 @@ pub struct AppState {
     pub db: db::Db,
     pub nivel20: nivel20::Nivel20Client,
     pub flags: FlagSource,
-    /// Tests and loopback development may keep the header seam; shared binds use bearer sessions.
+    /// Tests and explicit development opt-ins may keep the header seam; servers use bearer sessions.
     pub dev_identity: bool,
 }
 

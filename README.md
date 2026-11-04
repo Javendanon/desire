@@ -118,8 +118,9 @@ pnpm dev:api
 
 `--migrate` runs the embedded, history-checked migrations and exits; the server itself
 only connects. Without `DATABASE_URL` the binary exits with an explicit error. Requests
-also need the development identity header
-(`x-desire-user: <uuid>`); D10 replaces it with real authentication.
+need a D10 bearer session (`Authorization: Bearer <token>`); create one through
+`/api/v1/auth/accounts` or `/api/v1/auth/sessions`. The legacy `x-desire-user` header is
+only available when `DESIRE_DEV_IDENTITY=1` is set explicitly.
 
 In two separate terminals:
 
@@ -146,6 +147,6 @@ See [docs/entorno.md](docs/entorno.md) and the
 were executed: frontend `check`/`build`, Rust `fmt`/`clippy`/`test`, the Wasm build,
 the `/api/health` round trip and the PostgreSQL service check. The Rust workspace suite
 runs through `crates/persistence/test-postgres.sh` with an isolated PostgreSQL cluster.
-GPU rendering is not verified, the API serves campaign data only to the development
-identity header, and there is no browser-driven end-to-end test, so this is not an
+GPU rendering is not verified, the API serves campaign data only to authenticated
+bearer sessions, and there is no browser-driven end-to-end test, so this is not an
 end-to-end product validation. The Nivel20 integration remains read-only and untouched.

@@ -29,7 +29,7 @@ pub use secrets::{SecretRepository, SecretSubject};
 
 pub use actors::ActorRepository;
 pub use presence::{PopulationActivation, PresenceRepository};
-pub use realtime::RealtimeRepository;
+pub use realtime::{EventWindow, RealtimeRepository, SnapshotRows};
 
 pub use encounters::EncounterRepository;
 pub use sheets::{SheetRepository, SheetWrite};

@@ -120,6 +120,70 @@ fn a_stale_snapshot_cursor_recovers_with_a_fresh_snapshot() {
 }
 
 #[test]
+fn cursor_catch_up_recovers_non_scene_changes_even_before_a_later_scene_write() {
+    let db = TestDb::new();
+    let app = support::app_for(&db);
+    let owner = id(90);
+    let player = id(91);
+    let campaign = support::run(support::campaign(&app, &owner));
+    support::run(support::member(
+        Actor::new(&app, &campaign, &owner),
+        &player,
+        "player",
+    ));
+    let scene = support::run(support::create_scene(&app, &campaign, &owner));
+    let initial = sync(&app, &campaign, &player, None);
+    assert_eq!(initial.status, StatusCode::OK, "{}", initial.body);
+    assert_eq!(initial.body["revision"], 1);
+    assert!(initial.body["snapshot"].is_object());
+
+    let session = support::run(support::create_session(&app, &campaign, &owner));
+    support::run(support::create_journal(
+        Actor::new(&app, &campaign, &player),
+        session["id"].as_str().unwrap(),
+        "players",
+    ));
+    let character = support::run(call(
+        &app,
+        ApiCall::new(Method::POST, &uri(&campaign, "/characters"))
+            .by(&owner)
+            .json(json!({"name": "Player hero", "controller_id": player,
+            "rules_edition": "dnd_2014"})),
+    ));
+    assert_eq!(character.status, StatusCode::CREATED, "{}", character.body);
+    let updated = support::run(call(
+        &app,
+        ApiCall::new(
+            Method::PATCH,
+            &uri(
+                &campaign,
+                &format!("/scenes/{}", scene["id"].as_str().unwrap()),
+            ),
+        )
+        .by(&owner)
+        .json(
+            json!({"name": "Updated dock", "map_version_id": support::map_version(),
+            "expected_revision": 1}),
+        ),
+    ));
+    assert_eq!(updated.status, StatusCode::OK, "{}", updated.body);
+
+    let caught_up = sync(&app, &campaign, &player, Some(1));
+    assert_eq!(caught_up.status, StatusCode::OK, "{}", caught_up.body);
+    assert_eq!(caught_up.body["revision"], 4);
+    assert!(caught_up.body["snapshot"].is_object(), "{}", caught_up.body);
+    let journal = caught_up.body["snapshot"]["journal"].as_array().unwrap();
+    assert_eq!(journal.len(), 1, "{}", caught_up.body);
+    assert_eq!(journal[0]["body"], "Synthetic recap");
+    let characters = caught_up.body["snapshot"]["characters"].as_array().unwrap();
+    assert_eq!(characters.len(), 1, "{}", caught_up.body);
+    assert_eq!(
+        caught_up.body["snapshot"]["scenes"][0]["name"],
+        "Updated dock"
+    );
+}
+
+#[test]
 fn concurrent_scene_updates_produce_one_winner_and_one_event() {
     let db = TestDb::new();
     let setup = support::app_for(&db);

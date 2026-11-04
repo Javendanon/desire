@@ -22,9 +22,9 @@ the synchronization protocol and the limits that remain open.
   the derivation cost.
 - Requests authenticate with `Authorization: Bearer <token>`. An absent, malformed,
   expired or revoked token is `401 unauthenticated`.
-- The legacy `x-desire-user` header remains only for tests and loopback development.
-  It is ignored on a non-loopback bind unless `DESIRE_DEV_IDENTITY=1` is set. A
-  shared deployment must use bearer sessions.
+- The legacy `x-desire-user` header is disabled by default, including on loopback.
+  Setting `DESIRE_DEV_IDENTITY=1` explicitly turns it back on for tests and local
+  development; a shared deployment must use bearer sessions.
 
 There is no password reset, account deletion, token refresh or multiple-device
 session listing in this change.
@@ -73,6 +73,11 @@ endpoints. `private.dm_secrets` is never joined into a snapshot or event.
 - Event IDs and stream revisions are assigned in the same transaction as the scene
   write. A duplicate `Idempotency-Key` replays the original event instead of adding
   another one.
+- Campaign, character, journal and knowledge writes advance the same stream revision
+  but emit no `scene_changed` row. If the replay batch does not cover every revision
+  between the cursor and the current revision, the server returns a fresh snapshot
+  instead of dropping those changes. The snapshot row reads and its revision share
+  one repeatable-read transaction.
 - Scene updates require the current `expected_revision`; two writers with the same
   expected revision produce one `200` and one `409 revision_conflict`.
 - Camera and animation state stay local. Only shared server-authoritative changes
@@ -111,7 +116,7 @@ curl -s 'http://127.0.0.1:3001/api/v1/campaigns/<campaign>/sync?after=7' \
 | Concurrent writes | Expected revisions and one transaction per entity plus its event | No automatic merge of two accepted edits; the losing writer retries |
 | Snapshot memory | 500-row cap per collection plus `truncated` | A campaign above the cap needs the paginated endpoints; sync does not paginate a snapshot |
 | Session table growth | Expired sessions fail authentication | Expired rows are not swept automatically |
-| Development identity | Header is loopback-only unless explicitly opted in | `DESIRE_DEV_IDENTITY=1` on a shared network is unsafe by design |
+| Development identity | Header is off by default, including loopback; only `DESIRE_DEV_IDENTITY=1` enables it | That opt-in is unsafe on a shared network by design |
 
 No real password, token, Nivel20 credential or secret belongs in documentation,
 fixtures, logs or commits. The examples above use synthetic values only.

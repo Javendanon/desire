@@ -19,22 +19,10 @@ where
     }
 }
 
-/// The header seam is loopback-only unless an operator explicitly opts in; shared
-/// binds use the D10 bearer sessions instead.
-fn identity_binding_guard(host: IpAddr) -> Result<(), String> {
-    if host.is_loopback() || std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1") {
-        return Ok(());
-    }
-    Err(concat!(
-        "refusing a non-loopback bind with the development identity header; ",
-        "D10 bearer authentication is available without the header. ",
-        "Set DESIRE_DEV_IDENTITY=1 only on a trusted network."
-    )
-    .into())
-}
-
-fn dev_identity_allowed(host: IpAddr) -> bool {
-    host.is_loopback() || std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1")
+/// The header seam is off by default, including on loopback, so the shared server always
+/// starts behind the D10 bearer sessions. An operator opts in explicitly for local tests.
+fn dev_identity_allowed(_host: IpAddr) -> bool {
+    std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1")
 }
 
 fn environment<T>(name: &str, fallback: &str) -> Result<T, Box<dyn std::error::Error>>
@@ -99,9 +87,6 @@ async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host: IpAddr = environment("HOST", "127.0.0.1")?;
     let dev_identity = dev_identity_allowed(host);
-    if dev_identity {
-        identity_binding_guard(host)?;
-    }
     let port: u16 = environment("PORT", "3001")?;
     let config = database_config(&database_url()?)?;
     if migrated() {
@@ -153,19 +138,6 @@ mod tests {
         let mut reported = Vec::new();
         wait_for_shutdown(async { Ok(()) }, |message| reported.push(message)).await;
         assert!(reported.is_empty());
-    }
-
-    #[test]
-    fn loopback_hosts_need_no_identity_opt_in() {
-        assert!(identity_binding_guard("127.0.0.1".parse().unwrap()).is_ok());
-        assert!(identity_binding_guard("::1".parse().unwrap()).is_ok());
-    }
-
-    #[test]
-    fn non_loopback_hosts_are_refused_for_the_development_header() {
-        let result = identity_binding_guard("0.0.0.0".parse().unwrap());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("D10"));
     }
 
     #[test]

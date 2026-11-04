@@ -3,6 +3,7 @@ use crate::{
     Error,
     error::Context,
     reads::{self, Audience, CampaignRead, FetchPage, ListRead, RecordTarget},
+    realtime::RealtimeRepository,
     records,
 };
 use desire_core::contracts::common::{Provenance, Visibility};
@@ -23,11 +24,19 @@ impl NotesRepository {
     }
 
     pub fn create_journal(client: &mut Client, entry: &JournalEntry) -> Result<(), Error> {
-        records::insert(client, "campaign.journal_entries", entry)
+        let mut tx = client.transaction().context("begin journal creation")?;
+        records::insert(&mut tx, "campaign.journal_entries", entry)?;
+        RealtimeRepository::advance_stream(&mut tx, &entry.campaign_id)?;
+        tx.commit()
+            .context(format!("commit journal entry {}", entry.id))
     }
 
     pub fn create_knowledge(client: &mut Client, entry: &CampaignKnowledge) -> Result<(), Error> {
-        records::insert(client, "campaign.knowledge", entry)
+        let mut tx = client.transaction().context("begin knowledge creation")?;
+        records::insert(&mut tx, "campaign.knowledge", entry)?;
+        RealtimeRepository::advance_stream(&mut tx, &entry.campaign_id)?;
+        tx.commit()
+            .context(format!("commit knowledge entry {}", entry.id))
     }
 
     pub fn player_journal(

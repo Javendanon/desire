@@ -14,8 +14,8 @@ documented in [auth-realtime.md](auth-realtime.md); D17 owns player projections 
   [the database-access boundary](../database-access.md) for the driver decision and limits.
 - `Authorization: Bearer <session token>` is the production identity. Sessions are
   created by `/api/v1/auth/accounts` or `/api/v1/auth/sessions` and expire after 12 hours.
-  `x-desire-user` remains a loopback/test seam; a non-loopback bind uses bearer tokens
-  unless `DESIRE_DEV_IDENTITY=1` is set explicitly.
+  The legacy `x-desire-user` header is disabled by default, including on loopback, and
+  only returns for tests when `DESIRE_DEV_IDENTITY=1` is set explicitly.
 - `DATABASE_URL` is required and parsed at startup; the process builds its own Tokio
   runtime only after the first connection exists, so the blocking client never blocks
   inside a runtime. Apply the D08 migrations first
@@ -176,7 +176,7 @@ Synthetic identifiers and text; no Nivel20 data is read or written.
 
 ```sh
 curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns \
-  -H 'x-desire-user: 00000000-0000-4000-8000-00000000005a' \
+  -H "authorization: Bearer $TOKEN" \
   -H 'content-type: application/json' \
   -d '{"name":"Synthetic campaign","rules_edition":"dnd_2014","city_id":null}'
 ```
@@ -196,11 +196,11 @@ A session and a player-visible journal entry, in the order the API requires them
 
 ```sh
 curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/sessions \
-  -H "x-desire-user: $DM" -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"title":"Synthetic session"}'
 
 curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/journal \
-  -H "x-desire-user: $DM" -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"session_id":"<session id>","body":"Synthetic recap","visibility":"players"}'
 ```
 
