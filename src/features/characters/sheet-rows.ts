@@ -43,7 +43,7 @@ export interface ClassRow {
   hitDie: string;
 }
 
-const ACTION_GROUPS: readonly { kind: ActionKind; label: string }[] = [
+const ACTION_GROUPS: readonly { kind: ActionKind, label: string }[] = [
   { kind: 'action', label: 'Actions' },
   { kind: 'bonus_action', label: 'Bonus actions' },
   { kind: 'reaction', label: 'Reactions' },

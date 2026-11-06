@@ -18,7 +18,8 @@ export const PARTICLE_BUDGET = 12;
 export const EFFECTS_STORAGE_KEY = 'desire.tactical.particles';
 
 const PARTICLES_PER_SOURCE = 4;
-/** Coprime with 100, so successive particles spread out across the box without repeating. */
+const FULL_PERCENT = 100;
+/** Coprime with FULL_PERCENT, so successive particles spread out across the box without repeating. */
 const SCATTER_STEP_PERCENT = 37;
 const STAGGER_MS = 210;
 const STORED_OFF = 'off';
@@ -30,7 +31,7 @@ export function planParticles(settings: EffectSettings, sources: number): Partic
   const count = Math.min(PARTICLE_BUDGET, Math.max(0, sources) * PARTICLES_PER_SOURCE);
   return Array.from({ length: count }, (_, index) => ({
     id: index,
-    leftPercent: (index * SCATTER_STEP_PERCENT) % 100,
+    leftPercent: (index * SCATTER_STEP_PERCENT) % FULL_PERCENT,
     delayMs: index * STAGGER_MS,
   }));
 }

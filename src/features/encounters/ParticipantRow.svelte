@@ -1,4 +1,4 @@
-<!-- One line of the turn order. Every state is written out; the mark only repeats it visually. -->
+<!-- One line of the turn order. Every state is written out. The mark only repeats it visually. -->
 <script lang="ts">
   import type { ParticipantView } from './tactical-view.ts';
 

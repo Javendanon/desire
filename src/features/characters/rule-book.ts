@@ -17,9 +17,9 @@ export interface RuleEntry extends KnowledgeEntry {
 }
 
 export type RuleLookup =
-  | { status: 'found'; entry: RuleEntry }
-  | { status: 'missing'; id: Id }
-  | { status: 'wrong-edition'; entry: RuleEntry; expected: RulesEdition };
+  | { status: 'found', entry: RuleEntry }
+  | { status: 'missing', id: Id }
+  | { status: 'wrong-edition', entry: RuleEntry, expected: RulesEdition };
 
 export interface RuleBook {
   lookup(id: Id, edition: RulesEdition): RuleLookup;
@@ -29,7 +29,7 @@ export interface RuleSummary {
   name: string;
   /** Null when the entry cannot be trusted for this sheet's edition. */
   body: string | null;
-  /** BCP 47 tag of `name` and `body`; compendium text is not always in the UI language. */
+  /** BCP 47 tag of `name` and `body`. Compendium text is not always in the UI language. */
   language: string | null;
   source: string;
   problem: string | null;
@@ -43,7 +43,7 @@ interface CompendiumCatalogRow {
 
 interface CompendiumEntry extends Omit<KnowledgeEntry, 'rules_edition' | 'provenance'> {
   rules_edition: string;
-  provenance: { source: string; attribution: string; evidence: string };
+  provenance: { source: string, attribution: string, evidence: string };
 }
 
 /** The part of content/knowledge/compendium.json this feature reads. */

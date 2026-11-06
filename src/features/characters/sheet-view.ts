@@ -13,7 +13,7 @@ import { hasSheetData, type ActorSheet } from './sheet-model.ts';
 const MODIFIER_BASELINE = 10;
 const FULL_PERCENT = 100;
 
-const ABILITIES: readonly { key: keyof AbilityScores; name: string; short: string }[] = [
+const ABILITIES: readonly { key: keyof AbilityScores, name: string, short: string }[] = [
   { key: 'strength', name: 'Strength', short: 'STR' },
   { key: 'dexterity', name: 'Dexterity', short: 'DEX' },
   { key: 'constitution', name: 'Constitution', short: 'CON' },

@@ -68,21 +68,30 @@ export function nextTurn(
   };
 }
 
+/**
+ * Clamps HP between 0 and the recorded maximum. An edit the clamp swallows returns the same state,
+ * and a value equal to the record drops its entry, so Undo only lights up for a visible change.
+ */
 export function adjustHp(
   state: LocalEncounterState,
   recorded: ActorState,
   delta: number,
 ): LocalEncounterState {
-  const current = state.hp[recorded.actor_id] ?? recorded.current_hp;
+  const actorId = recorded.actor_id;
+  const current = state.hp[actorId] ?? recorded.current_hp;
   const next = Math.min(recorded.max_hp, Math.max(0, current + delta));
-  return { ...state, hp: { ...state.hp, [recorded.actor_id]: next } };
+  if (next === current) return state;
+  const { [actorId]: _previous, ...others } = state.hp;
+  if (next === recorded.current_hp) return { ...state, hp: others };
+  return { ...state, hp: { ...others, [actorId]: next } };
 }
 
 export function dismissCondition(state: LocalEncounterState, id: Id): LocalEncounterState {
+  if (state.dismissedConditions.includes(id)) return state;
   return { ...state, dismissedConditions: [...state.dismissedConditions, id] };
 }
 
-/** The sheet as this session sees it; the recorded sheet stays intact. O(conditions). */
+/** The sheet as this session sees it. The recorded sheet stays intact. O(conditions). */
 export function applyLocal(sheet: ActorSheet, state: LocalEncounterState): ActorSheet {
   const localHp = state.hp[sheet.actor.id];
   const recorded = sheet.state;

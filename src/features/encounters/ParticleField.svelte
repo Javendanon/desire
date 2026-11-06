@@ -1,4 +1,4 @@
-<!-- Decorative particles from a bounded plan. Hidden from assistive tech; carries no meaning. -->
+<!-- Decorative particles from a bounded plan. Hidden from assistive tech: no meaning. -->
 <script lang="ts">
   import type { Particle } from './effects.ts';
 

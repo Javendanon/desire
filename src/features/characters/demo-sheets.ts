@@ -97,15 +97,44 @@ interface ConditionSeed {
   remainingRounds: number | null;
 }
 
-function demoCondition({ id, actorId, entry, remainingRounds }: ConditionSeed) {
+function demoCondition(seed: ConditionSeed) {
   return {
-    ...ruled(actorId),
-    id,
-    knowledge_entry_id: entry,
-    remaining_rounds: remainingRounds,
+    ...ruled(seed.actorId),
+    id: seed.id,
+    knowledge_entry_id: seed.entry,
+    remaining_rounds: seed.remainingRounds,
     revision: 1,
   };
 }
+
+const MAGE_PRONE: ConditionSeed = {
+  id: '00000000-0000-4000-8000-00000000d701',
+  actorId: MAGE_ID,
+  entry: PRONE_ENTRY,
+  remainingRounds: null,
+};
+
+const BRUTE_MARKED: ConditionSeed = {
+  id: '00000000-0000-4000-8000-00000000d702',
+  actorId: BRUTE_ID,
+  entry: MARKED_ENTRY,
+  remainingRounds: 2,
+};
+
+const BRUTE_PRONE: ConditionSeed = {
+  id: '00000000-0000-4000-8000-00000000d703',
+  actorId: BRUTE_ID,
+  entry: PRONE_ENTRY,
+  remainingRounds: null,
+};
+
+const BRUTE_ACTOR: ActorSeed = {
+  id: BRUTE_ID,
+  name: 'Demo Brute',
+  kind: 'monster',
+  disposition: 'hostile',
+  templateId: BRUTE_TEMPLATE_ID,
+};
 
 function demoStats(actorId: Id, abilities: AbilityScores, armorClass: number): ActorStats {
   return {
@@ -217,27 +246,11 @@ const MAGE_SHEET: ActorSheet = {
     },
   ],
   spells: [{ ...ruled(MAGE_ID), knowledge_entry_id: FIREBALL_ENTRY, prepared: false }],
-  conditions: [
-    demoCondition({
-      id: '00000000-0000-4000-8000-00000000d701',
-      actorId: MAGE_ID,
-      entry: PRONE_ENTRY,
-      remainingRounds: null,
-    }),
-  ],
+  conditions: [demoCondition(MAGE_PRONE)],
 };
 
 const BRUTE_SHEET: ActorSheet = {
-  ...identityOnlySheet(
-    demoActor({
-      id: BRUTE_ID,
-      name: 'Demo Brute',
-      kind: 'monster',
-      disposition: 'hostile',
-      templateId: BRUTE_TEMPLATE_ID,
-    }),
-    DEMO_PROVENANCE,
-  ),
+  ...identityOnlySheet(demoActor(BRUTE_ACTOR), DEMO_PROVENANCE),
   stats: demoStats(
     BRUTE_ID,
     { strength: 15, dexterity: 11, constitution: 13, intelligence: 9, wisdom: 10, charisma: 7 },
@@ -260,20 +273,7 @@ const BRUTE_SHEET: ActorSheet = {
       description: 'Placeholder reaction text, with no numbers to roll.',
     },
   ],
-  conditions: [
-    demoCondition({
-      id: '00000000-0000-4000-8000-00000000d702',
-      actorId: BRUTE_ID,
-      entry: MARKED_ENTRY,
-      remainingRounds: 2,
-    }),
-    demoCondition({
-      id: '00000000-0000-4000-8000-00000000d703',
-      actorId: BRUTE_ID,
-      entry: PRONE_ENTRY,
-      remainingRounds: null,
-    }),
-  ],
+  conditions: [demoCondition(BRUTE_MARKED), demoCondition(BRUTE_PRONE)],
 };
 
 export const DEMO_SHEETS: readonly ActorSheet[] = [WARDEN_SHEET, MAGE_SHEET, BRUTE_SHEET];

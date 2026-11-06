@@ -187,6 +187,34 @@ test('hasLocalChanges notices each local edit and is clear after a restart', () 
   assert.equal(hasLocalChanges(adjustHp(start, sheet.state, -1), bundle.encounter), true);
 });
 
+test('a clamped HP edit changes nothing, so Undo stays disabled', () => {
+  const sheet = bundle.sheets.find((entry) => entry.state);
+  assert.ok(sheet?.state);
+  const recorded = { ...sheet.state, current_hp: sheet.state.max_hp };
+  const start = startLocalState(bundle.encounter);
+  const atMax = adjustHp(start, recorded, 1);
+  assert.equal(atMax, start, 'healing at the maximum is a no-op');
+  assert.equal(hasLocalChanges(atMax, bundle.encounter), false);
+  const fallen = { ...recorded, current_hp: 0 };
+  assert.equal(adjustHp(start, fallen, -1), start, 'damage at zero is a no-op');
+});
+
+test('an HP edit back to the recorded value is no longer a local change', () => {
+  const sheet = bundle.sheets.find((entry) => entry.state && entry.state.current_hp > 0);
+  assert.ok(sheet?.state);
+  const start = startLocalState(bundle.encounter);
+  const roundTrip = adjustHp(adjustHp(start, sheet.state, -1), sheet.state, 1);
+  assert.deepEqual(roundTrip.hp, {});
+  assert.equal(hasLocalChanges(roundTrip, bundle.encounter), false);
+  assert.deepEqual(localEdits(sheet, roundTrip), { hp: false, conditions: false });
+});
+
+test('dismissing the same condition twice records it once', () => {
+  const start = startLocalState(bundle.encounter);
+  const twice = dismissCondition(dismissCondition(start, 'x'), 'x');
+  assert.deepEqual(twice.dismissedConditions, ['x']);
+});
+
 test('outsiders are the known sheets that do not take part in the encounter', () => {
   const names = encounterOutsiders(bundle).map((sheet) => sheet.actor.name);
   assert.deepEqual(names, ['Ionyth']);

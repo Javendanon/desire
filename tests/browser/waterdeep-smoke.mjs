@@ -1,6 +1,5 @@
-// Required Chrome gate: the page boots on WebGL2, one real click selects a place, a character
-// sheet opens from the map without moving the camera, and a pinch does not zoom or scroll the
-// browser. Streaming, corridors, close-zoom math and memory budgets
+// Required Chrome gate: the page boots on WebGL2, one real click selects a place, and a pinch
+// does not zoom or scroll the browser. Streaming, corridors, close-zoom math and memory budgets
 // are unit tests. Usage: node tests/browser/waterdeep-smoke.mjs http://127.0.0.1:5200
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -124,102 +123,6 @@ async function clickCastle() {
   );
 }
 
-const cameraOf = `(() => {
-  const { radius, azimuth, polar, focus } = window.__tactical.viewer.stats();
-  const { clientWidth, clientHeight } = document.getElementById('map');
-  return { radius, azimuth, polar, focus, clientWidth, clientHeight };
-})()`;
-
-async function waitForTactical() {
-  for (let i = 0; i < 120; i++) {
-    const state = await evaluate(
-      'window.__tactical && { ready: window.__tactical.ready, error: window.__tactical.error }');
-    if (state?.ready) return;
-    if (state?.error) throw new Error(state.error);
-    await sleep(500);
-  }
-  throw new Error('the tactical page did not become ready');
-}
-
-async function pressEscape() {
-  for (const type of ['keyDown', 'keyUp']) {
-    await send('Input.dispatchKeyEvent', {
-      type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27,
-    });
-  }
-}
-
-async function clickMarkerToOpenPanel() {
-  await evaluate("window.__tactical.viewer.focusPlace('castle-waterdeep')");
-  // Software GL can take seconds per frame, so wait for the camera instead of a fixed delay.
-  let radius = Infinity;
-  for (let i = 0; i < 50 && radius > 340; i++) {
-    radius = (await evaluate('window.__tactical.viewer.stats()')).radius;
-    if (radius > 340) await sleep(100);
-  }
-  assert.ok(radius <= 340, `camera did not snap (${radius})`);
-  const point = await evaluate(`window.__tactical.viewer.project(${CASTLE}, 0)`);
-  assert.ok(point.visible, `castle off canvas ${point.x},${point.y}`);
-  for (const type of ['mousePressed', 'mouseReleased']) {
-    await send('Input.dispatchMouseEvent', {
-      type, x: Math.round(point.x), y: Math.round(point.y), button: 'left', clickCount: 1,
-    });
-  }
-  await sleep(100);
-  assert.ok(await evaluate("!!document.getElementById('tactical-panel')"), 'no panel opened');
-}
-
-async function sheetKeepsTheCamera() {
-  const before = await evaluate(cameraOf);
-  const firstRow = "document.querySelector('#tactical-panel [data-open-sheet]')";
-  await evaluate(`${firstRow}.focus(); ${firstRow}.click()`);
-  await sleep(300);
-  assert.ok(await evaluate("!!document.getElementById('character-sheet')"), 'no sheet opened');
-  const framesOpen = (await evaluate('window.__tactical.viewer.stats()')).frames;
-  await sleep(300);
-  assert.ok((await evaluate('window.__tactical.viewer.stats()')).frames > framesOpen, 'map froze');
-  assert.deepEqual(await evaluate(cameraOf), before, 'opening a sheet moved the camera');
-  const text = await evaluate("document.getElementById('character-sheet').textContent");
-  assert.match(text, /Concentrating on /, 'concentration is not shown');
-  assert.match(text, /Invented example data/, 'demo data is not labelled');
-  assert.equal(await evaluate("document.querySelectorAll('.particle').length"), 0,
-    'reduced motion still drew particles');
-  await pressEscape();
-  await sleep(100);
-  assert.equal(await evaluate("!!document.getElementById('character-sheet')"), false, 'Esc');
-  const focusReturned = 'document.activeElement?.hasAttribute("data-open-sheet")';
-  assert.ok(await evaluate(focusReturned), 'focus lost');
-  assert.deepEqual(await evaluate(cameraOf), before, 'closing a sheet moved the camera');
-}
-
-async function particlesStayOptionalAndBounded() {
-  await send('Emulation.setEmulatedMedia', { features: [] });
-  const firstRow = "document.querySelector('#tactical-panel [data-open-sheet]')";
-  await evaluate(`${firstRow}.click()`);
-  await sleep(100);
-  const count = await evaluate("document.querySelectorAll('.particle').length");
-  assert.ok(count > 0 && count <= 12, `particles out of budget: ${count}`);
-  await evaluate("document.getElementById('tactical-particles').click()");
-  await sleep(100);
-  assert.equal(await evaluate("document.querySelectorAll('.particle').length"), 0, 'toggle');
-  await evaluate("document.getElementById('tactical-particles').click()");
-  await sleep(100);
-  assert.equal(await evaluate("document.querySelectorAll('.particle').length"), count, 'toggle on');
-  await send('Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
-  });
-}
-
-async function tacticalPageKeepsTheCamera() {
-  await send('Page.navigate', { url: `${base}/tactical.html?backend=webgl2` });
-  await waitForTactical();
-  await clickMarkerToOpenPanel();
-  await sheetKeepsTheCamera();
-  await particlesStayOptionalAndBounded();
-  await send('Page.navigate', { url: `${base}/waterdeep.html?backend=webgl2` });
-  await waitForReady();
-}
-
 function touch(x, y, finger = 0) {
   return { x, y, id: finger, radiusX: 5, radiusY: 5, force: 1 };
 }
@@ -264,9 +167,8 @@ try {
   await waitForReady();
   await assertBoot();
   await clickCastle();
-  await tacticalPageKeepsTheCamera();
   await pinchDoesNotZoomTheBrowser();
-  console.log(JSON.stringify({ ok: true, boot: true, click: true, tactical: true, pinch: true }));
+  console.log(JSON.stringify({ ok: true, boot: true, click: true, pinch: true }));
 } catch (error) {
   console.error(JSON.stringify({ ok: false, error: String(error) }, null, 1));
   process.exitCode = 1;

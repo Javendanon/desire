@@ -34,7 +34,7 @@ function byInitiative(a: EncounterParticipant, b: EncounterParticipant): number 
   return b.initiative - a.initiative;
 }
 
-/** Highest first; ties keep their record order and an unset initiative goes last. O(n log n). */
+/** Highest first. Ties keep their record order and an unset initiative goes last. O(n log n). */
 export function turnOrder(participants: readonly EncounterParticipant[]): EncounterParticipant[] {
   return [...participants].sort(byInitiative);
 }

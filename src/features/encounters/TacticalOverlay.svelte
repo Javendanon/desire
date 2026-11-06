@@ -241,7 +241,7 @@
     width: min(400px, calc(100% - 2 * var(--space-4)));
   }
 
-  /* On a phone one panel covers the map; the sheet stacks above the panel it was opened from. */
+  /* On a phone one panel covers the map. The sheet stacks above the panel it was opened from. */
   @media (max-width: 800px) {
     .sheet-slot {
       left: var(--space-4);
