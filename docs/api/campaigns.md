@@ -224,4 +224,5 @@ single-entry reads.
 - Journal entries support update and delete for a DM only; a player can create a
   `players` entry but cannot edit or remove it afterwards.
 - No pagination totals, filtering, sorting or search.
-- Nivel20 remains read-only and untouched.
+- Nivel20 is read-only: the import boundary is documented in `nivel20.md` and sends no
+  write request.

@@ -26,9 +26,14 @@ impl Flag {
     pub const DEFAULT: bool = false;
 }
 
-/// Every flag the code base reads. Empty until the first runtime change ships behind a flag;
-/// add the flag here and to `docs/flags.md` in the same change.
-pub const REGISTRY: &[Flag] = &[];
+/// The read-only Nivel20 import routes. Off by default: they make an outbound request.
+pub const NIVEL20_IMPORT: Flag = Flag {
+    name: "nivel20_import",
+    description: "enable the read-only Nivel20 import endpoints",
+};
+
+/// Every flag the code base reads. Add a flag here and to `docs/flags.md` in the same change.
+pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT];
 
 /// Why a flags file could not be used.
 #[derive(Debug)]

@@ -7,6 +7,7 @@ mod diagnostics;
 mod idempotency;
 mod isolation;
 mod layers;
+mod nivel20;
 mod notes;
 mod outage;
 mod outage_proxy;

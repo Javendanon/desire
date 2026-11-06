@@ -113,6 +113,7 @@ pub mod health;
 pub mod journal;
 pub mod knowledge;
 pub mod members;
+pub mod nivel20;
 pub mod scenes;
 pub mod sessions;
 
@@ -125,7 +126,7 @@ use crate::{
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    routing::{delete, get},
+    routing::{delete, get, post},
 };
 
 fn campaign_routes() -> Router<AppState> {
@@ -202,6 +203,22 @@ fn note_routes() -> Router<AppState> {
         )
 }
 
+fn nivel20_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/v1/campaigns/{campaign_id}/nivel20",
+            get(nivel20::stored),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/nivel20/preview",
+            post(nivel20::preview),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/nivel20/import",
+            post(nivel20::import),
+        )
+}
+
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health::health))
@@ -209,6 +226,7 @@ pub fn router(state: AppState) -> Router {
         .merge(scene_routes())
         .merge(character_routes())
         .merge(note_routes())
+        .merge(nivel20_routes())
         .layer(DefaultBodyLimit::max(64 * 1024))
         .with_state(state)
 }
