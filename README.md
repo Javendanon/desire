@@ -18,9 +18,10 @@ product.
 | Data | PostgreSQL 17 in Docker Compose | Verified on `127.0.0.1:55432`; stopped with the volume preserved |
 | Frontend packages | pnpm 12.11.2 | Single-document lockfile; `--frozen-lockfile` passes |
 
-There is no implementation of maps, authentication, persistence, synchronization, or an
-authenticated Nivel20 integration. The HTTP diagnostic only checks that the process is
-alive; it does not check PostgreSQL. No Nivel20 operation is performed.
+The API includes persistence, Google OIDC identity, campaign authorization and cursor-based
+synchronization; see [D10](docs/reports/d10.md) for verification and limits. The HTTP diagnostic
+only checks that the process is alive; it does not check PostgreSQL. No authenticated Nivel20
+operation is performed.
 
 ## Structure
 
@@ -117,10 +118,17 @@ pnpm dev:api
 ```
 
 `--migrate` runs the embedded, history-checked migrations and exits; the server itself
-only connects. Without `DATABASE_URL` the binary exits with an explicit error. Requests
-need a D10 bearer session (`Authorization: Bearer <token>`); create one through
-`/api/v1/auth/accounts` or `/api/v1/auth/sessions`. The legacy `x-desire-user` header is
-only available when `DESIRE_DEV_IDENTITY=1` is set and the server binds to loopback.
+only connects. Without `DATABASE_URL` the binary exits with an explicit error. Configure
+Google OIDC with `DESIRE_OIDC_CLIENT_ID`, `DESIRE_OIDC_CLIENT_SECRET` and
+`DESIRE_PUBLIC_URL`; `DESIRE_OIDC_ISSUER` defaults to Google. The optional
+`DESIRE_ALLOWED_EMAILS` restricts admission to a comma-separated verified-email list.
+Navigate to `/api/v1/auth/login`; the callback issues an HttpOnly/Secure/SameSite=Lax
+cookie. There are no password registration/login endpoints. See
+[auth setup and threats](docs/api/auth-realtime.md) for Google Cloud redirect URIs,
+localhost Secure-cookie requirements and proxy configuration. Never commit OAuth secrets.
+Without OIDC the server refuses non-loopback binds. The legacy `x-desire-user` header
+requires both `DESIRE_DEV_IDENTITY=1` and a loopback bind; it is off by default.
+Cookie-authenticated mutations, including logout, require the configured public Origin.
 
 In two separate terminals:
 
@@ -148,5 +156,5 @@ were executed: frontend `check`/`build`, Rust `fmt`/`clippy`/`test`, the Wasm bu
 the `/api/health` round trip and the PostgreSQL service check. The Rust workspace suite
 runs through `crates/persistence/test-postgres.sh` with an isolated PostgreSQL cluster.
 GPU rendering is not verified, the API serves campaign data only to authenticated
-bearer sessions, and there is no browser-driven end-to-end test, so this is not an
+cookie sessions, and there is no browser-driven end-to-end test, so this is not an
 end-to-end product validation. The Nivel20 integration remains read-only and untouched.

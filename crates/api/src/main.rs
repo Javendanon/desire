@@ -1,6 +1,14 @@
 //! Desire HTTP server entry point.
 
-use desire_api::{AppState, app, db, nivel20::Nivel20Client};
+use desire_api::{
+    AppState, app,
+    auth::{
+        oidc::Oidc,
+        settings::{Settings, require_oidc},
+    },
+    db,
+    nivel20::Nivel20Client,
+};
 use std::net::{IpAddr, SocketAddr};
 
 fn shutdown_error_message(error: &std::io::Error) -> String {
@@ -99,6 +107,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("D08 migrations applied");
         return Ok(());
     }
+    let settings = Settings::from_env()?;
+    require_oidc(host, settings.is_some())?;
     let config = with_server_limits(config);
     let client = db::connect_startup(&config)?;
     let nivel20 = Nivel20Client::from_env()?;
@@ -107,10 +117,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    let served = runtime.block_on(serve(address, state.clone()));
+    let served = runtime.block_on(start(address, state.clone(), settings));
     runtime.shutdown_background();
     drop(state);
     served
+}
+
+async fn start(
+    address: SocketAddr,
+    state: AppState,
+    settings: Option<Settings>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let state = match settings {
+        Some(settings) => state.with_oidc(Oidc::discover(settings).await?),
+        None => state,
+    };
+    serve(address, state).await
 }
 
 #[cfg(test)]

@@ -224,13 +224,13 @@ fn nivel20_routes() -> Router<AppState> {
 fn auth_routes() -> Router<AppState> {
     Router::new()
         .route("/api/v1/auth/login", get(crate::auth::routes::start))
-        .route("/api/v1/auth/accounts", post(crate::auth::routes::register))
-        .route("/api/v1/auth/sessions", post(crate::auth::routes::login))
+        .route("/api/v1/auth/callback", get(crate::auth::routes::callback))
         .route(
             "/api/v1/auth/sessions/current",
             delete(crate::auth::routes::logout),
         )
         .route("/api/v1/auth/identity", get(crate::auth::routes::identity))
+        .layer(axum::middleware::from_fn(crate::auth::routes::no_store))
 }
 
 pub fn router(state: AppState) -> Router {
@@ -243,6 +243,10 @@ pub fn router(state: AppState) -> Router {
         .merge(note_routes())
         .merge(nivel20_routes())
         .layer(DefaultBodyLimit::max(64 * 1024))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::auth::origin::enforce,
+        ))
         .with_state(state)
 }
 

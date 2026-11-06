@@ -225,17 +225,9 @@ export interface TravelUpdated {
   kind: "travel_updated";
 }
 
-export interface AuthSession {
-  token: string;
-  token_type: "bearer";
-  expires_at: string;
-  user_id: Id;
-  username: string;
-}
-
 export interface AuthIdentity {
   user_id: Id;
-  username: string;
+  email: string;
 }
 
 export interface CampaignSnapshot {

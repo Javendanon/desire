@@ -6,28 +6,86 @@ the synchronization protocol and the limits that remain open.
 
 ## Identity
 
-`POST /api/v1/auth/accounts` creates an account and returns its first session.
-`POST /api/v1/auth/sessions` logs in with the same credentials.
-`GET /api/v1/auth/identity` returns the authenticated account.
-`DELETE /api/v1/auth/sessions/current` revokes the presented session.
+| Route | Behavior |
+| --- | --- |
+| `GET /api/v1/auth/login` | Redirect to Google with Authorization Code, S256 PKCE, `state` and `nonce` |
+| `GET /api/v1/auth/callback` | Consume the browser-bound flow, exchange the code, verify the ID token, set the session cookie, redirect to the public root |
+| `GET /api/v1/auth/identity` | Return `AuthIdentity { user_id, email }`; the email is display data |
+| `DELETE /api/v1/auth/sessions/current` | Delete the server session and expire the cookie; requires same-origin mutation |
 
-- Usernames are trimmed, lowercased and limited to 3-64 ASCII letters, digits, `.`,
-  `_` or `-`. Passwords are 12-200 characters; NUL is rejected.
-- Passwords use PBKDF2-HMAC-SHA256 with 600,000 iterations, a 16-byte random salt and
-  a 32-byte derived key. Only the encoded hash is stored.
-- A session token is 32 random bytes encoded as lowercase hex. Only its SHA-256
-  digest is stored in `identity.sessions`; the raw token is returned once.
-- Sessions expire after 12 hours. Login uses one generic `unauthenticated` response
-  for an unknown username and a wrong password, and an unknown username still pays
-  the derivation cost.
-- Requests authenticate with `Authorization: Bearer <token>`. An absent, malformed,
-  expired or revoked token is `401 unauthenticated`.
-- The legacy `x-desire-user` header is disabled by default, including on loopback.
-  `DESIRE_DEV_IDENTITY=1` turns it back on only for a loopback bind; a non-loopback
-  bind never trusts the header, so a shared deployment must use bearer sessions.
+Password registration/login routes, password hashes and PBKDF2 are removed. The
+unmerged migration 0012 now creates accounts keyed by the unique `(issuer, subject)`
+pair. Email changes update display data without changing identity. Two subjects
+with the same email remain separate accounts. Do not modify an existing deployed
+migration history: disposable databases from the password branch must be recreated.
 
-There is no password reset, account deletion, token refresh or multiple-device
-session listing in this change.
+`openidconnect` performs discovery/JWKS retrieval, authorization URL construction,
+code exchange and ID-token signature/`iss`/`aud`/`exp`/`nonce` verification. The API
+also requires a signed email claim with `email_verified: true` and applies the
+optional email allowlist. Provider access/refresh tokens are neither stored nor
+returned. Authentication failures use a generic `401 unauthenticated` response.
+
+A session uses 32 OS-random bytes encoded as hex. Only its SHA-256 digest and expiry
+are stored in `identity.sessions`. The raw token exists only in a host-only
+`__Host-desire-session` cookie with `Path=/; HttpOnly; Secure; SameSite=Lax` and a
+12-hour lifetime. There is no bearer-token response or JavaScript token storage.
+Auth responses use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+
+Each login has a separate `__Host-desire-oidc` browser-binding cookie with the same
+security flags and a 10-minute lifetime. Server-side pending state contains PKCE
+and nonce values; a callback atomically consumes it before token exchange. Replays,
+unknown state and another browser's cookie cannot create a session. Expired flows
+are discarded and pending flows are capped at 1024 per process. Restarting the API
+cancels pending logins. Multi-instance deployments need sticky login routing or a
+shared pending-flow store; persistent sessions already work across API instances.
+
+For non-read methods, a supplied `Origin` must exactly match the configured public
+origin. Cookie-authenticated mutations also require `Origin` to be present. Missing,
+foreign, `null` and duplicate Origins are rejected before the handler. Reverse
+proxies must preserve the browser's Origin; Host and forwarded headers never choose
+an OIDC redirect or authorize a mutation. No cross-origin CORS access is enabled.
+
+Without OIDC, the binary refuses a non-loopback bind. The `x-desire-user` seam is
+off by default, including on loopback; only `DESIRE_DEV_IDENTITY=1` plus a loopback
+bind enables it. It never overrides a presented session. The frontend client omits
+this header unless the caller explicitly supplies a development identity.
+
+## Google Cloud setup
+
+1. Select a Google Cloud project. Open Google Auth Platform (or APIs & Services /
+   OAuth consent screen). Configure the app's branding, audience and authorized
+   domain. During external testing, add the permitted Google accounts as test users.
+2. Create an OAuth client of type **Web application**. Use Authorization Code;
+   the API supplies PKCE automatically. Request only the `openid` and `email` scopes.
+3. Add exact authorized redirect URIs for both deployments, for example:
+   - `https://table.example.test/api/v1/auth/callback` (replace with your domain).
+   - `http://localhost:5173/api/v1/auth/callback` (Vite proxies `/api` to port 3001).
+   - If using the API directly, also add `http://localhost:3001/api/v1/auth/callback`.
+   Register `127.0.0.1` separately if you use it; it is not the same host as localhost.
+4. Inject the client ID and secret into the API process through the deployment's
+   secret manager or protected environment. Do not commit or print them, or paste
+   them into shell history, reports or browser code.
+5. Set the public URL to the exact browser-facing origin. Put UI and `/api` behind
+   the same HTTPS origin in production. Visit `/api/v1/auth/login`, then inspect
+   `/api/v1/auth/identity`. D15 provides the login screen, not D10.
+
+| Environment variable | Meaning |
+| --- | --- |
+| `DESIRE_OIDC_ISSUER` | Defaults to `https://accounts.google.com` |
+| `DESIRE_OIDC_CLIENT_ID` | OAuth Web client ID from Google Cloud |
+| `DESIRE_OIDC_CLIENT_SECRET` | Server-only client secret, injected by the operator |
+| `DESIRE_PUBLIC_URL` | Origin only, no credentials, path, query or fragment; callback is `{DESIRE_PUBLIC_URL}/api/v1/auth/callback` |
+| `DESIRE_ALLOWED_EMAILS` | Optional comma-separated verified emails; trimmed and case-insensitive; unset/empty permits any verified Google account |
+
+The client ID, secret and public URL must be configured together. Discovery must
+succeed before the listener opens. HTTPS is required except for loopback HTTP URLs.
+The HTTP client has a 10-second request timeout and does not follow redirects.
+Secure cookies are never weakened for local development: use localhost in a browser
+that supports Secure cookies on localhost, or run a local HTTPS proxy. Keep the same
+host throughout login and callback. No Google credentials are needed for tests.
+
+JWKS is loaded at startup; restart the API to pick up provider key rotation. There
+is no refresh-token flow, account deletion or multiple-device session listing.
 
 ## Permissions
 
@@ -90,28 +148,24 @@ cap is reached; the paginated collection endpoints remain the way to read more.
 Event batches are capped at 500. This change emits `scene_changed`; `travel_events`
 stays empty until D14 adds an authorized travel writer and the v2 group-journey event.
 
-Sanitized client shape (the token is a placeholder, never a real secret):
-
-```sh
-curl -s -X POST http://127.0.0.1:3001/api/v1/auth/sessions \
-  -H 'content-type: application/json' \
-  -d '{"username":"synthetic-user","password":"<password-from-the-operator>"}'
-```
-
-```sh
-curl -s 'http://127.0.0.1:3001/api/v1/campaigns/<campaign>/sync?after=7' \
-  -H 'authorization: Bearer <session-token>'
-```
+The typed client in `src/lib/api/auth.ts` exposes `loginUrl`, `getIdentity`,
+`logout` and `syncCampaign`. Navigate the browser to `loginUrl()`; do not fetch the
+provider redirect with JavaScript. Other calls send same-origin credentials and
+reuse the generated `AuthIdentity` and `SyncBatch` contracts. Clients deduplicate
+scene invalidations by event ID, refetch the authorized entity and retain the
+returned campaign cursor. D15 owns UI integration and polling lifecycle.
 
 ## Threats and limits
 
 | Risk | Current control | Remaining limit |
 | --- | --- | --- |
-| Stolen bearer token | 256-bit random token, hashed at rest, 12-hour expiry, explicit logout | No per-device revocation list or refresh rotation; anyone with the token acts as that user |
-| Password cracking | PBKDF2-HMAC-SHA256, 600k iterations, per-account salt | Password policy is length-only; no breached-password check |
-| Credential stuffing or CPU exhaustion | Generic login failure; validation before derivation | No login/registration rate limit, backoff or CAPTCHA; open registration can spend CPU |
-| Token interception | Bearer token is not put in a URL or in the outbox; logs omit headers and bodies | TLS termination is an operator responsibility; plain HTTP on a shared network exposes tokens |
-| CSRF | The token is sent in `Authorization`, not a cookie | A future cookie-based client would need an explicit CSRF design |
+| Stolen session | 256-bit random cookie, hash at rest, HttpOnly, 12-hour expiry, server-side logout | A stolen cookie still acts as the user until revocation/expiry; no per-device session listing |
+| Forged or substituted identity | Library verifies ID-token signature against JWKS plus issuer, audience, expiry and nonce | Provider trust and OAuth client configuration remain operator responsibilities; restart to refresh JWKS |
+| Email reassignment/account linking | Stable `(issuer, subject)` key; verified email required; no email-based lookup or merge | Allowlist admission uses current verified email; removal does not revoke already-issued sessions |
+| Login CSRF/code theft/replay | Random state, independent browser cookie, nonce, S256 PKCE, atomically consumed 10-minute flow | Restart cancels flows; replicas require sticky routing or shared pending storage |
+| Token interception | Secure host-only cookie, provider tokens discarded, auth no-store/no-referrer; no token logs | Production TLS termination and proxy query-log redaction (callback codes/state) are operator responsibilities |
+| CSRF | SameSite=Lax plus exact public-Origin validation on mutations; cookie mutations reject missing Origin | Same-origin XSS can still issue actions; CSP/UI escaping remain required |
+| Login exhaustion | 1024-flow cap, expiry and bounded HTTP calls; no password hashing | Operator must apply ingress rate limits; no per-IP limiter in the API |
 | Cross-campaign access | Membership check on every campaign route and sync | Deployment grants and database superuser boundaries remain operational work |
 | Secret leakage | Player filtering happens in SQL before serialization; `private` schema is never joined | A future projection added outside the audience filter would need its own negative test |
 | Event replay or gaps | Monotonic campaign stream, deterministic `after` cursor, event IDs, snapshot fallback | Outbox rows are never purged, so storage grows and old cursors stay valid until a retention job exists |
@@ -120,5 +174,6 @@ curl -s 'http://127.0.0.1:3001/api/v1/campaigns/<campaign>/sync?after=7' \
 | Session table growth | Expired sessions fail authentication | Expired rows are not swept automatically |
 | Development identity | Header is off by default and, with `DESIRE_DEV_IDENTITY=1`, only enabled on a loopback bind | A shared bind never trusts the header, so the opt-in cannot grant DM rights on a network |
 
-No real password, token, Nivel20 credential or secret belongs in documentation,
-fixtures, logs or commits. The examples above use synthetic values only.
+No real OAuth secret, token or Nivel20 credential belongs in documentation,
+fixtures, logs or commits. The local test provider generates its own RSA keys at
+runtime with OpenSSL; no test contacts Google or needs real OAuth credentials.

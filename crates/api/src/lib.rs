@@ -29,8 +29,9 @@ pub struct AppState {
     pub db: db::Db,
     pub nivel20: nivel20::Nivel20Client,
     pub flags: FlagSource,
-    /// Tests may keep the header seam; servers use bearer sessions.
+    /// Tests may keep the header seam; servers use cookie sessions.
     pub dev_identity: bool,
+    pub oidc: Option<std::sync::Arc<auth::oidc::Oidc>>,
 }
 
 impl AppState {
@@ -41,6 +42,7 @@ impl AppState {
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
             dev_identity: true,
+            oidc: None,
         }
     }
 
@@ -51,6 +53,7 @@ impl AppState {
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
             dev_identity: false,
+            oidc: None,
         }
     }
 
@@ -65,7 +68,13 @@ impl AppState {
             nivel20,
             flags: FlagSource::from_env(),
             dev_identity: false,
+            oidc: None,
         }
+    }
+
+    pub fn with_oidc(mut self, oidc: auth::oidc::Oidc) -> Self {
+        self.oidc = Some(std::sync::Arc::new(oidc));
+        self
     }
 
     pub fn with_dev_identity(mut self, allow: bool) -> Self {

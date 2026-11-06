@@ -1,138 +1,98 @@
-//! Account sessions replace the development header and enforce campaign role isolation.
-use crate::support::{self, TestDb, call, id, uri};
+//! OIDC cookie sessions enforce campaign roles and never expose shared-table secrets.
+use crate::{
+    oidc_flow::Fixture,
+    support::{self, ApiCall, TestDb, call, id, uri},
+};
 use axum::http::{Method, StatusCode};
 use serde_json::{Value, json};
-use support::ApiCall;
 
 #[test]
 fn oidc_is_explicitly_unavailable_without_configuration() {
     let db = TestDb::new();
     let app = support::strict_app_for(&db);
-    let response = support::run(call(
-        &app,
-        ApiCall::new(Method::GET, "/api/v1/auth/login"),
-    ));
+    let response = support::run(call(&app, ApiCall::new(Method::GET, "/api/v1/auth/login")));
     assert_eq!(response.status, StatusCode::SERVICE_UNAVAILABLE);
-}
-
-const PASSWORD: &str = "correct horse battery staple";
-
-fn register(app: &axum::Router, username: &str) -> Value {
-    let response = support::run(call(
-        app,
-        ApiCall::new(Method::POST, "/api/v1/auth/accounts")
-            .json(json!({"username": username, "password": PASSWORD})),
-    ));
-    assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
-    response.body
-}
-
-fn login(app: &axum::Router, username: &str, password: &str) -> support::Response {
-    support::run(call(
-        app,
-        ApiCall::new(Method::POST, "/api/v1/auth/sessions")
-            .json(json!({"username": username, "password": password})),
-    ))
-}
-
-fn bearer(token: &str) -> String {
-    format!("Bearer {token}")
-}
-
-fn with_token<'a>(method: Method, path: &'a str, token: &'a str) -> ApiCall<'a> {
-    let _ = bearer(token);
-    ApiCall::new(method, path).bearer(token)
+    for path in ["/api/v1/auth/accounts", "/api/v1/auth/sessions"] {
+        let removed = support::run(call(&app, ApiCall::new(Method::POST, path)));
+        assert_eq!(removed.status, StatusCode::NOT_FOUND);
+    }
 }
 
 #[test]
-fn accounts_create_sessions_and_never_store_raw_tokens() {
-    let db = TestDb::new();
-    let app = support::strict_app_for(&db);
-    let session = register(&app, "Alice");
-    let token = session["token"].as_str().unwrap().to_string();
-    let user_id = session["user_id"].as_str().unwrap().to_string();
+fn login_issues_a_cookie_and_stores_only_its_hash_and_expiration() {
+    let fixture = Fixture::new("");
+    let session = fixture.login("alice");
+    let token = session["token"].as_str().unwrap();
     assert_eq!(token.len(), 64);
-    assert_eq!(session["token_type"], "bearer");
-
-    let campaigns = support::run(call(
-        &app,
-        with_token(Method::GET, "/api/v1/campaigns", &token),
-    ));
-    assert_eq!(campaigns.status, StatusCode::OK, "{}", campaigns.body);
-
-    let created = support::run(call(
-        &app,
-        with_token(Method::POST, "/api/v1/campaigns", &token)
-            .json(json!({"name": "Synthetic", "rules_edition": "dnd_2014", "city_id": null})),
-    ));
-    assert_eq!(created.status, StatusCode::CREATED, "{}", created.body);
-    assert_eq!(created.body["owner_id"], user_id);
-
-    let identity = support::run(call(
-        &app,
-        with_token(Method::GET, "/api/v1/auth/identity", &token),
-    ));
-    assert_eq!(identity.status, StatusCode::OK, "{}", identity.body);
-    assert_eq!(identity.body["user_id"], user_id);
-    assert_eq!(identity.body["username"], "alice");
-
-    let stored: String = db
+    let row = fixture
+        .db
         .connection()
-        .query_one("SELECT token_hash FROM identity.sessions", &[])
-        .unwrap()
-        .get(0);
+        .query_one(
+            "SELECT token_hash, expires_at > now() FROM identity.sessions",
+            &[],
+        )
+        .unwrap();
+    let stored: String = row.get(0);
     assert_ne!(stored, token);
-    assert_eq!(stored.len(), 64);
+    assert_eq!(stored, desire_api::auth::session::token_hash(token));
+    assert!(row.get::<_, bool>(1));
+    let created = create_campaign(&fixture, token);
+    assert_eq!(created["owner_id"], session["user_id"]);
 }
 
 #[test]
-fn missing_invalid_and_revoked_sessions_are_rejected() {
-    let db = TestDb::new();
-    let app = support::strict_app_for(&db);
-    let session = register(&app, "alice");
-    let token = session["token"].as_str().unwrap().to_string();
-
-    let missing = support::run(call(&app, ApiCall::new(Method::GET, "/api/v1/campaigns")));
-    assert_eq!(missing.status, StatusCode::UNAUTHORIZED);
-    assert_eq!(missing.body["code"], "unauthenticated");
-
-    let dev_header = support::run(call(
-        &app,
+fn missing_malformed_and_unknown_sessions_never_fall_back_to_the_header() {
+    let fixture = Fixture::new("");
+    for request in [
+        ApiCall::new(Method::GET, "/api/v1/campaigns"),
         ApiCall::new(Method::GET, "/api/v1/campaigns").by(&id(90)),
-    ));
-    assert_eq!(dev_header.status, StatusCode::UNAUTHORIZED);
-    assert_eq!(dev_header.body["code"], "unauthenticated");
+        ApiCall::new(Method::GET, "/api/v1/campaigns")
+            .session("malformed")
+            .by(&id(90)),
+        ApiCall::new(Method::GET, "/api/v1/campaigns").session(&"0".repeat(64)),
+    ] {
+        let response = support::run(call(&fixture.app, request));
+        assert_eq!(response.status, StatusCode::UNAUTHORIZED);
+    }
+}
 
-    let malformed = support::run(call(
-        &app,
-        with_token(Method::GET, "/api/v1/campaigns", "not-a-token"),
-    ));
-    assert_eq!(malformed.status, StatusCode::UNAUTHORIZED);
-
-    let wrong = login(&app, "alice", "definitely not the password");
-    assert_eq!(wrong.status, StatusCode::UNAUTHORIZED);
-    assert_eq!(wrong.body["code"], "unauthenticated");
-
+#[test]
+fn logout_deletes_the_server_session_and_expires_the_cookie() {
+    let fixture = Fixture::new("");
+    let session = fixture.login("alice");
+    let token = session["token"].as_str().unwrap();
     let logout = support::run(call(
-        &app,
-        with_token(Method::DELETE, "/api/v1/auth/sessions/current", &token),
+        &fixture.app,
+        ApiCall::new(Method::DELETE, "/api/v1/auth/sessions/current").session(token),
     ));
     assert_eq!(logout.status, StatusCode::NO_CONTENT, "{}", logout.body);
-
+    assert!(
+        logout.headers["set-cookie"]
+            .to_str()
+            .unwrap()
+            .contains("Max-Age=0")
+    );
+    let count: i64 = fixture
+        .db
+        .connection()
+        .query_one("SELECT count(*) FROM identity.sessions", &[])
+        .unwrap()
+        .get(0);
+    assert_eq!(count, 0);
     let revoked = support::run(call(
-        &app,
-        with_token(Method::GET, "/api/v1/campaigns", &token),
+        &fixture.app,
+        ApiCall::new(Method::GET, "/api/v1/campaigns").session(token),
     ));
     assert_eq!(revoked.status, StatusCode::UNAUTHORIZED);
 }
 
 #[test]
 fn expired_sessions_are_rejected() {
-    let db = TestDb::new();
-    let app = support::strict_app_for(&db);
-    let session = register(&app, "alice");
-    let token = session["token"].as_str().unwrap().to_string();
-    db.connection()
+    let fixture = Fixture::new("");
+    let session = fixture.login("alice");
+    fixture
+        .db
+        .connection()
         .execute(
             concat!(
                 "UPDATE identity.sessions SET created_at = now() - interval '2 hours', ",
@@ -142,124 +102,102 @@ fn expired_sessions_are_rejected() {
         )
         .unwrap();
     let response = support::run(call(
-        &app,
-        with_token(Method::GET, "/api/v1/campaigns", &token),
+        &fixture.app,
+        ApiCall::new(Method::GET, "/api/v1/campaigns").session(session["token"].as_str().unwrap()),
     ));
     assert_eq!(response.status, StatusCode::UNAUTHORIZED);
 }
 
-#[test]
-fn players_cannot_act_as_dm_or_read_dm_only_content() {
-    let db = TestDb::new();
-    let app = support::strict_app_for(&db);
-    let dm = register(&app, "dungeon-master");
-    let player = register(&app, "player");
-    let dm_token = dm["token"].as_str().unwrap();
-    let player_token = player["token"].as_str().unwrap();
-    let player_id = player["user_id"].as_str().unwrap();
-
-    let campaign = support::run(call(
-        &app,
-        with_token(Method::POST, "/api/v1/campaigns", dm_token)
+fn create_campaign(fixture: &Fixture, token: &str) -> Value {
+    let response = support::run(call(
+        &fixture.app,
+        ApiCall::new(Method::POST, "/api/v1/campaigns")
+            .session(token)
             .json(json!({"name": "Synthetic", "rules_edition": "dnd_2014", "city_id": null})),
     ));
-    assert_eq!(campaign.status, StatusCode::CREATED, "{}", campaign.body);
-    let campaign_id = campaign.body["id"].as_str().unwrap().to_string();
+    assert_eq!(response.status, StatusCode::CREATED, "{}", response.body);
+    response.body
+}
 
+fn campaign_with_player(fixture: &Fixture, dm: &Value, player: &Value) -> String {
+    let token = dm["token"].as_str().unwrap();
+    let campaign = create_campaign(fixture, token);
+    let campaign_id = campaign["id"].as_str().unwrap();
     let member = support::run(call(
-        &app,
-        with_token(Method::POST, &uri(&campaign_id, "/members"), dm_token)
-            .json(json!({"user_id": player_id, "role": "player"})),
+        &fixture.app,
+        ApiCall::new(Method::POST, &uri(campaign_id, "/members"))
+            .session(token)
+            .json(json!({"user_id": player["user_id"], "role": "player"})),
     ));
     assert_eq!(member.status, StatusCode::CREATED, "{}", member.body);
+    campaign_id.into()
+}
 
+fn journal_entries(fixture: &Fixture, token: &str, campaign: &str) -> String {
     let session = support::run(call(
-        &app,
-        with_token(Method::POST, &uri(&campaign_id, "/sessions"), dm_token)
+        &fixture.app,
+        ApiCall::new(Method::POST, &uri(campaign, "/sessions"))
+            .session(token)
             .json(json!({"title": "Synthetic session"})),
     ));
     assert_eq!(session.status, StatusCode::CREATED, "{}", session.body);
-    let session_id = session.body["id"].as_str().unwrap().to_string();
-
-    let visible = support::run(call(
-        &app,
-        with_token(Method::POST, &uri(&campaign_id, "/journal"), dm_token)
-            .json(json!({"session_id": session_id, "body": "Shared recap",
-                "visibility": "players"})),
-    ));
-    assert_eq!(visible.status, StatusCode::CREATED, "{}", visible.body);
-    let secret = support::run(call(
-        &app,
-        with_token(Method::POST, &uri(&campaign_id, "/journal"), dm_token)
-            .json(json!({"session_id": session_id, "body": "Private secret",
-                "visibility": "dm"})),
-    ));
-    assert_eq!(secret.status, StatusCode::CREATED, "{}", secret.body);
-
-    let rename = support::run(call(
-        &app,
-        with_token(Method::PATCH, &uri(&campaign_id, ""), player_token)
-            .json(json!({"name": "Denied", "expected_revision": 1})),
-    ));
-    assert_eq!(rename.status, StatusCode::FORBIDDEN, "{}", rename.body);
-
-    let hidden = support::run(call(
-        &app,
-        with_token(
-            Method::GET,
-            &uri(
-                &campaign_id,
-                &format!("/journal/{}", secret.body["id"].as_str().unwrap()),
-            ),
-            player_token,
-        ),
-    ));
-    assert_eq!(hidden.status, StatusCode::NOT_FOUND, "{}", hidden.body);
-
-    let sync = support::run(call(
-        &app,
-        with_token(Method::GET, &uri(&campaign_id, "/sync"), player_token),
-    ));
-    assert_eq!(sync.status, StatusCode::OK, "{}", sync.body);
-    assert_eq!(sync.body["role"], "player");
-    let journal = sync.body["snapshot"]["journal"].as_array().unwrap();
-    assert_eq!(journal.len(), 1, "{}", sync.body);
-    assert_eq!(journal[0]["body"], "Shared recap");
-    assert!(!sync.body.to_string().contains("Private secret"));
+    let mut secret_id = String::new();
+    for (body, visibility) in [("Shared recap", "players"), ("Private secret", "dm")] {
+        let entry = support::run(call(
+            &fixture.app,
+            ApiCall::new(Method::POST, &uri(campaign, "/journal"))
+                .session(token)
+                .json(json!({"session_id": session.body["id"], "body": body,
+                    "visibility": visibility})),
+        ));
+        assert_eq!(entry.status, StatusCode::CREATED, "{}", entry.body);
+        secret_id = entry.body["id"].as_str().unwrap().into();
+    }
+    secret_id
 }
 
 #[test]
-fn account_payloads_are_bounded_and_duplicates_conflict() {
-    let db = TestDb::new();
-    let app = support::strict_app_for(&db);
-
-    for body in [
-        json!({"username": "ab", "password": PASSWORD}),
-        json!({"username": "alice", "password": "short"}),
-        json!({"username": "alice!", "password": PASSWORD}),
-        json!({"username": "alice", "password": PASSWORD, "role": "dm"}),
-    ] {
-        let response = support::run(call(
-            &app,
-            ApiCall::new(Method::POST, "/api/v1/auth/accounts").json(body),
-        ));
-        assert_eq!(
-            response.status,
-            StatusCode::BAD_REQUEST,
-            "{}",
-            response.body
-        );
-    }
-
-    register(&app, "alice");
-    let duplicate = support::run(call(
-        &app,
-        ApiCall::new(Method::POST, "/api/v1/auth/accounts")
-            .json(json!({"username": "ALICE", "password": PASSWORD})),
+fn players_cannot_act_as_dm_even_with_the_owner_header() {
+    let fixture = Fixture::new("");
+    let dm = fixture.login("dungeon-master");
+    let player = fixture.login("player");
+    let campaign = campaign_with_player(&fixture, &dm, &player);
+    let rename = support::run(call(
+        &fixture.app,
+        ApiCall::new(Method::PATCH, &uri(&campaign, ""))
+            .session(player["token"].as_str().unwrap())
+            .headers(&[("x-desire-user", dm["user_id"].as_str().unwrap())])
+            .json(json!({"name": "Denied", "expected_revision": 1})),
     ));
-    assert_eq!(duplicate.status, StatusCode::CONFLICT, "{}", duplicate.body);
+    assert_eq!(rename.status, StatusCode::FORBIDDEN, "{}", rename.body);
+}
 
-    let login_ok = login(&app, "ALICE", PASSWORD);
-    assert_eq!(login_ok.status, StatusCode::OK, "{}", login_ok.body);
-    assert_eq!(login_ok.body["username"], "alice");
+#[test]
+fn two_oidc_clients_sync_without_exposing_dm_journal_entries() {
+    let fixture = Fixture::new("");
+    let dm = fixture.login("dungeon-master");
+    let player = fixture.login("player");
+    let campaign = campaign_with_player(&fixture, &dm, &player);
+    let secret_id = journal_entries(&fixture, dm["token"].as_str().unwrap(), &campaign);
+    let player_token = player["token"].as_str().unwrap();
+    let hidden = support::run(call(
+        &fixture.app,
+        ApiCall::new(
+            Method::GET,
+            &uri(&campaign, &format!("/journal/{secret_id}")),
+        )
+        .session(player_token),
+    ));
+    assert_eq!(hidden.status, StatusCode::NOT_FOUND, "{}", hidden.body);
+    let sync = support::run(call(
+        &fixture.app,
+        ApiCall::new(Method::GET, &uri(&campaign, "/sync")).session(player_token),
+    ));
+    assert_eq!(sync.status, StatusCode::OK, "{}", sync.body);
+    assert_eq!(sync.body["role"], "player");
+    assert_eq!(
+        sync.body["snapshot"]["journal"].as_array().unwrap().len(),
+        1
+    );
+    assert!(!sync.body.to_string().contains("Private secret"));
 }

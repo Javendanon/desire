@@ -1,4 +1,4 @@
-//! Account and opaque-session storage. Password policy and HTTP belong to the API.
+//! Stable OIDC identities and hashed, expiring sessions; email never selects an account.
 use crate::{Error, error::Context};
 use postgres::{Client, GenericClient};
 use serde::{Deserialize, Serialize};
@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Account {
     pub id: String,
-    pub username: String,
-    pub password_hash: String,
+    pub issuer: String,
+    pub subject: String,
+    pub email: String,
 }
 
 #[derive(Clone, Debug)]
@@ -19,54 +20,43 @@ pub struct NewSession<'a> {
 pub struct IdentityRepository;
 
 impl IdentityRepository {
-    pub fn create_account(client: &mut Client, account: &Account) -> Result<(), Error> {
-        crate::records::insert(client, "identity.accounts", account)
-    }
-
-    /// An account and its first session exist together, so registration has one outcome.
-    pub fn register(
-        client: &mut Client,
-        account: &Account,
-        session: &NewSession<'_>,
-    ) -> Result<String, Error> {
-        let mut tx = client
-            .transaction()
-            .context("begin identity registration")?;
-        crate::records::insert(&mut tx, "identity.accounts", account)?;
-        let expires = session_in(&mut tx, session)?;
-        tx.commit().context("commit identity registration")?;
-        Ok(expires)
-    }
-
-    pub fn account_by_username(
-        client: &mut Client,
-        username: &str,
-    ) -> Result<Option<Account>, Error> {
-        client
-            .query_opt(
+    /// Concurrent callbacks converge on (issuer, subject), never on display email.
+    pub fn sign_in(client: &mut Client, account: &Account, hash: &str) -> Result<(), Error> {
+        let mut tx = client.transaction().context("begin OIDC sign-in")?;
+        let row = tx
+            .query_one(
                 concat!(
-                    "SELECT jsonb_build_object('id', id::text, 'username', username, ",
-                    "'password_hash', password_hash) FROM identity.accounts ",
-                    "WHERE username = $1"
+                    "INSERT INTO identity.accounts (id, issuer, subject, email) ",
+                    "VALUES ($1::text::uuid, $2, $3, $4) ",
+                    "ON CONFLICT (issuer, subject) DO UPDATE SET email = EXCLUDED.email ",
+                    "RETURNING id::text"
                 ),
-                &[&username],
+                &[
+                    &account.id,
+                    &account.issuer,
+                    &account.subject,
+                    &account.email,
+                ],
             )
-            .context("read account by username")?
-            .map(crate::records::decode)
-            .transpose()
+            .context("upsert OIDC identity")?;
+        let id: String = row.get(0);
+        session_in(
+            &mut tx,
+            &NewSession {
+                token_hash: hash,
+                account_id: &id,
+            },
+        )?;
+        tx.commit().context("commit OIDC sign-in")
     }
 
     pub fn account_by_id(client: &mut Client, id: &str) -> Result<Option<Account>, Error> {
         client
             .query_opt(
-                concat!(
-                    "SELECT jsonb_build_object('id', id::text, 'username', username, ",
-                    "'password_hash', password_hash) FROM identity.accounts ",
-                    "WHERE id = $1::text::uuid"
-                ),
+                "SELECT to_jsonb(a) FROM identity.accounts a WHERE id = $1::text::uuid",
                 &[&id],
             )
-            .context("read account by id")?
+            .context("read OIDC identity")?
             .map(crate::records::decode)
             .transpose()
     }
@@ -82,7 +72,7 @@ impl IdentityRepository {
         client
             .query_opt(
                 concat!(
-                    "SELECT a.id::text, a.username FROM identity.sessions s ",
+                    "SELECT a.id::text, a.email FROM identity.sessions s ",
                     "JOIN identity.accounts a ON a.id = s.account_id ",
                     "WHERE s.token_hash = $1 AND s.expires_at > now()"
                 ),

@@ -1,47 +1,96 @@
-//! Public registration and login plus authenticated identity and logout.
-use super::{credentials::Credentials, service};
+//! Browser OIDC redirects, current identity and server-side session revocation.
+use super::{
+    oidc::{Callback, Oidc},
+    service, session,
+};
 use crate::{
     AppState,
     error::ApiError,
-    extract::{ApiJson, Caller, request_id_from},
+    extract::{ApiQuery, Caller, request_id_from},
 };
 use axum::{
     Json,
     extract::State,
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, header},
+    response::{IntoResponse, Redirect, Response},
 };
-use desire_core::contracts::transport::{AuthIdentity, AuthSession};
+use desire_core::contracts::transport::AuthIdentity;
+use serde::Deserialize;
 
-pub async fn start() -> Result<StatusCode, ApiError> {
-    Err(ApiError::new(
-        StatusCode::SERVICE_UNAVAILABLE,
-        "oidc_unavailable",
-        "OpenID Connect is not configured",
-        crate::ids::request_id(),
-    ))
+fn configured<'a>(state: &'a AppState, request_id: &str) -> Result<&'a Oidc, ApiError> {
+    state.oidc.as_deref().ok_or_else(|| {
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "oidc_unavailable",
+            "OpenID Connect is not configured",
+            request_id,
+        )
+    })
 }
 
-pub async fn register(
+pub async fn start(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ApiJson(body): ApiJson<Credentials>,
-) -> Result<(StatusCode, Json<AuthSession>), ApiError> {
+) -> Result<Response, ApiError> {
     let request_id = request_id_from(&headers);
-    let credentials = body.clean(&request_id)?;
-    let session = service::register(&state.db, request_id, credentials).await?;
-    Ok((StatusCode::CREATED, Json(session)))
+    let authorization = configured(&state, &request_id)?.begin(&request_id)?;
+    let mut response = Redirect::to(&authorization.url).into_response();
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        session::set_cookie(
+            session::LOGIN_COOKIE,
+            &authorization.browser,
+            session::LOGIN_SECONDS,
+        ),
+    );
+    Ok(response)
 }
 
-pub async fn login(
+#[derive(Deserialize)]
+pub struct CallbackQuery {
+    code: Option<String>,
+    state: Option<String>,
+}
+
+pub async fn callback(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ApiJson(body): ApiJson<Credentials>,
-) -> Result<Json<AuthSession>, ApiError> {
+    ApiQuery(query): ApiQuery<CallbackQuery>,
+) -> Response {
     let request_id = request_id_from(&headers);
-    let credentials = body.clean(&request_id)?;
-    Ok(Json(
-        service::login(&state.db, request_id, credentials).await?,
-    ))
+    let result = finish(&state, &headers, (query, request_id)).await;
+    let mut response = result.unwrap_or_else(IntoResponse::into_response);
+    response.headers_mut().append(
+        header::SET_COOKIE,
+        session::set_cookie(session::LOGIN_COOKIE, "", 0),
+    );
+    response
+}
+
+async fn finish(
+    state: &AppState,
+    headers: &HeaderMap,
+    input: (CallbackQuery, String),
+) -> Result<Response, ApiError> {
+    let (query, request_id) = input;
+    let oidc = configured(state, &request_id)?;
+    let callback = Callback {
+        code: query.code.unwrap_or_default(),
+        state: query
+            .state
+            .ok_or_else(|| service::unauthorized(&request_id))?,
+        browser: session::cookie(headers, session::LOGIN_COOKIE)
+            .ok_or_else(|| service::unauthorized(&request_id))?
+            .into(),
+    };
+    let identity = oidc.complete(callback, &request_id).await?;
+    let token = service::sign_in(&state.db, request_id, identity).await?;
+    let mut response = Redirect::to(oidc.settings.public_url.as_str()).into_response();
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        session::set_cookie(session::SESSION_COOKIE, &token, session::SESSION_SECONDS),
+    );
+    Ok(response)
 }
 
 pub async fn identity(
@@ -51,7 +100,23 @@ pub async fn identity(
     Ok(Json(service::identity(&state.db, &caller).await?))
 }
 
-pub async fn logout(State(state): State<AppState>, caller: Caller) -> Result<StatusCode, ApiError> {
+pub async fn logout(State(state): State<AppState>, caller: Caller) -> Result<Response, ApiError> {
     service::logout(&state.db, &caller).await?;
-    Ok(StatusCode::NO_CONTENT)
+    let mut response = StatusCode::NO_CONTENT.into_response();
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        session::set_cookie(session::SESSION_COOKIE, "", 0),
+    );
+    Ok(response)
+}
+
+pub async fn no_store(request: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let mut response = next.run(request).await;
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+    response
+        .headers_mut()
+        .insert("referrer-policy", "no-referrer".parse().unwrap());
+    response
 }

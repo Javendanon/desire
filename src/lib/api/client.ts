@@ -22,7 +22,8 @@ export class ApiRequestError extends Error {
 
 export interface ApiContext {
   fetch: typeof fetch;
-  identity: Id;
+  // Explicit loopback development seam. Omit for authenticated browser clients.
+  identity?: Id;
   signal?: AbortSignal;
   baseUrl?: string;
 }
@@ -49,8 +50,9 @@ export async function request<T>(context: ApiContext, options: ApiRequest): Prom
   const response = await context.fetch(`${context.baseUrl ?? ''}${API_BASE}${path}`, {
     method,
     signal: context.signal,
+    credentials: 'same-origin',
     headers: {
-      'x-desire-user': context.identity,
+      ...(context.identity === undefined ? {} : { 'x-desire-user': context.identity }),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
       ...headers,
     },

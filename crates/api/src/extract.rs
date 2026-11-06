@@ -1,10 +1,10 @@
 //! Caller identity and JSON extraction with one failure shape.
 //!
-//! An opaque bearer session is the production identity. `x-desire-user` remains an
+//! An opaque cookie session is the production identity. `x-desire-user` remains an
 //! explicit dev/test seam and is ignored when `AppState::dev_identity` is false.
 use crate::{
     AppState,
-    auth::{password, service},
+    auth::{service, session},
     error::{ApiError, INVALID, UNAUTHORIZED},
     ids,
 };
@@ -17,8 +17,6 @@ use desire_core::contracts::common::Id;
 use serde::de::DeserializeOwned;
 
 const CALLER_HEADER: &str = "x-desire-user";
-const AUTHORIZATION_HEADER: &str = "authorization";
-const BEARER_PREFIX: &str = "Bearer ";
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
 #[derive(Debug, Clone)]
@@ -53,16 +51,18 @@ async fn identity(
     state: &AppState,
     request_id: &str,
 ) -> Result<(Id, Option<String>), ApiError> {
-    if headers.contains_key(AUTHORIZATION_HEADER) {
-        let token = bearer_token(headers, request_id)?;
-        let hash = password::token_hash(token);
+    if headers.contains_key("cookie") {
+        let token = session::cookie(headers, session::SESSION_COOKIE)
+            .filter(|token| session::is_token(token))
+            .ok_or_else(|| service::unauthorized(request_id))?;
+        let hash = session::token_hash(token);
         let user_id = service::session_user(&state.db, hash.clone(), request_id.to_string())
             .await?
             .ok_or_else(|| {
                 ApiError::new(
                     UNAUTHORIZED,
                     "unauthenticated",
-                    "the bearer session is invalid or expired",
+                    "the session is invalid or expired",
                     request_id,
                 )
             })?;
@@ -74,40 +74,9 @@ async fn identity(
     Err(ApiError::new(
         UNAUTHORIZED,
         "unauthenticated",
-        "a bearer session token is required",
+        "a session cookie is required",
         request_id,
     ))
-}
-
-fn bearer_token<'a>(headers: &'a HeaderMap, request_id: &str) -> Result<&'a str, ApiError> {
-    let value = headers
-        .get(AUTHORIZATION_HEADER)
-        .and_then(|value| value.to_str().ok())
-        .ok_or_else(|| {
-            ApiError::new(
-                UNAUTHORIZED,
-                "unauthenticated",
-                "the authorization header must be ASCII",
-                request_id,
-            )
-        })?;
-    let token = value.strip_prefix(BEARER_PREFIX).ok_or_else(|| {
-        ApiError::new(
-            UNAUTHORIZED,
-            "unauthenticated",
-            "the authorization header must use Bearer authentication",
-            request_id,
-        )
-    })?;
-    if !password::is_token(token) {
-        return Err(ApiError::new(
-            UNAUTHORIZED,
-            "unauthenticated",
-            "the bearer token is malformed",
-            request_id,
-        ));
-    }
-    Ok(token)
 }
 
 fn caller_id(headers: &HeaderMap, request_id: &str) -> Result<Id, ApiError> {

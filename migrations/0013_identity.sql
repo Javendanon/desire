@@ -1,13 +1,13 @@
--- Opaque bearer sessions are the identity bridge; raw tokens are never stored.
+-- OIDC identity uses the provider's stable issuer/subject pair, not display email.
 CREATE SCHEMA identity;
 REVOKE ALL ON SCHEMA identity FROM PUBLIC;
 CREATE TABLE identity.accounts (
     id uuid PRIMARY KEY,
-    username text NOT NULL UNIQUE
-        CHECK (username = lower(username) AND length(username) BETWEEN 3 AND 64),
-    password_hash text NOT NULL
-        CHECK (password_hash ~ '^pbkdf2_sha256[$][0-9]+[$][0-9a-f]{32}[$][0-9a-f]{64}$'),
-    created_at timestamptz NOT NULL DEFAULT now()
+    issuer text NOT NULL CHECK (length(issuer) > 0),
+    subject text NOT NULL CHECK (length(subject) > 0),
+    email text NOT NULL CHECK (length(email) > 0),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (issuer, subject)
 );
 CREATE TABLE identity.sessions (
     token_hash text PRIMARY KEY CHECK (token_hash ~ '^[0-9a-f]{64}$'),

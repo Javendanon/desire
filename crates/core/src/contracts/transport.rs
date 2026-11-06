@@ -38,19 +38,9 @@ pub struct TravelUpdated {
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct AuthSession {
-    pub token: String,
-    pub token_type: String,
-    pub expires_at: String,
-    pub user_id: Id,
-    pub username: String,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct AuthIdentity {
     pub user_id: Id,
-    pub username: String,
+    pub email: String,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

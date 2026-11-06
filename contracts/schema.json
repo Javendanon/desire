@@ -885,49 +885,19 @@
         }
       }
     },
-    "AuthSession": {
-      "type": "object",
-      "x-module": "transport",
-      "additionalProperties": false,
-      "required": [
-        "token",
-        "token_type",
-        "expires_at",
-        "user_id",
-        "username"
-      ],
-      "properties": {
-        "token": {
-          "type": "string"
-        },
-        "token_type": {
-          "type": "string",
-          "const": "bearer"
-        },
-        "expires_at": {
-          "type": "string"
-        },
-        "user_id": {
-          "$ref": "#/$defs/Id"
-        },
-        "username": {
-          "type": "string"
-        }
-      }
-    },
     "AuthIdentity": {
       "type": "object",
       "x-module": "transport",
       "additionalProperties": false,
       "required": [
         "user_id",
-        "username"
+        "email"
       ],
       "properties": {
         "user_id": {
           "$ref": "#/$defs/Id"
         },
-        "username": {
+        "email": {
           "type": "string"
         }
       }

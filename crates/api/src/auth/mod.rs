@@ -1,5 +1,7 @@
-//! Identity: bounded credentials, PBKDF2 passwords and opaque bearer sessions.
-pub mod credentials;
-pub mod password;
+//! Google-compatible OIDC login, opaque cookie sessions and same-origin mutations.
+pub mod oidc;
+pub mod origin;
 pub mod routes;
 pub mod service;
+pub mod session;
+pub mod settings;

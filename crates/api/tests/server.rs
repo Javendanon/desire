@@ -1,18 +1,16 @@
-//! The real binary: startup against the disposable cluster, authenticated requests and a
-//! clean signal shutdown. The router tests never exercise `main`, so this covers it.
+//! The real binary verifies startup policy, session authorization and signal shutdown.
 use crate::support;
-
 use serde_json::Value;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::process::{Child, Command, Stdio};
-use std::time::{Duration, Instant};
-
+use std::{
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    process::{Child, Command, Stdio},
+    time::{Duration, Instant},
+};
 use support::{TestDb, id};
 
 const START_TIMEOUT: Duration = Duration::from_secs(20);
 const EXIT_TIMEOUT: Duration = Duration::from_secs(20);
-const PASSWORD: &str = "correct horse battery staple";
 
 pub(super) fn free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -33,33 +31,36 @@ pub(super) fn request(port: u16, head: &str) -> String {
     response
 }
 
-fn response_body(response: &str) -> &str {
-    response
+fn json_body(response: &str) -> Value {
+    let body = response
         .split_once("\r\n\r\n")
         .map(|(_, body)| body)
-        .unwrap_or("")
+        .unwrap_or("");
+    serde_json::from_str(body).unwrap_or(Value::Null)
 }
 
-fn json_body(response: &str) -> Value {
-    serde_json::from_str(response_body(response)).unwrap_or(Value::Null)
+#[derive(Default)]
+struct HttpRequest<'a> {
+    method: &'a str,
+    path: &'a str,
+    token: Option<&'a str>,
+    caller: Option<&'a str>,
+    body: Option<&'a str>,
 }
 
-fn call(
-    port: u16,
-    method: &str,
-    path: &str,
-    token: Option<&str>,
-    caller: Option<&str>,
-    body: Option<&str>,
-) -> String {
-    let mut head = format!("{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n");
-    if let Some(token) = token {
-        head.push_str(&format!("authorization: Bearer {token}\r\n"));
+fn call(port: u16, input: HttpRequest<'_>) -> String {
+    let mut head = format!(
+        "{} {} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n",
+        input.method, input.path
+    );
+    if let Some(token) = input.token {
+        head.push_str(&format!("cookie: __Host-desire-session={token}\r\n"));
+        head.push_str("origin: https://table.example.test\r\n");
     }
-    if let Some(caller) = caller {
+    if let Some(caller) = input.caller {
         head.push_str(&format!("x-desire-user: {caller}\r\n"));
     }
-    match body {
+    match input.body {
         Some(body) => {
             head.push_str("content-type: application/json\r\n");
             head.push_str(&format!("content-length: {}\r\n\r\n{body}", body.len()));
@@ -69,22 +70,19 @@ fn call(
     request(port, &head)
 }
 
-fn get(port: u16, path: &str) -> String {
-    call(port, "GET", path, None, None, None)
-}
-
-fn account(port: u16, username: &str) -> Value {
-    let body = format!(r#"{{"username":"{username}","password":"{PASSWORD}"}}"#);
-    let response = call(
-        port,
-        "POST",
-        "/api/v1/auth/accounts",
-        None,
-        None,
-        Some(&body),
-    );
-    assert!(response.starts_with("HTTP/1.1 201"), "{response}");
-    json_body(&response)
+/// OIDC has its own full-flow tests; this regression seeds sessions for binary authorization.
+fn account(db: &TestDb, subject: &str) -> Value {
+    let mut client = db.connection();
+    let account = desire_persistence::Account {
+        id: desire_persistence::next_id(&mut client).unwrap(),
+        issuer: "https://fixture.example.test".into(),
+        subject: subject.into(),
+        email: format!("{subject}@example.test"),
+    };
+    let token = desire_api::auth::session::random_token().unwrap();
+    let hash = desire_api::auth::session::token_hash(&token);
+    desire_persistence::IdentityRepository::sign_in(&mut client, &account, &hash).unwrap();
+    serde_json::json!({"token": token, "user_id": account.id})
 }
 
 pub(super) fn wait_until_ready(port: u16, child: &mut Child) {
@@ -113,82 +111,108 @@ pub(super) fn wait_for_exit(child: &mut Child) -> std::process::ExitStatus {
     panic!("the server did not stop within {EXIT_TIMEOUT:?}");
 }
 
-#[test]
-#[cfg(unix)]
-fn the_binary_serves_an_authenticated_route_and_stops_on_a_signal() {
-    let db = TestDb::new();
-    let port = free_port();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_desire-api"))
-        .env("DATABASE_URL", db.url())
-        .env("HOST", "127.0.0.1")
-        .env("PORT", port.to_string())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    wait_until_ready(port, &mut child);
-
-    let health = get(port, "/api/health");
+fn assert_default_identity_policy(port: u16) {
+    let health = call(
+        port,
+        HttpRequest {
+            method: "GET",
+            path: "/api/health",
+            ..Default::default()
+        },
+    );
     assert!(health.starts_with("HTTP/1.1 200"), "{health}");
     assert!(health.contains("\"status\":\"ok\""), "{health}");
-
-    // The default bind no longer trusts the development header, even on loopback.
-    let header_only = call(port, "GET", "/api/v1/campaigns", None, Some(&id(90)), None);
+    let header_only = call(
+        port,
+        HttpRequest {
+            method: "GET",
+            path: "/api/v1/campaigns",
+            caller: Some(&id(90)),
+            ..Default::default()
+        },
+    );
     assert!(header_only.starts_with("HTTP/1.1 401"), "{header_only}");
     assert!(
         header_only.contains("\"code\":\"unauthenticated\""),
         "{header_only}"
     );
+}
 
-    let owner = account(port, "dungeon-master");
-    let player = account(port, "player");
-    let owner_token = owner["token"].as_str().unwrap();
-    let player_token = player["token"].as_str().unwrap();
-    let owner_id = owner["user_id"].as_str().unwrap();
-    let player_id = player["user_id"].as_str().unwrap();
-    let created = json_body(&call(
+fn campaign_with_player(port: u16, owner: &Value, player: &Value) -> String {
+    let token = owner["token"].as_str();
+    let response = call(
         port,
-        "POST",
-        "/api/v1/campaigns",
-        Some(owner_token),
-        None,
-        Some(r#"{"name":"Synthetic","rules_edition":"dnd_2014","city_id":null}"#),
-    ));
+        HttpRequest {
+            method: "POST",
+            path: "/api/v1/campaigns",
+            token,
+            body: Some(r#"{"name":"Synthetic","rules_edition":"dnd_2014","city_id":null}"#),
+            ..Default::default()
+        },
+    );
+    assert!(response.starts_with("HTTP/1.1 201"), "{response}");
+    let created = json_body(&response);
     let campaign = created["id"].as_str().unwrap();
-    let member_body = format!(r#"{{"user_id":"{player_id}","role":"player"}}"#);
+    let body = format!(
+        r#"{{"user_id":"{}","role":"player"}}"#,
+        player["user_id"].as_str().unwrap()
+    );
     let member = call(
         port,
-        "POST",
-        &format!("/api/v1/campaigns/{campaign}/members"),
-        Some(owner_token),
-        None,
-        Some(&member_body),
+        HttpRequest {
+            method: "POST",
+            path: &format!("/api/v1/campaigns/{campaign}/members"),
+            token,
+            body: Some(&body),
+            ..Default::default()
+        },
     );
     assert!(member.starts_with("HTTP/1.1 201"), "{member}");
+    campaign.into()
+}
 
-    // A player token keeps the player role even with the owner's header attached.
+fn assert_player_cannot_impersonate(port: u16, db: &TestDb) {
+    let owner = account(db, "dungeon-master");
+    let player = account(db, "player");
+    let campaign = campaign_with_player(port, &owner, &player);
+    let path = format!("/api/v1/campaigns/{campaign}");
     let rename = call(
         port,
-        "PATCH",
-        &format!("/api/v1/campaigns/{campaign}"),
-        Some(player_token),
-        Some(owner_id),
-        Some(r#"{"name":"Denied","expected_revision":1}"#),
+        HttpRequest {
+            method: "PATCH",
+            path: &path,
+            token: player["token"].as_str(),
+            caller: owner["user_id"].as_str(),
+            body: Some(r#"{"name":"Denied","expected_revision":1}"#),
+        },
     );
     assert!(rename.starts_with("HTTP/1.1 403"), "{rename}");
     assert!(rename.contains("\"code\":\"forbidden\""), "{rename}");
     let sync = call(
         port,
-        "GET",
-        &format!("/api/v1/campaigns/{campaign}/sync"),
-        Some(player_token),
-        Some(owner_id),
-        None,
+        HttpRequest {
+            method: "GET",
+            path: &format!("{path}/sync"),
+            token: player["token"].as_str(),
+            caller: owner["user_id"].as_str(),
+            body: None,
+        },
     );
     assert!(sync.starts_with("HTTP/1.1 200"), "{sync}");
     assert_eq!(json_body(&sync)["role"], "player");
+}
 
-    // Ctrl+C is the documented stop path: the client must close off the server runtime.
+#[test]
+#[cfg(unix)]
+fn the_binary_serves_an_authenticated_route_and_stops_on_a_signal() {
+    let db = TestDb::new();
+    let port = free_port();
+    let provider = crate::oidc_provider::Provider::start();
+    let settings = provider.settings();
+    let mut child = configured_command(&db, port, &settings).spawn().unwrap();
+    wait_until_ready(port, &mut child);
+    assert_default_identity_policy(port);
+    assert_player_cannot_impersonate(port, &db);
     let signalled = Command::new("kill")
         .arg("-INT")
         .arg(child.id().to_string())
@@ -197,4 +221,51 @@ fn the_binary_serves_an_authenticated_route_and_stops_on_a_signal() {
     assert!(signalled.success(), "the signal could not be sent");
     let status = wait_for_exit(&mut child);
     assert!(status.success(), "the server exited with {status}");
+}
+
+fn configured_command(
+    db: &TestDb,
+    port: u16,
+    settings: &desire_api::auth::settings::Settings,
+) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_desire-api"));
+    command
+        .env("DATABASE_URL", db.url())
+        .env("HOST", "127.0.0.1")
+        .env("PORT", port.to_string())
+        .env_remove("DESIRE_DEV_IDENTITY")
+        .env_remove("DESIRE_ALLOWED_EMAILS")
+        .env("DESIRE_OIDC_ISSUER", settings.issuer.as_str())
+        .env("DESIRE_OIDC_CLIENT_ID", &settings.client_id)
+        .env("DESIRE_OIDC_CLIENT_SECRET", settings.client_secret.secret())
+        .env("DESIRE_PUBLIC_URL", settings.public_url.as_str())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    command
+}
+
+#[test]
+fn a_shared_bind_refuses_to_start_without_oidc_even_with_the_dev_opt_in() {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_desire-api"));
+    for variable in [
+        "DESIRE_OIDC_CLIENT_ID",
+        "DESIRE_OIDC_CLIENT_SECRET",
+        "DESIRE_PUBLIC_URL",
+        "DESIRE_OIDC_ISSUER",
+        "DESIRE_ALLOWED_EMAILS",
+    ] {
+        command.env_remove(variable);
+    }
+    let output = command
+        .env("HOST", "0.0.0.0")
+        .env("DESIRE_DEV_IDENTITY", "1")
+        .env("DATABASE_URL", "postgres://desire_test@127.0.0.1/unused")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("OpenID Connect is required for a non-loopback bind")
+    );
 }
