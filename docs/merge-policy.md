@@ -4,8 +4,8 @@
 judge a change. The loop always reads it from the **default branch** (`main`), never from the
 pull request: a change must not be able to loosen the rules it is judged by.
 
-Current state: **version 1, mode `shadow`**. In shadow mode every gate runs and its result is
-recorded on the card, but nothing is blocked and nothing is merged without a human.
+Current state: **version 1, mode `enforce`**, with unattended merge enabled for `T0` only (see
+[Auto-merge](#auto-merge)). Every other change waits for a human.
 
 ## Modes
 
@@ -66,6 +66,37 @@ A pattern without `/` matches the file name at any depth (`Cargo.toml` also cove
 `tools/ci/**`, `tools/quality/**` and `pnpm-lock.yaml` go beyond the list the card started from:
 the first two because the gate must not approve changes to itself, the last because pnpm's
 lockfile is a YAML file that `**/*.lock` does not match.
+
+## Auto-merge
+
+Passing every gate is necessary but not sufficient. The optional `auto_merge` section decides, per
+tier, whether a change may merge without a human:
+
+```json
+"auto_merge": {"mode": "enforce", "tiers": {"T0": {"min_score": 70, "max_radius_share": 0.0,
+                                                    "max_unprotected": 0, "max_stale_docs": 0}}}
+```
+
+| Limit | Evidence |
+| --- | --- |
+| `min_score` | The loop's merge score recorded for the reviewed commit, with no failed hard condition |
+| `max_radius_share` | `km impact`: share of source files that can behave differently because of the change |
+| `max_unprotected` | `km impact`: files the change reaches that no test protects |
+| `max_stale_docs` | `km impact`: documents that describe the change but were not updated |
+
+`km impact` runs on the integrated candidate (the reviewed commits rebased onto `main`).
+
+The section is fail-closed. With no section, or mode `off`, nothing merges unattended. A tier with
+no rule, or a rule missing any limit, is refused, as is missing evidence. In `shadow` the verdict is
+written on the card and a human still merges.
+
+Only `T0` is enabled. `T1` stays with a human until its score has been compared with real human
+merge decisions on about 15–20 cards; enabling it is a change to this file, merged by a human.
+`T2-never` is never eligible.
+
+The repository ruleset requires review threads to be resolved before merging. The merge actor does
+not resolve threads, so a change with an open review thread is refused by GitHub even when every
+limit above is met.
 
 ## Changing the policy
 

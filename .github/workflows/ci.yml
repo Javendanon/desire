@@ -23,8 +23,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # Pinned to the version the repository's quality baseline was measured with.
-  KIMUN_VERSION: "0.26.0"
+  # Pinned to the version the loop runs locally; `km impact` needs at least 0.46.
+  KIMUN_VERSION: "0.46.1"
 
 jobs:
   frontend-check:
