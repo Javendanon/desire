@@ -66,6 +66,12 @@
         "max_radius_share": 0.0,
         "max_unprotected": 0,
         "max_stale_docs": 0
+      },
+      "T1": {
+        "min_score": 70,
+        "max_radius_share": 0.25,
+        "max_unprotected": 10,
+        "max_stale_docs": 5
       }
     }
   }

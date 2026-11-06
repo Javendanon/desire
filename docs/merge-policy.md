@@ -4,8 +4,8 @@
 judge a change. The loop always reads it from the **default branch** (`main`), never from the
 pull request: a change must not be able to loosen the rules it is judged by.
 
-Current state: **version 1, mode `enforce`**, with unattended merge enabled for `T0` only (see
-[Auto-merge](#auto-merge)). Every other change waits for a human.
+Current state: **version 1, mode `enforce`**, with unattended merge enabled for `T0` and `T1` (see
+[Auto-merge](#auto-merge)). `T2-never` always waits for a human.
 
 ## Modes
 
@@ -90,9 +90,10 @@ The section is fail-closed. With no section, or mode `off`, nothing merges unatt
 no rule, or a rule missing any limit, is refused, as is missing evidence. In `shadow` the verdict is
 written on the card and a human still merges.
 
-Only `T0` is enabled. `T1` stays with a human until its score has been compared with real human
-merge decisions on about 15–20 cards; enabling it is a change to this file, merged by a human.
-`T2-never` is never eligible.
+`T0` and `T1` are enabled. The `T1` limits start deliberately loose, by the owner's decision:
+score at least 70, blast radius up to 25% of source files, up to 10 reached files without tests and
+up to 5 stale documents. Tighten them in this file as merge outcomes accumulate. `T2-never` is
+never eligible.
 
 The repository ruleset requires review threads to be resolved before merging. The merge actor does
 not resolve threads, so a change with an open review thread is refused by GitHub even when every
@@ -106,6 +107,12 @@ limit above is met.
   gate could approve that change, any agent that wanted to pass would first make the gate pass.
 - Every merge records the policy version and the SHA of the commit that last changed this file,
   so a past merge can be reproduced under the policy that allowed it.
+
+## Why the evidence is still recorded
+
+The section below was the argument for keeping a human on every agent-authored change. The owner
+chose to start with unattended `T1` merges anyway; the score, the impact measures and the
+attestation of every merge stay on the card so that decision can be revisited with data.
 
 ## Why a human always decides on agent-authored code
 
