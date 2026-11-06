@@ -15,7 +15,7 @@ product.
 | Server | Rust + Axum + Tokio | `GET /api/health` runs and the frontend consumes it |
 | Shared core | Rust, crate `desire-core` | Native compilation verified |
 | WebAssembly | `wasm-bindgen` + `wasm-pack` | `build:wasm` produces `src/generated/wasm/` |
-| Data | PostgreSQL 17 in Docker Compose | Verified on `127.0.0.1:55432`; stopped with the volume preserved |
+| Data | PostgreSQL 17 in Docker Compose | Verified on `localhost:55432`; stopped with the volume preserved |
 | Frontend packages | pnpm 12.11.2 | Single-document lockfile; `--frozen-lockfile` passes |
 
 The API includes persistence, Google OIDC identity, campaign authorization and cursor-based
@@ -112,7 +112,7 @@ export the values yourself (`.env.example` lists local-only ones). Apply the D08
 migrations against the Compose database once, then start the server:
 
 ```sh
-export DATABASE_URL=postgres://umbra:umbra_local@127.0.0.1:55432/umbra
+export DATABASE_URL=postgres://umbra:umbra_local@localhost:55432/umbra
 cargo run -p desire-api -- --migrate
 pnpm dev:api
 ```
@@ -142,11 +142,11 @@ pnpm dev:api
 pnpm dev
 ```
 
-Interface: `http://127.0.0.1:5173`. API: `http://127.0.0.1:3001/api/health`. Vite
+Interface: `http://localhost:5173`. API: `http://localhost:3001/api/health`. Vite
 proxies `/api` during development; `vite preview` provides neither a backend nor a
 production proxy. The engine check on screen only validates its import, not rendering.
 
-PostgreSQL is exposed on `127.0.0.1:55432` to avoid occupying the usual port 5432. The
+PostgreSQL is exposed on `localhost:55432` to avoid occupying the usual port 5432. The
 values in `.env.example` are local only. To stop the database without deleting data:
 `pnpm db:stop`.
 
