@@ -127,6 +127,33 @@ fn an_older_login_callback_does_not_clear_the_latest_browser_flow() {
 }
 
 #[test]
+fn an_in_flight_callback_cannot_clear_another_flow_cookie() {
+    let fixture = Fixture::new("");
+    let gate = fixture.provider.pause_next_exchange();
+    let first = fixture.begin();
+    std::thread::scope(|scope| {
+        let pending = scope.spawn(|| fixture.finish(&first));
+        gate.wait_for_entry();
+        let second = fixture.begin();
+        let second_name = second.browser.split_once('=').unwrap().0;
+        gate.resume.notify_one();
+        let completed = pending.join().unwrap();
+        assert_eq!(completed.status, StatusCode::SEE_OTHER);
+        assert!(
+            completed
+                .headers
+                .get_all("set-cookie")
+                .iter()
+                .all(|header| !header
+                    .to_str()
+                    .unwrap()
+                    .starts_with(&format!("{second_name}=")))
+        );
+        assert_eq!(fixture.finish(&second).status, StatusCode::SEE_OTHER);
+    });
+}
+
+#[test]
 fn neither_a_callback_nor_an_authorization_code_can_be_reused() {
     let fixture = Fixture::new("");
     let first = fixture.begin();

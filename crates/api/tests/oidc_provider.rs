@@ -59,6 +59,25 @@ struct Authority {
     foreign_key: CoreRsaPrivateSigningKey,
     profile: Mutex<Profile>,
     grants: Mutex<HashMap<String, Grant>>,
+    exchange_gate: Mutex<Option<Arc<ExchangeGate>>>,
+}
+
+#[derive(Default)]
+pub struct ExchangeGate {
+    pub entered: tokio::sync::Notify,
+    pub resume: tokio::sync::Notify,
+}
+
+impl ExchangeGate {
+    pub fn wait_for_entry(&self) {
+        let entered = support::run(async {
+            tokio::time::timeout(Duration::from_secs(5), self.entered.notified()).await
+        });
+        if entered.is_err() {
+            self.resume.notify_one();
+        }
+        assert!(entered.is_ok(), "token exchange did not reach the barrier");
+    }
 }
 
 pub struct Provider {
@@ -82,6 +101,7 @@ impl Provider {
                 fault: Fault::None,
             }),
             grants: Mutex::new(HashMap::new()),
+            exchange_gate: Mutex::new(None),
         });
         let (stop, receiver) = tokio::sync::oneshot::channel();
         let state = authority.clone();
@@ -116,6 +136,12 @@ impl Provider {
             public_url: Url::parse(ORIGIN).unwrap(),
             allowed_emails: Default::default(),
         }
+    }
+
+    pub fn pause_next_exchange(&self) -> Arc<ExchangeGate> {
+        let gate = Arc::new(ExchangeGate::default());
+        *self.authority.exchange_gate.lock().unwrap() = Some(gate.clone());
+        gate
     }
 
     pub fn profile(&self, subject: &str, email: &str, fault: Fault) {
@@ -218,6 +244,11 @@ async fn token(
         || form["grant_type"] != "authorization_code"
     {
         return Err(StatusCode::BAD_REQUEST);
+    }
+    let gate = state.exchange_gate.lock().unwrap().take();
+    if let Some(gate) = gate {
+        gate.entered.notify_one();
+        gate.resume.notified().await;
     }
     Ok(Json(json!({
         "access_token": "fixture-access-token", "token_type": "Bearer", "expires_in": 3600,
