@@ -21,6 +21,8 @@
     rules: RuleBook;
     /** Set only when a session edit differs from the record. */
     recordedHp: number | null;
+    /** True when session edits changed a duration or dismissed a condition. */
+    conditionsEdited?: boolean;
     /** Interaction scope note, supplied by the screen that owns those interactions. */
     scope: Snippet;
     effect?: Snippet;
@@ -28,7 +30,16 @@
     onclose: () => void;
   }
 
-  let { sheet, rules, recordedHp, scope, effect, ondismiss, onclose }: Props = $props();
+  let {
+    sheet,
+    rules,
+    recordedHp,
+    conditionsEdited = false,
+    scope,
+    effect,
+    ondismiss,
+    onclose,
+  }: Props = $props();
 
   let heading: HTMLHeadingElement;
 
@@ -60,7 +71,7 @@
     {/if}
     {#if sheet.state}<SheetHealth state={sheet.state} {recordedHp} />{/if}
     {#if sheet.stats}<SheetAbilities stats={sheet.stats} />{/if}
-    <SheetStatus {sheet} {rules} {effect} {ondismiss} />
+    <SheetStatus {sheet} {rules} {conditionsEdited} {effect} {ondismiss} />
     <SheetMoves {sheet} {rules} />
     <SheetKit {sheet} {rules} />
   {:else}

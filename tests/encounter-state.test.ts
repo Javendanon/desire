@@ -8,6 +8,7 @@ import { createDemoEncounter } from '../src/features/encounters/demo-encounter.t
 import {
   assertBundleComplete,
   encounterOutsiders,
+  participantConditions,
   rolledOrder,
   turnOrder,
 } from '../src/features/encounters/encounter-model.ts';
@@ -142,6 +143,32 @@ test('local changes overlay a sheet without mutating it, and say what they chang
   assert.equal(sheet.conditions.length, 2);
 });
 
+test('a round tick reaches the sheet overlay and is reported as a local edit', () => {
+  const sheet = bundle.sheets.find((entry) =>
+    entry.conditions.some((item) => item.remaining_rounds !== null),
+  );
+  assert.ok(sheet);
+  const timed = sheet.conditions.find((item) => item.remaining_rounds !== null);
+  assert.ok(timed && timed.remaining_rounds !== null);
+  const context = { rolledCount: 1, conditions: participantConditions(bundle) };
+  const ticked = nextTurn(startLocalState(bundle.encounter), context);
+  const overlay = applyLocal(sheet, ticked);
+  const shown = overlay.conditions.find((item) => item.id === timed.id);
+  assert.equal(shown?.remaining_rounds, timed.remaining_rounds - 1);
+  assert.equal(localEdits(sheet, ticked).conditions, true);
+  assert.equal(localEdits(sheet, ticked).hp, false);
+});
+
+test('only participants contribute conditions to the round tick', () => {
+  const conditioned = bundle.sheets.find((entry) => entry.conditions.length > 0);
+  assert.ok(conditioned);
+  const excluded = conditioned.actor.id;
+  const participants = bundle.participants.filter((entry) => entry.actor_id !== excluded);
+  const isExcluded = (item: ActorCondition): boolean => item.actor_id === excluded;
+  assert.equal(participantConditions(bundle).some(isExcluded), true);
+  assert.equal(participantConditions({ ...bundle, participants }).some(isExcluded), false);
+});
+
 test('a sheet without state has nothing to overlay', () => {
   const sheet = encounterOutsiders(bundle)[0];
   assert.ok(sheet);
@@ -178,6 +205,15 @@ test('participant views carry words for side, turn, HP and conditions, not only 
     assert.ok(view.conditionsText.length > 0);
     assert.match(view.initiativeText, /^Initiative /);
   }
+});
+
+test('a round tick marks the conditions as edited, not the HP', () => {
+  const context = { rolledCount: 1, conditions: participantConditions(bundle) };
+  const state = nextTurn(startLocalState(bundle.encounter), context);
+  const views = participantViews({ bundle, state, rules });
+  const ticked = views.find((view) => view.conditionsEdited);
+  assert.ok(ticked);
+  assert.equal(ticked.hpEdited, false);
 });
 
 test('a planned encounter marks no current turn', () => {

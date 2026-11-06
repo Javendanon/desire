@@ -11,13 +11,15 @@
   interface Props {
     sheet: ActorSheet;
     rules: RuleBook;
+    /** True when session edits changed a duration or dismissed a condition. */
+    conditionsEdited: boolean;
     /** Decorative layer behind an active concentration. */
     effect?: Snippet;
     /** Hides a condition for this session only. */
     ondismiss?: (conditionId: string) => void;
   }
 
-  let { sheet, rules, effect, ondismiss }: Props = $props();
+  let { sheet, rules, conditionsEdited, effect, ondismiss }: Props = $props();
 
   const concentration = $derived(concentrationView(sheet, rules));
   const conditions = $derived(conditionRows(sheet, rules));
@@ -47,6 +49,9 @@
 
 <SheetSection title="Conditions">
   <div bind:this={conditionList} tabindex="-1">
+    {#if conditionsEdited}
+      <p class="edited">Local change, not saved: this list differs from the record.</p>
+    {/if}
     {#if conditions.length === 0}
       <p>No conditions recorded.</p>
     {:else}
@@ -91,5 +96,10 @@
 
   .duration {
     font-size: var(--text-ui-sm);
+  }
+
+  .edited {
+    font-size: var(--text-ui-sm);
+    color: var(--color-lantern);
   }
 </style>

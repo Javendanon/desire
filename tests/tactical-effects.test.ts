@@ -5,6 +5,7 @@ import {
   EFFECTS_STORAGE_KEY,
   PARTICLE_BUDGET,
   loadParticlesEnabled,
+  openEffectsStorage,
   planParticles,
   saveParticlesEnabled,
   type EffectsStorage,
@@ -44,6 +45,7 @@ test('particles scale with their sources and never exceed the budget', () => {
   const settings = { enabled: true, reducedMotion: false };
   const one = planParticles(settings, 1);
   assert.ok(one.length > 0 && one.length <= PARTICLE_BUDGET);
+  assert.equal(planParticles(settings, 2).length, one.length * 2);
   assert.equal(planParticles(settings, 1000).length, PARTICLE_BUDGET);
 });
 
@@ -71,6 +73,21 @@ test('the particle preference round-trips through its storage key', () => {
   assert.equal(storage.value, 'off');
   assert.equal(loadParticlesEnabled(storage), false);
   assert.ok(EFFECTS_STORAGE_KEY.length > 0);
+});
+
+test('a refused storage object still boots, and reports that a choice was not kept', (context) => {
+  const warn = context.mock.method(console, 'warn', () => undefined);
+  const storage = openEffectsStorage(() => {
+    throw new Error('SecurityError');
+  });
+  assert.equal(loadParticlesEnabled(storage), true);
+  assert.equal(saveParticlesEnabled(storage, false), false);
+  assert.equal(warn.mock.callCount(), 2);
+});
+
+test('an available storage object is used as it is', () => {
+  const storage = memoryStorage();
+  assert.equal(openEffectsStorage(() => storage), storage);
 });
 
 test('a blocked storage reports the failure and falls back without throwing', (context) => {

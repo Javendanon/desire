@@ -151,8 +151,15 @@ async function pressEscape() {
 
 async function clickMarkerToOpenPanel() {
   await evaluate("window.__tactical.viewer.focusPlace('castle-waterdeep')");
-  await sleep(600);
+  // Software GL can take seconds per frame, so wait for the camera instead of a fixed delay.
+  let radius = Infinity;
+  for (let i = 0; i < 50 && radius > 340; i++) {
+    radius = (await evaluate('window.__tactical.viewer.stats()')).radius;
+    if (radius > 340) await sleep(100);
+  }
+  assert.ok(radius <= 340, `camera did not snap (${radius})`);
   const point = await evaluate(`window.__tactical.viewer.project(${CASTLE}, 0)`);
+  assert.ok(point.visible, `castle off canvas ${point.x},${point.y}`);
   for (const type of ['mousePressed', 'mouseReleased']) {
     await send('Input.dispatchMouseEvent', {
       type, x: Math.round(point.x), y: Math.round(point.y), button: 'left', clickCount: 1,
@@ -174,7 +181,7 @@ async function sheetKeepsTheCamera() {
   assert.deepEqual(await evaluate(cameraOf), before, 'opening a sheet moved the camera');
   const text = await evaluate("document.getElementById('character-sheet').textContent");
   assert.match(text, /Concentrating on /, 'concentration is not shown');
-  assert.match(text, /Demo/, 'demo data is not labelled');
+  assert.match(text, /Invented example data/, 'demo data is not labelled');
   assert.equal(await evaluate("document.querySelectorAll('.particle').length"), 0,
     'reduced motion still drew particles');
   await pressEscape();
@@ -196,6 +203,8 @@ async function particlesStayOptionalAndBounded() {
   await sleep(100);
   assert.equal(await evaluate("document.querySelectorAll('.particle').length"), 0, 'toggle');
   await evaluate("document.getElementById('tactical-particles').click()");
+  await sleep(100);
+  assert.equal(await evaluate("document.querySelectorAll('.particle').length"), count, 'toggle on');
   await send('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
   });

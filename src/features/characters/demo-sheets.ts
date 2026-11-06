@@ -1,6 +1,13 @@
 // Synthetic demo sheets, plus the one real name known so far. No real statistics live here.
 
-import type { Actor, Id, Provenance, RulesEdition } from '../../generated/contracts.ts';
+import type {
+  AbilityScores,
+  Actor,
+  ActorStats,
+  Id,
+  Provenance,
+  RulesEdition,
+} from '../../generated/contracts.ts';
 import type { RuleEntry } from './rule-book.ts';
 import { identityOnlySheet, type ActorSheet } from './sheet-model.ts';
 
@@ -21,6 +28,8 @@ const MAGE_ID = '00000000-0000-4000-8000-00000000d202';
 const BRUTE_ID = '00000000-0000-4000-8000-00000000d203';
 const BRUTE_TEMPLATE_ID = '00000000-0000-4000-8000-00000000d301';
 const IONYTH_ID = '00000000-0000-4000-8000-00000000d204';
+
+const DEMO_SPEED_M = 9;
 
 export const DEMO_PROVENANCE: Provenance = {
   source: 'fixture:d16-demo',
@@ -98,6 +107,16 @@ function demoCondition({ id, actorId, entry, remainingRounds }: ConditionSeed) {
   };
 }
 
+function demoStats(actorId: Id, abilities: AbilityScores, armorClass: number): ActorStats {
+  return {
+    ...owned(actorId),
+    abilities,
+    armor_class: armorClass,
+    speed_m: DEMO_SPEED_M,
+    revision: 1,
+  };
+}
+
 function demoState(actorId: Id, currentHp: number, maxHp: number) {
   return {
     ...owned(actorId),
@@ -114,20 +133,11 @@ const WARDEN_SHEET: ActorSheet = {
     demoActor({ id: WARDEN_ID, name: 'Demo Warden', kind: 'character', disposition: 'friendly' }),
     DEMO_PROVENANCE,
   ),
-  stats: {
-    ...owned(WARDEN_ID),
-    abilities: {
-      strength: 12,
-      dexterity: 16,
-      constitution: 14,
-      intelligence: 10,
-      wisdom: 15,
-      charisma: 8,
-    },
-    armor_class: 15,
-    speed_m: 9,
-    revision: 1,
-  },
+  stats: demoStats(
+    WARDEN_ID,
+    { strength: 12, dexterity: 16, constitution: 14, intelligence: 10, wisdom: 15, charisma: 8 },
+    15,
+  ),
   state: { ...demoState(WARDEN_ID, 22, 26), temporary_hp: 4 },
   details: {
     ...owned(WARDEN_ID),
@@ -191,20 +201,11 @@ const MAGE_SHEET: ActorSheet = {
     demoActor({ id: MAGE_ID, name: 'Demo Mage', kind: 'character', disposition: 'friendly' }),
     DEMO_PROVENANCE,
   ),
-  stats: {
-    ...owned(MAGE_ID),
-    abilities: {
-      strength: 8,
-      dexterity: 14,
-      constitution: 12,
-      intelligence: 17,
-      wisdom: 11,
-      charisma: 10,
-    },
-    armor_class: 12,
-    speed_m: 9,
-    revision: 1,
-  },
+  stats: demoStats(
+    MAGE_ID,
+    { strength: 8, dexterity: 14, constitution: 12, intelligence: 17, wisdom: 11, charisma: 10 },
+    12,
+  ),
   state: demoState(MAGE_ID, 0, 20),
   classes: [
     {
@@ -237,20 +238,11 @@ const BRUTE_SHEET: ActorSheet = {
     }),
     DEMO_PROVENANCE,
   ),
-  stats: {
-    ...owned(BRUTE_ID),
-    abilities: {
-      strength: 15,
-      dexterity: 11,
-      constitution: 13,
-      intelligence: 9,
-      wisdom: 10,
-      charisma: 7,
-    },
-    armor_class: 13,
-    speed_m: 9,
-    revision: 1,
-  },
+  stats: demoStats(
+    BRUTE_ID,
+    { strength: 15, dexterity: 11, constitution: 13, intelligence: 9, wisdom: 10, charisma: 7 },
+    13,
+  ),
   state: demoState(BRUTE_ID, 11, 16),
   actions: [
     {
@@ -298,14 +290,3 @@ export const IONYTH_SHEET: ActorSheet = identityOnlySheet(
     evidence: 'verified',
   },
 );
-
-/** Every knowledge id a sheet points at, to check the fixtures against the rule book. O(n). */
-export function demoKnowledgeIds(sheet: ActorSheet): Id[] {
-  return [
-    ...sheet.classes.map((entry) => entry.class_entry_id),
-    ...sheet.features.map((feature) => feature.feature_entry_id),
-    ...sheet.spells.map((spell) => spell.knowledge_entry_id),
-    ...sheet.conditions.map((condition) => condition.knowledge_entry_id),
-    ...(sheet.concentration ? [sheet.concentration.knowledge_entry_id] : []),
-  ];
-}

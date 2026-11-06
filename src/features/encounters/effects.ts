@@ -35,6 +35,23 @@ export function planParticles(settings: EffectSettings, sources: number): Partic
   }));
 }
 
+const UNAVAILABLE_STORAGE: EffectsStorage = {
+  getItem: () => null,
+  setItem: () => {
+    throw new Error('browser storage is unavailable');
+  },
+};
+
+/** A browser can refuse the storage object itself, which must not stop the page from booting. */
+export function openEffectsStorage(open: () => EffectsStorage): EffectsStorage {
+  try {
+    return open();
+  } catch (error) {
+    console.warn('Browser storage is unavailable', error);
+    return UNAVAILABLE_STORAGE;
+  }
+}
+
 /** Defaults to on: blocked storage only loses the preference, so it warns and carries on. */
 export function loadParticlesEnabled(storage: EffectsStorage): boolean {
   try {

@@ -37,6 +37,7 @@
     nextTurn,
     startLocalState,
   } from './encounter-state.ts';
+  import type { InteractionScope } from './interaction-scope.ts';
   import { participantViews } from './tactical-view.ts';
 
   interface Props {
@@ -57,6 +58,7 @@
   let pickNote = $state('');
   let reducedMotion = $state(false);
   let particlesEnabled = $state(untrack(() => loadParticlesEnabled(effectsStorage)));
+  let particlesScope = $state<InteractionScope>('device');
   let launcher: HTMLButtonElement;
   let sheetOpener: HTMLElement | null = null;
 
@@ -65,11 +67,8 @@
   const views = $derived(participantViews({ bundle, state: local, rules }));
   const recordedSheet = $derived(openActorId ? sheets.get(openActorId) ?? null : null);
   const openSheet = $derived(recordedSheet ? applyLocal(recordedSheet, local) : null);
-  const recordedHp = $derived(
-    recordedSheet && localEdits(recordedSheet, local).hp
-      ? (recordedSheet.state?.current_hp ?? null)
-      : null,
-  );
+  const edits = $derived(recordedSheet ? localEdits(recordedSheet, local) : null);
+  const recordedHp = $derived(edits?.hp ? (recordedSheet?.state?.current_hp ?? null) : null);
   const particles = $derived(
     planParticles({ enabled: particlesEnabled, reducedMotion }, CONCENTRATION_SOURCES),
   );
@@ -131,7 +130,7 @@
 
   function setParticles(enabled: boolean): void {
     particlesEnabled = enabled;
-    saveParticlesEnabled(effectsStorage, enabled);
+    particlesScope = saveParticlesEnabled(effectsStorage, enabled) ? 'device' : 'session';
   }
 </script>
 
@@ -164,6 +163,7 @@
         canAdvance={canAdvance(bundle.encounter, rolled.length)}
         canReset={hasLocalChanges(local, bundle.encounter)}
         {particlesEnabled}
+        {particlesScope}
         {reducedMotion}
         onopen={showSheet}
         onadjust={adjust}
@@ -181,6 +181,7 @@
           sheet={openSheet}
           {rules}
           {recordedHp}
+          conditionsEdited={edits?.conditions ?? false}
           ondismiss={(id) => (local = dismissCondition(local, id))}
           onclose={closeSheet}
         >

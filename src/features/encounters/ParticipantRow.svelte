@@ -24,7 +24,7 @@
   </p>
   <p class="line">{view.initiativeText} · {view.dispositionText}</p>
   <div class="line hp">
-    <span>{view.hpText}{view.edited ? ' · local change' : ''}</span>
+    <span>{view.hpText}{view.hpEdited ? ' · local change' : ''}</span>
     {#if view.canAdjustHp}
       <span class="steps">
         <button
@@ -46,7 +46,7 @@
       </span>
     {/if}
   </div>
-  <p class="line">{view.conditionsText}</p>
+  <p class="line">{view.conditionsText}{view.conditionsEdited ? ' · local change' : ''}</p>
   {#if view.concentrationText}<p class="line">◉ {view.concentrationText}</p>{/if}
   {#if view.visibilityText}<p class="line">{view.visibilityText}</p>{/if}
 </li>

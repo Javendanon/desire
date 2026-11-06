@@ -23,7 +23,8 @@ export interface ParticipantView {
   conditionsText: string;
   concentrationText: string | null;
   currentTurn: boolean;
-  edited: boolean;
+  hpEdited: boolean;
+  conditionsEdited: boolean;
   /** Only shown when set: the record is limited to the DM. */
   visibilityText: string | null;
 }
@@ -83,7 +84,8 @@ function toView(
     canAdjustHp: local.state !== null,
     conditionsText: conditionsText(local, input.rules),
     concentrationText: concentrationText(local, input.rules),
-    edited: edits.hp || edits.conditions,
+    hpEdited: edits.hp,
+    conditionsEdited: edits.conditions,
     visibilityText: sheet.actor.visibility === 'dm' ? 'DM only' : null,
   };
 }

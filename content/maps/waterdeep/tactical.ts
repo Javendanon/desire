@@ -12,6 +12,7 @@ import {
 } from '../../../src/features/characters/rule-book.ts';
 import TacticalOverlay from '../../../src/features/encounters/TacticalOverlay.svelte';
 import { createDemoEncounter } from '../../../src/features/encounters/demo-encounter.ts';
+import { openEffectsStorage } from '../../../src/features/encounters/effects.ts';
 import {
   assertBundleComplete,
   type PlaceSubscription,
@@ -66,7 +67,7 @@ async function boot(): Promise<void> {
       rules: createRuleBook([...entriesFromCompendium(compendium), ...DEMO_RULE_ENTRIES]),
       placeName: place.name,
       subscribePlace: placeEvents(viewer),
-      effectsStorage: window.localStorage,
+      effectsStorage: openEffectsStorage(() => window.localStorage),
     },
   });
   probe.ready = true;

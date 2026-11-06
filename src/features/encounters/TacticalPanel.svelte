@@ -6,7 +6,8 @@
   import ParticipantRow from './ParticipantRow.svelte';
   import ScopeNote from './ScopeNote.svelte';
   import type { EncounterBundle } from './encounter-model.ts';
-  import { AUTOMATED_RULES, NOT_AUTOMATED } from './encounter-state.ts';
+  import { AUTOMATED_RULES, NOT_AUTOMATED } from './automation-notes.ts';
+  import type { InteractionScope } from './interaction-scope.ts';
   import { encounterStatusText, type ParticipantView } from './tactical-view.ts';
 
   interface Props {
@@ -18,6 +19,7 @@
     canAdvance: boolean;
     canReset: boolean;
     particlesEnabled: boolean;
+    particlesScope: InteractionScope;
     reducedMotion: boolean;
     onopen: (actorId: string) => void;
     onadjust: (actorId: string, delta: number) => void;
@@ -35,6 +37,7 @@
     canAdvance,
     canReset,
     particlesEnabled,
+    particlesScope,
     reducedMotion,
     onopen,
     onadjust,
@@ -46,6 +49,7 @@
   let heading: HTMLHeadingElement;
 
   const edition = $derived(RULES_EDITION_LABELS[bundle.rulesEdition]);
+  const currentName = $derived(views.find((view) => view.currentTurn)?.name ?? null);
 
   // Undoing disables the button that was just pressed, so keyboard focus needs a new home.
   function undoLocalChanges(): void {
@@ -58,7 +62,10 @@
   <header>
     <h2 id="tactical-panel-title" bind:this={heading} tabindex="-1">{bundle.encounter.name}</h2>
     <p class="meta">{placeName} · {encounterStatusText(bundle.encounter.status)}</p>
-    <p class="meta" aria-live="polite">Round {round} · Rules: {edition}</p>
+    <p class="meta" aria-live="polite">
+      Round {round} · {currentName ? `Turn: ${currentName}` : 'No current turn'}
+    </p>
+    <p class="meta">Rules: {edition}</p>
   </header>
 
   <EvidenceBadge provenance={bundle.provenance} />
@@ -117,7 +124,7 @@
     {#if reducedMotion}
       <p class="meta">Not shown: your system asks for reduced motion.</p>
     {/if}
-    <ScopeNote scope="device" />
+    <ScopeNote scope={particlesScope} />
   </section>
 
   <details class="group">

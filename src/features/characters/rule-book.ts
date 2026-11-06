@@ -6,6 +6,7 @@ import type {
   KnowledgeEntry,
   RulesEdition,
 } from '../../generated/contracts.ts';
+import { evidenceBadge } from './sheet-model.ts';
 
 export type RuleVerification = 'verified' | 'pending_review';
 
@@ -114,7 +115,9 @@ export function createRuleBook(entries: readonly RuleEntry[]): RuleBook {
 function sourceLine(entry: RuleEntry): string {
   const where = entry.sourceLocator ?? entry.provenance.source;
   const edition = RULES_EDITION_LABELS[entry.rules_edition];
-  return `${where} · ${edition} · ${VERIFICATION_LABELS[entry.verification]}`;
+  const verification = VERIFICATION_LABELS[entry.verification];
+  const evidence = evidenceBadge(entry.provenance.evidence).label;
+  return `${where} · ${edition} · ${verification} · ${evidence}`;
 }
 
 export function describeRule(lookup: RuleLookup): RuleSummary {

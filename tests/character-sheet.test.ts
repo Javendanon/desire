@@ -7,7 +7,6 @@ import {
   DEMO_RULE_ENTRIES,
   DEMO_SHEETS,
   IONYTH_SHEET,
-  demoKnowledgeIds,
 } from '../src/features/characters/demo-sheets.ts';
 import {
   createRuleBook,
@@ -23,7 +22,11 @@ import {
   durationText,
   spellRows,
 } from '../src/features/characters/sheet-rows.ts';
-import { evidenceBadge, hasSheetData } from '../src/features/characters/sheet-model.ts';
+import {
+  evidenceBadge,
+  hasSheetData,
+  type ActorSheet,
+} from '../src/features/characters/sheet-model.ts';
 import {
   abilityModifier,
   abilityRows,
@@ -56,6 +59,17 @@ const RULE: RuleEntry = {
   sourceLocator: 'SRD 5.1, Conditions',
   verification: 'pending_review',
 };
+
+/** Every knowledge id a sheet points at, to check the fixtures against the rule book. */
+function knowledgeIds(sheet: ActorSheet): string[] {
+  return [
+    ...sheet.classes.map((entry) => entry.class_entry_id),
+    ...sheet.features.map((feature) => feature.feature_entry_id),
+    ...sheet.spells.map((spell) => spell.knowledge_entry_id),
+    ...sheet.conditions.map((condition) => condition.knowledge_entry_id),
+    ...(sheet.concentration ? [sheet.concentration.knowledge_entry_id] : []),
+  ];
+}
 
 test('ability modifiers follow the 5e formula, rounding down for odd low scores', () => {
   assert.equal(abilityModifier(10), 0);
@@ -122,6 +136,7 @@ test('a rule lookup reports its source, or the exact reason it cannot be trusted
   assert.match(found.source, /SRD 5\.1, Conditions/);
   assert.match(found.source, /D&D 5e \(2014\)/);
   assert.match(found.source, /Pending review/);
+  assert.match(found.source, /Confirmed$/);
 
   const missing = describeRule(book.lookup('nope', 'dnd_2014'));
   assert.equal(missing.body, null);
@@ -156,10 +171,18 @@ test('the compendium parser keeps sources and refuses anything it cannot vouch f
   );
 });
 
+test('a demo rule says it is demo data in its own source line', () => {
+  const [entry] = DEMO_RULE_ENTRIES;
+  assert.ok(entry);
+  const book = createRuleBook(DEMO_RULE_ENTRIES);
+  const summary = describeRule(book.lookup(entry.id, entry.rules_edition));
+  assert.match(summary.source, /Demo$/);
+});
+
 test('every rule the demo sheets reference resolves in their own edition', () => {
   const book = createRuleBook([...entriesFromCompendium(compendium), ...DEMO_RULE_ENTRIES]);
   for (const sheet of DEMO_SHEETS) {
-    for (const id of demoKnowledgeIds(sheet)) {
+    for (const id of knowledgeIds(sheet)) {
       const lookup = book.lookup(id, sheet.actor.rules_edition);
       assert.equal(lookup.status, 'found', `${sheet.actor.name} → ${id}`);
     }
