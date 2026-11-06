@@ -13,11 +13,14 @@
   import SheetMoves from './SheetMoves.svelte';
   import SheetStatus from './SheetStatus.svelte';
   import type { RuleBook } from './rule-book.ts';
-  import { hasSheetData, sheetBadge, type ActorSheet } from './sheet-model.ts';
-  import { rulesLine } from './sheet-view.ts';
+  import type { ActorSheet } from './sheet-model.ts';
+  import { sheetHeader } from './sheet-view.ts';
 
   interface Props {
+    /** The sheet as this session shows it: dismissed conditions and edited HP applied. */
     sheet: ActorSheet;
+    /** The record itself. Emptiness and evidence read from here, never from the session view. */
+    recordedSheet: ActorSheet;
     rules: RuleBook;
     /** Set only when a session edit differs from the record. */
     recordedHp: number | null;
@@ -32,6 +35,7 @@
 
   let {
     sheet,
+    recordedSheet,
     rules,
     recordedHp,
     conditionsEdited = false,
@@ -45,6 +49,9 @@
 
   const KIND_WORDS = { character: 'Character', npc: 'NPC', monster: 'Monster' } as const;
 
+  // The session view drops dismissed conditions, so it can look empty when the record is not.
+  const header = $derived(sheetHeader(recordedSheet));
+
   // The sheet opens beside the map without taking over the page: move focus, never scroll.
   onMount(() => heading.focus({ preventScroll: true }));
 </script>
@@ -54,15 +61,15 @@
     <div>
       <p class="kind">{KIND_WORDS[sheet.actor.kind]}</p>
       <h3 id="character-sheet-title" bind:this={heading} tabindex="-1">{sheet.actor.name}</h3>
-      <p class="rules">{rulesLine(sheet)}</p>
+      <p class="rules">{header.editionLine}</p>
     </div>
     <button type="button" class="sheet-control" onclick={onclose}>Close sheet</button>
   </header>
 
-  <EvidenceBadge provenance={sheet.provenance} wording={sheetBadge(sheet)} />
+  <EvidenceBadge provenance={sheet.provenance} wording={header.badge} />
   {@render scope()}
 
-  {#if hasSheetData(sheet)}
+  {#if header.supplied}
     {#if sheet.details}
       <p class="details">
         {sheet.details.ancestry} · {sheet.details.background} · {sheet.details.experience} XP

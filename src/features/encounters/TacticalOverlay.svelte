@@ -175,11 +175,12 @@
     </div>
   {/if}
 
-  {#if openSheet}
+  {#if openSheet && recordedSheet}
     <div class="slot sheet-slot">
       {#key openSheet.actor.id}
         <CharacterSheet
           sheet={openSheet}
+          {recordedSheet}
           {rules}
           {recordedHp}
           conditionsEdited={edits?.conditions ?? false}

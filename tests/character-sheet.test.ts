@@ -34,8 +34,16 @@ import {
   abilityRows,
   healthView,
   rulesLine,
+  sheetHeader,
   totalLevel,
 } from '../src/features/characters/sheet-view.ts';
+import { createDemoEncounter } from '../src/features/encounters/demo-encounter.ts';
+import {
+  applyLocal,
+  dismissCondition,
+  nextTurn,
+  startLocalState,
+} from '../src/features/encounters/encounter-state.ts';
 
 const compendium = JSON.parse(
   readFileSync(new URL('../content/knowledge/compendium.json', import.meta.url), 'utf8'),
@@ -235,6 +243,48 @@ test('a sheet with only conditions, spells or concentration still counts as supp
   assert.equal(hasSheetData({ ...bare, conditions: afflicted.conditions }), true);
   assert.equal(hasSheetData({ ...bare, spells: caster.spells }), true);
   assert.equal(hasSheetData({ ...bare, concentration: caster.concentration }), true);
+});
+
+/** The exact decision CharacterSheet makes, so a test can prove it reads the record. */
+function headerReadsRecord(record: ActorSheet): void {
+  const header = sheetHeader(record);
+  assert.equal(header.supplied, true);
+  assert.equal(header.editionLine, 'Rules: D&D 5e (2014)');
+  assert.deepEqual(header.badge, evidenceBadge(record.provenance.evidence));
+}
+
+test('a conditions-only record stays supplied after the session dismisses every condition', () => {
+  const afflicted = DEMO_SHEETS.find((sheet) => sheet.conditions.length > 0);
+  assert.ok(afflicted);
+  const record: ActorSheet = {
+    ...identityOnlySheet(afflicted.actor, afflicted.provenance),
+    conditions: afflicted.conditions,
+  };
+  const dismissed = record.conditions.reduce(
+    (state, condition) => dismissCondition(state, condition.id),
+    startLocalState(createDemoEncounter('place-under-test').encounter),
+  );
+  const view = applyLocal(record, dismissed);
+  assert.equal(hasSheetData(view), false, 'the session view hides dismissed conditions');
+  headerReadsRecord(record);
+});
+
+test('a conditions-only record stays supplied after its last timed condition expires', () => {
+  const sheet = DEMO_SHEETS.find((entry) =>
+    entry.conditions.some((item) => item.remaining_rounds !== null),
+  );
+  assert.ok(sheet);
+  const timed = sheet.conditions.filter((item) => item.remaining_rounds !== null);
+  const record: ActorSheet = {
+    ...identityOnlySheet(sheet.actor, sheet.provenance),
+    conditions: timed,
+  };
+  const context = { rolledCount: 1, conditions: timed };
+  const longest = Math.max(...timed.map((item) => item.remaining_rounds ?? 0));
+  let ticked = startLocalState(createDemoEncounter('place-under-test').encounter);
+  for (let round = 0; round < longest; round += 1) ticked = nextTurn(ticked, context);
+  assert.equal(hasSheetData(applyLocal(record, ticked)), false, 'every timed condition expired');
+  headerReadsRecord(record);
 });
 
 test('an identity-only record says that only the name is confirmed', () => {

@@ -8,7 +8,12 @@ import type {
   CharacterClass,
 } from '../../generated/contracts.ts';
 import { RULES_EDITION_LABELS } from './rule-book.ts';
-import { hasSheetData, type ActorSheet } from './sheet-model.ts';
+import {
+  hasSheetData,
+  sheetBadge,
+  type ActorSheet,
+  type EvidenceBadge,
+} from './sheet-model.ts';
 
 const MODIFIER_BASELINE = 10;
 const FULL_PERCENT = 100;
@@ -84,4 +89,22 @@ export function healthView(state: ActorState): HealthView {
 export function rulesLine(sheet: ActorSheet): string {
   if (!hasSheetData(sheet)) return 'Rules edition not confirmed for this character';
   return `Rules: ${RULES_EDITION_LABELS[sheet.actor.rules_edition]}`;
+}
+
+export interface SheetHeader {
+  supplied: boolean;
+  editionLine: string;
+  badge: EvidenceBadge;
+}
+
+/**
+ * Header facts, read from the record. The session view drops dismissed conditions, so a sheet whose
+ * only data is conditions would look empty after its last one expired.
+ */
+export function sheetHeader(record: ActorSheet): SheetHeader {
+  return {
+    supplied: hasSheetData(record),
+    editionLine: rulesLine(record),
+    badge: sheetBadge(record),
+  };
 }
