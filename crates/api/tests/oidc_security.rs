@@ -109,6 +109,24 @@ fn the_allowlist_is_optional_and_case_insensitive_but_enforced_after_verificatio
 }
 
 #[test]
+fn an_older_login_callback_does_not_clear_the_latest_browser_flow() {
+    let fixture = Fixture::new("");
+    let mut first = fixture.begin();
+    let second = fixture.begin();
+    first.browser = second.browser.clone();
+    let rejected = fixture.finish(&first);
+    assert_eq!(rejected.status, StatusCode::UNAUTHORIZED);
+    assert!(
+        rejected
+            .headers
+            .get_all("set-cookie")
+            .iter()
+            .all(|header| !header.to_str().unwrap().contains("Max-Age=0"))
+    );
+    assert_eq!(fixture.finish(&second).status, StatusCode::SEE_OTHER);
+}
+
+#[test]
 fn neither_a_callback_nor_an_authorization_code_can_be_reused() {
     let fixture = Fixture::new("");
     let first = fixture.begin();

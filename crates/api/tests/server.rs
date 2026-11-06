@@ -245,6 +245,62 @@ fn configured_command(
 }
 
 #[test]
+#[cfg(unix)]
+fn browser_development_mutations_use_an_explicit_loopback_origin_without_oidc() {
+    let db = TestDb::new();
+    let port = free_port();
+    let mut command = Command::new(env!("CARGO_BIN_EXE_desire-api"));
+    for variable in [
+        "DESIRE_OIDC_CLIENT_ID",
+        "DESIRE_OIDC_CLIENT_SECRET",
+        "DESIRE_OIDC_ISSUER",
+    ] {
+        command.env_remove(variable);
+    }
+    let mut child = command
+        .env("DATABASE_URL", db.url())
+        .env("HOST", "127.0.0.1")
+        .env("PORT", port.to_string())
+        .env("DESIRE_DEV_IDENTITY", "1")
+        .env("DESIRE_PUBLIC_URL", "http://localhost:5173")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    wait_until_ready(port, &mut child);
+    for (origin, status) in [
+        ("http://localhost:5173", "201"),
+        ("http://localhost:9999", "403"),
+        ("https://foreign.example.test", "403"),
+    ] {
+        let body = r#"{"name":"Synthetic","rules_edition":"dnd_2014","city_id":null}"#;
+        let response = request(
+            port,
+            &format!(
+                "POST /api/v1/campaigns HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\
+            Origin: {origin}\r\nx-desire-user: {}\r\nContent-Type: application/json\r\n\
+            Content-Length: {}\r\n\r\n{body}",
+                id(90),
+                body.len(),
+            ),
+        );
+        assert!(
+            response.starts_with(&format!("HTTP/1.1 {status}")),
+            "{response}"
+        );
+    }
+    assert!(
+        Command::new("kill")
+            .arg("-INT")
+            .arg(child.id().to_string())
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(wait_for_exit(&mut child).success());
+}
+
+#[test]
 fn a_shared_bind_refuses_to_start_without_oidc_even_with_the_dev_opt_in() {
     let mut command = Command::new(env!("CARGO_BIN_EXE_desire-api"));
     for variable in [
