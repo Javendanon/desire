@@ -1,0 +1,38 @@
+# Fly.io configuration for the public test deployment. `docs/deploy.md` is the runbook.
+# Region: São Paulo (gru). One machine stays awake: real-time sessions cannot sleep.
+app = "desire-table"
+primary_region = "gru"
+kill_signal = "SIGINT"
+kill_timeout = "20s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8080"
+  DESIRE_STATIC_DIR = "/app/static"
+  # Fly's proxy owns this header and overwrites client copies.
+  DESIRE_TRUSTED_CLIENT_IP_HEADER = "Fly-Client-IP"
+
+[deploy]
+  # Migrations run on every deploy; a failed migration aborts the release.
+  release_command = "/usr/local/bin/desire-api --migrate"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/api/health"
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
