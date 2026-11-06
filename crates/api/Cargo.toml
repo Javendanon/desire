@@ -16,7 +16,7 @@ tokio-postgres = "0.7.18"
 serde.workspace = true
 serde_json.workspace = true
 ureq.workspace = true
-tokio = { workspace = true, features = ["sync", "time"] }
+tokio = { workspace = true, features = ["sync", "time", "fs"] }
 getrandom = "=0.4.3"
 sha2 = "=0.11.1"
 openidconnect = "=4.0.1"

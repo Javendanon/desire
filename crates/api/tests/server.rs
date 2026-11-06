@@ -23,6 +23,7 @@ pub(super) fn command() -> Command {
         "DESIRE_ALLOWED_EMAILS",
         "DESIRE_DEV_IDENTITY",
         "DESIRE_TRUSTED_CLIENT_IP_HEADER",
+        "DESIRE_STATIC_DIR",
     ] {
         command.env_remove(name);
     }
@@ -40,6 +41,7 @@ fn child_servers_remove_inherited_oidc_configuration() {
         "DESIRE_ALLOWED_EMAILS",
         "DESIRE_DEV_IDENTITY",
         "DESIRE_TRUSTED_CLIENT_IP_HEADER",
+        "DESIRE_STATIC_DIR",
     ] {
         assert!(
             command
