@@ -80,6 +80,14 @@ test('listCampaigns sends identity and parses the generated page type', async ()
   assert.equal(result.items[0].id, CAMPAIGN);
 });
 
+test('cookie clients send same-origin credentials without a development identity', async () => {
+  const captured: Capture[] = [];
+  const transport = { fetch: fakeFetch(CAMPAIGN_ROW, 200, captured) };
+  await request(transport, { method: 'GET', path: '/campaigns' });
+  assert.equal(captured[0].init.credentials, 'same-origin');
+  assert.equal((captured[0].init.headers as Record<string, string>)['x-desire-user'], undefined);
+});
+
 test('createCampaign posts the contract fields as JSON', async () => {
   const captured: Capture[] = [];
   await createCampaign(context(CAMPAIGN_ROW, 201, captured), {
