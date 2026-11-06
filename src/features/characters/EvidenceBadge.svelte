@@ -1,15 +1,17 @@
 <!-- How far a record can be trusted: a text mark and a word, so colour is not the only signal. -->
 <script lang="ts">
   import type { Provenance } from '../../generated/contracts.ts';
-  import { evidenceBadge } from './sheet-model.ts';
+  import { evidenceBadge, type EvidenceBadge } from './sheet-model.ts';
 
   interface Props {
     provenance: Provenance;
+    /** Overrides the wording when the record's reach is narrower than its evidence level. */
+    wording?: EvidenceBadge;
   }
 
-  let { provenance }: Props = $props();
+  let { provenance, wording }: Props = $props();
 
-  const badge = $derived(evidenceBadge(provenance.evidence));
+  const badge = $derived(wording ?? evidenceBadge(provenance.evidence));
 </script>
 
 <p class="evidence">

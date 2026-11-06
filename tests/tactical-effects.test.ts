@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   EFFECTS_STORAGE_KEY,
   PARTICLE_BUDGET,
+  effectsScope,
   loadParticlesEnabled,
   openEffectsStorage,
   planParticles,
@@ -88,6 +89,15 @@ test('a refused storage object still boots, and reports that a choice was not ke
 test('an available storage object is used as it is', () => {
   const storage = memoryStorage();
   assert.equal(openEffectsStorage(() => storage), storage);
+});
+
+test('the preference scope says device only when the storage object was opened', (context) => {
+  context.mock.method(console, 'warn', () => undefined);
+  assert.equal(effectsScope(memoryStorage()), 'device');
+  const refused = openEffectsStorage(() => {
+    throw new Error('SecurityError');
+  });
+  assert.equal(effectsScope(refused), 'session');
 });
 
 test('a blocked storage reports the failure and falls back without throwing', (context) => {

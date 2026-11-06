@@ -1,5 +1,7 @@
 // Optional decorative particles: a bounded plan and a device-only preference. No DOM here.
 
+import type { InteractionScope } from './interaction-scope.ts';
+
 export interface EffectSettings {
   enabled: boolean;
   reducedMotion: boolean;
@@ -19,7 +21,7 @@ export const EFFECTS_STORAGE_KEY = 'desire.tactical.particles';
 
 const PARTICLES_PER_SOURCE = 4;
 const FULL_PERCENT = 100;
-/** Coprime with FULL_PERCENT, so successive particles spread out across the box without repeating. */
+/** Coprime with FULL_PERCENT: successive particles spread across the box without repeating. */
 const SCATTER_STEP_PERCENT = 37;
 const STAGGER_MS = 210;
 const STORED_OFF = 'off';
@@ -51,6 +53,11 @@ export function openEffectsStorage(open: () => EffectsStorage): EffectsStorage {
     console.warn('Browser storage is unavailable', error);
     return UNAVAILABLE_STORAGE;
   }
+}
+
+/** Where a saved preference would live: a refused storage object keeps it for this tab only. */
+export function effectsScope(storage: EffectsStorage): InteractionScope {
+  return storage === UNAVAILABLE_STORAGE ? 'session' : 'device';
 }
 
 /** Defaults to on: blocked storage only loses the preference, so it warns and carries on. */

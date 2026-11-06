@@ -82,6 +82,26 @@ export function identityOnlySheet(actor: Actor, provenance: Provenance): ActorSh
   };
 }
 
+/** True when any record beyond identity was supplied, so nothing the panel shows is hidden here. */
 export function hasSheetData(sheet: ActorSheet): boolean {
-  return sheet.stats !== null || sheet.state !== null || sheet.details !== null;
+  const records = [sheet.stats, sheet.state, sheet.details, sheet.concentration];
+  const lists = [
+    sheet.classes,
+    sheet.features,
+    sheet.proficiencies,
+    sheet.equipment,
+    sheet.spells,
+    sheet.resources,
+    sheet.actions,
+    sheet.conditions,
+  ];
+  return records.some((record) => record !== null) || lists.some((list) => list.length > 0);
+}
+
+const IDENTITY_ONLY_DETAIL = 'The cited source confirms only the name; nothing else was supplied.';
+
+/** The badge for a whole sheet: a confirmed identity must not read as a confirmed sheet. */
+export function sheetBadge(sheet: ActorSheet): EvidenceBadge {
+  const badge = evidenceBadge(sheet.provenance.evidence);
+  return hasSheetData(sheet) ? badge : { ...badge, detail: IDENTITY_ONLY_DETAIL };
 }

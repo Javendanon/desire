@@ -13,7 +13,7 @@
   import SheetMoves from './SheetMoves.svelte';
   import SheetStatus from './SheetStatus.svelte';
   import type { RuleBook } from './rule-book.ts';
-  import { hasSheetData, type ActorSheet } from './sheet-model.ts';
+  import { hasSheetData, sheetBadge, type ActorSheet } from './sheet-model.ts';
   import { rulesLine } from './sheet-view.ts';
 
   interface Props {
@@ -59,7 +59,7 @@
     <button type="button" class="sheet-control" onclick={onclose}>Close sheet</button>
   </header>
 
-  <EvidenceBadge provenance={sheet.provenance} />
+  <EvidenceBadge provenance={sheet.provenance} wording={sheetBadge(sheet)} />
   {@render scope()}
 
   {#if hasSheetData(sheet)}

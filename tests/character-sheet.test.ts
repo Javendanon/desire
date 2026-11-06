@@ -25,6 +25,8 @@ import {
 import {
   evidenceBadge,
   hasSheetData,
+  identityOnlySheet,
+  sheetBadge,
   type ActorSheet,
 } from '../src/features/characters/sheet-model.ts';
 import {
@@ -222,6 +224,26 @@ test('the Ionyth record is identity only: no statistic is invented', () => {
   assert.ok(lists.every((list) => list.length === 0));
   assert.match(rulesLine(IONYTH_SHEET), /not confirmed/);
   assert.equal(DEMO_SHEETS.some((sheet) => sheet.actor.name === 'Ionyth'), false);
+});
+
+test('a sheet with only conditions, spells or concentration still counts as supplied', () => {
+  const caster = DEMO_SHEETS.find((sheet) => sheet.concentration && sheet.spells.length > 0);
+  const afflicted = DEMO_SHEETS.find((sheet) => sheet.conditions.length > 0);
+  assert.ok(caster && afflicted);
+  const bare = identityOnlySheet(caster.actor, caster.provenance);
+  assert.equal(hasSheetData(bare), false);
+  assert.equal(hasSheetData({ ...bare, conditions: afflicted.conditions }), true);
+  assert.equal(hasSheetData({ ...bare, spells: caster.spells }), true);
+  assert.equal(hasSheetData({ ...bare, concentration: caster.concentration }), true);
+});
+
+test('an identity-only record says that only the name is confirmed', () => {
+  const badge = sheetBadge(IONYTH_SHEET);
+  assert.equal(badge.label, evidenceBadge('verified').label);
+  assert.match(badge.detail, /only the name/i);
+  const [full] = DEMO_SHEETS;
+  assert.ok(full);
+  assert.deepEqual(sheetBadge(full), evidenceBadge(full.provenance.evidence));
 });
 
 test('a full sheet states its rules edition', () => {

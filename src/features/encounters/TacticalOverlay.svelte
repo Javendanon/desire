@@ -13,6 +13,7 @@
   import ScopeNote from './ScopeNote.svelte';
   import TacticalPanel from './TacticalPanel.svelte';
   import {
+    effectsScope,
     loadParticlesEnabled,
     planParticles,
     saveParticlesEnabled,
@@ -58,7 +59,7 @@
   let pickNote = $state('');
   let reducedMotion = $state(false);
   let particlesEnabled = $state(untrack(() => loadParticlesEnabled(effectsStorage)));
-  let particlesScope = $state<InteractionScope>('device');
+  let particlesScope = $state<InteractionScope>(untrack(() => effectsScope(effectsStorage)));
   let launcher: HTMLButtonElement;
   let sheetOpener: HTMLElement | null = null;
 
