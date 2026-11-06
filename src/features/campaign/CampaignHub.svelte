@@ -24,7 +24,7 @@
 
   const LIST_KEY = 'campaigns';
 
-  let load = $state<LoadState<string, Collected<Campaign>>>({ status: 'idle' });
+  let load = $state.raw<LoadState<string, Collected<Campaign>>>({ status: 'idle' });
   const loader = new LatestLoader<string, Collected<Campaign>>(
     (_key, signal) => collectPages((page) => listCampaigns(withSignal(api, signal), page)),
     (next) => (load = next),

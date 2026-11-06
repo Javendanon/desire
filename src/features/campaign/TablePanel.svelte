@@ -1,6 +1,6 @@
 <!--
   Entrance to the table: mounts the D11 viewer and lists the campaign's scenes. Miniatures, turns
-  and encounters belong to D16 and D17; this panel adds no game rules.
+  and encounters belong to D16 and D17. This panel adds no game rules.
 -->
 <script lang="ts">
   import { t } from '../../app/messages.ts';

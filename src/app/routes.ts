@@ -20,7 +20,12 @@ export interface CampaignRoute {
 
 export type Route = { view: 'hub' } | CampaignRoute | { view: 'missing' };
 
-export type FocusTarget = { kind: 'main' } | { kind: 'place'; placeId: string } | null;
+export interface PlaceFocus {
+  kind: 'place';
+  placeId: string;
+}
+
+export type FocusTarget = { kind: 'main' } | PlaceFocus | null;
 
 export const HUB_ROUTE: Route = { view: 'hub' };
 

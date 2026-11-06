@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -108,6 +109,13 @@ test('focus moves to the place when returning to the map, otherwise to the main 
   assert.deepEqual(focusTarget(lore, atlas), { kind: 'place', placeId: 'the-market' });
   assert.deepEqual(focusTarget(atlas, lore), { kind: 'main' });
   assert.deepEqual(focusTarget(hub, openCampaign(CAMPAIGN_A)), { kind: 'main' });
+});
+
+// A text check, because no test renders components: the workspace loads its campaign only on
+// mount, so this key is what stops campaign B from showing campaign A's data.
+test('the shell remounts the workspace for each campaign', () => {
+  const shell = readFileSync(new URL('../src/App.svelte', import.meta.url), 'utf8');
+  assert.match(shell, /\{#key route\.campaignId\}\s*<CampaignWorkspace/);
 });
 
 test('editing the context keeps focus where the user is typing', () => {

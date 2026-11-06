@@ -18,7 +18,13 @@
   import type { ApiContext } from '../../lib/api/client.ts';
   import { withSignal } from '../campaign/api-context.ts';
   import { collectPages } from '../campaign/pages.ts';
-  import { ALL_KINDS, loreKinds, searchLore, type LoreEntry } from './lore-index.ts';
+  import {
+    ALL_KINDS,
+    loreKinds,
+    resolveKind,
+    searchLore,
+    type LoreEntry,
+  } from './lore-index.ts';
   import { collectLore, loadCompendium, type LoreCollection } from './lore-sources.ts';
   import LoreDetail from './LoreDetail.svelte';
   import { kindLabelKey, mapRouteFor } from './lore-view.ts';
@@ -34,7 +40,7 @@
 
   const LORE_KEY = 'lore';
 
-  let load = $state<LoadState<string, LoreCollection>>({ status: 'idle' });
+  let load = $state.raw<LoadState<string, LoreCollection>>({ status: 'idle' });
   let detail = $state<HTMLElement>();
 
   async function gather(signal: AbortSignal): Promise<LoreCollection> {
@@ -60,7 +66,7 @@
   });
 
   const index = $derived(load.status === 'ready' ? load.value.index : []);
-  const kind = $derived(route.context.kind ?? ALL_KINDS);
+  const kind = $derived(resolveKind(index, route.context.kind));
   const results = $derived(searchLore(index, route.context.query, kind));
   const open = $derived(index.find((entry) => entry.key === route.context.entry) ?? null);
 
@@ -218,10 +224,6 @@
     .lore,
     .filters {
       grid-template-columns: minmax(0, 1fr);
-    }
-
-    .reader {
-      order: -1;
     }
   }
 </style>

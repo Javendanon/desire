@@ -3,7 +3,7 @@
   import { onMount, tick } from 'svelte';
 
   import { connectionState, probeServer, type ConnectionState } from './app/connection.ts';
-  import { browserStorage, resolveDevIdentity } from './app/identity.ts';
+  import { browserStorage, createDevIdentity, resolveDevIdentity } from './app/identity.ts';
   import { t, type MessageKey } from './app/messages.ts';
   import {
     focusTarget,
@@ -30,7 +30,7 @@
   const PROBE_INTERVAL_MS = 30_000;
   const PROBE_TIMEOUT_MS = 5_000;
 
-  const api = createApiContext(resolveDevIdentity(browserStorage, () => crypto.randomUUID()));
+  const api = createApiContext(resolveDevIdentity(browserStorage, createDevIdentity));
   const probes = new AbortController();
 
   let route = $state<Route>(parseRoute(location.hash));
@@ -53,10 +53,20 @@
     void tick().then(() => applyFocus(target));
   }
 
+  // Browsers may rate-limit this call on every keystroke. The screen must not depend on it: the
+  // address simply catches up on the next edit.
+  function replaceAddress(hash: string): void {
+    try {
+      history.replaceState(null, '', hash);
+    } catch (error) {
+      console.warn('The browser refused to update the address', error);
+    }
+  }
+
   function navigate(next: Route, options: { replace?: boolean } = {}): void {
     const hash = formatRoute(next);
     if (options.replace) {
-      history.replaceState(null, '', hash);
+      replaceAddress(hash);
       show(next);
     } else if (location.hash === hash) {
       show(next);
@@ -110,7 +120,11 @@
       <img src="/assets/mark.svg" alt="" width="24" height="24" />
       {t('app.name')}
     </a>
-    <p class="connection" class:bad={connection === 'offline' || connection === 'server_down'}>
+    <p
+      class="connection"
+      class:bad={connection === 'offline' || connection === 'server_down'}
+      role="status"
+    >
       {t(CONNECTION_LABELS[connection])}
     </p>
   </header>

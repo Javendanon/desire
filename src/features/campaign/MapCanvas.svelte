@@ -12,10 +12,12 @@
   interface Props {
     map: MapDefinition;
     selected: string | null;
+    /** Each new value centers the selected place again, even if the selection did not change. */
+    recenter: number;
     onplace: (placeId: string) => void;
   }
 
-  let { map, selected, onplace }: Props = $props();
+  let { map, selected, recenter, onplace }: Props = $props();
 
   let canvas = $state<HTMLCanvasElement>();
   let viewer = $state.raw<MapViewer | null>(null);
@@ -51,6 +53,7 @@
   });
 
   $effect(() => {
+    void recenter;
     if (!viewer || !selected) return;
     viewer.selectPlace(selected);
     viewer.focusPlace(selected);

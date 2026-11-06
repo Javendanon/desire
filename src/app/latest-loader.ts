@@ -3,9 +3,20 @@
 
 export type LoadState<K, T> =
   | { status: 'idle' }
-  | { status: 'loading'; key: K }
-  | { status: 'ready'; key: K; value: T }
-  | { status: 'failed'; key: K; error: unknown };
+  | {
+      status: 'loading';
+      key: K;
+    }
+  | {
+      status: 'ready';
+      key: K;
+      value: T;
+    }
+  | {
+      status: 'failed';
+      key: K;
+      error: unknown;
+    };
 
 export type Loader<K, T> = (key: K, signal: AbortSignal) => Promise<T>;
 

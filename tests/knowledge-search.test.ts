@@ -9,6 +9,7 @@ import {
   CAMPAIGN_KIND,
   loreKinds,
   PLACE_KIND,
+  resolveKind,
   searchLore,
 } from '../src/features/knowledge/lore-index.ts';
 import { collectLore } from '../src/features/knowledge/lore-sources.ts';
@@ -126,6 +127,14 @@ test('kinds lists each present kind once and all means no filter', () => {
   const kinds = loreKinds(index);
   assert.equal(new Set(kinds).size, kinds.length);
   assert.equal(searchLore(index, '', ALL_KINDS).length, index.length);
+});
+
+test('a kind the selector cannot offer is not applied as a hidden filter', () => {
+  const index = buildLoreIndex(SOURCES);
+
+  assert.equal(resolveKind(index, PLACE_KIND), PLACE_KIND);
+  assert.equal(resolveKind(index, null), ALL_KINDS);
+  assert.equal(resolveKind(index, 'kind-from-an-old-link'), ALL_KINDS);
 });
 
 test('an unavailable API keeps local lore and reports the failure', async () => {

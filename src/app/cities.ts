@@ -14,7 +14,7 @@ export async function loadCityMaps(): Promise<readonly CityMap[]> {
 }
 
 /**
- * A campaign without a city uses the first registered one; an unknown city yields null rather
+ * A campaign without a city uses the first registered one. An unknown city yields null rather
  * than showing a map from somewhere else. O(cities).
  */
 export function resolveCityMap(

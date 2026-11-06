@@ -29,7 +29,9 @@
 
   const MAP_KEY = 'map';
 
-  let load = $state<LoadState<string, MapDefinition | null>>({ status: 'idle' });
+  // Raw: the engine reads this definition every frame and must not go through reactive proxies.
+  let load = $state.raw<LoadState<string, MapDefinition | null>>({ status: 'idle' });
+  let recenterRequests = $state(0);
   const loader = new LatestLoader<string, MapDefinition | null>(
     () => loadCampaignMap(cityId),
     (next) => (load = next),
@@ -45,6 +47,12 @@
 
   function selectPlace(placeId: string): void {
     onnavigate(withPanel(withContext(route, { place: placeId }), 'atlas'));
+  }
+
+  // Choosing the selected place again changes no route, yet the user still expects to see it.
+  function chooseFromList(placeId: string): void {
+    recenterRequests += 1;
+    selectPlace(placeId);
   }
 
   // A search from a place starts clean: an old kind filter could hide that place's own result.
@@ -63,7 +71,12 @@
 
 {#if map}
   <div class="atlas">
-    <MapCanvas {map} selected={selected?.id ?? null} onplace={selectPlace} />
+    <MapCanvas
+      {map}
+      selected={selected?.id ?? null}
+      recenter={recenterRequests}
+      onplace={selectPlace}
+    />
     <aside class="panel places" aria-labelledby="atlas-places">
       <h2 id="atlas-places" class="panel-title">{t('atlas.places', { map: map.name })}</h2>
       {#if selected}
@@ -84,7 +97,7 @@
                 class="action place"
                 type="button"
                 aria-pressed={place.id === selected?.id}
-                onclick={() => selectPlace(place.id)}
+                onclick={() => chooseFromList(place.id)}
               >
                 {place.name}
               </button>

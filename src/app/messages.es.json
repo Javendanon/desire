@@ -15,7 +15,7 @@
   "atlas.viewer_loading": "Preparando el mapa…",
   "campaign.load_failed": "No se pudo abrir la campaña",
   "campaign.loading": "Abriendo la campaña…",
-  "campaign.refresh_failed": "El cambio se guardó, pero no se pudo actualizar la pantalla",
+  "campaign.refresh_failed": "No se pudo actualizar la pantalla con los últimos datos",
   "connection.checking": "Comprobando el servidor…",
   "connection.offline": "Sin conexión. Lo ya cargado sigue disponible.",
   "connection.online": "Servidor conectado",

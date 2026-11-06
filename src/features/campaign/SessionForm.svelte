@@ -1,5 +1,5 @@
 <!--
-  Opens a session. Shown to DMs only for clarity; the API still rejects anyone else, and that
+  Opens a session. Shown to DMs only for clarity. The API still rejects anyone else, and that
   rejection is displayed here rather than assumed impossible.
 -->
 <script lang="ts">
@@ -14,9 +14,11 @@
     api: ApiContext;
     campaignId: Id;
     oncreated: () => void;
+    /** A failed write may still have committed, so the owner re-reads the sessions. */
+    onfailed: () => void;
   }
 
-  let { api, campaignId, oncreated }: Props = $props();
+  let { api, campaignId, oncreated, onfailed }: Props = $props();
 
   let title = $state('');
   let titleError = $state('');
@@ -41,6 +43,7 @@
       oncreated();
     } catch (error) {
       failure = error;
+      onfailed();
     } finally {
       submitting = false;
     }
@@ -65,12 +68,21 @@
   <button class="action" type="submit" aria-disabled={submitting}>
     {submitting ? t('form.creating') : t('session.create')}
   </button>
-  {#if failure}<FailureNotice error={failure} title={t('session.create_failed')} />{/if}
+  {#if failure}
+    <FailureNotice error={failure} title={t('session.create_failed')} />
+    <p class="hint">{t('form.create_failed_hint')}</p>
+  {/if}
 </form>
 
 <style>
   .form {
     display: grid;
     gap: var(--space-3);
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--color-mist);
+    font-size: var(--text-ui-sm);
   }
 </style>

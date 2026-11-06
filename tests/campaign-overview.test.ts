@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import catalog from '../src/app/messages.es.json' with { type: 'json' };
 import { resolveCityMap } from '../src/app/cities.ts';
 import { connectionState, probeServer } from '../src/app/connection.ts';
-import { IDENTITY_KEY, resolveDevIdentity } from '../src/app/identity.ts';
+import { createDevIdentity, IDENTITY_KEY, resolveDevIdentity } from '../src/app/identity.ts';
 import { t } from '../src/app/messages.ts';
 import { createApiContext, withSignal } from '../src/features/campaign/api-context.ts';
 import { describeFailure, isAbort } from '../src/features/campaign/failures.ts';
@@ -239,6 +239,19 @@ test('the development identity is reused, created when absent and replaced when 
   assert.equal(resolveDevIdentity(storage, () => OTHER), USER);
   values.set(IDENTITY_KEY, 'not-a-uuid');
   assert.equal(resolveDevIdentity(storage, () => OTHER), OTHER);
+});
+
+test('a created identity is a canonical v4 UUID that survives being stored', () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => void values.set(key, value),
+  };
+  const created = resolveDevIdentity(storage, createDevIdentity);
+
+  assert.match(created, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(resolveDevIdentity(storage, () => OTHER), created);
+  assert.notEqual(createDevIdentity(), created);
 });
 
 test('unusable storage still yields a working identity for the session', (context) => {

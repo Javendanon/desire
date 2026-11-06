@@ -22,7 +22,9 @@ and lore search. Rules stay with D16/D17, the scene with D11 and permissions wit
   destroys its state. `openCampaign` starts from an empty context, and `LatestLoader` drops a slow
   answer for a campaign the user already left.
 - **Context survives.** A place, query and open entry live in the URL. Going from lore to the map
-  and back restores them, and the atlas stays mounted while hidden so its camera does not reset.
+  and back restores them. The atlas stays mounted while hidden so its camera does not reset, and
+  lore stays mounted so notes already loaded survive losing the network. Notes are read once per
+  visit to a campaign, or again through the retry when that read failed.
 - **Search semantics.** `searchCompendium` implements the normative
   `content/knowledge/search-fixtures.json`, and every fixture runs against it. The panel itself
   uses the lore index, which shares its normalization and haystack; it is tested only against
@@ -61,3 +63,12 @@ components still hold their own Spanish labels.
   without a place leaves the marker highlighted. Fixing it belongs to D11.
 - **Raw engine errors.** `ViewerHost` shows the engine's own error text, which may not be Spanish.
 - **Truncated lists.** `collectPages` stops at 5 pages of 100 and tells the user.
+- **"Show on map" for the selected place.** The route does not change, so the camera stays where
+  the user left it. Choosing the place in the atlas list centers it again.
+- **No retry for a failed table chunk.** Browsers may keep a failed dynamic import, so a button
+  could not promise anything. Leaving the panel and returning tries again.
+- **Component behaviour is untested.** No test renders a component. Focus, the parked panels and
+  the responsive layout need a browser check.
+- **Unused health helpers.** The shell only needs `parseHealth`, so `checkHealth`, `healthMessage`
+  and `loadEngine` in `src/lib/health.ts` now serve only their tests. Deleting tests needs its own
+  card under the anti-tamper rule in [the test plan](app-tests-plan.md).

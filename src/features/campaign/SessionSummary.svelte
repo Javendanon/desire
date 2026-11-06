@@ -77,7 +77,12 @@
     {#if canManage(overview.role)}
       <section class="panel" aria-labelledby="summary-new-session">
         <h2 id="summary-new-session" class="panel-title">{t('session.new_title')}</h2>
-        <SessionForm {api} campaignId={overview.campaign.id} oncreated={onchanged} />
+        <SessionForm
+          {api}
+          campaignId={overview.campaign.id}
+          oncreated={onchanged}
+          onfailed={onchanged}
+        />
       </section>
     {/if}
   </div>

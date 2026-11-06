@@ -111,3 +111,11 @@ export function searchLore(
 export function loreKinds(index: readonly LoreEntry[]): string[] {
   return [...new Set(index.map((entry) => entry.kind))];
 }
+
+/**
+ * The filter a route asks for, if the index can honor it. A kind from an old link or another
+ * edition has no option in the selector, so applying it would hide every result. O(entries).
+ */
+export function resolveKind(index: readonly LoreEntry[], requested: string | null): string {
+  return requested !== null && loreKinds(index).includes(requested) ? requested : ALL_KINDS;
+}

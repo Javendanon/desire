@@ -1,6 +1,7 @@
 <!--
   One campaign's screens. App.svelte keys this component by campaign id, so opening another one
-  destroys all of this state. The atlas stays mounted while hidden to keep its camera.
+  destroys all of this state. The atlas stays mounted while hidden to keep its camera, and lore to
+  keep what it already loaded when the network is gone.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -33,15 +34,21 @@
 
   let { api, route, onnavigate }: Props = $props();
 
-  const TABS: readonly { panel: CampaignPanel; label: MessageKey }[] = [
+  interface Tab {
+    panel: CampaignPanel;
+    label: MessageKey;
+  }
+
+  const TABS: readonly Tab[] = [
     { panel: 'summary', label: 'nav.summary' },
     { panel: 'atlas', label: 'nav.atlas' },
     { panel: 'lore', label: 'nav.lore' },
     { panel: 'table', label: 'nav.table' },
   ];
 
-  let load = $state<LoadState<Id, CampaignOverview>>({ status: 'idle' });
+  let load = $state.raw<LoadState<Id, CampaignOverview>>({ status: 'idle' });
   let atlasOpened = $state(false);
+  let loreOpened = $state(false);
   let refreshFailure = $state<unknown>(null);
 
   const loader = new LatestLoader<Id, CampaignOverview>(
@@ -61,6 +68,7 @@
 
   $effect(() => {
     if (route.panel === 'atlas') atlasOpened = true;
+    if (route.panel === 'lore') loreOpened = true;
   });
 
   $effect(() => {
@@ -100,8 +108,6 @@
     <div class="stage">
       {#if route.panel === 'summary'}
         <SessionSummary {api} {route} {overview} onchanged={refresh} />
-      {:else if route.panel === 'lore'}
-        <LorePanel {api} {route} campaign={overview.campaign} {onnavigate} />
       {:else if route.panel === 'table'}
         {#await import('./TablePanel.svelte')}
           <div class="state"><StatusNotice title={t('table.loading')} /></div>
@@ -110,6 +116,11 @@
         {:catch error}
           <div class="state"><FailureNotice {error} title={t('table.load_failed')} /></div>
         {/await}
+      {/if}
+      {#if loreOpened}
+        <div hidden={route.panel !== 'lore'}>
+          <LorePanel {api} {route} campaign={overview.campaign} {onnavigate} />
+        </div>
       {/if}
       {#if atlasOpened}
         <div class="atlas" class:parked={route.panel !== 'atlas'}>
