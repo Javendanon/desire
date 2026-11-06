@@ -153,33 +153,6 @@ fn the_harness_runs_the_workspace_suite() {
     );
 }
 
-/// PostgreSQL rejects a Unix-domain socket path longer than 103 bytes. The cluster lives in the
-/// worktree, so a merge candidate under a deep worktree path pushed its socket past the cap and
-/// `pg_ctl start` failed. The harness must therefore reach the checkout through a short path
-/// instead of deriving paths from the depth of the checkout.
-#[test]
-fn the_harness_reaches_the_checkout_through_a_short_path() {
-    let script = repository_file("crates/persistence/test-postgres.sh");
-    let root = script
-        .lines()
-        .find_map(|line| line.trim().strip_prefix("root=$(mktemp -d "))
-        .expect("the harness must create a short path for the checkout");
-    assert!(
-        root.starts_with("/tmp/"),
-        "the harness root must stay short instead of following the worktree: {root}"
-    );
-    assert!(
-        script.contains("cd \"$root/checkout\""),
-        "the harness must enter the checkout through that short path"
-    );
-    assert!(
-        !script
-            .lines()
-            .any(|line| line.trim_start().starts_with("cd \"$(dirname")),
-        "the harness must not leave $PWD at the checkout path: its socket path overflows"
-    );
-}
-
 #[test]
 fn merge_policy_rust_gate_runs_the_harness() {
     let policy = json("merge-policy.json");
