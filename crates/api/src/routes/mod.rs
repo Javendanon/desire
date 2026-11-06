@@ -230,7 +230,6 @@ fn auth_routes() -> Router<AppState> {
             delete(crate::auth::routes::logout),
         )
         .route("/api/v1/auth/identity", get(crate::auth::routes::identity))
-        .layer(axum::middleware::from_fn(crate::auth::routes::no_store))
 }
 
 pub fn router(state: AppState) -> Router {
@@ -247,6 +246,8 @@ pub fn router(state: AppState) -> Router {
             state.clone(),
             crate::auth::origin::enforce,
         ))
+        // Outermost: private bodies and authentication failures are never shared-cacheable.
+        .layer(axum::middleware::from_fn(crate::auth::routes::no_store))
         .with_state(state)
 }
 

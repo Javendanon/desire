@@ -87,6 +87,33 @@ fn logout_deletes_the_server_session_and_expires_the_cookie() {
 }
 
 #[test]
+fn private_api_responses_and_authentication_failures_are_not_shared_cacheable() {
+    let fixture = Fixture::new("");
+    let session = fixture.login("alice");
+    let token = session["token"].as_str().unwrap();
+    for (request, status) in [
+        (
+            ApiCall::new(Method::GET, "/api/v1/campaigns").session(token),
+            StatusCode::OK,
+        ),
+        (
+            ApiCall::new(Method::GET, "/api/v1/campaigns"),
+            StatusCode::UNAUTHORIZED,
+        ),
+    ] {
+        let response = support::run(call(&fixture.app, request));
+        assert_eq!(response.status, status);
+        assert_eq!(
+            response
+                .headers
+                .get("cache-control")
+                .map(|value| value.to_str().unwrap()),
+            Some("no-store")
+        );
+    }
+}
+
+#[test]
 fn expired_sessions_are_rejected() {
     let fixture = Fixture::new("");
     let session = fixture.login("alice");
