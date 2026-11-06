@@ -4,6 +4,17 @@ use axum::http::{Method, StatusCode};
 use serde_json::{Value, json};
 use support::ApiCall;
 
+#[test]
+fn oidc_is_explicitly_unavailable_without_configuration() {
+    let db = TestDb::new();
+    let app = support::strict_app_for(&db);
+    let response = support::run(call(
+        &app,
+        ApiCall::new(Method::GET, "/api/v1/auth/login"),
+    ));
+    assert_eq!(response.status, StatusCode::SERVICE_UNAVAILABLE);
+}
+
 const PASSWORD: &str = "correct horse battery staple";
 
 fn register(app: &axum::Router, username: &str) -> Value {
