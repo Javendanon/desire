@@ -53,6 +53,8 @@
 
   const CONCENTRATION_SOURCES = 1;
 
+  const identity = $derived(`${bundle.encounter.campaign_id}:${bundle.encounter.id}`);
+  let localIdentity = $state(untrack(() => identity));
   let local = $state(untrack(() => startLocalState(bundle.encounter)));
   let panelOpen = $state(false);
   let openActorId = $state<Id | null>(null);
@@ -82,6 +84,16 @@
     sync();
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
+  });
+
+  $effect.pre(() => {
+    if (identity === localIdentity) return;
+    localIdentity = identity;
+    untrack(() => {
+      local = startLocalState(bundle.encounter);
+      if (openActorId) closeSheet();
+      pickNote = '';
+    });
   });
 
   $effect(() => subscribePlace(handlePlace));

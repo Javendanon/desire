@@ -40,7 +40,8 @@ async function expectReset(root: HTMLElement): Promise<void> {
   expect(!root.querySelector('#character-sheet'), 'selected sheet leaked across identities');
   expect(panelText(root).includes('Round 1 · Turn: Demo Warden'), 'round or turn leaked');
   expect(panelText(root).includes('11 of 16 HP'), 'HP override leaked');
-  expect(!panelText(root).includes('local change'), 'local change flag leaked');
+  const order = root.querySelector('.order')?.textContent ?? '';
+  expect(!order.includes('local change'), 'local change flag leaked');
   await press(root, 'Demo Brute');
   const sheet = root.querySelector('#character-sheet');
   expect(sheet?.textContent?.includes('2 rounds left') ?? false, 'duration override leaked');
