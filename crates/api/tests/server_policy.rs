@@ -69,6 +69,30 @@ fn browser_development_mutations_use_an_explicit_loopback_origin_without_oidc() 
 }
 
 #[test]
+fn oidc_and_development_identity_cannot_be_enabled_together() {
+    let provider = crate::oidc_provider::Provider::start();
+    let settings = provider.settings();
+    for host in ["127.0.0.1", "::1", "0.0.0.0"] {
+        let output = command()
+            .env("HOST", host)
+            .env("DESIRE_DEV_IDENTITY", "1")
+            .env("DESIRE_OIDC_ISSUER", settings.issuer.as_str())
+            .env("DESIRE_OIDC_CLIENT_ID", &settings.client_id)
+            .env("DESIRE_OIDC_CLIENT_SECRET", settings.client_secret.secret())
+            .env("DESIRE_PUBLIC_URL", settings.public_url.as_str())
+            .env("DATABASE_URL", "postgres://desire_test@127.0.0.1:1/unused")
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        let error = String::from_utf8(output.stderr).unwrap();
+        assert!(
+            error.contains("DESIRE_DEV_IDENTITY cannot be enabled with OpenID Connect"),
+            "{host}: {error}"
+        );
+    }
+}
+
+#[test]
 fn a_shared_bind_refuses_to_start_without_oidc_even_with_the_dev_opt_in() {
     let mut command = command();
     let output = command
