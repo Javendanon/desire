@@ -91,7 +91,10 @@
     localIdentity = identity;
     untrack(() => {
       local = startLocalState(bundle.encounter);
-      if (openActorId) closeSheet();
+      if (openActorId) {
+        sheetOpener = null;
+        closeSheet();
+      }
       pickNote = '';
     });
   });
@@ -126,7 +129,7 @@
   }
 
   function handleKey(event: KeyboardEvent): void {
-    if (event.key !== 'Escape') return;
+    if (event.defaultPrevented || event.key !== 'Escape') return;
     if (openActorId) closeSheet();
     else if (panelOpen) closePanel();
   }

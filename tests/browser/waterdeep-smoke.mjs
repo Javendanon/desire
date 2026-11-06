@@ -1,6 +1,7 @@
 // Required Chrome gate: the page boots on WebGL2, one real click selects a place, and a pinch
-// does not zoom or scroll the browser. Streaming, corridors, close-zoom math and memory budgets
-// are unit tests. Usage: node tests/browser/waterdeep-smoke.mjs http://127.0.0.1:5200
+// does not zoom or scroll the browser. Also exercises D16 sheet focus, camera preservation,
+// effects and mounted encounter replacement. Streaming and memory budgets are unit tests.
+// Usage: node tests/browser/waterdeep-smoke.mjs http://127.0.0.1:5200
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync } from 'node:fs';
@@ -78,7 +79,7 @@ async function evaluate(expression) {
 async function waitForReady() {
   for (let i = 0; i < 120; i++) {
     const state = await evaluate(
-      'window.__waterdeep ? { ready: window.__waterdeep.ready, error: window.__waterdeep.error } : null');
+      'window.__waterdeep && { ready: window.__waterdeep.ready, error: window.__waterdeep.error }');
     if (state?.ready) return;
     if (state?.error) throw new Error(state.error);
     await sleep(500);
@@ -139,12 +140,17 @@ async function waitForSelector(selector) {
     if (await evaluate(`!!document.querySelector(${JSON.stringify(selector)})`)) return;
     await sleep(100);
   }
-  throw new Error(`missing ${selector}`);
+  const active = await evaluate('document.activeElement?.outerHTML');
+  throw new Error(`missing ${selector}; focused: ${active}`);
 }
 
 async function keyPress(key, code = key) {
+  const virtualKey = { Enter: 13, Escape: 27, ' ': 32 }[key];
   for (const type of ['keyDown', 'keyUp']) {
-    await send('Input.dispatchKeyEvent', { type, key, code });
+    await send('Input.dispatchKeyEvent', {
+      type, key, code, windowsVirtualKeyCode: virtualKey,
+      text: type === 'keyDown' && key === 'Enter' ? '\r' : undefined,
+    });
   }
 }
 
@@ -161,27 +167,62 @@ async function openSheet(name) {
   assert.equal(await evaluate('document.activeElement.id'), 'character-sheet-title');
 }
 
+async function assertCameraPreserved(camera) {
+  assert.deepEqual(await readCamera(), camera, 'opening a sheet moved the map camera');
+  assert.equal(await evaluate('window.__waterdeep.viewer === window.__d16Viewer'), true,
+    'opening a sheet recreated the viewer');
+}
+
 async function assertSheetFromMap(camera) {
   await waitForSelector('#tactical-panel');
   await openSheet('Demo Warden');
+  await assertCameraPreserved(camera);
   const sheet = await evaluate("document.querySelector('#character-sheet').textContent");
   assert.match(sheet, /Concentrating on Demo Veil/);
   assert.match(sheet, /fixture:d16-demo/);
   assert.match(sheet, /D&D 5e \(2014\)/);
   assert.match(sheet, /Synthetic example/);
   assert.equal(await evaluate("document.querySelectorAll('#character-sheet .particle').length"), 0);
+  await assertEffects();
   await keyPress('Escape');
   assert.equal(await evaluate("!!document.querySelector('#character-sheet')"), false);
   assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Demo Warden');
   await openSheet('Demo Brute');
-  assert.match(await evaluate("document.querySelector('#character-sheet').textContent"), /2 rounds left/);
+  await assertCameraPreserved(camera);
+  const bruteSheet = await evaluate("document.querySelector('#character-sheet').textContent");
+  assert.match(bruteSheet, /2 rounds left/);
   await keyPress('Escape');
   assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Demo Brute');
-  assert.deepEqual(await readCamera(), camera, 'opening a sheet moved the map camera');
-  assert.equal(await evaluate('window.__waterdeep.viewer === window.__d16Viewer'), true,
-    'opening a sheet recreated the viewer');
+  await assertCameraPreserved(camera);
   await keyPress('Escape');
   assert.equal(await evaluate('document.activeElement.id'), 'tactical-launcher');
+}
+
+async function emulateMotion(value) {
+  await send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-motion', value }],
+  });
+}
+
+async function assertEffects() {
+  await emulateMotion('no-preference');
+  await waitForSelector('#character-sheet .particle');
+  const count = await evaluate("document.querySelectorAll('#character-sheet .particle').length");
+  assert.ok(count > 0 && count <= 12, 'particle budget exceeded');
+  const ariaHidden = await evaluate("document.querySelector('#character-sheet .field').ariaHidden");
+  assert.equal(ariaHidden, 'true');
+  await emulateMotion('reduce');
+  await waitForSelector('#character-sheet .field:not(:has(.particle))');
+  assert.equal(await evaluate("document.querySelectorAll('#character-sheet .particle').length"), 0,
+    'active reduced motion did not remove particles');
+  await emulateMotion('no-preference');
+  await waitForSelector('#character-sheet .particle');
+  await evaluate("document.querySelector('#tactical-particles').focus()");
+  await keyPress(' ', 'Space');
+  assert.equal(await evaluate("document.querySelector('#tactical-particles').checked"), false);
+  assert.equal(await evaluate("document.querySelectorAll('#character-sheet .particle').length"), 0);
+  assert.equal(await evaluate("localStorage.getItem('desire.tactical.particles')"), 'off');
+  await emulateMotion('reduce');
 }
 
 function touch(x, y, finger = 0) {
@@ -196,7 +237,9 @@ async function pinchDoesNotZoomTheBrowser() {
   await evaluate('window.__waterdeep.ready = false');
   await send('Page.reload');
   await waitForReady();
-  assert.equal(await evaluate("getComputedStyle(document.getElementById('map')).touchAction"), 'none');
+  const touchAction = await evaluate(
+    "getComputedStyle(document.getElementById('map')).touchAction");
+  assert.equal(touchAction, 'none');
   await evaluate(`(() => {
     window.__touchCancels = 0;
     document.getElementById('map').addEventListener('pointercancel', () => window.__touchCancels++);
@@ -217,13 +260,19 @@ async function pinchDoesNotZoomTheBrowser() {
   assert.equal(await evaluate('window.__touchCancels'), 0, 'browser cancelled the pinch');
 }
 
+async function assertPreferenceAfterReload() {
+  await evaluate("document.querySelector('#tactical-launcher').focus()");
+  await keyPress('Enter');
+  await waitForSelector('#tactical-panel');
+  assert.equal(await evaluate("document.querySelector('#tactical-particles').checked"), false,
+    'particle preference did not survive reload');
+}
+
 try {
   await send('Emulation.setDeviceMetricsOverride', {
     width: 1440, height: 900, deviceScaleFactor: 1, mobile: false,
   });
-  await send('Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
-  });
+  await emulateMotion('reduce');
   await send('Page.navigate', { url: `${base}/waterdeep.html?backend=webgl2` });
   await waitForReady();
   await assertBoot();
@@ -232,8 +281,10 @@ try {
   const camera = await clickCastle();
   await assertSheetFromMap(camera);
   await pinchDoesNotZoomTheBrowser();
+  await assertPreferenceAfterReload();
   console.log(JSON.stringify({
-    ok: true, boot: true, click: true, sheet: true, encounterReplacement: true, pinch: true,
+    ok: true, boot: true, click: true, sheet: true, effects: true,
+    encounterReplacement: true, pinch: true,
   }));
 } catch (error) {
   console.error(JSON.stringify({ ok: false, error: String(error) }, null, 1));
