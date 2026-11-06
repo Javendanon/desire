@@ -10,6 +10,7 @@ mod identity_concurrency;
 mod isolation;
 mod layers;
 mod login_admission;
+mod login_proxy;
 mod nivel20;
 mod notes;
 mod oidc_flow;

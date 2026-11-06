@@ -22,6 +22,7 @@ pub(super) fn command() -> Command {
         "DESIRE_PUBLIC_URL",
         "DESIRE_ALLOWED_EMAILS",
         "DESIRE_DEV_IDENTITY",
+        "DESIRE_TRUSTED_CLIENT_IP_HEADER",
     ] {
         command.env_remove(name);
     }
@@ -38,6 +39,7 @@ fn child_servers_remove_inherited_oidc_configuration() {
         "DESIRE_PUBLIC_URL",
         "DESIRE_ALLOWED_EMAILS",
         "DESIRE_DEV_IDENTITY",
+        "DESIRE_TRUSTED_CLIENT_IP_HEADER",
     ] {
         assert!(
             command
@@ -262,7 +264,7 @@ fn the_binary_serves_an_authenticated_route_and_stops_on_a_signal() {
     assert!(status.success(), "the server exited with {status}");
 }
 
-fn configured_command(
+pub(super) fn configured_command(
     db: &TestDb,
     port: u16,
     settings: &desire_api::auth::settings::Settings,
