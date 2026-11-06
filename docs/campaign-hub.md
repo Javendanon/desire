@@ -13,6 +13,8 @@ and lore search. Rules stay with D16/D17, the scene with D11 and permissions wit
 | `src/app/connection.ts` | Connection state and `ServerMonitor`: one health probe at a time, with a timeout |
 | `src/app/cities.ts` | City registry: the only app module that names a city |
 | `src/app/identity.ts` | Development identity for the `x-desire-user` seam |
+| `src/app/flags.ts` | Browser side of the runtime flags: parses the file Vite injects as a meta tag |
+| `src/app/LegacyShell.svelte` | The page before the hub; mounted while `campaign_hub` is off |
 | `src/app/messages.ts`, `messages.es.json` | Spanish copy as data behind English keys |
 | `src/features/campaign/` | Selector, summary, atlas and table panels and their pure logic |
 | `src/features/knowledge/` | Compendium matcher, merged lore index, search panel |
@@ -38,6 +40,9 @@ and lore search. Rules stay with D16/D17, the scene with D11 and permissions wit
   `value`, not by option attributes, so a cleared or restored `?kind=` always matches the results.
 - **Show on map.** Returning to the atlas from a lore entry centers the selected place again even
   when that place was already selected, and focus lands on its button in the place list.
+- **Behind a flag.** `campaign_hub` is off by default ([flags](flags.md)): `src/main.ts` mounts
+  this shell only when the flags file turns it on, and otherwise mounts `LegacyShell`, the page the
+  app showed before. Hiding the hub is not authorization — the server still refuses every write.
 - **Authorization.** `canManage` only decides which controls to show. No view filters data by
   role; DM-only rows are absent because the server left them out, and a refused write is shown.
 
@@ -47,8 +52,10 @@ and lore search. Rules stay with D16/D17, the scene with D11 and permissions wit
 covers focus after navigation (place button or `#content`), the parked atlas being hidden and not
 reachable by Tab, the skip link and tabs in the tab order, campaign isolation after opening another
 campaign, the kind filter following the URL, the 760px layout for hub, atlas, lore and summary, and
-the Spanish empty/offline/error copy. It runs from `pnpm run test:browser`. Pure route, loader,
-search and overview logic stays in `tests/*.test.ts`.
+the Spanish empty/offline/error copy. It also asserts that the page carries the flags file and
+mounts the hub with `campaign_hub` on. It runs from `pnpm run test:browser`, which points
+`DESIRE_FLAGS_FILE` at `tests/browser/flags.gate.txt`. Pure route, loader, search, flag and overview
+logic stays in `tests/*.test.ts`.
 
 ## Copy
 
@@ -82,6 +89,6 @@ labels.
   still sees the member role as unknown until the server exposes the caller's own membership.
 - **No retry for a failed table chunk.** Browsers may keep a failed dynamic import, so a button
   could not promise anything. Leaving the panel and returning tries again.
-- **Unused health helpers.** The shell only needs `parseHealth`, so `checkHealth`, `healthMessage`
-  and `loadEngine` in `src/lib/health.ts` now serve only their tests. Deleting tests needs its own
-  card under the anti-tamper rule in [the test plan](app-tests-plan.md).
+- **Unused health helpers.** The hub only needs `parseHealth`; `checkHealth`, `healthMessage` and
+  `loadEngine` in `src/lib/health.ts` are read by `LegacyShell`, the flag-off branch. Deleting them
+  would take the pre-flag page with them.

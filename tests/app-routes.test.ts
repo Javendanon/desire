@@ -111,8 +111,8 @@ test('focus moves to the place when returning to the map, otherwise to the main 
   assert.deepEqual(focusTarget(hub, openCampaign(CAMPAIGN_A)), { kind: 'main' });
 });
 
-// A text check, because no test renders components: the workspace loads its campaign only on
-// mount, so this key is what stops campaign B from showing campaign A's data.
+// A text check kept as a cheap guard; the evidence for isolation is the browser gate in
+// tests/browser/campaign-hub-smoke.mjs, which opens campaign B and inspects the rendered panels.
 test('the shell remounts the workspace for each campaign', () => {
   const shell = readFileSync(new URL('../src/App.svelte', import.meta.url), 'utf8');
   assert.match(shell, /\{#key route\.campaignId\}\s*<CampaignWorkspace/);

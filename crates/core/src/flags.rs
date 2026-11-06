@@ -26,9 +26,14 @@ impl Flag {
     pub const DEFAULT: bool = false;
 }
 
-/// Every flag the code base reads. Empty until the first runtime change ships behind a flag;
-/// add the flag here and to `docs/flags.md` in the same change.
-pub const REGISTRY: &[Flag] = &[];
+/// Every flag the code base reads. The web shell reads the same file through Vite and mounts the
+/// campaign hub only when `campaign_hub` is on; add flags here and to `docs/flags.md` together.
+pub const CAMPAIGN_HUB: Flag = Flag {
+    name: "campaign_hub",
+    description: "mount the campaign hub shell instead of the pre-flag placeholder page",
+};
+
+pub const REGISTRY: &[Flag] = &[CAMPAIGN_HUB];
 
 /// Why a flags file could not be used.
 #[derive(Debug)]

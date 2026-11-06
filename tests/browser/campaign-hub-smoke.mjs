@@ -17,6 +17,8 @@ import {
 
 const PORT = Number(process.env.CAMPAIGN_SMOKE_PORT ?? 5221);
 const BASE = process.argv[2] ?? `http://127.0.0.1:${PORT}`;
+// A standalone run brings its own server, so point it at the same flags file the gate uses.
+const GATE_FLAGS = 'tests/browser/flags.gate.txt';
 
 let send;
 let evaluate;
@@ -34,6 +36,25 @@ const hash = () => evaluate('location.hash');
 async function openHub() {
   await navigate(`${BASE}/#/campaigns`);
   await waitFor("document.body.innerText.includes('Alfa')", 'campaign list');
+}
+
+async function flagIsReadByTheBrowser() {
+  await navigate(`${BASE}/#/campaigns`);
+  await waitFor("document.querySelector('meta[name=\"desire-flags\"]') !== null", 'flags meta');
+  const flags = await evaluate(
+    "document.querySelector('meta[name=\"desire-flags\"]')?.content ?? ''",
+  );
+  assert.match(
+    flags,
+    /campaign_hub = on/,
+    'start the gate with DESIRE_FLAGS_FILE=tests/browser/flags.gate.txt',
+  );
+  await openHub();
+  assert.equal(
+    await evaluate("document.querySelector('.legacy')"),
+    null,
+    'the pre-flag shell stays off while the flag is on',
+  );
 }
 
 async function focusAndTabs() {
@@ -229,6 +250,7 @@ async function responsiveLayout() {
 const api = createStubApi();
 let exitCode = 0;
 let chrome;
+if (!process.argv[2]) process.env.DESIRE_FLAGS_FILE ??= GATE_FLAGS;
 const ownServer = process.argv[2] ? null : startVite(PORT);
 try {
   await new Promise((resolve, reject) => {
@@ -245,6 +267,7 @@ try {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
   });
 
+  await flagIsReadByTheBrowser();
   await focusAndTabs();
   await kindFollowsTheRoute();
   await campaignIsolation();
