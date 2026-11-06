@@ -199,6 +199,8 @@ function mountTactical(): void {
   const place = WATERDEEP_MAP.places.find((entry) => entry.id === 'castle-waterdeep');
   if (!place) throw new Error('demo: missing encounter place castle-waterdeep');
   const target = document.createElement('div');
+  // The host body is a two-column grid; an in-flow target would claim a second row.
+  target.style.position = 'fixed';
   document.body.append(target);
   mount(TacticalOverlay, {
     target,

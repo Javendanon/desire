@@ -167,6 +167,38 @@ async function openSheet(name) {
   assert.equal(await evaluate('document.activeElement.id'), 'character-sheet-title');
 }
 
+// The host page removes the browser's own focus ring, so the panels must draw their own.
+async function assertFocusRing(fromSelector, targetSelector) {
+  await evaluate(`document.querySelector(${JSON.stringify(fromSelector)}).focus()`);
+  let reached = false;
+  for (let step = 0; step < 40 && !reached; step++) {
+    await keyPress('Tab', 'Tab');
+    reached = await evaluate(
+      `document.activeElement?.matches(${JSON.stringify(targetSelector)}) ?? false`,
+    );
+  }
+  assert.ok(reached, `keyboard focus never reached ${targetSelector}`);
+  const ring = await evaluate(`(() => {
+    const style = getComputedStyle(document.activeElement);
+    return [style.outlineStyle, parseFloat(style.outlineWidth)];
+  })()`);
+  assert.notEqual(ring[0], 'none', `keyboard focus is invisible on ${targetSelector}`);
+  assert.ok(ring[1] >= 2, `focus ring on ${targetSelector} is ${ring[1]}px wide`);
+}
+
+// Screen-reader text must stay out of sight on the host page, not only in the design shell.
+async function assertAbilityTextHidden() {
+  const box = await evaluate(`(() => {
+    const node = document.querySelector('#character-sheet .visually-hidden');
+    if (!node) return null;
+    const rect = node.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  })()`);
+  assert.ok(box, 'the spoken ability line is missing');
+  assert.ok(box.width <= 1 && box.height <= 1,
+    `spoken ability text renders at ${box.width}x${box.height}px`);
+}
+
 async function assertCameraPreserved(camera) {
   assert.deepEqual(await readCamera(), camera, 'opening a sheet moved the map camera');
   assert.equal(await evaluate('window.__waterdeep.viewer === window.__d16Viewer'), true,
@@ -175,8 +207,11 @@ async function assertCameraPreserved(camera) {
 
 async function assertSheetFromMap(camera) {
   await waitForSelector('#tactical-panel');
+  await assertFocusRing('#tactical-launcher', '.sheet-link');
   await openSheet('Demo Warden');
   await assertCameraPreserved(camera);
+  await assertAbilityTextHidden();
+  await assertFocusRing('#character-sheet-title', '#character-sheet .sheet-control');
   const sheet = await evaluate("document.querySelector('#character-sheet').textContent");
   assert.match(sheet, /Concentrating on Demo Veil/);
   assert.match(sheet, /fixture:d16-demo/);
