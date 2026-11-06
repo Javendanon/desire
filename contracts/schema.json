@@ -977,7 +977,9 @@
           "$ref": "#/$defs/MemberRole"
         },
         "revision": {
-          "$ref": "#/$defs/Revision"
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
         },
         "snapshot": {
           "anyOf": [
