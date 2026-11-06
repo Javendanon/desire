@@ -55,9 +55,16 @@ export function openEffectsStorage(open: () => EffectsStorage): EffectsStorage {
   }
 }
 
-/** Where a saved preference would live: a refused storage object keeps it for this tab only. */
+/** Where a saved preference would live. Refused or unreadable storage keeps it in this tab. */
 export function effectsScope(storage: EffectsStorage): InteractionScope {
-  return storage === UNAVAILABLE_STORAGE ? 'session' : 'device';
+  if (storage === UNAVAILABLE_STORAGE) return 'session';
+  try {
+    storage.getItem(EFFECTS_STORAGE_KEY);
+    return 'device';
+  } catch (error) {
+    console.warn('Could not read the particle preference', error);
+    return 'session';
+  }
 }
 
 /** Defaults to on: blocked storage only loses the preference, so it warns and carries on. */

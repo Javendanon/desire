@@ -40,16 +40,32 @@ export function canAdvance(encounter: Encounter, rolledCount: number): boolean {
   return encounter.status === 'active' && rolledCount > 0;
 }
 
+interface TickedDurations {
+  conditionRounds: Record<Id, number>;
+  dismissedConditions: readonly Id[];
+}
+
+/**
+ * Takes one round off each timed condition. A condition whose last round elapses is withdrawn for
+ * the session, because a remaining duration below 1 is not a legal record. O(conditions).
+ */
 function tickDurations(
   state: LocalEncounterState,
   conditions: readonly ActorCondition[],
-): Record<Id, number> {
+): TickedDurations {
   const rounds: Record<Id, number> = { ...state.conditionRounds };
+  const dismissed = new Set(state.dismissedConditions);
   for (const { id, remaining_rounds: recorded } of conditions) {
-    if (recorded === null) continue;
-    rounds[id] = Math.max(0, (rounds[id] ?? recorded) - 1);
+    if (recorded === null || dismissed.has(id)) continue;
+    const remaining = (rounds[id] ?? recorded) - 1;
+    if (remaining >= 1) {
+      rounds[id] = remaining;
+      continue;
+    }
+    delete rounds[id];
+    dismissed.add(id);
   }
-  return rounds;
+  return { conditionRounds: rounds, dismissedConditions: [...dismissed] };
 }
 
 /** Moves to the next turn. Durations tick once, when the order wraps. O(conditions). */
@@ -64,7 +80,7 @@ export function nextTurn(
     ...state,
     turnIndex: 0,
     round: state.round + 1,
-    conditionRounds: tickDurations(state, conditions),
+    ...tickDurations(state, conditions),
   };
 }
 

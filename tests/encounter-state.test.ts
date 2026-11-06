@@ -95,13 +95,28 @@ test('the round only advances when the turn wraps, and durations tick once per r
   assert.deepEqual(wrapped.conditionRounds, { timed: 1 });
 });
 
-test('an elapsed duration stops at zero and is never removed automatically', () => {
-  const conditions = [condition('timed', 1)];
+test('a condition whose last round elapses is withdrawn for the session, never stored at 0', () => {
+  const conditions = [condition('timed', 1), condition('longer', 3), condition('open', null)];
   const context = { rolledCount: 1, conditions };
   const first = nextTurn(startLocalState(bundle.encounter), context);
+  assert.deepEqual(first.conditionRounds, { longer: 2 });
+  assert.deepEqual(first.dismissedConditions, ['timed']);
+
   const second = nextTurn(first, context);
-  assert.deepEqual(second.conditionRounds, { timed: 0 });
-  assert.deepEqual(second.dismissedConditions, []);
+  assert.deepEqual(second.conditionRounds, { longer: 1 });
+  assert.deepEqual(second.dismissedConditions, ['timed']);
+
+  const third = nextTurn(second, context);
+  assert.deepEqual(third.conditionRounds, {});
+  assert.deepEqual(third.dismissedConditions, ['timed', 'longer']);
+});
+
+test('a condition dismissed by hand neither ticks nor is withdrawn twice', () => {
+  const conditions = [condition('timed', 1)];
+  const dismissed = dismissCondition(startLocalState(bundle.encounter), 'timed');
+  const wrapped = nextTurn(dismissed, { rolledCount: 1, conditions });
+  assert.deepEqual(wrapped.conditionRounds, {});
+  assert.deepEqual(wrapped.dismissedConditions, ['timed']);
 });
 
 test('next turn without anyone to act changes nothing', () => {

@@ -98,6 +98,7 @@ test('the preference scope says device only when the storage object was opened',
     throw new Error('SecurityError');
   });
   assert.equal(effectsScope(refused), 'session');
+  assert.equal(effectsScope(failingStorage), 'session');
 });
 
 test('a blocked storage reports the failure and falls back without throwing', (context) => {
