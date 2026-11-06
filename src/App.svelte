@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
 
-  import { connectionState, probeServer, type ConnectionState } from './app/connection.ts';
+  import { connectionState, ServerMonitor, type ConnectionState } from './app/connection.ts';
   import { browserStorage, createDevIdentity, resolveDevIdentity } from './app/identity.ts';
   import { t, type MessageKey } from './app/messages.ts';
   import {
@@ -31,7 +31,6 @@
   const PROBE_TIMEOUT_MS = 5_000;
 
   const api = createApiContext(resolveDevIdentity(browserStorage, createDevIdentity));
-  const probes = new AbortController();
 
   let route = $state<Route>(parseRoute(location.hash));
   let browserOnline = $state(navigator.onLine);
@@ -80,29 +79,24 @@
     main?.focus();
   }
 
-  async function checkServer(): Promise<void> {
-    const signal = AbortSignal.any([probes.signal, AbortSignal.timeout(PROBE_TIMEOUT_MS)]);
-    try {
-      serverReachable = await probeServer(fetch, signal);
-    } catch (error) {
-      if (probes.signal.aborted) return;
-      console.warn('Could not query /api/health', error);
-      serverReachable = false;
-    }
-  }
+  const monitor = new ServerMonitor(
+    (input, init) => fetch(input, init),
+    (reachable) => (serverReachable = reachable),
+    PROBE_TIMEOUT_MS,
+  );
 
   onMount(() => {
-    void checkServer();
-    const interval = setInterval(() => void checkServer(), PROBE_INTERVAL_MS);
+    monitor.check();
+    const interval = setInterval(() => monitor.check(), PROBE_INTERVAL_MS);
     return () => {
       clearInterval(interval);
-      probes.abort();
+      monitor.dispose();
     };
   });
 
   function wentOnline(): void {
     browserOnline = true;
-    void checkServer();
+    monitor.check();
   }
 </script>
 

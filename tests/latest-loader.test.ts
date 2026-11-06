@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { ServerMonitor } from '../src/app/connection.ts';
 import { LatestLoader, type LoadState } from '../src/app/latest-loader.ts';
 
 interface Deferred {
@@ -135,4 +136,65 @@ test('dispose aborts and silences the pending request', async () => {
 
   assert.equal(calls[0].signal.aborted, true);
   assert.equal(states.length, before);
+});
+
+// The connection badge reuses the loader: health probes overlap when the interval and the
+// browser's "online" event fire close together, and only the newest probe may set the badge.
+function healthHarness() {
+  const requests: { signal: AbortSignal; respond(body: unknown, ok?: boolean): void; fail(): void }[] =
+    [];
+  const fetchStub = ((_input: unknown, init?: RequestInit) =>
+    new Promise<Response>((resolve, reject) => {
+      requests.push({
+        signal: init?.signal as AbortSignal,
+        respond: (body, ok = true) =>
+          resolve({ ok, json: () => Promise.resolve(body) } as Response),
+        fail: () => reject(new TypeError('network down')),
+      });
+    })) as typeof fetch;
+  const seen: boolean[] = [];
+  const monitor = new ServerMonitor(fetchStub, (reachable) => seen.push(reachable), 5_000);
+  return { requests, seen, monitor };
+}
+
+const HEALTHY = { status: 'ok', service: 'desire-api', scope: 'local', protocol_version: 1 };
+
+test('a slow failed health probe never overwrites a newer healthy answer', async () => {
+  const { requests, seen, monitor } = healthHarness();
+  monitor.check();
+  monitor.check();
+
+  requests[1].respond(HEALTHY);
+  await flush();
+  requests[0].fail();
+  await flush();
+
+  assert.deepEqual(seen, [true]);
+  assert.ok(requests[0].signal.aborted, 'the older probe is aborted when a newer one starts');
+});
+
+test('a failed or malformed health probe reports the server as unreachable', async () => {
+  const { requests, seen, monitor } = healthHarness();
+  monitor.check();
+  requests[0].fail();
+  await flush();
+  monitor.check();
+  requests[1].respond({ unexpected: true });
+  await flush();
+  monitor.check();
+  requests[2].respond(HEALTHY, false);
+  await flush();
+
+  assert.deepEqual(seen, [false, false, false]);
+});
+
+test('a disposed monitor publishes nothing and aborts its probe', async () => {
+  const { requests, seen, monitor } = healthHarness();
+  monitor.check();
+  monitor.dispose();
+  requests[0].respond(HEALTHY);
+  await flush();
+
+  assert.deepEqual(seen, []);
+  assert.ok(requests[0].signal.aborted);
 });
