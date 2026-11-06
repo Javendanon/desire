@@ -223,6 +223,7 @@ fn nivel20_routes() -> Router<AppState> {
 
 fn auth_routes() -> Router<AppState> {
     Router::new()
+        .route("/api/v1/auth/login", get(crate::auth::routes::start))
         .route("/api/v1/auth/accounts", post(crate::auth::routes::register))
         .route("/api/v1/auth/sessions", post(crate::auth::routes::login))
         .route(

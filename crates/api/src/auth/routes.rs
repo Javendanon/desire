@@ -12,6 +12,15 @@ use axum::{
 };
 use desire_core::contracts::transport::{AuthIdentity, AuthSession};
 
+pub async fn start() -> Result<StatusCode, ApiError> {
+    Err(ApiError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "oidc_unavailable",
+        "OpenID Connect is not configured",
+        crate::ids::request_id(),
+    ))
+}
+
 pub async fn register(
     State(state): State<AppState>,
     headers: HeaderMap,
