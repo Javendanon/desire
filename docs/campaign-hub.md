@@ -10,6 +10,7 @@ and lore search. Rules stay with D16/D17, the scene with D11 and permissions wit
 | `src/App.svelte` | Route, connection state, focus after navigation, skip link |
 | `src/app/routes.ts` | Hash routes; the URL owns the campaign, panel, place, query and open entry |
 | `src/app/latest-loader.ts` | One load at a time; a stale answer is dropped, never published |
+| `src/app/connection.ts` | Connection state and `ServerMonitor`: one health probe at a time, with a timeout |
 | `src/app/cities.ts` | City registry: the only app module that names a city |
 | `src/app/identity.ts` | Development identity for the `x-desire-user` seam |
 | `src/app/messages.ts`, `messages.es.json` | Spanish copy as data behind English keys |

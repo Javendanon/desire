@@ -96,6 +96,8 @@
 
   function wentOnline(): void {
     browserOnline = true;
+    // Probes failed while offline: show "checking" instead of a stale "server down".
+    serverReachable = null;
     monitor.check();
   }
 </script>

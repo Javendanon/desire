@@ -52,7 +52,10 @@ export function createDevIdentity(): Id {
   bytes[VERSION_BYTE] = (bytes[VERSION_BYTE] & LOW_NIBBLE) | VERSION_4;
   bytes[VARIANT_BYTE] = (bytes[VARIANT_BYTE] & VARIANT_MASK) | VARIANT_RFC4122;
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  const groups = UUID_GROUP_ENDS.map((end, index) => hex.slice(UUID_GROUP_ENDS[index - 1], end));
+  const groups = UUID_GROUP_ENDS.map((end, index) => {
+    const start = index === 0 ? 0 : UUID_GROUP_ENDS[index - 1];
+    return hex.slice(start, end);
+  });
   return groups.join('-');
 }
 

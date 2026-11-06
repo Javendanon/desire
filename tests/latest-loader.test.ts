@@ -140,22 +140,39 @@ test('dispose aborts and silences the pending request', async () => {
 
 // The connection badge reuses the loader: health probes overlap when the interval and the
 // browser's "online" event fire close together, and only the newest probe may set the badge.
-function healthHarness() {
-  const requests: { signal: AbortSignal; respond(body: unknown, ok?: boolean): void; fail(): void }[] =
-    [];
+interface PendingProbe {
+  signal: AbortSignal;
+  respond(body: unknown, ok?: boolean): void;
+  fail(): void;
+}
+
+// Like fetch, a pending request rejects as soon as its signal aborts.
+function healthHarness(timeoutMs = 5_000) {
+  const requests: PendingProbe[] = [];
   const fetchStub = ((_input: unknown, init?: RequestInit) =>
     new Promise<Response>((resolve, reject) => {
+      const signal = init?.signal as AbortSignal;
+      signal.addEventListener('abort', () => reject(signal.reason));
       requests.push({
-        signal: init?.signal as AbortSignal,
+        signal,
         respond: (body, ok = true) =>
           resolve({ ok, json: () => Promise.resolve(body) } as Response),
         fail: () => reject(new TypeError('network down')),
       });
     })) as typeof fetch;
   const seen: boolean[] = [];
-  const monitor = new ServerMonitor(fetchStub, (reachable) => seen.push(reachable), 5_000);
+  const monitor = new ServerMonitor(fetchStub, (reachable) => seen.push(reachable), timeoutMs);
   return { requests, seen, monitor };
 }
+
+test('a health probe that never answers times out as unreachable', async () => {
+  const { requests, seen, monitor } = healthHarness(1);
+  monitor.check();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  assert.ok(requests[0].signal.aborted);
+  assert.deepEqual(seen, [false]);
+});
 
 const HEALTHY = { status: 'ok', service: 'desire-api', scope: 'local', protocol_version: 1 };
 
