@@ -166,6 +166,8 @@ try {
   await send('Page.navigate', { url: `${base}/waterdeep.html?backend=webgl2` });
   await waitForReady();
   await assertBoot();
+  await evaluate(`(async () => (await import('/tests/browser/encounter-replacement.svelte.ts'))
+    .checkEncounterReplacement())()`);
   await clickCastle();
   await pinchDoesNotZoomTheBrowser();
   console.log(JSON.stringify({ ok: true, boot: true, click: true, pinch: true }));
