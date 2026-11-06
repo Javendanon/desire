@@ -102,6 +102,7 @@ async function clickCastle() {
   }
   assert.ok(radius <= 340, `camera did not snap (${radius})`);
   await evaluate("window.__waterdeep.viewer.selectPlace('the-market')");
+  const camera = await readCamera(true);
   const point = await evaluate(`(() => {
     const point = window.__waterdeep.viewer.project(${CASTLE}, 0);
     const rect = document.getElementById('map').getBoundingClientRect();
@@ -121,6 +122,66 @@ async function clickCastle() {
     (await evaluate('window.__waterdeep.viewer.stats()')).selected,
     'castle-waterdeep',
   );
+  return camera;
+}
+
+async function readCamera(rememberViewer = false) {
+  return evaluate(`(() => {
+    const viewer = window.__waterdeep.viewer;
+    if (${rememberViewer}) window.__d16Viewer = viewer;
+    const { focus, radius, azimuth, polar } = viewer.stats();
+    return { focus, radius, azimuth, polar };
+  })()`);
+}
+
+async function waitForSelector(selector) {
+  for (let i = 0; i < 30; i++) {
+    if (await evaluate(`!!document.querySelector(${JSON.stringify(selector)})`)) return;
+    await sleep(100);
+  }
+  throw new Error(`missing ${selector}`);
+}
+
+async function keyPress(key, code = key) {
+  for (const type of ['keyDown', 'keyUp']) {
+    await send('Input.dispatchKeyEvent', { type, key, code });
+  }
+}
+
+async function openSheet(name) {
+  const focused = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('[data-open-sheet]')]
+      .find((entry) => entry.textContent.trim() === ${JSON.stringify(name)});
+    button?.focus();
+    return !!button && document.activeElement === button;
+  })()`);
+  assert.ok(focused, `no keyboard opener for ${name}`);
+  await keyPress('Enter');
+  await waitForSelector('#character-sheet');
+  assert.equal(await evaluate('document.activeElement.id'), 'character-sheet-title');
+}
+
+async function assertSheetFromMap(camera) {
+  await waitForSelector('#tactical-panel');
+  await openSheet('Demo Warden');
+  const sheet = await evaluate("document.querySelector('#character-sheet').textContent");
+  assert.match(sheet, /Concentrating on Demo Veil/);
+  assert.match(sheet, /fixture:d16-demo/);
+  assert.match(sheet, /D&D 5e \(2014\)/);
+  assert.match(sheet, /Synthetic example/);
+  assert.equal(await evaluate("document.querySelectorAll('#character-sheet .particle').length"), 0);
+  await keyPress('Escape');
+  assert.equal(await evaluate("!!document.querySelector('#character-sheet')"), false);
+  assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Demo Warden');
+  await openSheet('Demo Brute');
+  assert.match(await evaluate("document.querySelector('#character-sheet').textContent"), /2 rounds left/);
+  await keyPress('Escape');
+  assert.equal(await evaluate('document.activeElement.textContent.trim()'), 'Demo Brute');
+  assert.deepEqual(await readCamera(), camera, 'opening a sheet moved the map camera');
+  assert.equal(await evaluate('window.__waterdeep.viewer === window.__d16Viewer'), true,
+    'opening a sheet recreated the viewer');
+  await keyPress('Escape');
+  assert.equal(await evaluate('document.activeElement.id'), 'tactical-launcher');
 }
 
 function touch(x, y, finger = 0) {
@@ -168,9 +229,12 @@ try {
   await assertBoot();
   await evaluate(`(async () => (await import('/tests/browser/encounter-replacement.svelte.ts'))
     .checkEncounterReplacement())()`);
-  await clickCastle();
+  const camera = await clickCastle();
+  await assertSheetFromMap(camera);
   await pinchDoesNotZoomTheBrowser();
-  console.log(JSON.stringify({ ok: true, boot: true, click: true, pinch: true }));
+  console.log(JSON.stringify({
+    ok: true, boot: true, click: true, sheet: true, encounterReplacement: true, pinch: true,
+  }));
 } catch (error) {
   console.error(JSON.stringify({ ok: false, error: String(error) }, null, 1));
   process.exitCode = 1;
