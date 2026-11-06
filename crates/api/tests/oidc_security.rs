@@ -160,7 +160,8 @@ fn pending_flow_admission_recovers_after_a_callback_consumes_its_slot() {
     let fixture = Fixture::new("");
     let first = fixture.begin();
     let start = |client: usize| {
-        let peer = format!("192.0.{}.{}:40000", client / 256, client % 256);
+        // One client per /24, so only the process-wide cap applies.
+        let peer = format!("10.{}.{}.1:40000", client / 256, client % 256);
         support::run(support::call(
             &fixture.app,
             ApiCall::new(Method::GET, "/api/v1/auth/login").with_peer(peer.parse().unwrap()),

@@ -15,7 +15,7 @@ use openidconnect::{
 };
 use std::{
     collections::HashMap,
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -29,7 +29,20 @@ type DiscoveredClient = CoreClient<
     EndpointMaybeSet,
 >;
 const MAX_PENDING: usize = 1024;
-const MAX_PENDING_PER_CLIENT: usize = 8;
+/// Nested network budgets, narrowest first. One IPv6 holder controls a whole /64 (often a
+/// /48) and one IPv4 holder rarely spans beyond a /24, so no single holder can fill the pool.
+const BUDGETS: [Budget; 2] = [
+    Budget {
+        v4_prefix: 32,
+        v6_prefix: 64,
+        flows: 8,
+    },
+    Budget {
+        v4_prefix: 24,
+        v6_prefix: 48,
+        flows: 64,
+    },
+];
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct Oidc {
@@ -187,13 +200,44 @@ impl Oidc {
     }
 }
 
+struct Budget {
+    v4_prefix: u32,
+    v6_prefix: u32,
+    flows: usize,
+}
+
+impl Budget {
+    fn network(&self, ip: IpAddr) -> IpAddr {
+        match ip {
+            IpAddr::V4(ip) => {
+                let mask = u32::MAX.checked_shl(32 - self.v4_prefix).unwrap_or(0);
+                Ipv4Addr::from_bits(ip.to_bits() & mask).into()
+            }
+            IpAddr::V6(ip) => {
+                let mask = u128::MAX.checked_shl(128 - self.v6_prefix).unwrap_or(0);
+                Ipv6Addr::from_bits(ip.to_bits() & mask).into()
+            }
+        }
+    }
+
+    fn exhausted(&self, flows: &HashMap<String, Pending>, client_ip: IpAddr) -> bool {
+        let network = self.network(client_ip);
+        flows
+            .values()
+            .filter(|flow| self.network(flow.client_ip) == network)
+            .nth(self.flows - 1)
+            .is_some()
+    }
+}
+
 pub struct Callback {
     pub code: String,
     pub state: String,
     pub browser: String,
 }
 
-/// O(n) expiry and counting, bounded by MAX_PENDING. Hold the lock through insertion.
+/// O(n) expiry and O(n * budgets) counting, bounded by MAX_PENDING. Hold the lock through
+/// insertion.
 fn admit(
     flows: &mut HashMap<String, Pending>,
     client_ip: IpAddr,
@@ -201,11 +245,10 @@ fn admit(
 ) -> Result<(), ApiError> {
     let now = Instant::now();
     flows.retain(|_, flow| flow.expires > now);
-    let client_flows = flows
-        .values()
-        .filter(|flow| flow.client_ip == client_ip)
-        .count();
-    if client_flows >= MAX_PENDING_PER_CLIENT {
+    if BUDGETS
+        .iter()
+        .any(|budget| budget.exhausted(flows, client_ip))
+    {
         return Err(ApiError::new(
             axum::http::StatusCode::TOO_MANY_REQUESTS,
             "oidc_rate_limited",
@@ -237,16 +280,18 @@ fn validate_endpoints(metadata: &CoreProviderMetadata) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    const CLIENT_QUOTA: usize = BUDGETS[0].flows;
+
     #[test]
     fn expired_flows_release_quota_and_rejections_do_not_extend_their_lifetime() {
         let client_ip = "192.0.2.1".parse().unwrap();
         let expires = Instant::now() + Duration::from_secs(session::LOGIN_SECONDS);
-        let mut flows: HashMap<_, _> = (0..MAX_PENDING_PER_CLIENT)
+        let mut flows: HashMap<_, _> = (0..CLIENT_QUOTA)
             .map(|index| (index.to_string(), flow(client_ip, expires)))
             .collect();
         for _ in 0..2 {
             assert!(admit(&mut flows, client_ip, "fixture-request").is_err());
-            assert_eq!(flows.len(), MAX_PENDING_PER_CLIENT);
+            assert_eq!(flows.len(), CLIENT_QUOTA);
             assert!(flows.values().all(|flow| flow.expires == expires));
         }
         let expired = Instant::now() - Duration::from_secs(1);
@@ -255,6 +300,65 @@ mod tests {
         }
         assert!(admit(&mut flows, client_ip, "fixture-request").is_ok());
         assert!(flows.is_empty());
+    }
+
+    /// Fills the pool the way one holder can: every address it controls, one flow at a time.
+    fn flood(addresses: impl Iterator<Item = IpAddr>) -> HashMap<String, Pending> {
+        let expires = Instant::now() + Duration::from_secs(session::LOGIN_SECONDS);
+        let mut flows = HashMap::new();
+        for (index, address) in addresses.take(MAX_PENDING).enumerate() {
+            if admit(&mut flows, address, "fixture-request").is_ok() {
+                flows.insert(index.to_string(), flow(address, expires));
+            }
+        }
+        flows
+    }
+
+    fn v6(prefix: u128, index: u128) -> IpAddr {
+        Ipv6Addr::from_bits(prefix | index).into()
+    }
+
+    #[test]
+    fn one_ipv6_slash_64_is_one_client() {
+        let holder = 0x2001_0db8_0000_0001_u128 << 64;
+        let mut flows = flood((0..).map(|index| v6(holder, index)));
+        assert_eq!(flows.len(), CLIENT_QUOTA);
+        assert!(admit(&mut flows, v6(holder, 0xffff), "fixture-request").is_err());
+    }
+
+    #[test]
+    fn one_ipv6_network_holder_cannot_lock_out_unrelated_clients() {
+        let holder = 0x2001_0db8_0001_u128 << 80;
+        assert_contained(flood((0..).map(|subnet| v6(holder, subnet << 64))));
+    }
+
+    #[test]
+    fn one_ipv4_network_holder_cannot_lock_out_unrelated_clients() {
+        let holder = u32::from(Ipv4Addr::new(198, 51, 100, 0));
+        assert_contained(flood(
+            (0..256).map(|host| Ipv4Addr::from_bits(holder | host).into()),
+        ));
+    }
+
+    fn assert_contained(mut flows: HashMap<String, Pending>) {
+        assert_eq!(flows.len(), BUDGETS[1].flows);
+        for unrelated in ["192.0.2.1", "2001:db8:ffff::1"] {
+            assert!(admit(&mut flows, unrelated.parse().unwrap(), "fixture-request").is_ok());
+        }
+    }
+
+    #[test]
+    fn budgets_mask_addresses_to_their_networks() {
+        let cases = [
+            (&BUDGETS[0], "192.0.2.77", "192.0.2.77"),
+            (&BUDGETS[1], "192.0.2.77", "192.0.2.0"),
+            (&BUDGETS[0], "2001:db8:1:2:3:4:5:6", "2001:db8:1:2::"),
+            (&BUDGETS[1], "2001:db8:1:2:3:4:5:6", "2001:db8:1::"),
+        ];
+        for (budget, address, network) in cases {
+            let network: IpAddr = network.parse().unwrap();
+            assert_eq!(budget.network(address.parse().unwrap()), network);
+        }
     }
 
     fn flow(client_ip: IpAddr, expires: Instant) -> Pending {

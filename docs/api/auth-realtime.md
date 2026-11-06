@@ -8,7 +8,7 @@ the synchronization protocol and the limits that remain open.
 
 | Route | Behavior |
 | --- | --- |
-| `GET /api/v1/auth/login` | Redirect to Google with Authorization Code, S256 PKCE, `state` and `nonce`; `429 oidc_rate_limited` when the client has eight pending flows |
+| `GET /api/v1/auth/login` | Redirect to Google with Authorization Code, S256 PKCE, `state` and `nonce`; `429 oidc_rate_limited` when the client's network budget is spent |
 | `GET /api/v1/auth/callback` | Consume the browser-bound flow, exchange the code, verify the ID token, set the session cookie, redirect to the public root |
 | `GET /api/v1/auth/identity` | Return `AuthIdentity { user_id, email }`; the email is display data |
 | `DELETE /api/v1/auth/sessions/current` | Delete the server session and expire the cookie; requires same-origin mutation |
@@ -35,9 +35,10 @@ Each login has a separate `__Host-desire-oidc-<state hash>` browser-binding cook
 security flags and a 10-minute lifetime. Server-side pending state contains PKCE
 and nonce values; a callback atomically consumes it before token exchange. Replays,
 unknown state and another browser's cookie cannot create a session. Expired flows
-are discarded. Pending flows are capped at eight per client IP and 1024 per process.
-A client at its quota receives `429 oidc_rate_limited`, without a new binding cookie;
-other clients can still log in. The global cap remains `503 oidc_busy`. A callback
+are discarded. Pending flows are capped per network and at 1024 per process: eight per
+client (an IPv4 address or an IPv6 /64) and 64 per IPv4 /24 or IPv6 /48. One holder of
+an IPv6 prefix therefore cannot fill the pool by rotating addresses. A client over budget
+receives `429 oidc_rate_limited`, without a new binding cookie; other clients can still log in. The global cap remains `503 oidc_busy`. A callback
 or expiry releases its slot; rejected requests do not extend the expiry. Restarting
 the API cancels pending logins. Flow-specific cookie names isolate overlapping callbacks,
 including one already awaiting token exchange: completing one never clears another
@@ -54,8 +55,8 @@ to its authoritative single-IP header, for example `Fly-Client-IP`. The proxy mu
 strip client-supplied copies and overwrite it; restrict direct access to the API so
 clients cannot bypass that proxy. When configured, a missing, invalid, list-valued
 or repeated header returns `400 invalid_client_ip`. Without this setting, clients
-behind one proxy share its peer-IP quota. Clients behind a shared NAT also share
-a quota. These per-process bounds do not replace ingress limits against distributed
+behind one proxy share its peer-IP quota. Clients behind a shared NAT, one IPv6 /64 or
+one IPv4 /24 also share budgets. These per-process bounds do not replace ingress limits against distributed
 attacks or high request volume.
 
 For non-read methods, a supplied `Origin` must exactly match the configured public

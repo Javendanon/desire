@@ -1,4 +1,4 @@
-//! Anonymous login admission is isolated by client IP, never source port or browser headers.
+//! Anonymous login admission is isolated by client network, never source port or browser headers.
 use crate::{
     oidc_flow::Fixture,
     support::{self, ApiCall, Response},
@@ -6,6 +6,8 @@ use crate::{
 use axum::http::{Method, StatusCode};
 
 const CLIENT_QUOTA: u16 = 8;
+/// Pending flows one IPv6 /48 (or IPv4 /24) may hold, whatever addresses it rotates through.
+const NETWORK_BUDGET: usize = 64;
 
 fn start(fixture: &Fixture, port: u16) -> Response {
     support::run(support::call(
@@ -77,5 +79,27 @@ fn a_callback_releases_its_client_quota() {
     ));
     assert_eq!(rejected.status, StatusCode::TOO_MANY_REQUESTS);
     assert_eq!(fixture.finish(&first).status, StatusCode::SEE_OTHER);
+    fixture.begin();
+}
+
+#[test]
+fn rotating_addresses_inside_one_ipv6_network_cannot_lock_out_another_client() {
+    const PENDING_FLOW_CAPACITY: usize = 1024;
+    let fixture = Fixture::new("");
+    let statuses: Vec<_> = (0..PENDING_FLOW_CAPACITY)
+        .map(|index| {
+            let peer = format!("[2001:db8:1:{:x}::{:x}]:40000", index % 256, index + 1);
+            support::run(support::call(
+                &fixture.app,
+                ApiCall::new(Method::GET, "/api/v1/auth/login").with_peer(peer.parse().unwrap()),
+            ))
+            .status
+        })
+        .collect();
+    let accepted = statuses
+        .iter()
+        .filter(|status| **status == StatusCode::SEE_OTHER)
+        .count();
+    assert_eq!(accepted, NETWORK_BUDGET);
     fixture.begin();
 }
