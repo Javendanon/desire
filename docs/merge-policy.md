@@ -4,8 +4,8 @@
 judge a change. The loop always reads it from the **default branch** (`main`), never from the
 pull request: a change must not be able to loosen the rules it is judged by.
 
-Current state: **version 1, mode `shadow`**. In shadow mode every gate runs and its result is
-recorded on the card, but nothing is blocked and nothing is merged without a human.
+Current state: **version 1, mode `enforce`**, with unattended merge enabled for `T0` and `T1` (see
+[Auto-merge](#auto-merge)). `T2-never` always waits for a human.
 
 ## Modes
 
@@ -67,6 +67,38 @@ A pattern without `/` matches the file name at any depth (`Cargo.toml` also cove
 the first two because the gate must not approve changes to itself, the last because pnpm's
 lockfile is a YAML file that `**/*.lock` does not match.
 
+## Auto-merge
+
+Passing every gate is necessary but not sufficient. The optional `auto_merge` section decides, per
+tier, whether a change may merge without a human:
+
+```json
+"auto_merge": {"mode": "enforce", "tiers": {"T0": {"min_score": 70, "max_radius_share": 0.0,
+                                                    "max_unprotected": 0, "max_stale_docs": 0}}}
+```
+
+| Limit | Evidence |
+| --- | --- |
+| `min_score` | The loop's merge score recorded for the reviewed commit, with no failed hard condition |
+| `max_radius_share` | `km impact`: share of source files that can behave differently because of the change |
+| `max_unprotected` | `km impact`: files the change reaches that no test protects |
+| `max_stale_docs` | `km impact`: documents that describe the change but were not updated |
+
+`km impact` runs on the integrated candidate (the reviewed commits rebased onto `main`).
+
+The section is fail-closed. With no section, or mode `off`, nothing merges unattended. A tier with
+no rule, or a rule missing any limit, is refused, as is missing evidence. In `shadow` the verdict is
+written on the card and a human still merges.
+
+`T0` and `T1` are enabled. The `T1` limits start deliberately loose, by the owner's decision:
+score at least 70, blast radius up to 25% of source files, up to 10 reached files without tests and
+up to 5 stale documents. Tighten them in this file as merge outcomes accumulate. `T2-never` is
+never eligible.
+
+The repository ruleset requires review threads to be resolved before merging. The merge actor does
+not resolve threads, so a change with an open review thread is refused by GitHub even when every
+limit above is met.
+
 ## Changing the policy
 
 - Only a human merges a change to `merge-policy.json`: it matches its own deny-list.
@@ -75,6 +107,12 @@ lockfile is a YAML file that `**/*.lock` does not match.
   gate could approve that change, any agent that wanted to pass would first make the gate pass.
 - Every merge records the policy version and the SHA of the commit that last changed this file,
   so a past merge can be reproduced under the policy that allowed it.
+
+## Why the evidence is still recorded
+
+The section below was the argument for keeping a human on every agent-authored change. The owner
+chose to start with unattended `T1` merges anyway; the score, the impact measures and the
+attestation of every merge stay on the card so that decision can be revisited with data.
 
 ## Why a human always decides on agent-authored code
 

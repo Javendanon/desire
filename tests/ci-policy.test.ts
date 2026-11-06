@@ -23,8 +23,11 @@ test('the browser scene regressions are reachable from the required frontend scr
     readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
   assert.ok(scripts['test:browser'], 'package.json has no test:browser script');
   const runner = readFileSync(RUNNER, 'utf8');
-  assert.match(runner, /tests\/browser\/waterdeep-smoke\.mjs/,
-    'the browser runner must execute the Waterdeep scene smoke test');
+  assert.match(runner, /loadSuites\(\)/, 'the browser runner must run the listed gate suites');
+  const suites = JSON.parse(
+    readFileSync(new URL('../tests/browser/gate-suites.json', import.meta.url), 'utf8'));
+  assert.ok(suites.includes('waterdeep-smoke.mjs'),
+    'the gate suites must include the Waterdeep scene smoke test');
   const smoke = readFileSync(new URL('../tests/browser/waterdeep-smoke.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(smoke, /map-memory|sweepSectors|MEMORY_BUDGET/,
     'the required browser gate must not run the sector sweep or memory audit');

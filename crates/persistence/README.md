@@ -99,11 +99,14 @@ km dups crates/persistence
 ```
 
 The harness initializes a fresh cluster under this worktree's `.local/d08/`, disables
-TCP listening, clears inherited libpq environment settings, and uses a private Unix
-socket. The environment regression wrapper supplies hostile routing settings and
-must still pass. Each Rust integration test creates a separate database in that
-cluster (names include the PID, a timestamp and a per-process counter, so a recycled
-PID cannot collide). The harness then runs the entire Rust workspace suite and
+TCP listening, clears inherited libpq environment settings, and binds a private Unix
+socket in a short `/tmp/desire-pg.XXXXXX` directory: a Unix socket path is capped near
+104 bytes, and a worktree deep enough (a merge candidate lives under a long directory
+name) would otherwise make `pg_ctl start` fail with "could not create any Unix-domain
+sockets". `tests/pipeline.rs` guards that. The environment regression wrapper supplies
+hostile routing settings and must still pass. Each Rust integration test creates a separate
+database in that cluster (names include the PID, a timestamp and a per-process counter, so a
+recycled PID cannot collide). The harness then runs the entire Rust workspace suite and
 stops/removes only its own cluster, also on failure.
 
 The harness no longer seeds a schema of its own: `tests/sql_constraints.rs` installs
