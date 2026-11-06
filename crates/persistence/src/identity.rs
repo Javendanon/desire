@@ -40,13 +40,11 @@ impl IdentityRepository {
             )
             .context("upsert OIDC identity")?;
         let id: String = row.get(0);
-        session_in(
-            &mut tx,
-            &NewSession {
-                token_hash: hash,
-                account_id: &id,
-            },
-        )?;
+        let session = NewSession {
+            token_hash: hash,
+            account_id: &id,
+        };
+        session_in(&mut tx, &session)?;
         tx.commit().context("commit OIDC sign-in")
     }
 

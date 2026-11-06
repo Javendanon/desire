@@ -31,13 +31,16 @@ are stored in `identity.sessions`. The raw token exists only in a host-only
 12-hour lifetime. There is no bearer-token response or JavaScript token storage.
 Auth responses use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 
-Each login has a separate `__Host-desire-oidc` browser-binding cookie with the same
+Each login has a separate `__Host-desire-oidc-<state hash>` browser-binding cookie with the same
 security flags and a 10-minute lifetime. Server-side pending state contains PKCE
 and nonce values; a callback atomically consumes it before token exchange. Replays,
 unknown state and another browser's cookie cannot create a session. Expired flows
 are discarded and pending flows are capped at 1024 per process. Restarting the API
-cancels pending logins. One browser cookie selects the latest login attempt; an older
-attempt fails without clearing that newer attempt's cookie. Multi-instance deployments
+cancels pending logins. Flow-specific cookie names isolate overlapping callbacks,
+including one already awaiting token exchange: completing one never clears another
+flow's binding cookie. Flows may complete independently. The browser has one app
+session, so the last successful callback response it processes selects the account;
+there is no latest-started-attempt ordering guarantee. Multi-instance deployments
 need sticky login routing or a
 shared pending-flow store; persistent sessions already work across API instances.
 
@@ -172,7 +175,7 @@ returned campaign cursor. D15 owns UI integration and polling lifecycle.
 | Login CSRF/code theft/replay | Random state, independent browser cookie, nonce, S256 PKCE, atomically consumed 10-minute flow | Restart cancels flows; replicas require sticky routing or shared pending storage |
 | Token interception | Secure host-only cookie, provider tokens discarded, auth no-store/no-referrer; no token logs | Production TLS termination and proxy query-log redaction (callback codes/state) are operator responsibilities |
 | CSRF | SameSite=Lax plus exact public-Origin validation on mutations; cookie mutations reject missing Origin | Same-origin XSS can still issue actions; CSP/UI escaping remain required |
-| Login exhaustion | 1024-flow cap, expiry and bounded HTTP calls; no password hashing | Operator must apply ingress rate limits; no per-IP limiter in the API |
+| Login exhaustion | 1024-flow cap, expiry and bounded HTTP calls; no password hashing | Apply ingress limits; no per-IP/browser limiter. Abandoned binding cookies expire after ten minutes but can pressure browser cookie/header limits before then |
 | Cross-campaign access | Membership check on every campaign route and sync | Deployment grants and database superuser boundaries remain operational work |
 | Secret leakage | Player filtering happens in SQL before serialization; `private` schema is never joined | A future projection added outside the audience filter would need its own negative test |
 | Event replay or gaps | Monotonic campaign stream, deterministic `after` cursor, event IDs, snapshot fallback | Outbox rows are never purged, so storage grows and old cursors stay valid until a retention job exists |

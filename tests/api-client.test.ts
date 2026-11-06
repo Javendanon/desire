@@ -100,8 +100,10 @@ test('OIDC navigation, identity, logout and sync use the generated transport', a
   await logout({ fetch: fakeFetch(null, 204, captured) });
   assert.equal(captured[1].init.method, 'DELETE');
   assert.equal(captured[1].url, '/api/v1/auth/sessions/current');
-  const batch: SyncBatch = { protocol_version: 1, campaign_id: CAMPAIGN, role: 'player', revision: 0,
-    snapshot: null, scene_events: [], travel_events: [] };
+  const batch: SyncBatch = {
+    protocol_version: 1, campaign_id: CAMPAIGN, role: 'player', revision: 0,
+    snapshot: null, scene_events: [], travel_events: [],
+  };
   const transport = { fetch: fakeFetch(batch, 200, captured) };
   assert.deepEqual(await syncCampaign(transport, CAMPAIGN), batch);
   assert.equal(captured[2].url, `/api/v1/campaigns/${CAMPAIGN}/sync`);

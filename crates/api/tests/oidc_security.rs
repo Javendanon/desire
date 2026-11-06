@@ -80,7 +80,8 @@ fn state_and_the_initiating_browser_are_required() {
         StatusCode::UNAUTHORIZED
     );
     let mut wrong_browser = fixture.begin();
-    wrong_browser.browser = "__Host-desire-oidc=foreign-browser".into();
+    let name = wrong_browser.browser.split_once('=').unwrap().0;
+    wrong_browser.browser = format!("{name}=foreign-browser");
     assert_eq!(
         fixture.finish(&wrong_browser).status,
         StatusCode::UNAUTHORIZED
@@ -109,20 +110,20 @@ fn the_allowlist_is_optional_and_case_insensitive_but_enforced_after_verificatio
 }
 
 #[test]
-fn an_older_login_callback_does_not_clear_the_latest_browser_flow() {
+fn a_callback_without_its_binding_does_not_clear_another_flow() {
     let fixture = Fixture::new("");
     let mut first = fixture.begin();
     let second = fixture.begin();
     first.browser = second.browser.clone();
     let rejected = fixture.finish(&first);
     assert_eq!(rejected.status, StatusCode::UNAUTHORIZED);
-    assert!(
-        rejected
-            .headers
-            .get_all("set-cookie")
-            .iter()
-            .all(|header| !header.to_str().unwrap().contains("Max-Age=0"))
-    );
+    let second_name = second.browser.split_once('=').unwrap().0;
+    assert!(rejected.headers.get_all("set-cookie").iter().all(|header| {
+        !header
+            .to_str()
+            .unwrap()
+            .starts_with(&format!("{second_name}="))
+    }));
     assert_eq!(fixture.finish(&second).status, StatusCode::SEE_OTHER);
 }
 
@@ -151,6 +152,27 @@ fn an_in_flight_callback_cannot_clear_another_flow_cookie() {
         );
         assert_eq!(fixture.finish(&second).status, StatusCode::SEE_OTHER);
     });
+}
+
+#[test]
+fn pending_flow_admission_recovers_after_a_callback_consumes_its_slot() {
+    const PENDING_FLOW_CAPACITY: usize = 1024;
+    let fixture = Fixture::new("");
+    let first = fixture.begin();
+    let start = || {
+        support::run(support::call(
+            &fixture.app,
+            ApiCall::new(Method::GET, "/api/v1/auth/login"),
+        ))
+    };
+    for _ in 1..PENDING_FLOW_CAPACITY {
+        assert_eq!(start().status, StatusCode::SEE_OTHER);
+    }
+    let full = start();
+    assert_eq!(full.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(full.body["code"], "oidc_busy");
+    assert_eq!(fixture.finish(&first).status, StatusCode::SEE_OTHER);
+    assert_eq!(start().status, StatusCode::SEE_OTHER);
 }
 
 #[test]

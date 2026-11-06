@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 pub const SESSION_COOKIE: &str = "__Host-desire-session";
 pub const LOGIN_COOKIE: &str = "__Host-desire-oidc";
 pub const SESSION_SECONDS: u64 = 12 * 60 * 60;
+// ponytail: no browser admission cap. Add one if abandoned flows cause cookie pressure.
 pub const LOGIN_SECONDS: u64 = 10 * 60;
 const TOKEN_BYTES: usize = 32;
 
@@ -33,23 +34,30 @@ fn hex(bytes: &[u8]) -> String {
     })
 }
 
-/// O(n) over Cookie headers. Ambiguous duplicate names fail closed.
-pub fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+/// O(n) over Cookie headers. Absent, empty and ambiguous credentials stay distinct.
+pub fn cookie<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a str>, &'static str> {
     let mut found = None;
     for header in headers.get_all("cookie") {
-        for pair in header.to_str().ok()?.split(';') {
-            let Some((key, value)) = pair.trim().split_once('=') else {
+        for pair in header
+            .to_str()
+            .map_err(|_| "Cookie header must be ASCII")?
+            .split(';')
+        {
+            let pair = pair.trim();
+            let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+            if key.trim() != name {
                 continue;
-            };
-            if key == name {
-                if found.is_some() {
-                    return None;
-                }
-                found = Some(value);
+            }
+            if found.replace(value).is_some() {
+                return Err("duplicate authentication cookie");
             }
         }
     }
-    found
+    Ok(found)
+}
+
+pub fn login_cookie(state: &str) -> String {
+    format!("{LOGIN_COOKIE}-{}", token_hash(state))
 }
 
 pub fn set_cookie(name: &str, value: &str, seconds: u64) -> HeaderValue {

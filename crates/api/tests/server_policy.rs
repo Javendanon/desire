@@ -19,17 +19,23 @@ fn development_command(db: &TestDb, port: u16) -> Command {
 }
 
 fn assert_development_origins(port: u16) {
-    for (origin, status) in [
-        ("http://localhost:5173", "201"),
-        ("http://localhost:9999", "403"),
-        ("https://foreign.example.test", "403"),
+    for (origin, cookie, status) in [
+        ("http://localhost:5173", "preference=dark", "201"),
+        ("http://localhost:5173", "__Host-desire-session", "401"),
+        (
+            "http://localhost:5173",
+            "__Host-desire-session=x; __Host-desire-session=y",
+            "401",
+        ),
+        ("http://localhost:9999", "preference=dark", "403"),
+        ("https://foreign.example.test", "preference=dark", "403"),
     ] {
         let body = r#"{"name":"Synthetic","rules_edition":"dnd_2014","city_id":null}"#;
         let response = request(
             port,
             &format!(
                 "POST /api/v1/campaigns HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\
-            Origin: {origin}\r\nCookie: preference=dark\r\n\
+            Origin: {origin}\r\nCookie: {cookie}\r\n\
             x-desire-user: {}\r\nContent-Type: application/json\r\n\
             Content-Length: {}\r\n\r\n{body}",
                 id(90),

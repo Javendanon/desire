@@ -20,7 +20,10 @@ fn check(state: &AppState, request: &Request) -> Result<(), ApiError> {
     }
     let headers = request.headers();
     let origin = headers.get("origin");
-    if origin.is_none() && session::cookie(headers, session::SESSION_COOKIE).is_none() {
+    // A malformed cookie still counts as ambient credentials and requires Origin.
+    let cookie_auth =
+        session::cookie(headers, session::SESSION_COOKIE).map_or(true, |token| token.is_some());
+    if origin.is_none() && !cookie_auth {
         return Ok(());
     }
     let expected = public_origin(state);

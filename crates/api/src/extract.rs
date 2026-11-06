@@ -51,32 +51,22 @@ async fn identity(
     state: &AppState,
     request_id: &str,
 ) -> Result<(Id, Option<String>), ApiError> {
-    if headers.contains_key("cookie") {
-        let token = session::cookie(headers, session::SESSION_COOKIE)
-            .filter(|token| session::is_token(token))
-            .ok_or_else(|| service::unauthorized(request_id))?;
+    let cookie = session::cookie(headers, session::SESSION_COOKIE)
+        .map_err(|_| service::unauthorized(request_id))?;
+    if let Some(token) = cookie {
+        if !session::is_token(token) {
+            return Err(service::unauthorized(request_id));
+        }
         let hash = session::token_hash(token);
         let user_id = service::session_user(&state.db, hash.clone(), request_id.to_string())
             .await?
-            .ok_or_else(|| {
-                ApiError::new(
-                    UNAUTHORIZED,
-                    "unauthenticated",
-                    "the session is invalid or expired",
-                    request_id,
-                )
-            })?;
+            .ok_or_else(|| service::unauthorized(request_id))?;
         return Ok((user_id, Some(hash)));
     }
     if state.dev_identity {
         return Ok((caller_id(headers, request_id)?, None));
     }
-    Err(ApiError::new(
-        UNAUTHORIZED,
-        "unauthenticated",
-        "a session cookie is required",
-        request_id,
-    ))
+    Err(service::unauthorized(request_id))
 }
 
 fn caller_id(headers: &HeaderMap, request_id: &str) -> Result<Id, ApiError> {

@@ -6,6 +6,7 @@ mod character_revision;
 mod db_timeout;
 mod diagnostics;
 mod idempotency;
+mod identity_concurrency;
 mod isolation;
 mod layers;
 mod nivel20;

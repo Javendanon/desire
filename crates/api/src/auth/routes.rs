@@ -38,7 +38,7 @@ pub async fn start(
     response.headers_mut().insert(
         header::SET_COOKIE,
         session::set_cookie(
-            session::LOGIN_COOKIE,
+            &authorization.cookie_name,
             &authorization.browser,
             session::LOGIN_SECONDS,
         ),
@@ -52,22 +52,39 @@ pub struct CallbackQuery {
     state: Option<String>,
 }
 
+impl CallbackQuery {
+    fn bind(self, headers: &HeaderMap, request_id: &str) -> Result<Callback, ApiError> {
+        let state = self
+            .state
+            .ok_or_else(|| service::unauthorized(request_id))?;
+        let cookie_name = session::login_cookie(&state);
+        let browser = session::cookie(headers, &cookie_name)
+            .map_err(|_| service::unauthorized(request_id))?
+            .ok_or_else(|| service::unauthorized(request_id))?;
+        Ok(Callback {
+            code: self.code.unwrap_or_default(),
+            state,
+            browser: browser.into(),
+        })
+    }
+}
+
 pub async fn callback(
     State(state): State<AppState>,
     headers: HeaderMap,
     ApiQuery(query): ApiQuery<CallbackQuery>,
 ) -> Response {
     let request_id = request_id_from(&headers);
-    match finish(&state, &headers, (query, request_id)).await {
-        Ok(mut response) => {
-            response.headers_mut().append(
-                header::SET_COOKIE,
-                session::set_cookie(session::LOGIN_COOKIE, "", 0),
-            );
-            response
-        }
-        Err(error) => error.into_response(),
+    let cookie_name = query.state.as_deref().map(session::login_cookie);
+    let mut response = finish(&state, &headers, (query, request_id))
+        .await
+        .unwrap_or_else(IntoResponse::into_response);
+    if let Some(name) = cookie_name {
+        response
+            .headers_mut()
+            .append(header::SET_COOKIE, session::set_cookie(&name, "", 0));
     }
+    response
 }
 
 async fn finish(
@@ -77,15 +94,7 @@ async fn finish(
 ) -> Result<Response, ApiError> {
     let (query, request_id) = input;
     let oidc = configured(state, &request_id)?;
-    let callback = Callback {
-        code: query.code.unwrap_or_default(),
-        state: query
-            .state
-            .ok_or_else(|| service::unauthorized(&request_id))?,
-        browser: session::cookie(headers, session::LOGIN_COOKIE)
-            .ok_or_else(|| service::unauthorized(&request_id))?
-            .into(),
-    };
+    let callback = query.bind(headers, &request_id)?;
     let identity = oidc.complete(callback, &request_id).await?;
     let token = service::sign_in(&state.db, request_id, identity).await?;
     let mut response = Redirect::to(oidc.settings.public_url.as_str()).into_response();

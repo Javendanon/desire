@@ -40,7 +40,13 @@ impl Fixture {
         ));
         assert_eq!(start.status, StatusCode::SEE_OTHER, "{}", start.body);
         assert_eq!(start.headers["cache-control"], "no-store");
-        let browser = cookie_pair(&start, "__Host-desire-oidc");
+        let name = start.headers["set-cookie"]
+            .to_str()
+            .unwrap()
+            .split_once('=')
+            .unwrap()
+            .0;
+        let browser = cookie_pair(&start, name);
         let callback = support::run(async {
             let client = reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())

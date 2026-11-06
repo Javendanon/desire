@@ -55,6 +55,7 @@ pub struct VerifiedIdentity {
 pub struct Authorization {
     pub url: String,
     pub browser: String,
+    pub cookie_name: String,
 }
 
 impl Oidc {
@@ -107,6 +108,7 @@ impl Oidc {
         Ok(Authorization {
             url: url.to_string(),
             browser,
+            cookie_name: session::login_cookie(state.secret()),
         })
     }
 

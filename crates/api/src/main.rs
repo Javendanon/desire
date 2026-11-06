@@ -94,8 +94,8 @@ async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::
 }
 
 /// The blocking client needs its own runtime, so it is created and dropped outside the
-/// server runtime. `state` stays owned here for the same reason: the last drop closes the
-/// connection on this thread.
+/// server runtime. `run_server` retains the last state owner outside that runtime so the
+/// connection also closes on this thread.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host: IpAddr = environment("HOST", "127.0.0.1")?;
     let dev_identity = dev_identity_allowed(host, dev_identity_opt_in());
@@ -120,6 +120,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address = SocketAddr::new(host, port);
     let mut state = AppState::with_nivel20(config, client, nivel20).with_dev_identity(dev_identity);
     state.dev_origin = dev_origin;
+    run_server(address, state, settings)
+}
+
+/// Keep the last blocking client owner outside the server runtime during shutdown.
+fn run_server(
+    address: SocketAddr,
+    state: AppState,
+    settings: Option<Settings>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
