@@ -75,7 +75,7 @@ impl Nivel20Repository {
         let previous = Self::get(&mut transaction, save.campaign_id)?;
         let stored = match previous.as_ref() {
             Some(row) if row.external_id == save.external_id && row.snapshot == *save.snapshot => {
-                row.clone()
+                Self::record_path(&mut transaction, row, save)?
             }
             _ => {
                 let revision = previous.as_ref().map(|row| row.imported_at.as_str());
@@ -87,6 +87,28 @@ impl Nivel20Repository {
         };
         transaction.commit().context("commit Nivel20 import")?;
         Ok(Nivel20Saved { previous, stored })
+    }
+
+    /// An unchanged snapshot is not a new import, but the source may now serve it under another
+    /// slug for the same numeric ID. Keep that path without touching `imported_at`.
+    fn record_path(
+        client: &mut impl GenericClient,
+        row: &Nivel20Mapping,
+        save: &Nivel20Save<'_>,
+    ) -> Result<Nivel20Mapping, Error> {
+        if row.source_path == save.source_path {
+            return Ok(row.clone());
+        }
+        let updated = client
+            .query_one(
+                concat!(
+                    "UPDATE campaign.nivel20_campaigns n SET source_path = $2 ",
+                    "WHERE campaign_id = $1::text::uuid RETURNING to_jsonb(n)"
+                ),
+                &[&save.campaign_id, &save.source_path],
+            )
+            .context(format!("record Nivel20 path for {}", save.campaign_id))?;
+        records::decode(updated)
     }
 
     fn write(

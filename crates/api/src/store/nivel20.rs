@@ -8,6 +8,10 @@ use crate::{
 use desire_persistence::{Nivel20Mapping, Nivel20Repository, Nivel20Save};
 use postgres::Client;
 
+/// One external campaign belongs to one local campaign.
+pub(crate) const ALREADY_MAPPED: &str =
+    "that Nivel20 campaign is already imported into another local campaign";
+
 pub fn previous(client: &mut Client, scope: Scope<'_>) -> Result<Option<StoredImport>, ApiError> {
     access::require_dm(client, scope.caller, scope.campaign_id)?;
     let stored = Nivel20Repository::get(client, scope.campaign_id)
@@ -41,14 +45,22 @@ pub fn save(
         snapshot: &snapshot,
         expected_imported_at: report.previous.as_ref().map(|row| row.imported_at.as_str()),
     };
-    let saved = Nivel20Repository::save(client, &save)
-        .map_err(|error| ApiError::from_persistence(error, scope.caller))?;
+    let saved =
+        Nivel20Repository::save(client, &save).map_err(|error| mapping_error(error, scope))?;
     report.previous = saved.previous.map(|row| decode(row, scope)).transpose()?;
     (report.status, report.changed_fields) =
         compare(report.previous.as_ref(), campaign.id, campaign);
     report.imported = report.status != ChangeStatus::Unchanged;
     report.stored = Some(decode(saved.stored, scope)?);
     Ok(report)
+}
+
+/// The only unique key a save can break is `external_id`: two campaigns raced for one mapping.
+fn mapping_error(error: desire_persistence::Error, scope: Scope<'_>) -> ApiError {
+    if error.sqlstate.as_deref() == Some("23505") {
+        return ApiError::conflict(scope.caller, ALREADY_MAPPED);
+    }
+    ApiError::from_persistence(error, scope.caller)
 }
 
 /// The stored JSON is the adapter's own output; an unreadable row is an internal fault.

@@ -119,7 +119,7 @@ async fn ensure_unmapped(target: &Target<'_>) -> Result<(), ApiError> {
     match owner {
         Some(owner) if owner != target.campaign_id => Err(ApiError::conflict(
             target.caller,
-            "that Nivel20 campaign is already imported into another local campaign",
+            store::nivel20::ALREADY_MAPPED,
         )),
         _ => Ok(()),
     }

@@ -125,3 +125,54 @@ fn out_of_order_source_responses_cannot_overwrite_a_newer_import() {
         assert_eq!(local["campaign"]["name"], "New response");
     }
 }
+
+/// Two local campaigns both pass the mapping check before either writes the same external id.
+async fn drive_cross_campaign(
+    apps: &[Router; 2],
+    campaigns: [&str; 2],
+    owner: &str,
+    pending: Vec<PendingRead>,
+) -> [Response; 2] {
+    let mut pending = pending.into_iter();
+    let (first, second) = (pending.next().unwrap(), pending.next().unwrap());
+    let first_call = source_call(Method::POST, campaigns[0], owner, "/import");
+    let first_app = apps[0].clone();
+    let first_response = tokio::spawn(async move { call(&first_app, first_call).await });
+    first.accepted.await.unwrap();
+    let second_call = source_call(Method::POST, campaigns[1], owner, "/import");
+    let second_app = apps[1].clone();
+    let second_response = tokio::spawn(async move { call(&second_app, second_call).await });
+    second.accepted.await.unwrap();
+    first.release.send(()).unwrap();
+    let first_response = first_response.await.unwrap();
+    second.release.send(()).unwrap();
+    [first_response, second_response.await.unwrap()]
+}
+
+#[test]
+fn concurrent_imports_into_two_campaigns_keep_one_mapping_and_explain_the_conflict() {
+    let db = TestDb::new();
+    let owner = id(90);
+    let local_app = support::app_for(&db);
+    let first = support::run(support::campaign(&local_app, &owner));
+    let second = support::run(support::campaign(&local_app, &owner));
+    let bodies = ["First", "Second"].map(|name| source_body(name, "2026-10-01T00:00:00Z"));
+    let (base_url, pending) = controlled_source(bodies.into());
+    let apps = [router_with(&db, &base_url), router_with(&db, &base_url)];
+    let [won, lost] = support::run(drive_cross_campaign(
+        &apps,
+        [&first, &second],
+        &owner,
+        pending,
+    ));
+    assert_eq!(won.status, StatusCode::OK, "{}", won.body);
+    assert_eq!(lost.status, StatusCode::CONFLICT, "{}", lost.body);
+    let message = lost.body["message"].as_str().unwrap_or_default();
+    assert!(message.contains("another local campaign"), "{}", lost.body);
+    let mappings: i64 = db
+        .connection()
+        .query_one("SELECT count(*) FROM campaign.nivel20_campaigns", &[])
+        .unwrap()
+        .get(0);
+    assert_eq!(mappings, 1);
+}
