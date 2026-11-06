@@ -205,3 +205,24 @@ fn package_scripts_route_rust_tests_through_the_harness() {
         "pnpm test must still run the frontend suite first, then the harness"
     );
 }
+
+/// A Unix-domain socket path is capped near 104 bytes. The cluster lives in the worktree, so a
+/// merge candidate under a deep worktree path pushed its socket past the cap: `pg_ctl start`
+/// exited with "could not create any Unix-domain sockets" and the gate showed nothing else.
+#[test]
+fn the_harness_binds_sockets_outside_the_worktree() {
+    let script = repository_file("crates/persistence/test-postgres.sh");
+    let sockets = script
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("sockets=$(mktemp -d "))
+        .expect("the harness must create a socket directory of its own");
+    assert!(
+        sockets.starts_with("/tmp/"),
+        "the socket directory must stay short instead of following the worktree: {sockets}"
+    );
+    assert!(
+        script.contains("-c unix_socket_directories='$sockets'")
+            && script.contains("export DESIRE_TEST_SOCKET=\"$sockets\""),
+        "the cluster and the tests must both use that short socket directory"
+    );
+}

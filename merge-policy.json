@@ -57,5 +57,22 @@
   "doc_extensions": [".md", ".rst", ".txt", ".png", ".svg", ".csv"],
   "max_review_lines": 600,
   "t0_max_lines": 60,
-  "t0_max_files": 5
+  "t0_max_files": 5,
+  "auto_merge": {
+    "mode": "enforce",
+    "tiers": {
+      "T0": {
+        "min_score": 70,
+        "max_radius_share": 0.0,
+        "max_unprotected": 0,
+        "max_stale_docs": 0
+      },
+      "T1": {
+        "min_score": 70,
+        "max_radius_share": 0.25,
+        "max_unprotected": 10,
+        "max_stale_docs": 5
+      }
+    }
+  }
 }
