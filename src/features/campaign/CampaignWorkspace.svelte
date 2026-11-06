@@ -123,7 +123,11 @@
         </div>
       {/if}
       {#if atlasOpened}
-        <div class="atlas" class:parked={route.panel !== 'atlas'}>
+        <div
+          class="atlas"
+          class:parked={route.panel !== 'atlas'}
+          inert={route.panel !== 'atlas'}
+        >
           <AtlasPanel {route} cityId={overview.campaign.city_id} {onnavigate} />
         </div>
       {/if}

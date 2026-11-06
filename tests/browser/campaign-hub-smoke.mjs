@@ -78,11 +78,13 @@ async function focusAndTabs() {
     if (!element) return null;
     return {
       parked: Boolean(element.closest('.parked')),
+      inert: Boolean(element.closest('[inert]')),
       visibility: getComputedStyle(element).visibility,
     };
   })()`);
   assert.ok(parked?.parked, 'the atlas is parked outside its panel');
-  assert.equal(parked.visibility, 'hidden', 'a parked panel is not focusable');
+  assert.equal(parked.visibility, 'hidden', 'a parked panel is hidden');
+  assert.ok(parked.inert, 'a parked panel is inert and not focusable');
 
   const order = await tabOrder(14, 'content');
   const intruders = order.filter((entry) => entry.parked);
