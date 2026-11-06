@@ -244,7 +244,7 @@ export interface SyncBatch {
   protocol_version: 1;
   campaign_id: Id;
   role: MemberRole;
-  revision: Revision;
+  revision: number;
   snapshot: CampaignSnapshot | null;
   scene_events: SceneChanged[];
   travel_events: TravelUpdated[];

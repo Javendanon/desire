@@ -61,7 +61,7 @@ pub struct SyncBatch {
     pub protocol_version: u32,
     pub campaign_id: Id,
     pub role: MemberRole,
-    pub revision: Revision,
+    pub revision: u32,
     #[serde(deserialize_with = "super::required_nullable")]
     pub snapshot: Option<CampaignSnapshot>,
     pub scene_events: Vec<SceneChanged>,
