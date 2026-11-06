@@ -163,7 +163,7 @@ fn pending_flow_admission_recovers_after_a_callback_consumes_its_slot() {
         let peer = format!("192.0.{}.{}:40000", client / 256, client % 256);
         support::run(support::call(
             &fixture.app,
-            ApiCall::new(Method::GET, "/api/v1/auth/login").from_peer(peer.parse().unwrap()),
+            ApiCall::new(Method::GET, "/api/v1/auth/login").with_peer(peer.parse().unwrap()),
         ))
     };
     for client in 1..PENDING_FLOW_CAPACITY {

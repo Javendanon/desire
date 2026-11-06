@@ -1,6 +1,10 @@
 //! OIDC deployment settings are validated before any listener is opened.
+use axum::http::{HeaderMap, HeaderName};
 use openidconnect::{ClientSecret, IssuerUrl, RedirectUrl, url::Url};
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    net::{IpAddr, SocketAddr},
+};
 
 pub struct Settings {
     pub issuer: IssuerUrl,
@@ -8,6 +12,7 @@ pub struct Settings {
     pub client_secret: ClientSecret,
     pub public_url: Url,
     pub allowed_emails: HashSet<String>,
+    pub trusted_client_ip_header: Option<HeaderName>,
 }
 
 impl Settings {
@@ -18,6 +23,9 @@ impl Settings {
         if id.is_none() && secret.is_none() {
             return Ok(None);
         }
+        if std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1") {
+            return Err("DESIRE_DEV_IDENTITY cannot be enabled with OpenID Connect".into());
+        }
         let issuer = std::env::var("DESIRE_OIDC_ISSUER")
             .unwrap_or_else(|_| "https://accounts.google.com".into());
         let settings = Self {
@@ -27,6 +35,11 @@ impl Settings {
             public_url: Url::parse(&required(public, "DESIRE_PUBLIC_URL")?)
                 .map_err(|_| "invalid public URL")?,
             allowed_emails: email_list(&std::env::var("DESIRE_ALLOWED_EMAILS").unwrap_or_default()),
+            trusted_client_ip_header: std::env::var("DESIRE_TRUSTED_CLIENT_IP_HEADER")
+                .ok()
+                .map(|name| name.parse())
+                .transpose()
+                .map_err(|_| "invalid trusted client IP header name")?,
         };
         settings.validate()?;
         Ok(Some(settings))
@@ -39,6 +52,25 @@ impl Settings {
             return Err("OIDC client settings must not be empty".into());
         }
         Ok(())
+    }
+
+    /// A trusted proxy must overwrite this header; arbitrary forwarded headers are ignored.
+    pub fn client_ip(&self, headers: &HeaderMap, peer: SocketAddr) -> Result<IpAddr, &'static str> {
+        let Some(name) = &self.trusted_client_ip_header else {
+            return Ok(peer.ip().to_canonical());
+        };
+        let invalid = "trusted client IP header must contain exactly one IP address";
+        let mut values = headers.get_all(name).iter();
+        let value = values.next().ok_or(invalid)?;
+        if values.next().is_some() {
+            return Err(invalid);
+        }
+        value
+            .to_str()
+            .map_err(|_| invalid)?
+            .parse::<IpAddr>()
+            .map(|ip| ip.to_canonical())
+            .map_err(|_| invalid)
     }
 
     pub fn redirect_uri(&self) -> Result<RedirectUrl, String> {

@@ -15,6 +15,7 @@ use openidconnect::{
 };
 use std::{
     collections::HashMap,
+    net::IpAddr,
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -28,6 +29,7 @@ type DiscoveredClient = CoreClient<
     EndpointMaybeSet,
 >;
 const MAX_PENDING: usize = 1024;
+const MAX_PENDING_PER_CLIENT: usize = 8;
 const HTTP_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct Oidc {
@@ -39,6 +41,7 @@ pub struct Oidc {
 }
 
 struct Pending {
+    client_ip: IpAddr,
     verifier: PkceCodeVerifier,
     nonce: Nonce,
     browser_hash: String,
@@ -84,7 +87,7 @@ impl Oidc {
         })
     }
 
-    pub fn begin(&self, request_id: &str) -> Result<Authorization, ApiError> {
+    pub fn begin(&self, client_ip: IpAddr, request_id: &str) -> Result<Authorization, ApiError> {
         let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
         let (url, state, nonce) = self
             .client
@@ -99,6 +102,7 @@ impl Oidc {
         let browser = session::random_token()
             .map_err(|message| ApiError::internal_for(request_id, &message))?;
         let pending = Pending {
+            client_ip,
             verifier,
             nonce,
             browser_hash: session::token_hash(&browser),
@@ -112,21 +116,12 @@ impl Oidc {
         })
     }
 
-    /// Expired flows are discarded in O(n); the map has a fixed admission ceiling.
     fn remember(&self, key: String, pending: Pending, request_id: &str) -> Result<(), ApiError> {
         let mut flows = self
             .pending
             .lock()
             .map_err(|_| ApiError::internal_for(request_id, "OIDC flow lock failed"))?;
-        flows.retain(|_, flow| flow.expires > Instant::now());
-        if flows.len() >= MAX_PENDING {
-            return Err(ApiError::new(
-                axum::http::StatusCode::SERVICE_UNAVAILABLE,
-                "oidc_busy",
-                "too many pending authentication requests",
-                request_id,
-            ));
-        }
+        admit(&mut flows, pending.client_ip, request_id)?;
         flows.insert(key, pending);
         Ok(())
     }
@@ -198,6 +193,37 @@ pub struct Callback {
     pub browser: String,
 }
 
+/// O(n) expiry and counting, bounded by MAX_PENDING. Hold the lock through insertion.
+fn admit(
+    flows: &mut HashMap<String, Pending>,
+    client_ip: IpAddr,
+    request_id: &str,
+) -> Result<(), ApiError> {
+    let now = Instant::now();
+    flows.retain(|_, flow| flow.expires > now);
+    let client_flows = flows
+        .values()
+        .filter(|flow| flow.client_ip == client_ip)
+        .count();
+    if client_flows >= MAX_PENDING_PER_CLIENT {
+        return Err(ApiError::new(
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            "oidc_rate_limited",
+            "too many pending authentication requests from this client",
+            request_id,
+        ));
+    }
+    if flows.len() >= MAX_PENDING {
+        return Err(ApiError::new(
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            "oidc_busy",
+            "too many pending authentication requests",
+            request_id,
+        ));
+    }
+    Ok(())
+}
+
 fn validate_endpoints(metadata: &CoreProviderMetadata) -> Result<(), String> {
     settings::validate_transport(metadata.authorization_endpoint().url())?;
     settings::validate_transport(metadata.jwks_uri().url())?;
@@ -205,4 +231,39 @@ fn validate_endpoints(metadata: &CoreProviderMetadata) -> Result<(), String> {
         .token_endpoint()
         .ok_or("OIDC provider has no token endpoint")?;
     settings::validate_transport(token.url())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expired_flows_release_quota_and_rejections_do_not_extend_their_lifetime() {
+        let client_ip = "192.0.2.1".parse().unwrap();
+        let expires = Instant::now() + Duration::from_secs(session::LOGIN_SECONDS);
+        let mut flows: HashMap<_, _> = (0..MAX_PENDING_PER_CLIENT)
+            .map(|index| (index.to_string(), flow(client_ip, expires)))
+            .collect();
+        for _ in 0..2 {
+            assert!(admit(&mut flows, client_ip, "fixture-request").is_err());
+            assert_eq!(flows.len(), MAX_PENDING_PER_CLIENT);
+            assert!(flows.values().all(|flow| flow.expires == expires));
+        }
+        let expired = Instant::now() - Duration::from_secs(1);
+        for pending in flows.values_mut() {
+            pending.expires = expired;
+        }
+        assert!(admit(&mut flows, client_ip, "fixture-request").is_ok());
+        assert!(flows.is_empty());
+    }
+
+    fn flow(client_ip: IpAddr, expires: Instant) -> Pending {
+        Pending {
+            client_ip,
+            verifier: PkceCodeVerifier::new("fixture-verifier".into()),
+            nonce: Nonce::new("fixture-nonce".into()),
+            browser_hash: "fixture-browser-hash".into(),
+            expires,
+        }
+    }
 }

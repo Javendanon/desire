@@ -27,8 +27,8 @@ where
     }
 }
 
-/// The header seam needs an explicit opt-in and a loopback bind: on a shared network a player
-/// could otherwise attach the owner's header and act as DM.
+/// Only isolated local development may use the header seam. A loopback bind restricts the
+/// listener, not the caller: a local proxy or tunnel could expose impersonation remotely.
 fn dev_identity_allowed(host: IpAddr, opted_in: bool) -> bool {
     opted_in && host.is_loopback()
 }
@@ -85,11 +85,14 @@ async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::
     let listener = tokio::net::TcpListener::bind(address).await?;
     let app = app(state);
     println!("Desire API: http://{address}");
-    axum::serve(listener, app)
-        .with_graceful_shutdown(wait_for_shutdown(tokio::signal::ctrl_c(), |message| {
-            eprintln!("{message}")
-        }))
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(wait_for_shutdown(tokio::signal::ctrl_c(), |message| {
+        eprintln!("{message}")
+    }))
+    .await?;
     Ok(())
 }
 

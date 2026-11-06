@@ -135,6 +135,7 @@ impl Provider {
             client_secret: ClientSecret::new("fixture-only-not-a-real-credential".into()),
             public_url: Url::parse(ORIGIN).unwrap(),
             allowed_emails: Default::default(),
+            trusted_client_ip_header: None,
         }
     }
 

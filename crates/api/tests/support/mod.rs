@@ -172,7 +172,7 @@ impl<'a> ApiCall<'a> {
         }
     }
 
-    pub fn from_peer(mut self, peer: std::net::SocketAddr) -> Self {
+    pub fn with_peer(mut self, peer: std::net::SocketAddr) -> Self {
         self.peer = peer;
         self
     }

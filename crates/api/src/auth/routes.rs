@@ -10,12 +10,13 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::State,
+    extract::{ConnectInfo, State},
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Redirect, Response},
 };
 use desire_core::contracts::transport::AuthIdentity;
 use serde::Deserialize;
+use std::net::SocketAddr;
 
 fn configured<'a>(state: &'a AppState, request_id: &str) -> Result<&'a Oidc, ApiError> {
     state.oidc.as_deref().ok_or_else(|| {
@@ -30,10 +31,20 @@ fn configured<'a>(state: &'a AppState, request_id: &str) -> Result<&'a Oidc, Api
 
 pub async fn start(
     State(state): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let request_id = request_id_from(&headers);
-    let authorization = configured(&state, &request_id)?.begin(&request_id)?;
+    let oidc = configured(&state, &request_id)?;
+    let client_ip = oidc.settings.client_ip(&headers, peer).map_err(|message| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_client_ip",
+            message,
+            &request_id,
+        )
+    })?;
+    let authorization = oidc.begin(client_ip, &request_id)?;
     let mut response = Redirect::to(&authorization.url).into_response();
     response.headers_mut().insert(
         header::SET_COOKIE,

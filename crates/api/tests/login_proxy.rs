@@ -17,7 +17,10 @@ fn login(port: u16, headers: &str) -> String {
 }
 
 fn assert_status(response: &str, status: u16) {
-    assert!(response.starts_with(&format!("HTTP/1.1 {status}")), "{response}");
+    assert!(
+        response.starts_with(&format!("HTTP/1.1 {status}")),
+        "{response}"
+    );
     assert!(response.contains("cache-control: no-store"), "{response}");
 }
 
@@ -62,7 +65,8 @@ fn proxy_client_ip_headers_require_explicit_trust() {
 
 fn assert_proxy_admission(port: u16, trusted: bool) {
     for suffix in 1..=8 {
-        let headers = format!("Fly-Client-IP: 192.0.2.1\r\nX-Forwarded-For: 198.51.100.{suffix}\r\n");
+        let headers =
+            format!("Fly-Client-IP: 192.0.2.1\r\nX-Forwarded-For: 198.51.100.{suffix}\r\n");
         assert_status(&login(port, &headers), 303);
     }
     assert_status(&login(port, "Fly-Client-IP: 192.0.2.1\r\n"), 429);
