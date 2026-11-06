@@ -1,0 +1,47 @@
+//! Anonymous login admission is isolated by client IP, never source port or browser headers.
+use crate::{
+    oidc_flow::Fixture,
+    support::{self, ApiCall, Response},
+};
+use axum::http::{Method, StatusCode};
+
+const CLIENT_QUOTA: u16 = 8;
+
+fn start(fixture: &Fixture, port: u16) -> Response {
+    support::run(support::call(
+        &fixture.app,
+        ApiCall::new(Method::GET, "/api/v1/auth/login")
+            .from_peer(format!("192.0.2.1:{port}").parse().unwrap())
+            .headers(&[("x-forwarded-for", &format!("198.51.100.{port}"))]),
+    ))
+}
+
+#[test]
+fn an_abusive_client_is_throttled_without_blocking_another_client() {
+    let fixture = Fixture::new("");
+    for port in 1..=CLIENT_QUOTA {
+        assert_eq!(start(&fixture, port).status, StatusCode::SEE_OTHER);
+    }
+    let rejected = start(&fixture, CLIENT_QUOTA + 1);
+    assert_eq!(rejected.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(rejected.body["code"], "oidc_rate_limited");
+    assert_eq!(rejected.headers["cache-control"], "no-store");
+    assert!(!rejected.headers.contains_key("set-cookie"));
+    fixture.begin();
+}
+
+#[test]
+fn a_callback_releases_its_client_quota() {
+    let fixture = Fixture::new("");
+    let first = fixture.begin();
+    for _ in 1..CLIENT_QUOTA {
+        fixture.begin();
+    }
+    let rejected = support::run(support::call(
+        &fixture.app,
+        ApiCall::new(Method::GET, "/api/v1/auth/login"),
+    ));
+    assert_eq!(rejected.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(fixture.finish(&first).status, StatusCode::SEE_OTHER);
+    fixture.begin();
+}

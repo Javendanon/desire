@@ -156,6 +156,7 @@ pub struct ApiCall<'a> {
     body: Option<Value>,
     headers: &'a [(&'a str, &'a str)],
     session: Option<&'a str>,
+    peer: std::net::SocketAddr,
 }
 
 impl<'a> ApiCall<'a> {
@@ -167,7 +168,13 @@ impl<'a> ApiCall<'a> {
             body: None,
             headers: &[],
             session: None,
+            peer: "127.0.0.1:40000".parse().unwrap(),
         }
+    }
+
+    pub fn from_peer(mut self, peer: std::net::SocketAddr) -> Self {
+        self.peer = peer;
+        self
     }
 
     pub fn by(mut self, caller: &'a str) -> Self {
@@ -214,7 +221,10 @@ impl<'a> Actor<'a> {
 }
 
 fn request_for(call: ApiCall<'_>) -> Request<axum::body::Body> {
-    let mut request = Request::builder().method(call.method).uri(call.uri);
+    let mut request = Request::builder()
+        .method(call.method)
+        .uri(call.uri)
+        .extension(axum::extract::ConnectInfo(call.peer));
     if let Some(caller) = call.caller {
         request = request.header("x-desire-user", caller);
     }

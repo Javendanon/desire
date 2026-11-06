@@ -159,20 +159,21 @@ fn pending_flow_admission_recovers_after_a_callback_consumes_its_slot() {
     const PENDING_FLOW_CAPACITY: usize = 1024;
     let fixture = Fixture::new("");
     let first = fixture.begin();
-    let start = || {
+    let start = |client: usize| {
+        let peer = format!("192.0.{}.{}:40000", client / 256, client % 256);
         support::run(support::call(
             &fixture.app,
-            ApiCall::new(Method::GET, "/api/v1/auth/login"),
+            ApiCall::new(Method::GET, "/api/v1/auth/login").from_peer(peer.parse().unwrap()),
         ))
     };
-    for _ in 1..PENDING_FLOW_CAPACITY {
-        assert_eq!(start().status, StatusCode::SEE_OTHER);
+    for client in 1..PENDING_FLOW_CAPACITY {
+        assert_eq!(start(client).status, StatusCode::SEE_OTHER);
     }
-    let full = start();
+    let full = start(PENDING_FLOW_CAPACITY);
     assert_eq!(full.status, StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(full.body["code"], "oidc_busy");
     assert_eq!(fixture.finish(&first).status, StatusCode::SEE_OTHER);
-    assert_eq!(start().status, StatusCode::SEE_OTHER);
+    assert_eq!(start(PENDING_FLOW_CAPACITY).status, StatusCode::SEE_OTHER);
 }
 
 #[test]
