@@ -14,7 +14,7 @@ the synchronization protocol and the limits that remain open.
 | `DELETE /api/v1/auth/sessions/current` | Delete the server session and expire the cookie; requires same-origin mutation |
 
 Password registration/login routes, password hashes and PBKDF2 are removed. The
-unmerged migration 0012 now creates accounts keyed by the unique `(issuer, subject)`
+unmerged migration 0013 now creates accounts keyed by the unique `(issuer, subject)`
 pair. Email changes update display data without changing identity. Two subjects
 with the same email remain separate accounts. Do not modify an existing deployed
 migration history: disposable databases from the password branch must be recreated.
