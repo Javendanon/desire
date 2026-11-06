@@ -14,37 +14,22 @@ pub struct Account {
 #[derive(Clone, Debug)]
 pub struct NewSession<'a> {
     pub token_hash: &'a str,
-    pub account_id: &'a str,
+    pub seconds: u64,
 }
 
 pub struct IdentityRepository;
 
 impl IdentityRepository {
     /// Concurrent callbacks converge on (issuer, subject), never on display email.
-    pub fn sign_in(client: &mut Client, account: &Account, hash: &str) -> Result<(), Error> {
+    /// The lifetime is the caller's; storage holds no second copy of it.
+    pub fn sign_in(
+        client: &mut Client,
+        account: &Account,
+        session: &NewSession<'_>,
+    ) -> Result<(), Error> {
         let mut tx = client.transaction().context("begin OIDC sign-in")?;
-        let row = tx
-            .query_one(
-                concat!(
-                    "INSERT INTO identity.accounts (id, issuer, subject, email) ",
-                    "VALUES ($1::text::uuid, $2, $3, $4) ",
-                    "ON CONFLICT (issuer, subject) DO UPDATE SET email = EXCLUDED.email ",
-                    "RETURNING id::text"
-                ),
-                &[
-                    &account.id,
-                    &account.issuer,
-                    &account.subject,
-                    &account.email,
-                ],
-            )
-            .context("upsert OIDC identity")?;
-        let id: String = row.get(0);
-        let session = NewSession {
-            token_hash: hash,
-            account_id: &id,
-        };
-        session_in(&mut tx, &session)?;
+        let account_id = upsert_account(&mut tx, account)?;
+        session_in(&mut tx, &account_id, session)?;
         tx.commit().context("commit OIDC sign-in")
     }
 
@@ -57,10 +42,6 @@ impl IdentityRepository {
             .context("read OIDC identity")?
             .map(crate::records::decode)
             .transpose()
-    }
-
-    pub fn create_session(client: &mut Client, session: &NewSession<'_>) -> Result<String, Error> {
-        session_in(client, session)
     }
 
     pub fn session_account(
@@ -91,15 +72,39 @@ impl IdentityRepository {
     }
 }
 
-fn session_in(client: &mut impl GenericClient, session: &NewSession<'_>) -> Result<String, Error> {
+fn upsert_account(client: &mut impl GenericClient, account: &Account) -> Result<String, Error> {
+    client
+        .query_one(
+            concat!(
+                "INSERT INTO identity.accounts (id, issuer, subject, email) ",
+                "VALUES ($1::text::uuid, $2, $3, $4) ",
+                "ON CONFLICT (issuer, subject) DO UPDATE SET email = EXCLUDED.email ",
+                "RETURNING id::text"
+            ),
+            &[
+                &account.id,
+                &account.issuer,
+                &account.subject,
+                &account.email,
+            ],
+        )
+        .context("upsert OIDC identity")
+        .map(|row| row.get(0))
+}
+
+fn session_in(
+    client: &mut impl GenericClient,
+    account_id: &str,
+    session: &NewSession<'_>,
+) -> Result<String, Error> {
     client
         .query_one(
             concat!(
                 "INSERT INTO identity.sessions (token_hash, account_id, expires_at) ",
-                "VALUES ($1, $2::text::uuid, now() + interval '12 hours') ",
+                "VALUES ($1, $2::text::uuid, now() + make_interval(secs => $3)) ",
                 "RETURNING expires_at::text"
             ),
-            &[&session.token_hash, &session.account_id],
+            &[&session.token_hash, &account_id, &(session.seconds as f64)],
         )
         .context("create identity session")
         .map(|row| row.get(0))

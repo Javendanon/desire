@@ -1,7 +1,7 @@
 //! Concurrent verified callbacks converge on one stable identity across database connections.
 use crate::support::TestDb;
 use desire_api::auth::session;
-use desire_persistence::{Account, IdentityRepository};
+use desire_persistence::{Account, IdentityRepository, NewSession};
 use std::sync::{Arc, Barrier};
 
 fn complete_callback(mut client: postgres::Client, barrier: Arc<Barrier>) -> String {
@@ -13,7 +13,11 @@ fn complete_callback(mut client: postgres::Client, barrier: Arc<Barrier>) -> Str
     };
     let hash = session::token_hash(&session::random_token().unwrap());
     barrier.wait();
-    IdentityRepository::sign_in(&mut client, &account, &hash).unwrap();
+    let stored = NewSession {
+        token_hash: &hash,
+        seconds: session::SESSION_SECONDS,
+    };
+    IdentityRepository::sign_in(&mut client, &account, &stored).unwrap();
     IdentityRepository::session_account(&mut client, &hash)
         .unwrap()
         .unwrap()

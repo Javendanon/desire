@@ -116,7 +116,11 @@ fn account(db: &TestDb, subject: &str) -> Value {
     };
     let token = desire_api::auth::session::random_token().unwrap();
     let hash = desire_api::auth::session::token_hash(&token);
-    desire_persistence::IdentityRepository::sign_in(&mut client, &account, &hash).unwrap();
+    let stored = desire_persistence::NewSession {
+        token_hash: &hash,
+        seconds: desire_api::auth::session::SESSION_SECONDS,
+    };
+    desire_persistence::IdentityRepository::sign_in(&mut client, &account, &stored).unwrap();
     serde_json::json!({"token": token, "user_id": account.id})
 }
 

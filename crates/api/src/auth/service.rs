@@ -5,7 +5,7 @@ use crate::{
     error::ApiError,
 };
 use desire_core::contracts::{common::Id, transport::AuthIdentity};
-use desire_persistence::{Account, IdentityRepository};
+use desire_persistence::{Account, IdentityRepository, NewSession};
 
 pub fn unauthorized(request_id: &str) -> ApiError {
     ApiError::new(
@@ -33,7 +33,11 @@ pub async fn sign_in(
             subject: identity.subject,
             email: identity.email,
         };
-        IdentityRepository::sign_in(client, &account, &hash)
+        let stored = NewSession {
+            token_hash: &hash,
+            seconds: session::SESSION_SECONDS,
+        };
+        IdentityRepository::sign_in(client, &account, &stored)
             .map_err(|error| ApiError::from_persistence_request(error, &error_id))?;
         Ok(token)
     })
