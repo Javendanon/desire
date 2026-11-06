@@ -32,6 +32,11 @@ impl TestDb {
     }
 
     pub fn state(&self) -> AppState {
+        AppState::with_config(config(&self.name), connect(&self.name)).with_dev_identity(true)
+    }
+
+    /// Production-style state: only cookie sessions authenticate.
+    pub fn strict_state(&self) -> AppState {
         AppState::with_config(config(&self.name), connect(&self.name))
     }
 
@@ -136,8 +141,10 @@ pub fn map_version() -> String {
     id(6)
 }
 
+#[derive(Debug)]
 pub struct Response {
     pub status: StatusCode,
+    pub headers: axum::http::HeaderMap,
     pub body: Value,
 }
 
@@ -148,6 +155,8 @@ pub struct ApiCall<'a> {
     caller: Option<&'a str>,
     body: Option<Value>,
     headers: &'a [(&'a str, &'a str)],
+    session: Option<&'a str>,
+    peer: std::net::SocketAddr,
 }
 
 impl<'a> ApiCall<'a> {
@@ -158,7 +167,14 @@ impl<'a> ApiCall<'a> {
             caller: None,
             body: None,
             headers: &[],
+            session: None,
+            peer: "127.0.0.1:40000".parse().unwrap(),
         }
+    }
+
+    pub fn with_peer(mut self, peer: std::net::SocketAddr) -> Self {
+        self.peer = peer;
+        self
     }
 
     pub fn by(mut self, caller: &'a str) -> Self {
@@ -173,6 +189,11 @@ impl<'a> ApiCall<'a> {
 
     pub fn headers(mut self, headers: &'a [(&'a str, &'a str)]) -> Self {
         self.headers = headers;
+        self
+    }
+
+    pub fn session(mut self, token: &'a str) -> Self {
+        self.session = Some(token);
         self
     }
 }
@@ -199,33 +220,37 @@ impl<'a> Actor<'a> {
     }
 }
 
-/// Dispatch one HTTP request through the real router.
-pub async fn call(app: &Router, call: ApiCall<'_>) -> Response {
-    let ApiCall {
-        method,
-        uri,
-        caller,
-        body,
-        headers,
-    } = call;
-    let mut request = Request::builder().method(method).uri(uri);
-    if let Some(caller) = caller {
+fn request_for(call: ApiCall<'_>) -> Request<axum::body::Body> {
+    let mut request = Request::builder()
+        .method(call.method)
+        .uri(call.uri)
+        .extension(axum::extract::ConnectInfo(call.peer));
+    if let Some(caller) = call.caller {
         request = request.header("x-desire-user", caller);
     }
-    for (name, value) in headers {
+    if let Some(token) = call.session {
+        request = request.header("cookie", format!("__Host-desire-session={token}"));
+        request = request.header("origin", "https://table.example.test");
+    }
+    for (name, value) in call.headers {
         request = request.header(*name, *value);
     }
-    let request = match body {
+    match call.body {
         Some(body) => request
             .header(header::CONTENT_TYPE, "application/json")
             .body(axum::body::Body::from(body.to_string()))
             .unwrap(),
         None => request.body(axum::body::Body::empty()).unwrap(),
-    };
-    let response = tower::ServiceExt::oneshot(app.clone(), request)
+    }
+}
+
+/// Dispatch one HTTP request through the real router.
+pub async fn call(app: &Router, call: ApiCall<'_>) -> Response {
+    let response = tower::ServiceExt::oneshot(app.clone(), request_for(call))
         .await
         .unwrap();
     let status = response.status();
+    let headers = response.headers().clone();
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     let body = if bytes.is_empty() {
         Value::Null
@@ -233,7 +258,11 @@ pub async fn call(app: &Router, call: ApiCall<'_>) -> Response {
         serde_json::from_slice(&bytes)
             .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&bytes).into_owned()))
     };
-    Response { status, body }
+    Response {
+        status,
+        headers,
+        body,
+    }
 }
 
 /// Create a campaign through the API and return its server-assigned ID.
@@ -308,4 +337,8 @@ async fn created(actor: Actor<'_>, resource: &str, body: Value) -> Value {
 
 pub fn app_for(db: &TestDb) -> Router {
     app(db.state())
+}
+
+pub fn strict_app_for(db: &TestDb) -> Router {
+    app(db.strict_state())
 }

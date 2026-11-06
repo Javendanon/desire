@@ -1,9 +1,10 @@
 //! Caller identity and JSON extraction with one failure shape.
 //!
-//! `x-desire-user` is a development seam: D10 replaces it with authenticated identity.
-//! It is accepted only because the server refuses non-loopback binds without an explicit
-//! opt-in (see `main.rs`).
+//! An opaque cookie session is the production identity. `x-desire-user` remains an
+//! explicit dev/test seam and is ignored when `AppState::dev_identity` is false.
 use crate::{
+    AppState,
+    auth::{service, session},
     error::{ApiError, INVALID, UNAUTHORIZED},
     ids,
 };
@@ -23,19 +24,49 @@ pub struct Caller {
     pub user_id: Id,
     pub request_id: String,
     pub idempotency_key: Option<Id>,
+    /// Only the digest of the presented token, so logout can revoke this session.
+    pub session_hash: Option<String>,
 }
 
-impl<S: Send + Sync> FromRequestParts<S> for Caller {
+impl FromRequestParts<AppState> for Caller {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let request_id = request_id_from(&parts.headers);
+        let (user_id, session_hash) = identity(&parts.headers, state, &request_id).await?;
         Ok(Self {
-            user_id: caller_id(&parts.headers, &request_id)?,
+            user_id,
             idempotency_key: idempotency_key(&parts.headers, &request_id)?,
             request_id,
+            session_hash,
         })
     }
+}
+
+async fn identity(
+    headers: &HeaderMap,
+    state: &AppState,
+    request_id: &str,
+) -> Result<(Id, Option<String>), ApiError> {
+    let cookie = session::cookie(headers, session::SESSION_COOKIE)
+        .map_err(|_| service::unauthorized(request_id))?;
+    if let Some(token) = cookie {
+        if !session::is_token(token) {
+            return Err(service::unauthorized(request_id));
+        }
+        let hash = session::token_hash(token);
+        let user_id = service::session_user(&state.db, hash.clone(), request_id.to_string())
+            .await?
+            .ok_or_else(|| service::unauthorized(request_id))?;
+        return Ok((user_id, Some(hash)));
+    }
+    if state.dev_identity {
+        return Ok((caller_id(headers, request_id)?, None));
+    }
+    Err(service::unauthorized(request_id))
 }
 
 fn caller_id(headers: &HeaderMap, request_id: &str) -> Result<Id, ApiError> {
@@ -71,7 +102,7 @@ fn idempotency_key(headers: &HeaderMap, request_id: &str) -> Result<Option<Id>, 
         .map_err(|message| ApiError::new(INVALID, "invalid_request", message, request_id))
 }
 
-fn request_id_from(headers: &HeaderMap) -> String {
+pub(crate) fn request_id_from(headers: &HeaderMap) -> String {
     headers
         .get(REQUEST_ID_HEADER)
         .and_then(|value| value.to_str().ok())

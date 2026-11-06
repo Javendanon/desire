@@ -1,6 +1,6 @@
 //! Typed read scopes and private SQL decoding shared by campaign repositories.
 use crate::{Error, error::Context, records};
-use postgres::Client;
+use postgres::{Client, GenericClient};
 use serde::de::DeserializeOwned;
 
 /// Authorization remains with the caller; this selects the SQL projection it may read.
@@ -36,7 +36,7 @@ pub(crate) struct ListRead<'a> {
 }
 
 pub(crate) fn list<T: DeserializeOwned>(
-    client: &mut Client,
+    client: &mut impl GenericClient,
     read: ListRead<'_>,
 ) -> Result<Vec<T>, Error> {
     let rows = client
@@ -49,7 +49,7 @@ pub(crate) fn list<T: DeserializeOwned>(
 }
 
 pub(crate) fn get<T: DeserializeOwned>(
-    client: &mut Client,
+    client: &mut impl GenericClient,
     target: RecordTarget<'_>,
     sql: &str,
 ) -> Result<Option<T>, Error> {

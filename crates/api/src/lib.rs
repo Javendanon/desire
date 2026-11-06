@@ -5,6 +5,7 @@
 //! SQL or domain calculations.
 
 pub mod access;
+pub mod auth;
 pub mod db;
 pub mod error;
 pub mod extract;
@@ -28,6 +29,10 @@ pub struct AppState {
     pub db: db::Db,
     pub nivel20: nivel20::Nivel20Client,
     pub flags: FlagSource,
+    /// Tests may keep the header seam; servers use cookie sessions.
+    pub dev_identity: bool,
+    pub dev_origin: Option<String>,
+    pub oidc: Option<std::sync::Arc<auth::oidc::Oidc>>,
 }
 
 impl AppState {
@@ -37,6 +42,9 @@ impl AppState {
             db: db::Db::from_client(client),
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
+            dev_identity: true,
+            dev_origin: None,
+            oidc: None,
         }
     }
 
@@ -46,6 +54,9 @@ impl AppState {
             db: db::Db::with_config(config, client),
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
+            dev_identity: false,
+            dev_origin: None,
+            oidc: None,
         }
     }
 
@@ -59,7 +70,20 @@ impl AppState {
             db: db::Db::with_config(config, client),
             nivel20,
             flags: FlagSource::from_env(),
+            dev_identity: false,
+            dev_origin: None,
+            oidc: None,
         }
+    }
+
+    pub fn with_oidc(mut self, oidc: auth::oidc::Oidc) -> Self {
+        self.oidc = Some(std::sync::Arc::new(oidc));
+        self
+    }
+
+    pub fn with_dev_identity(mut self, allow: bool) -> Self {
+        self.dev_identity = allow;
+        self
     }
 }
 

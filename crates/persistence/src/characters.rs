@@ -3,6 +3,7 @@ use crate::{
     Error,
     error::Context,
     reads::{self, Audience, CampaignRead, FetchPage, ListRead, RecordTarget},
+    realtime::RealtimeRepository,
     records,
 };
 use desire_core::contracts::campaign::Character;
@@ -41,7 +42,7 @@ pub struct CharacterUpdate<'a> {
 
 impl CharacterRepository {
     pub fn list(
-        client: &mut Client,
+        client: &mut impl GenericClient,
         scope: CampaignRead<'_>,
         page: FetchPage,
     ) -> Result<Vec<Character>, Error> {
@@ -68,7 +69,11 @@ impl CharacterRepository {
     }
 
     pub fn create(client: &mut Client, character: &Character) -> Result<(), Error> {
-        records::insert(client, "campaign.characters", character)
+        let mut tx = client.transaction().context("begin character creation")?;
+        records::insert(&mut tx, "campaign.characters", character)?;
+        RealtimeRepository::advance_stream(&mut tx, &character.campaign_id)?;
+        tx.commit()
+            .context(format!("commit character {}", character.id))
     }
 
     /// A stale character write cannot partially change its actor or either revision.
@@ -93,6 +98,7 @@ impl CharacterRepository {
         let Some(row) = row else { return Ok(None) };
         update_actor(&mut tx, update)?;
         let character = records::decode(row)?;
+        RealtimeRepository::advance_stream(&mut tx, target.campaign_id)?;
         tx.commit().context("commit character and actor update")?;
         Ok(Some(character))
     }
@@ -108,6 +114,9 @@ impl CharacterRepository {
                 &[&target.campaign_id, &target.id],
             )
             .context("delete character")?;
+        if affected != 0 {
+            RealtimeRepository::advance_stream(&mut tx, target.campaign_id)?;
+        }
         tx.commit().context("commit character deletion")?;
         Ok(affected != 0)
     }

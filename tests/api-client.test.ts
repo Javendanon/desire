@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import pageEnvelope from '../contracts/api-page.json' with { type: 'json' };
 
 import { ApiRequestError, collectionPath, request, resourcePath } from '../src/lib/api/client.ts';
+import { getIdentity, loginUrl, logout, syncCampaign } from '../src/lib/api/auth.ts';
 import {
   createCampaign,
   createJournal,
@@ -18,7 +19,7 @@ import {
 } from '../src/lib/api/campaigns.ts';
 import type { PatchCharacter } from '../src/lib/api/campaigns.ts';
 import type { ApiProblem, Page } from '../src/lib/api/client.ts';
-import type { ApiError, Campaign } from '../src/generated/contracts.ts';
+import type { ApiError, AuthIdentity, Campaign, SyncBatch } from '../src/generated/contracts.ts';
 
 const IDENTITY = '00000000-0000-4000-8000-00000000005a';
 const CAMPAIGN = '00000000-0000-4000-8000-000000000001';
@@ -78,6 +79,36 @@ test('listCampaigns sends identity and parses the generated page type', async ()
   assert.equal(captured[0].init.method, 'GET');
   assert.equal((captured[0].init.headers as Record<string, string>)['x-desire-user'], IDENTITY);
   assert.equal(result.items[0].id, CAMPAIGN);
+});
+
+test('cookie clients send same-origin credentials without a development identity', async () => {
+  const captured: Capture[] = [];
+  const transport = { fetch: fakeFetch(CAMPAIGN_ROW, 200, captured) };
+  await request(transport, { method: 'GET', path: '/campaigns' });
+  assert.equal(captured[0].init.credentials, 'same-origin');
+  assert.equal((captured[0].init.headers as Record<string, string>)['x-desire-user'], undefined);
+});
+
+test('OIDC navigation, identity, logout and sync use the generated transport', async () => {
+  assert.equal(loginUrl(), '/api/v1/auth/login');
+  assert.equal(loginUrl({ baseUrl: 'https://table.example.test' }),
+    'https://table.example.test/api/v1/auth/login');
+  const captured: Capture[] = [];
+  const identity: AuthIdentity = { user_id: USER, email: 'player@example.test' };
+  assert.deepEqual(await getIdentity({ fetch: fakeFetch(identity, 200, captured) }), identity);
+  assert.equal(captured[0].url, '/api/v1/auth/identity');
+  await logout({ fetch: fakeFetch(null, 204, captured) });
+  assert.equal(captured[1].init.method, 'DELETE');
+  assert.equal(captured[1].url, '/api/v1/auth/sessions/current');
+  const batch: SyncBatch = {
+    protocol_version: 1, campaign_id: CAMPAIGN, role: 'player', revision: 0,
+    snapshot: null, scene_events: [], travel_events: [],
+  };
+  const transport = { fetch: fakeFetch(batch, 200, captured) };
+  assert.deepEqual(await syncCampaign(transport, CAMPAIGN), batch);
+  assert.equal(captured[2].url, `/api/v1/campaigns/${CAMPAIGN}/sync`);
+  await syncCampaign(transport, CAMPAIGN, 0);
+  assert.equal(captured[3].url, `/api/v1/campaigns/${CAMPAIGN}/sync?after=0`);
 });
 
 test('createCampaign posts the contract fields as JSON', async () => {

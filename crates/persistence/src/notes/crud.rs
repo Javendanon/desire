@@ -1,5 +1,6 @@
 //! Typed note CRUD extends the existing persistence boundary without HTTP types.
 use super::*;
+use postgres::GenericClient;
 
 const JOURNAL_LIST_DM: &str = "SELECT to_jsonb(j) FROM campaign.journal_entries j \
      WHERE j.campaign_id = $1::text::uuid ORDER BY j.id LIMIT $2 OFFSET $3";
@@ -66,7 +67,7 @@ impl NotesRepository {
     }
 
     pub fn list_journal(
-        client: &mut Client,
+        client: &mut impl GenericClient,
         scope: CampaignRead<'_>,
         page: FetchPage,
     ) -> Result<Vec<JournalEntry>, Error> {
@@ -93,7 +94,7 @@ impl NotesRepository {
     }
 
     pub fn list_knowledge(
-        client: &mut Client,
+        client: &mut impl GenericClient,
         scope: CampaignRead<'_>,
         page: FetchPage,
     ) -> Result<Vec<CampaignKnowledge>, Error> {
@@ -123,7 +124,8 @@ impl NotesRepository {
         client: &mut Client,
         update: &JournalUpdate<'_>,
     ) -> Result<Option<JournalEntry>, Error> {
-        client
+        let mut tx = client.transaction().context("begin journal update")?;
+        let row = tx
             .query_opt(
                 JOURNAL_UPDATE,
                 &[
@@ -134,18 +136,22 @@ impl NotesRepository {
                     &i64::from(update.expected_revision),
                 ],
             )
-            .context("update journal revision")?
-            .map(records::decode)
-            .transpose()
+            .context("update journal revision")?;
+        let Some(row) = row else { return Ok(None) };
+        let entry = records::decode(row)?;
+        RealtimeRepository::advance_stream(&mut tx, update.target.campaign_id)?;
+        tx.commit().context("commit journal update")?;
+        Ok(Some(entry))
     }
 
     pub fn update_knowledge(
         client: &mut Client,
         update: &KnowledgeUpdate<'_>,
     ) -> Result<Option<CampaignKnowledge>, Error> {
+        let mut tx = client.transaction().context("begin knowledge update")?;
         let provenance =
             serde_json::to_value(update.provenance).context("encode knowledge provenance")?;
-        client
+        let row = tx
             .query_opt(
                 KNOWLEDGE_UPDATE,
                 &[
@@ -158,9 +164,12 @@ impl NotesRepository {
                     &i64::from(update.expected_revision),
                 ],
             )
-            .context("update knowledge revision")?
-            .map(records::decode)
-            .transpose()
+            .context("update knowledge revision")?;
+        let Some(row) = row else { return Ok(None) };
+        let entry = records::decode(row)?;
+        RealtimeRepository::advance_stream(&mut tx, update.target.campaign_id)?;
+        tx.commit().context("commit knowledge update")?;
+        Ok(Some(entry))
     }
 
     pub fn delete_journal(client: &mut Client, target: RecordTarget<'_>) -> Result<bool, Error> {
@@ -174,12 +183,19 @@ impl NotesRepository {
 
 /// Table names are private adapter constants, never supplied by API callers.
 fn delete(client: &mut Client, target: RecordTarget<'_>, table: &str) -> Result<bool, Error> {
+    let mut tx = client
+        .transaction()
+        .context("begin campaign note deletion")?;
     let sql =
         format!("DELETE FROM {table} WHERE campaign_id = $1::text::uuid AND id = $2::text::uuid");
-    client
+    let affected = tx
         .execute(&sql, &[&target.campaign_id, &target.id])
-        .context("delete campaign note")
-        .map(|affected| affected != 0)
+        .context("delete campaign note")?;
+    if affected != 0 {
+        RealtimeRepository::advance_stream(&mut tx, target.campaign_id)?;
+    }
+    tx.commit().context("commit campaign note deletion")?;
+    Ok(affected != 0)
 }
 
 fn visibility_name(visibility: &Visibility) -> &'static str {

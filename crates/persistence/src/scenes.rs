@@ -1,5 +1,5 @@
 //! Scene writes, optimistic revisions, stream sequencing, and idempotency share one transaction.
-use crate::{Error, ErrorKind, error::Context, records};
+use crate::{Error, ErrorKind, error::Context, realtime::RealtimeRepository, records};
 use desire_core::{
     PROTOCOL_VERSION,
     contracts::{campaign::Scene, transport::SceneChanged},
@@ -18,7 +18,7 @@ pub struct SceneRepository;
 
 impl SceneRepository {
     pub fn list(
-        client: &mut Client,
+        client: &mut impl GenericClient,
         campaign: &str,
         page: crate::FetchPage,
     ) -> Result<Vec<Scene>, Error> {
@@ -202,14 +202,7 @@ fn update_scene(tx: &mut impl GenericClient, scene: &Scene, expected: u32) -> Re
 }
 
 fn enqueue(tx: &mut impl GenericClient, write: &SceneWrite) -> Result<SceneChanged, Error> {
-    let query = concat!(
-        "UPDATE campaign.streams SET revision = revision + 1 ",
-        "WHERE campaign_id = $1::text::uuid RETURNING revision"
-    );
-    let revision: i64 = tx
-        .query_one(query, &[&write.scene.campaign_id])
-        .context("advance campaign stream")?
-        .get(0);
+    let revision = RealtimeRepository::advance_stream(tx, &write.scene.campaign_id)?;
     tx.execute(
         concat!(
             "INSERT INTO campaign.outbox (event_id, campaign_id, stream_revision, kind, scene_id) ",
@@ -218,12 +211,12 @@ fn enqueue(tx: &mut impl GenericClient, write: &SceneWrite) -> Result<SceneChang
         &[
             &write.event_id,
             &write.scene.campaign_id,
-            &revision,
+            &i64::from(revision),
             &write.scene.id,
         ],
     )
     .context(format!("enqueue scene event {}", write.event_id))?;
-    Ok(event(write, revision as u32))
+    Ok(event(write, revision))
 }
 
 fn event(write: &SceneWrite, revision: u32) -> SceneChanged {

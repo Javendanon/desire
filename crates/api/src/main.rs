@@ -1,6 +1,14 @@
 //! Desire HTTP server entry point.
 
-use desire_api::{AppState, app, db, nivel20::Nivel20Client};
+use desire_api::{
+    AppState, app,
+    auth::{
+        oidc::Oidc,
+        settings::{Settings, development_origin, require_oidc},
+    },
+    db,
+    nivel20::Nivel20Client,
+};
 use std::net::{IpAddr, SocketAddr};
 
 fn shutdown_error_message(error: &std::io::Error) -> String {
@@ -19,18 +27,14 @@ where
     }
 }
 
-/// The header identity is a D10 placeholder, so it never leaves the local machine
-/// unless an operator explicitly opts in.
-fn identity_binding_guard(host: IpAddr) -> Result<(), String> {
-    if host.is_loopback() || std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1") {
-        return Ok(());
-    }
-    Err(concat!(
-        "refusing a non-loopback bind with the development identity header; ",
-        "D10 authentication is not implemented. ",
-        "Set DESIRE_DEV_IDENTITY=1 only on a trusted network."
-    )
-    .into())
+/// Only isolated local development may use the header seam. A loopback bind restricts the
+/// listener, not the caller: a local proxy or tunnel could expose impersonation remotely.
+fn dev_identity_allowed(host: IpAddr, opted_in: bool) -> bool {
+    opted_in && host.is_loopback()
+}
+
+fn dev_identity_opt_in() -> bool {
+    std::env::var("DESIRE_DEV_IDENTITY").as_deref() == Ok("1")
 }
 
 fn environment<T>(name: &str, fallback: &str) -> Result<T, Box<dyn std::error::Error>>
@@ -81,20 +85,23 @@ async fn serve(address: SocketAddr, state: AppState) -> Result<(), Box<dyn std::
     let listener = tokio::net::TcpListener::bind(address).await?;
     let app = app(state);
     println!("Desire API: http://{address}");
-    axum::serve(listener, app)
-        .with_graceful_shutdown(wait_for_shutdown(tokio::signal::ctrl_c(), |message| {
-            eprintln!("{message}")
-        }))
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(wait_for_shutdown(tokio::signal::ctrl_c(), |message| {
+        eprintln!("{message}")
+    }))
+    .await?;
     Ok(())
 }
 
 /// The blocking client needs its own runtime, so it is created and dropped outside the
-/// server runtime. `state` stays owned here for the same reason: the last drop closes the
-/// connection on this thread.
+/// server runtime. `run_server` retains the last state owner outside that runtime so the
+/// connection also closes on this thread.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host: IpAddr = environment("HOST", "127.0.0.1")?;
-    identity_binding_guard(host)?;
+    let dev_identity = dev_identity_allowed(host, dev_identity_opt_in());
     let port: u16 = environment("PORT", "3001")?;
     let config = database_config(&database_url()?)?;
     if migrated() {
@@ -103,18 +110,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("D08 migrations applied");
         return Ok(());
     }
+    let settings = Settings::from_env()?;
+    require_oidc(host, settings.is_some())?;
+    let dev_origin = if settings.is_none() {
+        development_origin(dev_identity)?
+    } else {
+        None
+    };
     let config = with_server_limits(config);
     let client = db::connect_startup(&config)?;
     let nivel20 = Nivel20Client::from_env()?;
     let address = SocketAddr::new(host, port);
-    let state = AppState::with_nivel20(config, client, nivel20);
+    let mut state = AppState::with_nivel20(config, client, nivel20).with_dev_identity(dev_identity);
+    state.dev_origin = dev_origin;
+    run_server(address, state, settings)
+}
+
+/// Keep the last blocking client owner outside the server runtime during shutdown.
+fn run_server(
+    address: SocketAddr,
+    state: AppState,
+    settings: Option<Settings>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    let served = runtime.block_on(serve(address, state.clone()));
+    let served = runtime.block_on(start(address, state.clone(), settings));
     runtime.shutdown_background();
     drop(state);
     served
+}
+
+async fn start(
+    address: SocketAddr,
+    state: AppState,
+    settings: Option<Settings>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let state = match settings {
+        Some(settings) => state.with_oidc(Oidc::discover(settings).await?),
+        None => state,
+    };
+    serve(address, state).await
 }
 
 #[cfg(test)]
@@ -149,16 +185,14 @@ mod tests {
     }
 
     #[test]
-    fn loopback_hosts_need_no_identity_opt_in() {
-        assert!(identity_binding_guard("127.0.0.1".parse().unwrap()).is_ok());
-        assert!(identity_binding_guard("::1".parse().unwrap()).is_ok());
-    }
-
-    #[test]
-    fn non_loopback_hosts_are_refused_without_the_opt_in() {
-        let result = identity_binding_guard("0.0.0.0".parse().unwrap());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("D10"));
+    fn the_header_seam_needs_an_opt_in_and_a_loopback_bind() {
+        let loopback: IpAddr = "127.0.0.1".parse().unwrap();
+        let any: IpAddr = "0.0.0.0".parse().unwrap();
+        let shared: IpAddr = "192.0.2.10".parse().unwrap();
+        assert!(!dev_identity_allowed(loopback, false));
+        assert!(dev_identity_allowed(loopback, true));
+        assert!(!dev_identity_allowed(any, true));
+        assert!(!dev_identity_allowed(shared, true));
     }
 
     #[test]

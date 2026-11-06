@@ -1,21 +1,30 @@
 //! HTTP contract and integration checks against the real persistence adapters.
 mod support;
 
+mod auth;
 mod character_revision;
 mod db_timeout;
 mod diagnostics;
 mod idempotency;
+mod identity_concurrency;
 mod isolation;
 mod layers;
+mod login_admission;
+mod login_proxy;
 mod nivel20;
 mod notes;
+mod oidc_flow;
+mod oidc_provider;
+mod oidc_security;
 mod outage;
 mod outage_proxy;
 mod pagination_contract;
 mod patch_response;
+mod realtime;
 mod resources;
 mod scene_concurrency;
 mod server;
+mod server_policy;
 
 use axum::http::{Method, StatusCode};
 use desire_core::contracts::campaign::Campaign;
