@@ -36,7 +36,9 @@ security flags and a 10-minute lifetime. Server-side pending state contains PKCE
 and nonce values; a callback atomically consumes it before token exchange. Replays,
 unknown state and another browser's cookie cannot create a session. Expired flows
 are discarded and pending flows are capped at 1024 per process. Restarting the API
-cancels pending logins. Multi-instance deployments need sticky login routing or a
+cancels pending logins. One browser cookie selects the latest login attempt; an older
+attempt fails without clearing that newer attempt's cookie. Multi-instance deployments
+need sticky login routing or a
 shared pending-flow store; persistent sessions already work across API instances.
 
 For non-read methods, a supplied `Origin` must exactly match the configured public
@@ -48,7 +50,10 @@ an OIDC redirect or authorize a mutation. No cross-origin CORS access is enabled
 Without OIDC, the binary refuses a non-loopback bind. The `x-desire-user` seam is
 off by default, including on loopback; only `DESIRE_DEV_IDENTITY=1` plus a loopback
 bind enables it. It never overrides a presented session. The frontend client omits
-this header unless the caller explicitly supplies a development identity.
+this header unless the caller explicitly supplies a development identity. For browser
+development without OIDC, explicitly set `DESIRE_PUBLIC_URL=http://localhost:5173`
+(or your exact loopback origin) alongside `DESIRE_DEV_IDENTITY=1`. Only that Origin
+is accepted; no wildcard, Host-header inference or arbitrary loopback port is trusted.
 
 ## Google Cloud setup
 
@@ -77,7 +82,9 @@ this header unless the caller explicitly supplies a development identity.
 | `DESIRE_PUBLIC_URL` | Origin only, no credentials, path, query or fragment; callback is `{DESIRE_PUBLIC_URL}/api/v1/auth/callback` |
 | `DESIRE_ALLOWED_EMAILS` | Optional comma-separated verified emails; trimmed and case-insensitive; unset/empty permits any verified Google account |
 
-The client ID, secret and public URL must be configured together. Discovery must
+For OIDC, the client ID, secret and public URL must be configured together. The
+public URL alone is permitted only with explicit loopback development identity and
+must itself be a loopback origin. Discovery must
 succeed before the listener opens. HTTPS is required except for loopback HTTP URLs.
 The HTTP client has a 10-second request timeout and does not follow redirects.
 Secure cookies are never weakened for local development: use localhost in a browser

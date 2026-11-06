@@ -1,6 +1,6 @@
 # Campaign API v1
 
-Status: implemented in `crates/api`. Bearer sessions and cursor synchronization are
+Status: implemented in `crates/api`. OIDC cookie sessions and cursor synchronization are
 documented in [auth-realtime.md](auth-realtime.md); D17 owns player projections in the UI.
 
 ## Boundary
@@ -12,10 +12,11 @@ documented in [auth-realtime.md](auth-realtime.md); D17 owns player projections 
   (application operations). Business SQL and transactions live in typed repositories in
   `desire-persistence`; the API does not bind rows or SQL parameters. See
   [the database-access boundary](../database-access.md) for the driver decision and limits.
-- `Authorization: Bearer <session token>` is the production identity. Sessions are
-  created by `/api/v1/auth/accounts` or `/api/v1/auth/sessions` and expire after 12 hours.
-  The legacy `x-desire-user` header is disabled by default, including on loopback, and
-  only returns for tests when `DESIRE_DEV_IDENTITY=1` is set explicitly.
+- Google OIDC at `/api/v1/auth/login` establishes a 12-hour HttpOnly/Secure/SameSite=Lax
+  session cookie through `/api/v1/auth/callback`. There are no password or bearer-token
+  login endpoints. Cookie mutations require an exact `Origin` matching `DESIRE_PUBLIC_URL`.
+  The `x-desire-user` seam requires `DESIRE_DEV_IDENTITY=1` and a loopback bind;
+  browser development without OIDC also sets a loopback `DESIRE_PUBLIC_URL`.
 - `DATABASE_URL` is required and parsed at startup; the process builds its own Tokio
   runtime only after the first connection exists, so the blocking client never blocks
   inside a runtime. Apply the D08 migrations first
@@ -61,10 +62,10 @@ documented in [auth-realtime.md](auth-realtime.md); D17 owns player projections 
 
 | Method | Path | Role | Result |
 | --- | --- | --- | --- |
-| POST | `/auth/accounts` | public | 201 account session; no role is granted |
-| POST | `/auth/sessions` | public | 200 bearer session |
+| GET | `/auth/login` | public | 303 to the OIDC provider |
+| GET | `/auth/callback` | browser-bound flow | 303 to public root with session cookie |
 | GET | `/auth/identity` | authenticated | account identity |
-| DELETE | `/auth/sessions/current` | authenticated | 204; revokes the presented token |
+| DELETE | `/auth/sessions/current` | authenticated, same Origin | 204; deletes session and expires cookie |
 | GET | `/campaigns` | any caller | member campaigns |
 | POST | `/campaigns` | any caller | 201 campaign; owner becomes DM |
 | GET | `/campaigns/{campaign}` | member | campaign |
@@ -172,11 +173,15 @@ or 405 with an empty body), so a client must handle those two statuses without a
 
 ## Sanitized example
 
-Synthetic identifiers and text; no Nivel20 data is read or written.
+Synthetic identifiers and text; no Nivel20 data is read or written. Complete the
+browser OIDC flow first. These CLI examples assume an operator-managed protected
+cookie jar in `SESSION_COOKIE_JAR` and the configured public origin in
+`DESIRE_PUBLIC_URL`. Never store that jar in the repository or share it. The browser
+client sends cookies and Origin automatically.
 
 ```sh
-curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns \
-  -H "authorization: Bearer $TOKEN" \
+curl -s -X POST "$DESIRE_PUBLIC_URL/api/v1/campaigns" \
+  --cookie "$SESSION_COOKIE_JAR" -H "Origin: $DESIRE_PUBLIC_URL" \
   -H 'content-type: application/json' \
   -d '{"name":"Synthetic campaign","rules_edition":"dnd_2014","city_id":null}'
 ```
@@ -195,12 +200,14 @@ curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns \
 A session and a player-visible journal entry, in the order the API requires them:
 
 ```sh
-curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/sessions \
-  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+curl -s -X POST "$DESIRE_PUBLIC_URL/api/v1/campaigns/$CAMPAIGN/sessions" \
+  --cookie "$SESSION_COOKIE_JAR" -H "Origin: $DESIRE_PUBLIC_URL" \
+  -H 'content-type: application/json' \
   -d '{"title":"Synthetic session"}'
 
-curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/journal \
-  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+curl -s -X POST "$DESIRE_PUBLIC_URL/api/v1/campaigns/$CAMPAIGN/journal" \
+  --cookie "$SESSION_COOKIE_JAR" -H "Origin: $DESIRE_PUBLIC_URL" \
+  -H 'content-type: application/json' \
   -d '{"session_id":"<session id>","body":"Synthetic recap","visibility":"players"}'
 ```
 
@@ -220,7 +227,7 @@ single-entry reads.
 
 - Identity and cursor synchronization are implemented; see
   [auth-realtime.md](auth-realtime.md) for the threat model and remaining limits.
-  Login/registration rate limiting, token rotation and outbox retention are still open.
+  Ingress login rate limiting, session rotation and outbox retention are still open.
   Travel events remain empty until D14 adds an authorized writer.
 - D17 owns the final player projection and UI visibility; this API filters DM rows and
   returns 404 for hidden items as a safe default.

@@ -23,14 +23,11 @@ fn check(state: &AppState, request: &Request) -> Result<(), ApiError> {
     if origin.is_none() && session::cookie(headers, session::SESSION_COOKIE).is_none() {
         return Ok(());
     }
-    let expected = state
-        .oidc
-        .as_ref()
-        .map(|oidc| oidc.settings.public_url.origin());
+    let expected = public_origin(state);
     let matches = origin
         .and_then(|value| value.to_str().ok())
         .zip(expected)
-        .is_some_and(|(actual, expected)| actual == expected.ascii_serialization());
+        .is_some_and(|(actual, expected)| actual == expected);
     if matches && headers.get_all("origin").iter().count() == 1 {
         return Ok(());
     }
@@ -39,4 +36,14 @@ fn check(state: &AppState, request: &Request) -> Result<(), ApiError> {
     error.code = "forbidden_origin";
     error.message = "mutations require the deployment's Origin".into();
     Err(error)
+}
+
+fn public_origin(state: &AppState) -> Option<String> {
+    if let Some(oidc) = &state.oidc {
+        return Some(oidc.settings.public_url.origin().ascii_serialization());
+    }
+    state
+        .dev_identity
+        .then(|| state.dev_origin.clone())
+        .flatten()
 }

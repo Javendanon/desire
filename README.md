@@ -128,6 +128,8 @@ cookie. There are no password registration/login endpoints. See
 localhost Secure-cookie requirements and proxy configuration. Never commit OAuth secrets.
 Without OIDC the server refuses non-loopback binds. The legacy `x-desire-user` header
 requires both `DESIRE_DEV_IDENTITY=1` and a loopback bind; it is off by default.
+Browser development without OIDC also sets a loopback `DESIRE_PUBLIC_URL`, such as
+`http://localhost:5173`, so only that exact browser Origin can mutate through the seam.
 Cookie-authenticated mutations, including logout, require the configured public Origin.
 
 In two separate terminals:

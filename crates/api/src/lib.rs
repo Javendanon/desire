@@ -31,6 +31,7 @@ pub struct AppState {
     pub flags: FlagSource,
     /// Tests may keep the header seam; servers use cookie sessions.
     pub dev_identity: bool,
+    pub dev_origin: Option<String>,
     pub oidc: Option<std::sync::Arc<auth::oidc::Oidc>>,
 }
 
@@ -42,6 +43,7 @@ impl AppState {
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
             dev_identity: true,
+            dev_origin: None,
             oidc: None,
         }
     }
@@ -53,6 +55,7 @@ impl AppState {
             nivel20: nivel20::Nivel20Client::default(),
             flags: FlagSource::from_env(),
             dev_identity: false,
+            dev_origin: None,
             oidc: None,
         }
     }
@@ -68,6 +71,7 @@ impl AppState {
             nivel20,
             flags: FlagSource::from_env(),
             dev_identity: false,
+            dev_origin: None,
             oidc: None,
         }
     }

@@ -58,13 +58,16 @@ pub async fn callback(
     ApiQuery(query): ApiQuery<CallbackQuery>,
 ) -> Response {
     let request_id = request_id_from(&headers);
-    let result = finish(&state, &headers, (query, request_id)).await;
-    let mut response = result.unwrap_or_else(IntoResponse::into_response);
-    response.headers_mut().append(
-        header::SET_COOKIE,
-        session::set_cookie(session::LOGIN_COOKIE, "", 0),
-    );
-    response
+    match finish(&state, &headers, (query, request_id)).await {
+        Ok(mut response) => {
+            response.headers_mut().append(
+                header::SET_COOKIE,
+                session::set_cookie(session::LOGIN_COOKIE, "", 0),
+            );
+            response
+        }
+        Err(error) => error.into_response(),
+    }
 }
 
 async fn finish(

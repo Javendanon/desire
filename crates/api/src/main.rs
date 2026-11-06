@@ -4,7 +4,7 @@ use desire_api::{
     AppState, app,
     auth::{
         oidc::Oidc,
-        settings::{Settings, require_oidc},
+        settings::{Settings, development_origin, require_oidc},
     },
     db,
     nivel20::Nivel20Client,
@@ -109,11 +109,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let settings = Settings::from_env()?;
     require_oidc(host, settings.is_some())?;
+    let dev_origin = if settings.is_none() {
+        development_origin(dev_identity)?
+    } else {
+        None
+    };
     let config = with_server_limits(config);
     let client = db::connect_startup(&config)?;
     let nivel20 = Nivel20Client::from_env()?;
     let address = SocketAddr::new(host, port);
-    let state = AppState::with_nivel20(config, client, nivel20).with_dev_identity(dev_identity);
+    let mut state = AppState::with_nivel20(config, client, nivel20).with_dev_identity(dev_identity);
+    state.dev_origin = dev_origin;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
