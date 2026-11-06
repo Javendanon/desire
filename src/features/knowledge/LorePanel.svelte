@@ -103,10 +103,10 @@
       </div>
       <div class="field">
         <label for="lore-kind">{t('lore.kind_label')}</label>
-        <select id="lore-kind" onchange={chooseKind}>
-          <option value={ALL_KINDS} selected={kind === ALL_KINDS}>{t('kind.all')}</option>
+        <select id="lore-kind" value={kind} onchange={chooseKind}>
+          <option value={ALL_KINDS}>{t('kind.all')}</option>
           {#each loreKinds(index) as option (option)}
-            <option value={option} selected={kind === option}>{t(kindLabelKey(option))}</option>
+            <option value={option}>{t(kindLabelKey(option))}</option>
           {/each}
         </select>
       </div>

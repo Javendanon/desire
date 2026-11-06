@@ -39,11 +39,22 @@
 
   const connection = $derived(connectionState(browserOnline, serverReachable));
 
+  // The parked atlas is visibility:hidden until its panel is shown, so focus can land one or two
+  // frames later. Retry a few frames instead of dropping the user on the page body.
+  function focusPlace(place: string, attempts = 10): void {
+    const element = document.getElementById(place);
+    element?.focus();
+    if (document.activeElement === element || attempts === 0) return;
+    requestAnimationFrame(() => focusPlace(place, attempts - 1));
+  }
+
   function applyFocus(target: FocusTarget): void {
     if (!target) return;
-    const place = target.kind === 'place' ? placeButtonId(target.placeId) : '';
-    const element = document.getElementById(place) ?? main;
-    element?.focus();
+    if (target.kind === 'place') {
+      requestAnimationFrame(() => focusPlace(placeButtonId(target.placeId)));
+      return;
+    }
+    main?.focus();
   }
 
   function show(next: Route): void {

@@ -99,5 +99,6 @@
   "table.no_scenes": "Aún no hay escenas preparadas.",
   "table.pending": "Las miniaturas y los turnos llegarán en una próxima etapa.",
   "table.scenes": "Escenas",
+  "table.viewer_failed": "El motor de la mesa no pudo iniciarse en este dispositivo.",
   "visibility.dm": "Solo dirección"
 }

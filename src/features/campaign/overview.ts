@@ -69,7 +69,11 @@ export async function loadCampaignOverview(
   ]);
   return {
     campaign,
-    role: roleOf(members.items, context.identity),
+    // The owner is always a DM membership, and the paginated list can stop before that row.
+    role:
+      campaign.owner_id === context.identity
+        ? 'dm'
+        : roleOf(members.items, context.identity),
     memberCount: members.items.length,
     recaps: groupRecaps(sessions.items, journal.items),
     scenes: scenes.items,

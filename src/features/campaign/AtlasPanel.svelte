@@ -67,6 +67,18 @@
     if (!placeId) return;
     void tick().then(() => document.getElementById(placeButtonId(placeId))?.focus());
   });
+
+  // "Show on map" from lore only changes the route. Center the place again when the atlas opens
+  // with a selection, even if that same place was already selected. A plain variable records the
+  // previous panel: writing it must not re-trigger the effect.
+  let lastPanel: string | null = null;
+  $effect(() => {
+    const panel = route.panel;
+    if (panel === 'atlas' && lastPanel !== 'atlas' && route.context.place) {
+      recenterRequests += 1;
+    }
+    lastPanel = panel;
+  });
 </script>
 
 {#if map}

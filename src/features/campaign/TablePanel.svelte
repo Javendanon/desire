@@ -27,7 +27,11 @@
 </script>
 
 <div class="table">
-  <ViewerHost {level} onzoom={(next) => (level = next)} />
+  <ViewerHost
+    {level}
+    errorText={t('table.viewer_failed')}
+    onzoom={(next) => (level = next)}
+  />
   <aside class="panel scenes" aria-labelledby="table-scenes">
     <h2 id="table-scenes" class="panel-title">{t('table.scenes')}</h2>
     {#if scenes.length === 0}

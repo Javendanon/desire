@@ -135,6 +135,27 @@ test('loadCampaignOverview composes the summary of the requested campaign', asyn
   assert.equal(overview.truncated, false);
 });
 
+test('an owner keeps the dm role when the member page stops before their row', async () => {
+  const context = routedContext({
+    campaign: {
+      id: CAMPAIGN,
+      owner_id: USER,
+      city_id: null,
+      name: 'Synthetic',
+      rules_edition: 'dnd_2014',
+      revision: 1,
+    },
+    members: page([{ campaign_id: CAMPAIGN, user_id: OTHER, role: 'player' }]),
+    sessions: page([]),
+    journal: page([]),
+    scenes: page([]),
+  });
+
+  const overview = await loadCampaignOverview(context, CAMPAIGN);
+
+  assert.equal(overview.role, 'dm');
+});
+
 test('one failing list fails the overview instead of showing a partial campaign', async () => {
   const fetchImpl = (async (input: string | URL | Request) => {
     const denied = String(input).includes('/journal');

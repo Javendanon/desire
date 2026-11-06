@@ -34,15 +34,30 @@ and lore search. Rules stay with D16/D17, the scene with D11 and permissions wit
   the campaign's rules edition.
 - **Degraded lore.** Places and the compendium ship with the app, so a failing API leaves them
   searchable and reports that campaign notes are missing.
+- **Controls follow the route.** The kind filter is driven by the route through the select's
+  `value`, not by option attributes, so a cleared or restored `?kind=` always matches the results.
+- **Show on map.** Returning to the atlas from a lore entry centers the selected place again even
+  when that place was already selected, and focus lands on its button in the place list.
 - **Authorization.** `canManage` only decides which controls to show. No view filters data by
   role; DM-only rows are absent because the server left them out, and a refused write is shown.
+
+## Verification
+
+`tests/browser/campaign-hub-smoke.mjs` drives real Chrome over the dev server with a stub API. It
+covers focus after navigation (place button or `#content`), the parked atlas being hidden and not
+reachable by Tab, the skip link and tabs in the tab order, campaign isolation after opening another
+campaign, the kind filter following the URL, the 760px layout for hub, atlas, lore and summary, and
+the Spanish empty/offline/error copy. It runs from `pnpm run test:browser`. Pure route, loader,
+search and overview logic stays in `tests/*.test.ts`.
 
 ## Copy
 
 Product text is Spanish and lives in `src/app/messages.es.json`, the same split as
 `content/knowledge`: data is Spanish, while code, keys, file names and documentation are English.
-Add a key there rather than a literal in a view. Older `src/lib/ui` and `src/lib/engine`
-components still hold their own Spanish labels.
+Add a key there rather than a literal in a view. `ViewerHost` takes its error copy from the
+catalog (`table.viewer_failed`) and keeps the engine's raw text in the console; the built-in
+default only serves the design demo. Older `src/lib/ui` components still hold their own Spanish
+labels.
 
 ## Known gaps
 
@@ -62,14 +77,11 @@ components still hold their own Spanish labels.
   table panel runs two GPU contexts at once.
 - **Selection cannot clear on the map.** `MapViewer` has no deselect, so browser Back to a route
   without a place leaves the marker highlighted. Fixing it belongs to D11.
-- **Raw engine errors.** `ViewerHost` shows the engine's own error text, which may not be Spanish.
-- **Truncated lists.** `collectPages` stops at 5 pages of 100 and tells the user.
-- **"Show on map" for the selected place.** The route does not change, so the camera stays where
-  the user left it. Choosing the place in the atlas list centers it again.
+- **Truncated lists.** `collectPages` stops at 5 pages of 100 and tells the user. The caller's
+  role comes from the owner record or that page; a non-owner DM whose row falls outside the budget
+  still sees the member role as unknown until the server exposes the caller's own membership.
 - **No retry for a failed table chunk.** Browsers may keep a failed dynamic import, so a button
   could not promise anything. Leaving the panel and returning tries again.
-- **Component behaviour is untested.** No test renders a component. Focus, the parked panels and
-  the responsive layout need a browser check.
 - **Unused health helpers.** The shell only needs `parseHealth`, so `checkHealth`, `healthMessage`
   and `loadEngine` in `src/lib/health.ts` now serve only their tests. Deleting tests needs its own
   card under the anti-tamper rule in [the test plan](app-tests-plan.md).

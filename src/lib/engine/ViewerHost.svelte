@@ -26,6 +26,8 @@
     quality?: Quality;
     timeOfDay?: TimeOfDay;
     fog?: number;
+    /** Spanish copy shown when the engine cannot start, while the raw text stays in the console. */
+    errorText?: string;
     onready?: (viewer: TableViewer) => void;
     ondistrict?: (id: string) => void;
     onhover?: (id: string | null) => void;
@@ -46,6 +48,7 @@
     quality = 'high',
     timeOfDay = 'dusk',
     fog = 0.45,
+    errorText = 'El motor de la mesa no pudo iniciarse en este dispositivo.',
     ...callbacks
   }: Props = $props();
 
@@ -56,7 +59,7 @@
 
   let canvas: HTMLCanvasElement;
   let viewer = $state<TableViewer | null>(null);
-  let error = $state('');
+  let failed = $state(false);
 
   onMount(() => {
     let disposed = false;
@@ -72,7 +75,8 @@
         callbacks.onready?.(created);
       })
       .catch((reason: unknown) => {
-        error = reason instanceof Error ? reason.message : String(reason);
+        console.warn('The table viewer could not start', reason);
+        failed = true;
       });
     return () => {
       disposed = true;
@@ -109,8 +113,8 @@
     tabindex="0"
     aria-label={CANVAS_LABEL}
   ></canvas>
-  {#if error}
-    <p class="error" role="alert">{error}</p>
+  {#if failed}
+    <p class="error" role="alert">{errorText}</p>
   {:else if !viewer}
     <p class="loading" aria-live="polite">Preparando la mesa…</p>
   {:else}
