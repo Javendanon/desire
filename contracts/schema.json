@@ -2345,6 +2345,504 @@
           "$ref": "#/$defs/Disposition"
         }
       }
+    },
+    "MaterialKind": {
+      "x-module": "interior",
+      "type": "string",
+      "enum": [
+        "wood_plank",
+        "flagstone",
+        "stone",
+        "plaster",
+        "earth",
+        "tile",
+        "deck"
+      ]
+    },
+    "RoomKind": {
+      "x-module": "interior",
+      "type": "string",
+      "enum": [
+        "interior",
+        "exterior"
+      ]
+    },
+    "EdgeSide": {
+      "x-module": "interior",
+      "type": "string",
+      "enum": [
+        "n",
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "LinkKind": {
+      "x-module": "interior",
+      "type": "string",
+      "enum": [
+        "stairs",
+        "ladder",
+        "trapdoor",
+        "slide"
+      ]
+    },
+    "CellRect": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h",
+        "chamfer"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        },
+        "w": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "h": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "chamfer": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CellEdge": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "side"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        },
+        "side": {
+          "$ref": "#/$defs/EdgeSide"
+        }
+      }
+    },
+    "FloorCell": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "floor",
+        "x",
+        "y"
+      ],
+      "properties": {
+        "floor": {
+          "type": "string"
+        },
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        }
+      }
+    },
+    "Point3": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      }
+    },
+    "Room": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "cells",
+        "floor_material",
+        "wall_material",
+        "tint"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RoomKind"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CellRect"
+          },
+          "minItems": 1
+        },
+        "floor_material": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "wall_material": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "tint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Door": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "edge",
+        "open"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "edge": {
+          "$ref": "#/$defs/CellEdge"
+        },
+        "open": {
+          "type": "boolean"
+        }
+      }
+    },
+    "EdgeMark": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "edge"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "edge": {
+          "$ref": "#/$defs/CellEdge"
+        }
+      }
+    },
+    "Furniture": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "x",
+        "y",
+        "rotation",
+        "variant"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        },
+        "rotation": {
+          "type": "integer",
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
+        },
+        "variant": {
+          "type": "string"
+        }
+      }
+    },
+    "Floor": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "elevation_m",
+        "height_m",
+        "origin_x",
+        "origin_y",
+        "rooms",
+        "doors",
+        "windows",
+        "openings",
+        "furniture"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "elevation_m": {
+          "type": "number"
+        },
+        "height_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "origin_x": {
+          "type": "integer"
+        },
+        "origin_y": {
+          "type": "integer"
+        },
+        "rooms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Room"
+          },
+          "minItems": 1
+        },
+        "doors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Door"
+          }
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EdgeMark"
+          }
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EdgeMark"
+          }
+        },
+        "furniture": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Furniture"
+          }
+        }
+      }
+    },
+    "FloorLink": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "from",
+        "to",
+        "two_way",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/LinkKind"
+        },
+        "from": {
+          "$ref": "#/$defs/FloorCell"
+        },
+        "to": {
+          "$ref": "#/$defs/FloorCell"
+        },
+        "two_way": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point3"
+          }
+        }
+      }
+    },
+    "FloorPlan": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "cell_size_m",
+        "source",
+        "floors",
+        "links"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "cell_size_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "source": {
+          "type": "string"
+        },
+        "floors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Floor"
+          },
+          "minItems": 1
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FloorLink"
+          }
+        }
+      }
+    },
+    "PropVariant": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "tint"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tint": {
+          "type": "string"
+        }
+      }
+    },
+    "Prop": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name",
+        "model",
+        "width",
+        "depth",
+        "height_m",
+        "blocks",
+        "variants"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "blocks": {
+          "type": "boolean"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PropVariant"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "PropCatalog": {
+      "type": "object",
+      "x-module": "interior",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "props"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "props": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Prop"
+          },
+          "minItems": 1
+        }
+      }
     }
   }
 }

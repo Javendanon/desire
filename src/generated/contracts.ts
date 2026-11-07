@@ -560,3 +560,121 @@ export interface PlayerResident {
   kind: ActorKind;
   disposition: Disposition;
 }
+
+export type MaterialKind = "wood_plank" | "flagstone" | "stone" | "plaster" | "earth" | "tile" | "deck";
+
+export type RoomKind = "interior" | "exterior";
+
+export type EdgeSide = "n" | "e" | "s" | "w";
+
+export type LinkKind = "stairs" | "ladder" | "trapdoor" | "slide";
+
+export interface CellRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  chamfer: boolean;
+}
+
+export interface CellEdge {
+  x: number;
+  y: number;
+  side: EdgeSide;
+}
+
+export interface FloorCell {
+  floor: string;
+  x: number;
+  y: number;
+}
+
+export interface Point3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  kind: RoomKind;
+  cells: CellRect[];
+  floor_material: MaterialKind;
+  wall_material: MaterialKind;
+  tint: string | null;
+}
+
+export interface Door {
+  id: string;
+  edge: CellEdge;
+  open: boolean;
+}
+
+export interface EdgeMark {
+  id: string;
+  edge: CellEdge;
+}
+
+export interface Furniture {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+  rotation: number;
+  variant: string;
+}
+
+export interface Floor {
+  id: string;
+  name: string;
+  elevation_m: number;
+  height_m: number;
+  origin_x: number;
+  origin_y: number;
+  rooms: Room[];
+  doors: Door[];
+  windows: EdgeMark[];
+  openings: EdgeMark[];
+  furniture: Furniture[];
+}
+
+export interface FloorLink {
+  id: string;
+  kind: LinkKind;
+  from: FloorCell;
+  to: FloorCell;
+  two_way: boolean;
+  path: Point3[];
+}
+
+export interface FloorPlan {
+  id: string;
+  name: string;
+  cell_size_m: number;
+  source: string;
+  floors: Floor[];
+  links: FloorLink[];
+}
+
+export interface PropVariant {
+  id: string;
+  name: string;
+  tint: string;
+}
+
+export interface Prop {
+  kind: string;
+  name: string;
+  model: string;
+  width: number;
+  depth: number;
+  height_m: number;
+  blocks: boolean;
+  variants: PropVariant[];
+}
+
+export interface PropCatalog {
+  version: number;
+  props: Prop[];
+}

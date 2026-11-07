@@ -1,0 +1,639 @@
+{
+  "version": 1,
+  "props": [
+    {
+      "kind": "mesa",
+      "name": "Mesa",
+      "model": "props/mesa.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.78,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "mesa_larga",
+      "name": "Mesa larga",
+      "model": "props/mesa_larga.glb",
+      "width": 2,
+      "depth": 1,
+      "height_m": 0.78,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "mesa_redonda",
+      "name": "Mesa redonda",
+      "model": "props/mesa_redonda.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.78,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "mesa_baja",
+      "name": "Mesa baja",
+      "model": "props/mesa_baja.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.45,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "silla",
+      "name": "Silla",
+      "model": "props/silla.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.95,
+      "blocks": false,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "taburete",
+      "name": "Taburete",
+      "model": "props/taburete.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.7,
+      "blocks": false,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "sillon",
+      "name": "Sillón",
+      "model": "props/sillon.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 1.0,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Cuero",
+          "tint": "#6b4a2e"
+        },
+        {
+          "id": "granate",
+          "name": "Granate",
+          "tint": "#7a2e2e"
+        },
+        {
+          "id": "azul",
+          "name": "Azul noche",
+          "tint": "#2c3e5c"
+        },
+        {
+          "id": "verde",
+          "name": "Verde bosque",
+          "tint": "#2f5240"
+        },
+        {
+          "id": "ocre",
+          "name": "Ocre",
+          "tint": "#b5852f"
+        }
+      ]
+    },
+    {
+      "kind": "sofa",
+      "name": "Sofá",
+      "model": "props/sofa.glb",
+      "width": 2,
+      "depth": 1,
+      "height_m": 0.9,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Cuero",
+          "tint": "#6b4a2e"
+        },
+        {
+          "id": "granate",
+          "name": "Granate",
+          "tint": "#7a2e2e"
+        },
+        {
+          "id": "azul",
+          "name": "Azul noche",
+          "tint": "#2c3e5c"
+        },
+        {
+          "id": "verde",
+          "name": "Verde bosque",
+          "tint": "#2f5240"
+        },
+        {
+          "id": "ocre",
+          "name": "Ocre",
+          "tint": "#b5852f"
+        }
+      ]
+    },
+    {
+      "kind": "barra",
+      "name": "Barra de la taberna",
+      "model": "props/barra.glb",
+      "width": 2,
+      "depth": 1,
+      "height_m": 1.1,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "barra_corta",
+      "name": "Tramo corto de la barra",
+      "model": "props/barra_corta.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 1.1,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "aparador",
+      "name": "Aparador",
+      "model": "props/aparador.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 1.6,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "estanteria",
+      "name": "Estantería",
+      "model": "props/estanteria.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 2.0,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "chimenea",
+      "name": "Chimenea",
+      "model": "props/chimenea.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 2.4,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "piedra",
+          "name": "Piedra gris",
+          "tint": "#8a8a86"
+        },
+        {
+          "id": "arenisca",
+          "name": "Arenisca",
+          "tint": "#b9a27c"
+        }
+      ]
+    },
+    {
+      "kind": "fogon",
+      "name": "Fogón",
+      "model": "props/fogon.glb",
+      "width": 1,
+      "depth": 2,
+      "height_m": 1.2,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "piedra",
+          "name": "Piedra gris",
+          "tint": "#8a8a86"
+        },
+        {
+          "id": "arenisca",
+          "name": "Arenisca",
+          "tint": "#b9a27c"
+        }
+      ]
+    },
+    {
+      "kind": "cama",
+      "name": "Cama",
+      "model": "props/cama.glb",
+      "width": 1,
+      "depth": 2,
+      "height_m": 0.6,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "granate",
+          "name": "Granate",
+          "tint": "#7a2e2e"
+        },
+        {
+          "id": "azul",
+          "name": "Azul noche",
+          "tint": "#2c3e5c"
+        },
+        {
+          "id": "verde",
+          "name": "Verde bosque",
+          "tint": "#2f5240"
+        },
+        {
+          "id": "ocre",
+          "name": "Ocre",
+          "tint": "#b5852f"
+        }
+      ]
+    },
+    {
+      "kind": "cama_doble",
+      "name": "Cama doble",
+      "model": "props/cama_doble.glb",
+      "width": 2,
+      "depth": 2,
+      "height_m": 0.65,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "granate",
+          "name": "Granate",
+          "tint": "#7a2e2e"
+        },
+        {
+          "id": "azul",
+          "name": "Azul noche",
+          "tint": "#2c3e5c"
+        },
+        {
+          "id": "verde",
+          "name": "Verde bosque",
+          "tint": "#2f5240"
+        },
+        {
+          "id": "ocre",
+          "name": "Ocre",
+          "tint": "#b5852f"
+        }
+      ]
+    },
+    {
+      "kind": "baul",
+      "name": "Baúl",
+      "model": "props/baul.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.6,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "escritorio",
+      "name": "Escritorio",
+      "model": "props/escritorio.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.8,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "banera",
+      "name": "Bañera",
+      "model": "props/banera.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.7,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Cobre",
+          "tint": "#b87333"
+        },
+        {
+          "id": "esmalte",
+          "name": "Esmalte blanco",
+          "tint": "#e8e4da"
+        }
+      ]
+    },
+    {
+      "kind": "lavabo",
+      "name": "Lavabo",
+      "model": "props/lavabo.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.9,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Cerámica",
+          "tint": "#e8e4da"
+        }
+      ]
+    },
+    {
+      "kind": "retrete",
+      "name": "Retrete",
+      "model": "props/retrete.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.5,
+      "blocks": false,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        }
+      ]
+    },
+    {
+      "kind": "alfombra",
+      "name": "Alfombra",
+      "model": "props/alfombra.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.02,
+      "blocks": false,
+      "variants": [
+        {
+          "id": "granate",
+          "name": "Granate",
+          "tint": "#7a2e2e"
+        },
+        {
+          "id": "azul",
+          "name": "Azul noche",
+          "tint": "#2c3e5c"
+        },
+        {
+          "id": "verde",
+          "name": "Verde bosque",
+          "tint": "#2f5240"
+        },
+        {
+          "id": "ocre",
+          "name": "Ocre",
+          "tint": "#b5852f"
+        }
+      ]
+    },
+    {
+      "kind": "barril",
+      "name": "Barril",
+      "model": "props/barril.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 1.0,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    },
+    {
+      "kind": "cajon",
+      "name": "Cajón",
+      "model": "props/cajon.glb",
+      "width": 1,
+      "depth": 1,
+      "height_m": 0.7,
+      "blocks": true,
+      "variants": [
+        {
+          "id": "natural",
+          "name": "Madera natural",
+          "tint": "#9a6b43"
+        },
+        {
+          "id": "oscura",
+          "name": "Madera oscura",
+          "tint": "#5a3b26"
+        },
+        {
+          "id": "clara",
+          "name": "Madera clara",
+          "tint": "#c49a6c"
+        }
+      ]
+    }
+  ]
+}
