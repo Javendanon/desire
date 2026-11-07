@@ -71,10 +71,9 @@
   let sheetOpener: HTMLElement | null = null;
 
   const sheets = $derived(indexSheets(bundle.sheets));
-  // Every row, turn and condition derives from the projected bundle, so hidden DM participants
-  // neither render nor take a turn slot that would reveal they exist.
-  const rolled = $derived(rolledOrder(bundle.participants));
-  const views = $derived(participantViews({ bundle, state: local, rules }));
+  const rolled = $derived(rolledOrder(sourceBundle.participants));
+  const views = $derived(participantViews({ bundle: sourceBundle, state: local, rules })
+    .filter((view) => sheets.has(view.actorId)));
   const recordedSheet = $derived(openActorId ? sheets.get(openActorId) ?? null : null);
   const openSheet = $derived(recordedSheet ? applyLocal(recordedSheet, local) : null);
   const edits = $derived(recordedSheet ? localEdits(recordedSheet, local) : null);
@@ -152,7 +151,7 @@
   }
 
   function advance(): void {
-    const conditions = participantConditions(bundle);
+    const conditions = participantConditions(sourceBundle);
     local = nextTurn(local, { rolledCount: rolled.length, conditions });
   }
 
