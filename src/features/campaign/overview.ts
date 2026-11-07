@@ -48,7 +48,10 @@ export function groupRecaps(
 }
 
 /** A cookie session sends no identity, so no row is assumed to be the caller's. */
-export function roleOf(members: readonly Membership[], identity: Id | undefined): MemberRole | null {
+export function roleOf(
+  members: readonly Membership[],
+  identity: Id | undefined,
+): MemberRole | null {
   if (identity === undefined) return null;
   return members.find((member) => member.user_id === identity)?.role ?? null;
 }
