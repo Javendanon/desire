@@ -1,6 +1,18 @@
 // Demo page for the Waterdeep map viewer: mounts the scene, draws HTML labels, lists places and
 // exposes a small probe for the headless smoke test. Content only; the engine stays generic.
 
+import { mount } from 'svelte';
+import '../../../src/lib/design/tokens.css';
+import compendium from '../../knowledge/compendium.json';
+import { DEMO_RULE_ENTRIES } from '../../../src/features/characters/demo-sheets.ts';
+import {
+  createRuleBook,
+  entriesFromCompendium,
+} from '../../../src/features/characters/rule-book.ts';
+import { createDemoEncounter } from '../../../src/features/encounters/demo-encounter.ts';
+import { openEffectsStorage } from '../../../src/features/encounters/effects.ts';
+import TacticalOverlay from '../../../src/features/encounters/TacticalOverlay.svelte';
+import { Emitter } from '../../../src/lib/engine/emitter.ts';
 import {
   createMapViewer,
   type MapViewer,
@@ -13,6 +25,7 @@ import type { MapPlace } from '../../../src/lib/engine/plan/map-definition.ts';
 
 const TOTAL_SECTORS = sectorCount(WATERDEEP_MAP.grid);
 const MAX_DETAIL_SECTORS = 20;
+const selections = new Emitter<{ place: MapPlace }>();
 
 interface LabelEntry {
   element: HTMLElement;
@@ -182,6 +195,25 @@ function bindPlaceList(viewer: MapViewer): void {
   }
 }
 
+function mountTactical(): void {
+  const place = WATERDEEP_MAP.places.find((entry) => entry.id === 'castle-waterdeep');
+  if (!place) throw new Error('demo: missing encounter place castle-waterdeep');
+  const target = document.createElement('div');
+  // The host body is a two-column grid; an in-flow target would claim a second row.
+  target.style.position = 'fixed';
+  document.body.append(target);
+  mount(TacticalOverlay, {
+    target,
+    props: {
+      bundle: createDemoEncounter(place.contractId),
+      rules: createRuleBook([...entriesFromCompendium(compendium), ...DEMO_RULE_ENTRIES]),
+      placeName: place.name,
+      subscribePlace: (listener) => selections.on('place', listener),
+      effectsStorage: openEffectsStorage(() => window.localStorage),
+    },
+  });
+}
+
 function choose(viewer: MapViewer, place: MapPlace): void {
   viewer.selectPlace(place.id);
   byId('selected-name').textContent = place.name;
@@ -196,6 +228,7 @@ function choose(viewer: MapViewer, place: MapPlace): void {
   for (const button of placesList.querySelectorAll('button')) {
     button.setAttribute('aria-pressed', button.textContent === place.name ? 'true' : 'false');
   }
+  selections.emit('place', place);
 }
 
 function bindToggles(viewer: MapViewer): void {
@@ -218,6 +251,7 @@ async function boot(): Promise<void> {
     });
     bindPlaceList(viewer);
     bindToggles(viewer);
+    mountTactical();
     const entries = buildLabels();
     updateLabels(viewer, entries);
     viewer.onFrame(() => updateLabels(viewer, entries));

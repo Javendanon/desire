@@ -1,0 +1,47 @@
+/* Buttons shared by the sheet and encounter panels. Disabled is dashed, not only dimmed.
+   The host page strips the browser outline, so these two classes draw their own focus ring. */
+
+.sheet-control {
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--text-ui-sm);
+  color: var(--color-parchment);
+  background: var(--color-control);
+  border: 1px solid var(--color-fog-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.sheet-control:disabled {
+  color: var(--color-ash);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.sheet-link {
+  min-height: var(--control-height);
+  padding: 0;
+  font: inherit;
+  color: var(--color-lantern);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sheet-control:focus-visible,
+.sheet-link:focus-visible {
+  outline: 2px solid var(--color-lantern);
+  outline-offset: 3px;
+}
+
+/* Screen-reader-only text. Defined here because the host page loads no design base sheet. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

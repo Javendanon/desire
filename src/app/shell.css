@@ -1,0 +1,108 @@
+/* Shared form and panel classes for the app screens. Tokens come from the design system. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.panel {
+  padding: var(--space-4);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius);
+  background: var(--color-hull-glass);
+}
+
+.panel-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  font-weight: 400;
+}
+
+.plain-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-family: var(--font-label);
+  font-size: var(--text-label);
+  letter-spacing: 0.06em;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-fog-strong);
+  border-radius: var(--radius);
+  background: var(--color-ink);
+  color: var(--color-parchment);
+  font: inherit;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--color-ember);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--color-ember);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-fog-strong);
+  border-radius: var(--radius);
+  background: var(--color-control);
+  color: var(--color-parchment);
+  font-family: var(--font-label);
+  font-size: var(--text-ui-sm);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.action:hover {
+  border-color: var(--color-parchment);
+  color: var(--color-parchment);
+}
+
+.action.primary {
+  border-color: var(--color-lantern);
+  background: var(--color-lantern);
+  color: var(--color-ink);
+}
+
+.action.primary:hover {
+  border-color: var(--color-lantern-hover);
+  background: var(--color-lantern-hover);
+  color: var(--color-ink);
+}
+
+.action[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
