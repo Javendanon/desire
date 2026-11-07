@@ -32,8 +32,15 @@ pub const NIVEL20_IMPORT: Flag = Flag {
     description: "enable the read-only Nivel20 import endpoints",
 };
 
+/// Serve the compiled frontend from `DESIRE_STATIC_DIR`. Off by default: an unset flag keeps
+/// the router API-only, exactly as before the static fallback existed.
+pub const STATIC_SITE: Flag = Flag {
+    name: "static_site",
+    description: "serve the compiled frontend from DESIRE_STATIC_DIR",
+};
+
 /// Every flag the code base reads. Add a flag here and to `docs/flags.md` in the same change.
-pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT];
+pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT, STATIC_SITE];
 
 /// Why a flags file could not be used.
 #[derive(Debug)]

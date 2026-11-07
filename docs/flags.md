@@ -69,12 +69,20 @@ from a diff, so the reviewer raises it as a blocking finding (coordinated with D
 | Flag | Default | Where the default lives | Purpose |
 | --- | --- | --- | --- |
 | `nivel20_import` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | Enable the read-only Nivel20 import endpoints (`crates/api/src/routes/nivel20.rs`) |
+| `static_site` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | Serve the compiled frontend from `DESIRE_STATIC_DIR` (`crates/api/src/static_files.rs`) |
 
 `nivel20_import` gates the three Nivel20 routes. With the flag off, or with the flags file
 missing or malformed, `GET .../nivel20`, `POST .../nivel20/preview` and
 `POST .../nivel20/import` answer 404 and no outbound request is made: the feature is
 revertible in a running server without a deploy. `AppState::flags` carries the
 `FlagSource`; production fills it from `DESIRE_FLAGS_FILE`.
+
+`static_site` gates the static fallback. With the flag off, or with the flags file missing or
+malformed, every non-API path answers 404 even when `DESIRE_STATIC_DIR` points at a real
+build: the router behaves as it did before the fallback existed. The flag is read on every
+request, so `off` takes effect without a restart; `DESIRE_STATIC_DIR` itself is only read at
+startup, because a different directory is a restart-shaped change. See
+[deploy](deploy.md) for the Fly configuration that ships the flag on.
 
 The tests in `crates/core/tests/flags.rs` use a test-only flag, `sector_labels`, which is not part
 of `REGISTRY`.

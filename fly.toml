@@ -12,6 +12,8 @@ kill_timeout = "20s"
   HOST = "0.0.0.0"
   PORT = "8080"
   DESIRE_STATIC_DIR = "/app/static"
+  # Serving the frontend is a runtime flag (docs/flags.md) and the image ships it on.
+  DESIRE_FLAGS_FILE = "/app/flags.txt"
   # Fly's proxy owns this header and overwrites client copies.
   DESIRE_TRUSTED_CLIENT_IP_HEADER = "Fly-Client-IP"
 
@@ -31,7 +33,9 @@ kill_timeout = "20s"
     path = "/api/health"
     interval = "15s"
     timeout = "2s"
-    grace_period = "10s"
+    # Startup can spend a few seconds on the database handshake and on OIDC discovery, so
+    # the first checks get more room than the steady-state interval.
+    grace_period = "30s"
 
 [[vm]]
   size = "shared-cpu-1x"

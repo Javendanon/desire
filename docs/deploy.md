@@ -9,7 +9,9 @@ Do not run `fly` against a real account from CI or from an agent.
 One Fly app in São Paulo (`gru`) serves the API and the compiled frontend from the same
 origin and the same port:
 
-- `desire-api` answers `/api/*` and, when `DESIRE_STATIC_DIR` is set, the Vite build.
+- `desire-api` answers `/api/*` and, when `DESIRE_STATIC_DIR` is set and the `static_site`
+  runtime flag is on, the Vite build. The image ships `static_site = on` in
+  `/app/flags.txt`; without a flags file the process keeps the old API-only behaviour.
 - One machine stays running (`min_machines_running = 1`, `auto_stop_machines = "off"`):
   a sleeping machine cannot serve real-time table sessions.
 - `/api/health` is the health check. It reports that the process is alive, not that
@@ -54,7 +56,13 @@ fly secrets set DATABASE_URL='postgres://USER:PASSWORD@HOST:5432/DBNAME?sslmode=
 
 Requirements:
 
-- TLS in transit (`sslmode=require` or stricter); no plaintext internet connection.
+- TLS in transit. Use `sslmode=require`: the driver then completes a rustls handshake and
+  verifies the server certificate and the hostname against the WebPKI roots. There is no
+  plaintext fallback, so a provider with a self-signed certificate is not usable.
+  `sslmode=verify-ca` and `sslmode=verify-full` are not accepted by the driver and fail at
+  startup; `require` already verifies hostname, which is the stricter check.
+- `sslmode=prefer` (the default when the parameter is absent) stays plaintext, because the
+  driver skips TLS there. Do not rely on it for an internet database.
 - The provider must accept connections from Fly egress.
 - The same region; a database in another continent adds latency to every request.
 - The role needs `CREATE` on the database, because the release command installs the
@@ -93,8 +101,10 @@ Run every command from the repository root.
    ```
 
    `HOST`, `PORT`, `DESIRE_STATIC_DIR` and `DESIRE_TRUSTED_CLIENT_IP_HEADER` come from
-   the `[env]` block in `fly.toml`; they are not secrets. `DESIRE_OIDC_ISSUER` defaults
-   to Google and only needs setting for a different provider.
+   the `[env]` block in `fly.toml`; they are not secrets. `DESIRE_FLAGS_FILE` also comes
+   from `[env]` and points at `/app/flags.txt`, which the image ships with
+   `static_site = on`. `DESIRE_OIDC_ISSUER` defaults to Google and only needs setting for a
+   different provider.
 
 3. Deploy:
 
@@ -169,8 +179,7 @@ fly status                        # machines, image, region
 ```
 
 Migrations run in an ephemeral release machine; their output appears in `fly deploy`
-and in the release history. `DESIRE_FLAGS_FILE` stays unset unless an operator mounts a
-flags file; every runtime flag is off by default (see [flags](flags.md)).
+and in the release history.
 
 ## Local image check
 
@@ -183,6 +192,10 @@ docker network create desire-smoke
 docker run -d --rm --name desire-db --network desire-smoke \
   -e POSTGRES_USER=desire -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=desire \
   postgres:17-alpine
+# The API gives up on the database after five seconds, so wait for the server to accept
+# connections instead of racing a cold initdb.
+until docker run --rm --network desire-smoke -e PGPASSWORD=smoke postgres:17-alpine \
+  pg_isready -h desire-db -U desire -d desire > /dev/null 2>&1; do sleep 1; done
 docker run --rm --network desire-smoke -p 8080:8080 \
   -e DATABASE_URL='postgres://desire:smoke@desire-db:5432/desire' \
   -e DESIRE_OIDC_CLIENT_ID=local-smoke \
@@ -222,24 +235,34 @@ docker network rm desire-smoke
 | `HOST` | `fly.toml` `[env]` | `0.0.0.0` |
 | `PORT` | `fly.toml` `[env]` | `8080`; must match `internal_port` |
 | `DESIRE_STATIC_DIR` | `fly.toml` `[env]` | Compiled frontend directory; unset keeps the API-only behaviour |
-| `DESIRE_FLAGS_FILE` | unset | Optional runtime flags file; all flags default off |
+| `DESIRE_FLAGS_FILE` | `fly.toml` `[env]` | `/app/flags.txt`, shipped with `static_site = on`; unset means every flag is off |
 
 ## Static serving rules
 
 - Unset `DESIRE_STATIC_DIR`: unknown non-API paths return 404, exactly as before.
-- Set: files under `/assets/` whose name carries a Vite content hash (at least eight
-  characters after the last dash, such as `index-DAi1n9St.css`) are cached for a year
-  as immutable. `index.html`, unhashed `public/` files (`mark.svg`, `abbey.jpg`) and
-  everything else are `no-cache`. Unknown app routes return `index.html` so the client
-  router can resolve them.
+- Set, with the `static_site` flag on: files under `/assets/` whose name carries a Vite
+  content hash (at least eight characters after the last dash, such as
+  `index-DAi1n9St.css` or `sector-worker-DAi1n9St.js`) are cached for a year as immutable.
+  `index.html`, unhashed `public/` files (`mark.svg`, `abbey.jpg`) and everything else are
+  `no-cache`. Unknown app routes return `index.html` so the client router can resolve them.
 - `/api` and `/api/*` never fall back to `index.html`; an unknown API route stays 404.
 - Paths with `..`, hidden segments, empty segments or percent-encoding never touch the
   filesystem; they fall back to the shell.
 - Startup fails with an explicit error when the directory has no `index.html`.
 
-`DESIRE_STATIC_DIR` is startup configuration, not a runtime flag. The flag registry in
-[flags.md](flags.md) exists for behaviour that must change in a running process; a path
-read once at boot does not qualify, and unset is the safe default.
+Serving the frontend changes what every non-API `GET` returns, so it is a runtime flag and
+not just a path (see [flags](flags.md)): `static_site` defaults to off, and the image ships
+`/app/flags.txt` with it on. The directory itself is startup configuration; the flag is read
+on every request, so an operator can switch serving off in a running machine without a
+restart or a deploy:
+
+```sh
+fly ssh console --app desire-table -C "sed -i 's/^static_site = on/static_site = off/' /app/flags.txt"
+```
+
+With the flag off the API answers only `/api/*` and every other path is 404: the behaviour
+before the static fallback existed. Removing `DESIRE_FLAGS_FILE` from `[env]`, or deleting
+the file, has the same effect at the next process start.
 
 ## Out of scope
 

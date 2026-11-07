@@ -1,12 +1,13 @@
 //! Optional hosting of the compiled frontend from `DESIRE_STATIC_DIR`.
 //!
-//! Absent, the router answers only the API, exactly as before. Present, a `GET` or `HEAD`
-//! path that is not a file returns `index.html` so the client router can resolve it.
-//! `/api` and `/api/*` never fall back: an unknown API route stays a 404.
+//! Absent, the router answers only the API, exactly as before. Present and enabled by the
+//! `static_site` flag, a `GET` or `HEAD` path that is not a file returns `index.html` so the
+//! client router can resolve it. `/api` and `/api/*` never fall back: an unknown API route
+//! stays a 404.
 //!
-//! `DESIRE_STATIC_DIR` is startup configuration, not a runtime flag: `docs/flags.md`
-//! requires a re-read file for a switch that changes without a restart, and this path is
-//! only read when the process starts. Unset is the safe state.
+//! The directory is startup configuration; the switch is a runtime flag, read per request, so
+//! an operator can switch hosting off in a running server by editing the flags file. Off is
+//! the safe state: a machine without the flag behaves exactly as before the feature existed.
 
 use axum::{
     Router,
@@ -14,6 +15,7 @@ use axum::{
     http::{Method, StatusCode, Uri, header},
     response::{IntoResponse, Response},
 };
+use desire_core::flags::{Flag, FlagSource, STATIC_SITE};
 use std::{
     io::ErrorKind,
     path::{Path, PathBuf},
@@ -75,21 +77,40 @@ fn configured(directory: PathBuf) -> Result<Option<PathBuf>, String> {
     Ok(Some(directory))
 }
 
-/// Add the static fallback to an assembled router. `None` changes nothing.
-pub fn attach(router: Router, directory: Option<PathBuf>) -> Router {
-    let Some(directory) = directory else {
+/// The directory plus the source that decides, per request, whether it is served.
+struct Serving {
+    root: PathBuf,
+    flags: FlagSource,
+}
+
+/// Add the static fallback to an assembled router. `None` changes nothing, and so does an
+/// `static_site` flag that is off.
+pub fn attach(router: Router, directory: Option<PathBuf>, flags: FlagSource) -> Router {
+    let Some(root) = directory else {
         return router;
     };
-    let files = Router::new()
-        .fallback(static_file)
-        .with_state(Arc::new(directory));
+    let serving = Arc::new(Serving { root, flags });
+    let files = Router::new().fallback(static_file).with_state(serving);
     router.fallback_service(files)
 }
 
-async fn static_file(State(root): State<Arc<PathBuf>>, method: Method, uri: Uri) -> Response {
+/// Read the flag now: the flags file is re-read on every lookup, so hosting can be switched
+/// off in a running server. A malformed file falls back to the default (off) and says so.
+fn enabled(flags: &FlagSource) -> bool {
+    flags.is_on(&STATIC_SITE).unwrap_or_else(|error| {
+        eprintln!("flags: {error}; using the default (off)");
+        Flag::DEFAULT
+    })
+}
+
+async fn static_file(State(serving): State<Arc<Serving>>, method: Method, uri: Uri) -> Response {
     if !matches!(method, Method::GET | Method::HEAD) {
         return StatusCode::NOT_FOUND.into_response();
     }
+    if !enabled(&serving.flags) {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let root = &serving.root;
     let path = uri.path();
     if reserved(path) {
         return StatusCode::NOT_FOUND.into_response();
@@ -110,7 +131,7 @@ async fn static_file(State(root): State<Arc<PathBuf>>, method: Method, uri: Uri)
             }
         }
     }
-    index(&root).await
+    index(root).await
 }
 
 /// A missing file or directory is an app route; the shell resolves it in the browser.
@@ -161,7 +182,7 @@ fn cache_for(path: &str) -> &'static str {
     let hashed = path
         .rsplit('/')
         .next()
-        .and_then(|name| name.split_once('-'))
+        .and_then(|name| name.rsplit_once('-'))
         .is_some_and(|(_, rest)| hash_like(rest));
     if path.starts_with(ASSET_PREFIX) && hashed {
         ASSET_CACHE
@@ -170,13 +191,14 @@ fn cache_for(path: &str) -> &'static str {
     }
 }
 
-/// Vite appends a content hash after the last dash: `index-DAi1n9St.css`.
+/// Vite appends a content hash after the last dash: `index-DAi1n9St.css`,
+/// `sector-worker-DAi1n9St.js`.
 fn hash_like(value: &str) -> bool {
     let stem = value.split('.').next().unwrap_or(value);
     stem.len() >= MIN_HASH_LENGTH
         && stem
             .chars()
-            .all(|character| character.is_ascii_alphanumeric())
+            .all(|character| character.is_ascii_alphanumeric() || character == '_')
 }
 
 fn content_type(path: &Path) -> &'static str {
@@ -250,8 +272,13 @@ mod tests {
     fn hashed_assets_are_the_only_long_lived_cache() {
         assert_eq!(cache_for("/assets/app-4f3a1c9d.js"), ASSET_CACHE);
         assert_eq!(cache_for("/assets/index-DAi1n9St.css"), ASSET_CACHE);
+        // Vite names chunks and workers `assets/[name]-[hash].js`, and a dashed chunk name
+        // keeps its dashes in front of the hash.
+        assert_eq!(cache_for("/assets/sector-worker-DAi1n9St.js"), ASSET_CACHE);
+        assert_eq!(cache_for("/assets/app-4f3a_1c9d.js"), ASSET_CACHE);
         assert_eq!(cache_for("/assets/mark.svg"), PAGE_CACHE);
         assert_eq!(cache_for("/assets/abbey.jpg"), PAGE_CACHE);
+        assert_eq!(cache_for("/assets/sector-worker.js"), PAGE_CACHE);
         assert_eq!(cache_for("/index.html"), PAGE_CACHE);
         assert_eq!(cache_for("/favicon.ico"), PAGE_CACHE);
     }

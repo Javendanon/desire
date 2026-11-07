@@ -10,7 +10,7 @@ COPY --from=node:24-bookworm-slim /usr/local /usr/local
 WORKDIR /build
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     rustup target add wasm32-unknown-unknown \
-    && cargo install wasm-pack --locked
+    && cargo install wasm-pack --version 0.15.0 --locked
 
 # Dependencies first, so a source-only change keeps this layer.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
@@ -40,9 +40,14 @@ COPY --from=api /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificate
 WORKDIR /app
 COPY --from=api /usr/local/bin/desire-api /usr/local/bin/desire-api
 COPY --from=frontend /build/dist ./static
+# Runtime flags: one file, re-read on every lookup, so serving the frontend can be switched
+# off on a running machine without a rebuild. Unset, every flag is off (docs/flags.md).
+RUN printf 'static_site = on\n' > /app/flags.txt \
+    && chown 10001:10001 /app/flags.txt
 ENV HOST=0.0.0.0 \
     PORT=8080 \
-    DESIRE_STATIC_DIR=/app/static
+    DESIRE_STATIC_DIR=/app/static \
+    DESIRE_FLAGS_FILE=/app/flags.txt
 EXPOSE 8080
 # No package manager, shell tools or write access needed at runtime.
 USER 10001:10001

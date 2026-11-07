@@ -1,4 +1,4 @@
-//! Static frontend hosting: hashed assets, app-route fallback and the API boundary.
+//! Static frontend hosting: hashed assets, app-route fallback, the API boundary and the flag.
 use crate::support;
 use axum::{
     Router,
@@ -6,43 +6,70 @@ use axum::{
     routing::get,
 };
 use desire_api::static_files;
+use desire_core::flags::FlagSource;
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 const INDEX: &str = "<!doctype html><div id=\"root\"></div>";
 const ASSET: &str = "console.log('asset');";
 
+fn temporary(name: &str) -> PathBuf {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    std::env::temp_dir().join(format!(
+        "desire-static-{}-{}-{name}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ))
+}
+
 struct Fixture {
     root: PathBuf,
+    flags: PathBuf,
 }
 
 impl Fixture {
-    /// A throw-away build output with one hashed asset and the app shell.
+    /// A throw-away build output with one hashed asset, the app shell and a flags file.
     fn new() -> Self {
-        static NEXT: AtomicUsize = AtomicUsize::new(0);
-        let root = std::env::temp_dir().join(format!(
-            "desire-static-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+        let root = temporary("build");
         std::fs::create_dir_all(root.join("assets")).unwrap();
         std::fs::write(root.join("index.html"), INDEX).unwrap();
         std::fs::write(root.join("assets/app-4f3a1c9d.js"), ASSET).unwrap();
-        Self { root }
+        let flags = temporary("flags.txt");
+        std::fs::write(&flags, "static_site = on\n").unwrap();
+        Self { root, flags }
+    }
+
+    fn source(&self) -> FlagSource {
+        FlagSource::file(self.flags.clone())
+    }
+
+    fn set(&self, on: bool) {
+        let value = if on { "on" } else { "off" };
+        std::fs::write(&self.flags, format!("static_site = {value}\n")).unwrap();
     }
 
     fn router(&self) -> Router {
-        static_files::attach(Router::new(), Some(self.root.clone()))
+        static_files::attach(Router::new(), Some(self.root.clone()), self.source())
     }
 }
 
 impl Drop for Fixture {
     fn drop(&mut self) {
-        if let Err(error) = std::fs::remove_dir_all(&self.root) {
-            eprintln!("static fixture cleanup failed: {error}");
+        for path in [&self.root, &self.flags] {
+            if let Err(error) = remove(path) {
+                eprintln!("static fixture cleanup failed: {error}");
+            }
         }
+    }
+}
+
+fn remove(path: &Path) -> std::io::Result<()> {
+    if path.is_dir() {
+        std::fs::remove_dir_all(path)
+    } else {
+        std::fs::remove_file(path)
     }
 }
 
@@ -94,6 +121,7 @@ fn api_paths_never_receive_the_index() {
     let app = static_files::attach(
         Router::new().route("/api/health", get(|| async { "ok" })),
         Some(fixture.root.clone()),
+        fixture.source(),
     );
     let health = fetch(&app, "/api/health");
     assert_eq!(health.status, StatusCode::OK);
@@ -108,11 +136,36 @@ fn api_paths_never_receive_the_index() {
 
 #[test]
 fn without_a_directory_static_hosting_stays_off() {
-    let app = static_files::attach(Router::new(), None);
+    let fixture = Fixture::new();
+    let app = static_files::attach(Router::new(), None, fixture.source());
     for path in ["/", "/assets/app-4f3a1c9d.js", "/campaigns/waterdeep"] {
         let response = fetch(&app, path);
         assert_eq!(response.status, StatusCode::NOT_FOUND, "{path}");
     }
+}
+
+#[test]
+fn the_flag_switches_hosting_off_and_on_without_a_restart() {
+    let fixture = Fixture::new();
+    let app = fixture.router();
+    fixture.set(false);
+    for path in ["/", "/assets/app-4f3a1c9d.js", "/campaigns/waterdeep"] {
+        let response = fetch(&app, path);
+        assert_eq!(response.status, StatusCode::NOT_FOUND, "{path}");
+    }
+
+    fixture.set(true);
+    let asset = fetch(&app, "/assets/app-4f3a1c9d.js");
+    assert_eq!(asset.status, StatusCode::OK);
+    assert_eq!(asset.body, ASSET);
+}
+
+#[test]
+fn a_missing_flags_file_keeps_hosting_off() {
+    let fixture = Fixture::new();
+    std::fs::remove_file(&fixture.flags).unwrap();
+    let response = fetch(&fixture.router(), "/campaigns/waterdeep");
+    assert_eq!(response.status, StatusCode::NOT_FOUND);
 }
 
 #[test]

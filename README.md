@@ -163,9 +163,11 @@ and copies only the binary, the static build and CA roots into the final image.
 - Configuration is environment-only: `DATABASE_URL` and the `DESIRE_OIDC_*` values are
   secrets; `HOST`, `PORT`, `DESIRE_STATIC_DIR` and the trusted client IP header come from
   `[env]`. No secret is committed.
-- `DESIRE_STATIC_DIR` enables static serving: Vite's content-hashed assets get a long
-  immutable cache, unknown app routes return `index.html`, `/api/*` stays a 404 and
-  unset keeps the previous API-only behaviour.
+- `DESIRE_STATIC_DIR` enables static serving, and the `static_site` runtime flag must be on
+  for it: Vite's content-hashed assets get a long immutable cache, unknown app routes return
+  `index.html`, `/api/*` stays a 404, and an unset flag keeps the previous API-only
+  behaviour. The image ships `static_site = on` in `/app/flags.txt`, readable at runtime so
+  serving can be switched off without a deploy.
 
 The step-by-step runbook, the two database options, the custom domain, the Google
 callback URL, rollback and logs are in [docs/deploy.md](docs/deploy.md). The real

@@ -100,6 +100,6 @@ impl AppState {
 }
 
 pub fn app(state: AppState) -> axum::Router {
-    let static_dir = state.static_dir.clone();
-    static_files::attach(routes::router(state), static_dir)
+    let router = routes::router(state.clone());
+    static_files::attach(router, state.static_dir, state.flags)
 }
