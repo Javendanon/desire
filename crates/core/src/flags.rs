@@ -32,8 +32,15 @@ pub const NIVEL20_IMPORT: Flag = Flag {
     description: "enable the read-only Nivel20 import endpoints",
 };
 
+/// The web shell reads the same file through Vite and mounts the campaign hub only when
+/// `campaign_hub` is on.
+pub const CAMPAIGN_HUB: Flag = Flag {
+    name: "campaign_hub",
+    description: "mount the campaign hub shell instead of the pre-flag placeholder page",
+};
+
 /// Every flag the code base reads. Add a flag here and to `docs/flags.md` in the same change.
-pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT];
+pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT, CAMPAIGN_HUB];
 
 /// Why a flags file could not be used.
 #[derive(Debug)]

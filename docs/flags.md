@@ -69,6 +69,7 @@ from a diff, so the reviewer raises it as a blocking finding (coordinated with D
 | Flag | Default | Where the default lives | Purpose |
 | --- | --- | --- | --- |
 | `nivel20_import` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | Enable the read-only Nivel20 import endpoints (`crates/api/src/routes/nivel20.rs`) |
+| `campaign_hub` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | mount the campaign hub shell instead of the pre-flag placeholder page |
 
 `nivel20_import` gates the three Nivel20 routes. With the flag off, or with the flags file
 missing or malformed, `GET .../nivel20`, `POST .../nivel20/preview` and
@@ -79,3 +80,23 @@ revertible in a running server without a deploy. `AppState::flags` carries the
 The tests in `crates/core/tests/flags.rs` use a test-only flag, `sector_labels`, which is not part
 of `REGISTRY`.
 
+## The browser reads the same file
+
+The web shell has no server to ask, so `vite.config.ts` serves the flags file to the page as one
+`<meta name="desire-flags">` tag: it reads the file `DESIRE_FLAGS_FILE` points at on every page
+request, and an unset variable or a missing file injects an empty value, which means every flag is
+off. `src/app/flags.ts` parses that text with the same `name = on|off` grammar and mounts
+`src/App.svelte` when `campaign_hub` is on, `src/app/LegacyShell.svelte` (the page before the flag
+existed) when it is not. A malformed line is logged and treated as off, never guessed.
+
+In the browser the flag is re-read per page load rather than per lookup: a production bundle has no
+file to read at runtime. The browser gate turns it on with its own file:
+
+```sh
+DESIRE_FLAGS_FILE=tests/browser/flags.gate.txt pnpm run test:browser
+```
+
+`pnpm run test:browser` already does that; `pnpm dev` and `pnpm build` without the variable ship the
+pre-flag page, as the default requires. `tests/app-flags.test.ts` covers the parser and the
+malformed-file fallback, and `tests/browser/campaign-hub-smoke.mjs` asserts the page really carries
+the file and mounts the hub.

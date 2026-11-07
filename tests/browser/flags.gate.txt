@@ -1,0 +1,3 @@
+# Flags for the browser gate only. The app is off by default; the gate turns the hub on so the
+# smoke test can drive it. Copy a line into your own DESIRE_FLAGS_FILE to try it locally.
+campaign_hub = on

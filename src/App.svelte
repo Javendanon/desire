@@ -1,85 +1,226 @@
+<!-- App shell: owns the route, connection state and focus. Features own everything else. -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { checkHealth, loadEngine } from './lib/health';
+  import { onMount, tick } from 'svelte';
 
-  let api = $state('Checking connection…');
-  let engine = $state('Checking library…');
+  import { connectionState, ServerMonitor, type ConnectionState } from './app/connection.ts';
+  import { browserStorage, createDevIdentity, resolveDevIdentity } from './app/identity.ts';
+  import { t, type MessageKey } from './app/messages.ts';
+  import {
+    focusTarget,
+    formatRoute,
+    HUB_ROUTE,
+    MAIN_CONTENT_ID,
+    parseRoute,
+    placeButtonId,
+    type FocusTarget,
+    type Route,
+  } from './app/routes.ts';
+  import StatusNotice from './app/StatusNotice.svelte';
+  import { createApiContext } from './features/campaign/api-context.ts';
+  import CampaignHub from './features/campaign/CampaignHub.svelte';
+  import CampaignWorkspace from './features/campaign/CampaignWorkspace.svelte';
 
-  function reportError(context: string, error: unknown): void {
-    console.warn(context, error);
+  const CONNECTION_LABELS: Readonly<Record<ConnectionState, MessageKey>> = {
+    checking: 'connection.checking',
+    online: 'connection.online',
+    offline: 'connection.offline',
+    server_down: 'connection.server_down',
+  };
+
+  const PROBE_INTERVAL_MS = 30_000;
+  const PROBE_TIMEOUT_MS = 5_000;
+
+  const api = createApiContext(resolveDevIdentity(browserStorage, createDevIdentity));
+
+  let route = $state<Route>(parseRoute(location.hash));
+  let browserOnline = $state(navigator.onLine);
+  let serverReachable = $state<boolean | null>(null);
+  let main = $state<HTMLElement>();
+
+  const connection = $derived(connectionState(browserOnline, serverReachable));
+
+  // The parked atlas is visibility:hidden until its panel is shown, so focus can land one or two
+  // frames later. Retry a few frames instead of dropping the user on the page body.
+  function focusPlace(place: string, attempts = 10): void {
+    const element = document.getElementById(place);
+    element?.focus();
+    if (document.activeElement === element || attempts === 0) return;
+    requestAnimationFrame(() => focusPlace(place, attempts - 1));
   }
+
+  function applyFocus(target: FocusTarget): void {
+    if (!target) return;
+    if (target.kind === 'place') {
+      requestAnimationFrame(() => focusPlace(placeButtonId(target.placeId)));
+      return;
+    }
+    main?.focus();
+  }
+
+  function show(next: Route): void {
+    const target = focusTarget(route, next);
+    route = next;
+    void tick().then(() => applyFocus(target));
+  }
+
+  // Browsers may rate-limit this call on every keystroke. The screen must not depend on it: the
+  // address simply catches up on the next edit.
+  function replaceAddress(hash: string): void {
+    try {
+      history.replaceState(null, '', hash);
+    } catch (error) {
+      console.warn('The browser refused to update the address', error);
+    }
+  }
+
+  function navigate(next: Route, options: { replace?: boolean } = {}): void {
+    const hash = formatRoute(next);
+    if (options.replace) {
+      replaceAddress(hash);
+      show(next);
+    } else if (location.hash === hash) {
+      show(next);
+    } else {
+      location.hash = hash;
+    }
+  }
+
+  function skipToContent(event: MouseEvent): void {
+    event.preventDefault();
+    main?.focus();
+  }
+
+  const monitor = new ServerMonitor(
+    (input, init) => fetch(input, init),
+    (reachable) => (serverReachable = reachable),
+    PROBE_TIMEOUT_MS,
+  );
 
   onMount(() => {
-    const controller = new AbortController();
-    let disposed = false;
-    const setApi = (value: string): void => {
-      if (!disposed) api = value;
-    };
-
-    void checkHealth(fetch, controller.signal)
-      .then(setApi)
-      .catch((error: unknown) => {
-        setApi('Server pending · run pnpm dev:api');
-        reportError('Could not query /api/health', error);
-      });
-
-    void loadEngine(() => import('playcanvas'))
-      .then((message) => {
-        if (!disposed) engine = message;
-      })
-      .catch((error: unknown) => {
-        if (!disposed) engine = 'Could not import PlayCanvas';
-        reportError('Could not import PlayCanvas', error);
-      });
-
+    monitor.check();
+    const interval = setInterval(() => monitor.check(), PROBE_INTERVAL_MS);
     return () => {
-      disposed = true;
-      controller.abort();
+      clearInterval(interval);
+      monitor.dispose();
     };
   });
+
+  function wentOnline(): void {
+    browserOnline = true;
+    // Probes failed while offline: show "checking" instead of a stale "server down".
+    serverReachable = null;
+    monitor.check();
+  }
 </script>
 
-<svelte:head><title>Desire · Entorno de desarrollo</title></svelte:head>
+<svelte:window
+  onhashchange={() => show(parseRoute(location.hash))}
+  ononline={wentOnline}
+  onoffline={() => (browserOnline = false)}
+/>
+<svelte:head><title>{t('app.title')}</title></svelte:head>
 
-<main>
-  <img src="/assets/mark.svg" alt="" width="40" height="40" />
-  <p class="eyebrow">DESIRE / DESARROLLO</p>
-  <h1>El viaje empieza en Waterdeep.</h1>
-  <p>Base del entorno. El diseño de la mesa y las reglas de código se definirán a continuación.</p>
-  <ul aria-label="Estado del entorno" aria-live="polite">
-    <li>Svelte 5 y TypeScript</li>
-    <li>{api}</li>
-    <li>{engine}</li>
-    <li>PostgreSQL and WebAssembly: external verification pending</li>
-  </ul>
-</main>
+<div class="shell">
+  <a class="skip" href={formatRoute(route)} onclick={skipToContent}>{t('app.skip')}</a>
+  <header class="bar">
+    <a class="brand" href={formatRoute(HUB_ROUTE)}>
+      <img src="/assets/mark.svg" alt="" width="24" height="24" />
+      {t('app.name')}
+    </a>
+    <p
+      class="connection"
+      class:bad={connection === 'offline' || connection === 'server_down'}
+      role="status"
+    >
+      {t(CONNECTION_LABELS[connection])}
+    </p>
+  </header>
+  <main
+    bind:this={main}
+    id={MAIN_CONTENT_ID}
+    class="content"
+    tabindex="-1"
+    aria-label={t('app.main')}
+  >
+    {#if route.view === 'campaign'}
+      {#key route.campaignId}
+        <CampaignWorkspace {api} {route} onnavigate={navigate} />
+      {/key}
+    {:else if route.view === 'hub'}
+      <CampaignHub {api} onnavigate={navigate} />
+    {:else}
+      <div class="missing">
+        <StatusNotice tone="error" title={t('route.missing')} />
+        <a class="action" href={formatRoute(HUB_ROUTE)}>{t('route.back_to_hub')}</a>
+      </div>
+    {/if}
+  </main>
+</div>
 
 <style>
-  :global(body) {
+  .shell {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 100%;
+  }
+
+  .skip {
+    position: absolute;
+    top: var(--space-1);
+    left: var(--space-1);
+    z-index: 10;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-ink);
+    transform: translateY(-200%);
+  }
+
+  .skip:focus {
+    transform: none;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-rule);
+    background: var(--color-hull);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--control-height);
+    color: var(--color-parchment);
+    font-family: var(--font-display);
+    font-size: var(--text-voice);
+    text-decoration: none;
+  }
+
+  .connection {
     margin: 0;
-    background: #f4f3ed;
-    color: #25392f;
-    font-family: system-ui, sans-serif;
+    color: var(--color-ash);
+    font-size: var(--text-ui-sm);
   }
-  main {
-    max-width: 46rem;
-    margin: 12vh auto;
-    padding: 2rem;
+
+  .connection.bad {
+    color: var(--color-ember);
   }
-  .eyebrow {
-    font-size: .75rem;
-    letter-spacing: .14em;
-    margin-top: 2rem;
+
+  .content {
+    min-width: 0;
+    outline: none;
   }
-  h1 {
-    font-size: clamp(2rem, 6vw, 3.5rem);
-    font-weight: 600;
-    line-height: 1.1;
-  }
-  p, li { line-height: 1.7; }
-  ul {
-    padding: 1.5rem 1.5rem 1.5rem 2.5rem;
-    border: 1px solid #c4cec4;
-    border-radius: .75rem;
+
+  .missing {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-3);
+    max-width: 40rem;
+    margin: var(--space-7) auto;
+    padding: 0 var(--space-4);
   }
 </style>
