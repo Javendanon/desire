@@ -17,7 +17,9 @@ ambiguous, the transcription chooses the reading that plays better at the table:
 - the furniture positions.
 
 The **giant slide** is not on any plan. It came up in the campaign: it starts at the top of the
-turret, spirals around the tower and drops into the alley in front of the tavern door.
+turret, crosses to a free-standing spiral in the open yard north-west of the house (a spiral
+hugging the tower would cut through the first floor, which is built against it), and runs down
+the alley to the tavern door.
 
 ## Coordinates
 
