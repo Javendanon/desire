@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import planJson from '../content/maps/waterdeep/trollskull/floor-plan.json' with { type: 'json' };
 import catalogJson from '../content/props/catalog.json' with { type: 'json' };
-import type { FloorPlan, PropCatalog } from '../src/generated/contracts.ts';
+import type { CellRect, FloorPlan, PropCatalog } from '../src/generated/contracts.ts';
 import {
   buildFloorBoard,
   findPath,
@@ -258,4 +258,33 @@ test('validation catches marks with no wall, doubled marks, sealed doors and blo
   assert.match(problems, /un mueble tapa puerta-principal/);
   assert.match(problems, /escalera-a-la-barra une casillas que no existen o están ocupadas/);
   assert.match(problems, /escalera-al-vacio apunta al piso inexistente piso-inexistente/);
+});
+
+type Point = { x: number; y: number; z: number };
+
+function inRect(cell: { x: number; y: number }, rect: CellRect): boolean {
+  const insideX = cell.x >= rect.x && cell.x < rect.x + rect.w;
+  return insideX && cell.y >= rect.y && cell.y < rect.y + rect.h;
+}
+
+/** True when `point` is inside an indoor room of the floor whose storey contains its height. */
+function indoors(point: Point): boolean {
+  const size = plan.cell_size_m;
+  return plan.floors.some((floor) => {
+    const storey = point.y >= floor.elevation_m && point.y < floor.elevation_m + floor.height_m;
+    if (!storey) return false;
+    const cell = {
+      x: Math.floor(point.x / size - floor.origin_x),
+      y: Math.floor(point.z / size - floor.origin_y),
+    };
+    const indoorRooms = floor.rooms.filter((room) => room.kind === 'interior');
+    return indoorRooms.some((room) => room.cells.some((rect) => inRect(cell, rect)));
+  });
+}
+
+test('the slide never passes through an indoor room on its way down', () => {
+  const slide = plan.links.find((link) => link.kind === 'slide');
+  assert.ok(slide);
+  // The first point is the launch inside the turret top; every later point must be outdoors.
+  assert.deepEqual(slide.path.slice(1).filter(indoors), [], 'slide points inside an indoor room');
 });
