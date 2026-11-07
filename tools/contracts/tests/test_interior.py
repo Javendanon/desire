@@ -41,3 +41,14 @@ class InteriorContractTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class InteriorBoundsTests(unittest.TestCase):
+    """Grid coordinates are u32 in Rust, so the schema must refuse what Rust would refuse."""
+
+    def test_negative_squares_are_rejected(self):
+        definitions = json.loads((ROOT / 'contracts/schema.json').read_text())['$defs']
+        plan = json.loads(PLAN.read_text())
+        plan['floors'][1]['rooms'][0]['cells'][0]['x'] = -1
+        with self.assertRaises(ValueError):
+            validate(plan, {'$ref': '#/$defs/FloorPlan', '$defs': definitions})

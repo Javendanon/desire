@@ -53,3 +53,37 @@ fn example_protocol_versions_match_core() {
         assert_eq!(event.protocol_version, crate::PROTOCOL_VERSION);
     }
 }
+
+const TROLLSKULL_PLAN: &str =
+    include_str!("../../../../content/maps/waterdeep/trollskull/floor-plan.json");
+const PROP_CATALOG: &str = include_str!("../../../../content/props/catalog.json");
+
+/// The authored interior must load into the Rust DTOs and serialize back without losing a field,
+/// so wire names (`wood_plank`, `n`, `slide`), nullable tints and unknown-field rejection hold.
+#[test]
+fn interior_data_round_trips_through_the_rust_contract() {
+    let plan: super::interior::FloorPlan =
+        serde_json::from_str(TROLLSKULL_PLAN).expect("Trollskull plan matches the contract");
+    let original: serde_json::Value = serde_json::from_str(TROLLSKULL_PLAN).expect("valid JSON");
+    assert_eq!(
+        serde_json::to_value(plan).expect("serializable plan"),
+        original
+    );
+    let catalog: super::interior::PropCatalog =
+        serde_json::from_str(PROP_CATALOG).expect("catalogue matches the contract");
+    let original: serde_json::Value = serde_json::from_str(PROP_CATALOG).expect("valid JSON");
+    assert_eq!(
+        serde_json::to_value(catalog).expect("serializable catalogue"),
+        original
+    );
+}
+
+#[test]
+fn interior_rejects_unknown_fields_and_negative_squares() {
+    let mut plan: serde_json::Value = serde_json::from_str(TROLLSKULL_PLAN).expect("valid JSON");
+    plan["floors"][0]["rooms"][0]["colour"] = serde_json::json!("red");
+    assert!(serde_json::from_value::<super::interior::FloorPlan>(plan.clone()).is_err());
+    let mut plan: serde_json::Value = serde_json::from_str(TROLLSKULL_PLAN).expect("valid JSON");
+    plan["floors"][0]["rooms"][0]["cells"][0]["x"] = serde_json::json!(-1);
+    assert!(serde_json::from_value::<super::interior::FloorPlan>(plan).is_err());
+}
