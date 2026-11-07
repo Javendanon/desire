@@ -175,8 +175,13 @@
     {/if}
   </main>
 </div>
-<!-- A prologue that fails to mount renders nothing and leaves the table untouched. -->
-<svelte:boundary>
+<!-- A failed prologue releases the shell and restores focus just like skipping it. -->
+<svelte:boundary
+  onerror={(error) => {
+    console.error('Campaign prologue failed', error);
+    enterTable();
+  }}
+>
   {#if prologueOpen}
     <Prologue onskip={enterTable} />
   {/if}

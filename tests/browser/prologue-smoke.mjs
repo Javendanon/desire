@@ -123,20 +123,32 @@ async function missingIllustrationKeepsTheSkip() {
   await send('Network.setBlockedURLs', { urls: [] });
 }
 
+const FAIL_PROLOGUE_MOUNT = `
+  const querySelectorAll = Element.prototype.querySelectorAll;
+  Element.prototype.querySelectorAll = function (selector) {
+    if (this.classList.contains('prologue') && selector === '[data-scene]') {
+      window.prologueFailureInjected = true;
+      throw new Error('Injected prologue mount failure');
+    }
+    return querySelectorAll.call(this, selector);
+  };
+  const logError = console.error;
+  console.error = (message, ...args) => {
+    if (message === 'Campaign prologue failed') {
+      window.prologueFailureLogged = args[0]?.message === 'Injected prologue mount failure';
+    }
+    logError(message, ...args);
+  };
+`;
+
 async function failedPrologueRestoresTheShell() {
-  const script = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
-    const querySelectorAll = Element.prototype.querySelectorAll;
-    Element.prototype.querySelectorAll = function (selector) {
-      if (this.classList.contains('prologue') && selector === '[data-scene]') {
-        window.prologueFailureInjected = true;
-        throw new Error('Injected prologue mount failure');
-      }
-      return querySelectorAll.call(this, selector);
-    };
-  ` });
+  const script = await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: FAIL_PROLOGUE_MOUNT,
+  });
   try {
     await reload();
     await waitFor('window.prologueFailureInjected === true', 'injected component mount failure');
+    await waitFor('window.prologueFailureLogged === true', 'component failure logged with context');
     await waitFor("document.querySelector('.prologue') === null", 'failed prologue removed');
     assert.equal(
       await evaluate("document.querySelector('.shell')?.inert"),

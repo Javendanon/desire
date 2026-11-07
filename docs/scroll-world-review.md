@@ -48,8 +48,9 @@ Card `8a224ea3-f252-43c7-8fae-4922c85d6161`. The vendored copy stays untouched i
 | `hint`, route dots, nav, particles | Not adapted: the entry screen has one control, the always-available "Saltar a la mesa" button, plus Escape. |
 
 Optional and reversible: the `campaign_prologue` runtime flag (off by default) turns the screen on,
-and the shell behind it stays mounted, inert and untouched. If the illustration or the component
-fails, the gradient backdrop and the skip button remain, and the table keeps working.
+and the shell behind it stays mounted and inert while it is open. If the illustration fails,
+the gradient backdrop and the skip button remain. If the component fails to render or mount,
+the shell logs the failure, closes the prologue, removes inertness and restores focus to the table.
 
 No performance claim is made for this screen: no FPS, memory or mobile decode measurement was
 taken, because no video is decoded.
