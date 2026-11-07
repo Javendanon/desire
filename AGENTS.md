@@ -10,13 +10,6 @@ Para tomar o entregar tarjetas, seguir [desarrollo paralelo](docs/desarrollo-par
   se escribe en TypeScript estricto con `node:test`. Las herramientas que ya están en Python 3
   con la biblioteca estándar y `unittest` (`tools/contracts`, `tools/quality`, `tools/ci`,
   `tools/knowledge`) siguen así.
-- Los tests nunca van en el mismo archivo que el código que prueban.
-  - Rust: si basta la API pública, prueba de integración en `crates/<crate>/tests/`. Si necesita
-    internos del módulo, archivo aparte `<módulo>/tests.rs`, declarado en el módulo solo con
-    `#[cfg(test)] mod tests;`. Prohibido el bloque `#[cfg(test)] mod tests { ... }` inline.
-  - TypeScript y Python: `tests/*.test.ts` y `tools/*/tests/test_*.py`, como ya se hace.
-  - Código existente con tests inline: moverlos al tocar ese archivo; no agregar tests nuevos
-    al bloque inline.
 - Apuntar al objetivo A- (87), no solo al piso B- (77).
 - Aplicar F1–F16 y el flujo RED → implementación → gate → tests → advisor → reporte.
 - El advisor independiente es obligatorio para cambios de más de 50 líneas o archivos
