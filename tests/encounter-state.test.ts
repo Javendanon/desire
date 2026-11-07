@@ -274,3 +274,16 @@ test('each interaction scope states its reach in its own words', () => {
   assert.match(scopeNote('device').text, /this browser/i);
   assert.ok(notes.every((note) => note.label.length > 0));
 });
+
+
+test('DM sheets and participants are excluded unless the host grants visibility', async () => {
+  const { visibleEncounter } = await import('../src/features/encounters/encounter-visibility.ts');
+  const hidden = structuredClone(bundle);
+  hidden.sheets[0].actor.visibility = 'dm';
+  const actorId = hidden.sheets[0].actor.id;
+  const projected = visibleEncounter(hidden, false);
+  assert.ok(!projected.sheets.some((sheet) => sheet.actor.id === actorId));
+  assert.ok(!projected.participants.some((entry) => entry.actor_id === actorId));
+  assert.equal(visibleEncounter(hidden, true), hidden);
+  assert.equal(hidden.sheets.length, bundle.sheets.length);
+});

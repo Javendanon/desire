@@ -80,8 +80,9 @@ export function loadParticlesEnabled(storage: EffectsStorage): boolean {
 /** Returns false when the choice could not be kept, so it only lasts this session. */
 export function saveParticlesEnabled(storage: EffectsStorage, enabled: boolean): boolean {
   try {
-    storage.setItem(EFFECTS_STORAGE_KEY, enabled ? STORED_ON : STORED_OFF);
-    return true;
+    const value = enabled ? STORED_ON : STORED_OFF;
+    storage.setItem(EFFECTS_STORAGE_KEY, value);
+    return storage.getItem(EFFECTS_STORAGE_KEY) === value;
   } catch (error) {
     console.warn('Could not save the particle preference', error);
     return false;

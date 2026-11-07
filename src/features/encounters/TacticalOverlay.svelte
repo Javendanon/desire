@@ -39,17 +39,22 @@
     startLocalState,
   } from './encounter-state.ts';
   import type { InteractionScope } from './interaction-scope.ts';
+  import { visibleEncounter } from './encounter-visibility.ts';
   import { participantViews } from './tactical-view.ts';
 
   interface Props {
     bundle: EncounterBundle;
+    canSeeDm?: boolean;
     rules: RuleBook;
     placeName: string;
     subscribePlace: PlaceSubscription;
     effectsStorage: EffectsStorage;
   }
 
-  let { bundle, rules, placeName, subscribePlace, effectsStorage }: Props = $props();
+  let { bundle: sourceBundle, canSeeDm = false, rules, placeName,
+    subscribePlace, effectsStorage }: Props = $props();
+
+  const bundle = $derived(visibleEncounter(sourceBundle, canSeeDm));
 
   const CONCENTRATION_SOURCES = 1;
 
@@ -66,8 +71,9 @@
   let sheetOpener: HTMLElement | null = null;
 
   const sheets = $derived(indexSheets(bundle.sheets));
-  const rolled = $derived(rolledOrder(bundle.participants));
-  const views = $derived(participantViews({ bundle, state: local, rules }));
+  const rolled = $derived(rolledOrder(sourceBundle.participants));
+  const views = $derived(participantViews({ bundle: sourceBundle, state: local, rules })
+    .filter((view) => sheets.has(view.actorId)));
   const recordedSheet = $derived(openActorId ? sheets.get(openActorId) ?? null : null);
   const openSheet = $derived(recordedSheet ? applyLocal(recordedSheet, local) : null);
   const edits = $derived(recordedSheet ? localEdits(recordedSheet, local) : null);
@@ -101,6 +107,10 @@
 
   $effect(() => subscribePlace(handlePlace));
 
+  $effect(() => {
+    if (openActorId && !sheets.has(openActorId)) closeSheet();
+  });
+
   function handlePlace(place: PickedPlace): void {
     if (place.contractId === bundle.encounter.place_id) {
       panelOpen = true;
@@ -111,6 +121,7 @@
   }
 
   function showSheet(actorId: Id): void {
+    if (!sheets.has(actorId)) return;
     sheetOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     openActorId = actorId;
   }
@@ -140,7 +151,7 @@
   }
 
   function advance(): void {
-    const conditions = participantConditions(bundle);
+    const conditions = participantConditions(sourceBundle);
     local = nextTurn(local, { rolledCount: rolled.length, conditions });
   }
 

@@ -111,28 +111,60 @@ async function exerciseReplacements(
   await expectReset(root);
 }
 
+async function expectVisibilityBoundary(
+  root: HTMLElement,
+  props: { bundle: EncounterBundle; canSeeDm: boolean },
+): Promise<void> {
+  const hidden = createDemoEncounter('fixture-place');
+  hidden.sheets = hidden.sheets.map((sheet) => ({
+    ...sheet, actor: { ...sheet.actor, visibility: 'dm' },
+  }));
+  props.bundle = hidden;
+  await tick();
+  expect(!root.querySelector('[data-open-sheet]'), 'DM opener exposed by default');
+  await press(root, 'Next turn');
+  expect(panelText(root).includes('Round 1'), 'hidden participants shortened round');
+  expect(!panelText(root).includes('Demo Mage'), 'DM details exposed by default');
+  props.canSeeDm = true;
+  await tick();
+  await press(root, 'Demo Mage');
+  expect(!!root.querySelector('#character-sheet'), 'authorized DM sheet unavailable');
+  props.canSeeDm = false;
+  await tick();
+  expect(!root.querySelector('#character-sheet'), 'sheet survived capability revocation');
+  expect(document.activeElement?.id === 'tactical-launcher', 'revocation lost focus');
+  const toggle = root.querySelector<HTMLInputElement>('#tactical-particles');
+  expect(!!toggle, 'particle toggle missing');
+  toggle!.click();
+  await tick();
+  expect(panelText(root).includes('Local only'), 'unreadable preference claimed device scope');
+}
+
 /** Runs in Chrome through Vite, using the actual Svelte component and reactive props. */
 export async function checkEncounterReplacement(): Promise<void> {
   const root = document.createElement('div');
   document.body.append(root);
   const initial = createDemoEncounter('fixture-place');
   const props = $state({
+    canSeeDm: false,
     bundle: { ...initial, encounter: { ...initial.encounter, round_number: 5 } },
   });
   const component = mount(TacticalOverlay, {
     target: root,
     props: {
       get bundle() { return props.bundle; },
+      get canSeeDm() { return props.canSeeDm; },
       rules: createRuleBook(DEMO_RULE_ENTRIES),
       placeName: 'Fixture place',
       subscribePlace: () => () => {},
-      effectsStorage: { getItem: () => null, setItem: () => {} },
+      effectsStorage: { getItem: () => { throw new Error('read denied'); }, setItem() {} },
     },
   });
   try {
     await tick();
     await exerciseReplacements(root, props);
     await expectRemovedOpenerReset(root, props);
+    await expectVisibilityBoundary(root, props);
   } finally {
     await unmount(component);
     root.remove();

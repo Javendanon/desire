@@ -107,3 +107,18 @@ test('a blocked storage reports the failure and falls back without throwing', (c
   assert.equal(saveParticlesEnabled(failingStorage, false), false);
   assert.equal(warn.mock.callCount(), 2);
 });
+
+
+test('a successful write without readable persistence stays local', (context) => {
+  context.mock.method(console, 'warn', () => undefined);
+  const storage: EffectsStorage = {
+    getItem() { throw new Error('read denied'); },
+    setItem() {},
+  };
+  assert.equal(saveParticlesEnabled(storage, false), false);
+});
+
+test('a silently discarded preference is not reported as saved', () => {
+  const storage: EffectsStorage = { getItem: () => null, setItem() {} };
+  assert.equal(saveParticlesEnabled(storage, false), false);
+});
