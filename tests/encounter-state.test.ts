@@ -287,3 +287,18 @@ test('DM sheets and participants are excluded unless the host grants visibility'
   assert.equal(visibleEncounter(hidden, true), hidden);
   assert.equal(hidden.sheets.length, bundle.sheets.length);
 });
+
+test('a hidden DM participant takes no row, turn slot or condition in the player view', async () => {
+  const { visibleEncounter } = await import('../src/features/encounters/encounter-visibility.ts');
+  const hidden = structuredClone(bundle);
+  const actorId = rolledOrder(hidden.participants)[0].actor_id;
+  const sheet = hidden.sheets.find((entry) => entry.actor.id === actorId);
+  assert.ok(sheet);
+  sheet.actor.visibility = 'dm';
+  const projected = visibleEncounter(hidden, false);
+  const state = startLocalState(projected.encounter);
+  assert.ok(!rolledOrder(projected.participants).some((entry) => entry.actor_id === actorId));
+  assert.ok(!participantViews({ bundle: projected, state, rules }).some((view) => view.actorId === actorId));
+  assert.ok(!participantConditions(projected).some((condition) => condition.actor_id === actorId));
+  assert.equal(rolledOrder(projected.participants).length, rolledOrder(hidden.participants).length - 1);
+});

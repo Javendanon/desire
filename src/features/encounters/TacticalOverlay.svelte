@@ -71,9 +71,10 @@
   let sheetOpener: HTMLElement | null = null;
 
   const sheets = $derived(indexSheets(bundle.sheets));
-  const rolled = $derived(rolledOrder(sourceBundle.participants));
-  const views = $derived(participantViews({ bundle: sourceBundle, state: local, rules })
-    .filter((view) => sheets.has(view.actorId)));
+  // Every row, turn and condition derives from the projected bundle, so hidden DM participants
+  // neither render nor take a turn slot that would reveal they exist.
+  const rolled = $derived(rolledOrder(bundle.participants));
+  const views = $derived(participantViews({ bundle, state: local, rules }));
   const recordedSheet = $derived(openActorId ? sheets.get(openActorId) ?? null : null);
   const openSheet = $derived(recordedSheet ? applyLocal(recordedSheet, local) : null);
   const edits = $derived(recordedSheet ? localEdits(recordedSheet, local) : null);
@@ -151,13 +152,15 @@
   }
 
   function advance(): void {
-    const conditions = participantConditions(sourceBundle);
+    const conditions = participantConditions(bundle);
     local = nextTurn(local, { rolledCount: rolled.length, conditions });
   }
 
   function setParticles(enabled: boolean): void {
     particlesEnabled = enabled;
-    particlesScope = saveParticlesEnabled(effectsStorage, enabled) ? 'device' : 'session';
+    particlesScope = saveParticlesEnabled(effectsStorage, enabled)
+      ? effectsScope(effectsStorage)
+      : 'session';
   }
 </script>
 
