@@ -25,6 +25,7 @@ mod resources;
 mod scene_concurrency;
 mod server;
 mod server_policy;
+mod static_files;
 
 use axum::http::{Method, StatusCode};
 use desire_core::contracts::campaign::Campaign;

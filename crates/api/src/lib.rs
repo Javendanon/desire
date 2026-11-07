@@ -14,6 +14,7 @@ pub mod nivel20;
 pub mod payloads;
 pub mod query;
 pub mod routes;
+pub mod static_files;
 pub mod store;
 pub mod validation;
 
@@ -33,6 +34,8 @@ pub struct AppState {
     pub dev_identity: bool,
     pub dev_origin: Option<String>,
     pub oidc: Option<std::sync::Arc<auth::oidc::Oidc>>,
+    /// Compiled frontend directory; `None` keeps the API-only behaviour.
+    pub static_dir: Option<std::path::PathBuf>,
 }
 
 impl AppState {
@@ -45,6 +48,7 @@ impl AppState {
             dev_identity: true,
             dev_origin: None,
             oidc: None,
+            static_dir: None,
         }
     }
 
@@ -57,6 +61,7 @@ impl AppState {
             dev_identity: false,
             dev_origin: None,
             oidc: None,
+            static_dir: None,
         }
     }
 
@@ -73,6 +78,7 @@ impl AppState {
             dev_identity: false,
             dev_origin: None,
             oidc: None,
+            static_dir: None,
         }
     }
 
@@ -85,8 +91,15 @@ impl AppState {
         self.dev_identity = allow;
         self
     }
+
+    /// Serve the compiled frontend from `directory`; `None` leaves the router API-only.
+    pub fn with_static_dir(mut self, directory: Option<std::path::PathBuf>) -> Self {
+        self.static_dir = directory;
+        self
+    }
 }
 
 pub fn app(state: AppState) -> axum::Router {
-    routes::router(state)
+    let router = routes::router(state.clone());
+    static_files::attach(router, state.static_dir, state.flags)
 }

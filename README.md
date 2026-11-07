@@ -37,6 +37,8 @@ public/               # Assets and vendored references
 docs/                 # Research and environment state
 docs/archive/         # Earlier draft, outside the build
 compose.yaml          # Local PostgreSQL
+Dockerfile            # Multi-stage image: Vite build + release API
+fly.toml              # Fly.io app: São Paulo (gru), one always-on machine
 pnpm-workspace.yaml   # pnpm project settings (keeps the lockfile single-document)
 ```
 
@@ -149,6 +151,27 @@ production proxy. The engine check on screen only validates its import, not rend
 PostgreSQL is exposed on `localhost:55432` to avoid occupying the usual port 5432. The
 values in `.env.example` are local only. To stop the database without deleting data:
 `pnpm db:stop`.
+
+## Deployment
+
+One Fly.io app serves the API and the compiled frontend from the same origin and port.
+The committed `Dockerfile` builds the Wasm and Vite bundle, then the release API binary,
+and copies only the binary, the static build and CA roots into the final image.
+
+- `fly.toml` runs in São Paulo (`gru`) with one always-on machine, a `/api/health` check
+  and `desire-api --migrate` as the release command.
+- Configuration is environment-only: `DATABASE_URL` and the `DESIRE_OIDC_*` values are
+  secrets; `HOST`, `PORT`, `DESIRE_STATIC_DIR` and the trusted client IP header come from
+  `[env]`. No secret is committed.
+- `DESIRE_STATIC_DIR` enables static serving, and the `static_site` runtime flag must be on
+  for it: Vite's content-hashed assets get a long immutable cache, unknown app routes return
+  `index.html`, `/api/*` stays a 404, and an unset flag keeps the previous API-only
+  behaviour. The image ships `static_site = on` in `/app/flags.txt`, readable at runtime so
+  serving can be switched off without a deploy.
+
+The step-by-step runbook, the two database options, the custom domain, the Google
+callback URL, rollback and logs are in [docs/deploy.md](docs/deploy.md). The real
+deploy is run by the account owner.
 
 ## Verification state
 

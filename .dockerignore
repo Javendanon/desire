@@ -1,0 +1,22 @@
+# Keep the build context to sources: generated output, caches and local state are rebuilt
+# inside the image. Secrets never enter the context.
+.git
+.github
+.agents
+.openai
+.local
+target
+**/target
+node_modules
+**/node_modules
+dist
+src/generated/wasm
+outputs
+# The image tag pins the toolchain; the file would make rustup look for it online.
+rust-toolchain.toml
+**/*.log
+.env
+.env.*
+.DS_Store
+__pycache__
+*.pyc

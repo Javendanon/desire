@@ -1,4 +1,6 @@
 //! Blocking PostgreSQL access bridged to async handlers.
+mod tls;
+
 use crate::error::ApiError;
 use postgres::{Client, NoTls};
 use std::{
@@ -26,6 +28,7 @@ const TIMED_OUT: &str = "database request timed out; a write outcome may be unkn
 const NOT_RESTORED: &str = "the database connection could not be restored";
 const CONNECT_TIMED_OUT: &str = "database connection timed out";
 const NOT_STARTED: &str = "database request timed out before its work started";
+const TLS_UNUSABLE: &str = "the database TLS settings are unusable";
 
 /// A public message plus a category for the log: an SQLSTATE or I/O kind, never driver text.
 struct Fault {
@@ -107,6 +110,19 @@ fn failure(request_id: &str, fault: impl Into<Fault>) -> ApiError {
     ApiError::internal_for(request_id, message)
 }
 
+/// TLS policy from the connection string. `require` gets a connector that verifies the server
+/// and never falls back to plaintext; anything else keeps the plaintext driver, so local Docker
+/// and the socket tests behave as before.
+fn connector(config: &Config) -> Result<Option<tls::Connector>, Fault> {
+    match tls::mode(config) {
+        tls::Mode::Plain => Ok(None),
+        tls::Mode::Verify => tls::connector().map(Some).map_err(|cause| Fault {
+            message: TLS_UNUSABLE,
+            cause,
+        }),
+    }
+}
+
 fn deadline_of(config: &Config) -> Duration {
     config
         .get_connect_timeout()
@@ -118,19 +134,30 @@ fn deadline_of(config: &Config) -> Duration {
 /// Completes a full handshake under a deadline that really cancels: the async driver drops the
 /// socket. The blocking client has no such bound, so it only connects after this succeeds.
 fn probe(config: &Config, deadline: Instant) -> Result<(), Fault> {
+    let connector = connector(config)?;
     let runtime = runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|_| Fault::from(NOT_RESTORED))?;
     runtime.block_on(async {
-        let attempt = timeout_at(deadline, config.connect(tokio_postgres::NoTls)).await;
-        let (client, connection) = attempt
+        let attempt = match connector {
+            None => timeout_at(deadline, probe_with(config, tokio_postgres::NoTls)).await,
+            Some(connector) => timeout_at(deadline, probe_with(config, connector)).await,
+        };
+        attempt
             .map_err(|_| Fault::from(CONNECT_TIMED_OUT))?
-            .map_err(|error| not_restored(&error))?;
-        drop(client);
-        let _closed = timeout_at(deadline, connection).await;
-        Ok(())
+            .map_err(|error| not_restored(&error))
     })
+}
+
+async fn probe_with<T>(config: &Config, connector: T) -> Result<(), tokio_postgres::Error>
+where
+    T: tokio_postgres::tls::MakeTlsConnect<tokio_postgres::Socket>,
+{
+    let (client, connection) = config.connect(connector).await?;
+    drop(client);
+    let _closed = connection.await;
+    Ok(())
 }
 
 /// A peer can still go silent after the probe, and the blocking handshake cannot be cancelled.
@@ -145,11 +172,16 @@ fn handshake(config: &Config, wait: Duration, slots: &Arc<Semaphore>) -> Result<
         cause: "handshake cap reached".into(),
     })?;
     let blocking = postgres::Config::from(config.clone());
+    let connector = connector(config)?;
     let (sent, received) = mpsc::sync_channel(1);
     thread::Builder::new()
         .spawn(move || {
             let _permit = permit;
-            let _late = sent.send(blocking.connect(NoTls));
+            let client = match connector {
+                None => blocking.connect(NoTls),
+                Some(connector) => blocking.connect(connector),
+            };
+            let _late = sent.send(client);
         })
         .map_err(|_| Fault::from(NOT_RESTORED))?;
     match received.recv_timeout(wait) {
@@ -321,4 +353,32 @@ where
         .await
         .map_err(|_| failure(&request_id, TIMED_OUT))?
         .map_err(|_| failure(&request_id, "database worker failed"))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(url: &str) -> Config {
+        url.parse().unwrap()
+    }
+
+    /// Regression: `NoTls` accepts a `require` URL and then fails (or would talk in plaintext)
+    /// because it can never complete the handshake.
+    #[test]
+    fn a_require_url_is_not_opened_with_the_plaintext_driver() {
+        let required = config("postgres://user:secret@db.internal:5432/desire?sslmode=require");
+        assert!(matches!(connector(&required), Ok(Some(_))));
+
+        for plaintext in [
+            "postgres://user:secret@db.internal:5432/desire",
+            "postgres://user:secret@db.internal:5432/desire?sslmode=prefer",
+            "postgres://user:secret@db.internal:5432/desire?sslmode=disable",
+        ] {
+            assert!(
+                matches!(connector(&config(plaintext)), Ok(None)),
+                "{plaintext}"
+            );
+        }
+    }
 }

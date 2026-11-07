@@ -8,6 +8,7 @@ use desire_api::{
     },
     db,
     nivel20::Nivel20Client,
+    static_files,
 };
 use std::net::{IpAddr, SocketAddr};
 
@@ -112,6 +113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let settings = Settings::from_env()?;
     require_oidc(host, settings.is_some())?;
+    let static_dir = static_files::from_env()?;
     let dev_origin = if settings.is_none() {
         development_origin(dev_identity)?
     } else {
@@ -121,7 +123,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = db::connect_startup(&config)?;
     let nivel20 = Nivel20Client::from_env()?;
     let address = SocketAddr::new(host, port);
-    let mut state = AppState::with_nivel20(config, client, nivel20).with_dev_identity(dev_identity);
+    let mut state = AppState::with_nivel20(config, client, nivel20)
+        .with_dev_identity(dev_identity)
+        .with_static_dir(static_dir);
     state.dev_origin = dev_origin;
     run_server(address, state, settings)
 }
