@@ -123,6 +123,38 @@ async function missingIllustrationKeepsTheSkip() {
   await send('Network.setBlockedURLs', { urls: [] });
 }
 
+async function failedPrologueRestoresTheShell() {
+  const script = await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    const querySelectorAll = Element.prototype.querySelectorAll;
+    Element.prototype.querySelectorAll = function (selector) {
+      if (this.classList.contains('prologue') && selector === '[data-scene]') {
+        window.prologueFailureInjected = true;
+        throw new Error('Injected prologue mount failure');
+      }
+      return querySelectorAll.call(this, selector);
+    };
+  ` });
+  try {
+    await reload();
+    await waitFor('window.prologueFailureInjected === true', 'injected component mount failure');
+    await waitFor("document.querySelector('.prologue') === null", 'failed prologue removed');
+    assert.equal(
+      await evaluate("document.querySelector('.shell')?.inert"),
+      false,
+      'a component failure must release the shell, not just remove the overlay',
+    );
+    await waitFor("document.activeElement?.id === 'content'", 'focus after component failure');
+    await evaluate("document.querySelector('.brand').focus()");
+    assert.equal(await evaluate("document.activeElement?.matches('.brand')"), true);
+    await click('.brand');
+    await waitFor("location.hash === '#/campaigns'", 'hub navigation after component failure');
+  } finally {
+    await send('Page.removeScriptToEvaluateOnNewDocument', {
+      identifier: script.result.identifier,
+    });
+  }
+}
+
 async function narrowScreenKeepsTheSkipReachable() {
   await send('Emulation.setDeviceMetricsOverride', {
     width: 390, height: 780, deviceScaleFactor: 1, mobile: true,
@@ -162,7 +194,10 @@ try {
   await reducedMotionShowsAStaticScene();
   await missingIllustrationKeepsTheSkip();
   await narrowScreenKeepsTheSkipReachable();
-  const report = { ok: true, skip: true, scroll: true, reduced: true, fallback: true };
+  await failedPrologueRestoresTheShell();
+  const report = {
+    ok: true, skip: true, scroll: true, reduced: true, fallback: true, componentFailure: true,
+  };
   console.log(JSON.stringify(report));
 } catch (error) {
   const reason = error instanceof Error ? error.message : String(error);
