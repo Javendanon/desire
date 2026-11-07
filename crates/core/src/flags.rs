@@ -39,8 +39,15 @@ pub const CAMPAIGN_HUB: Flag = Flag {
     description: "mount the campaign hub shell instead of the pre-flag placeholder page",
 };
 
+/// The browser reads this flag too: when it is on, opening a campaign offers the optional
+/// scroll prologue before the table.
+pub const CAMPAIGN_PROLOGUE: Flag = Flag {
+    name: "campaign_prologue",
+    description: "offer the optional scroll prologue before a campaign's table",
+};
+
 /// Every flag the code base reads. Add a flag here and to `docs/flags.md` in the same change.
-pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT, CAMPAIGN_HUB];
+pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT, CAMPAIGN_HUB, CAMPAIGN_PROLOGUE];
 
 /// Why a flags file could not be used.
 #[derive(Debug)]

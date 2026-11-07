@@ -32,3 +32,24 @@ Su fluidez de reproducción no es un benchmark de un motor 3D: las cargas de tra
 El repositorio declara [licencia MIT](https://github.com/oso95/scroll-world/blob/main/LICENSE): al copiar o adaptar código hay que conservar el aviso correspondiente. La licencia del repositorio no sustituye las condiciones de los proveedores de generación ni los derechos de los assets usados.
 
 Propuesta: mantenerlo como recurso opcional de presentación; evaluar el escenario caminable mediante geometría/splats más colisiones y navegación reales. No adoptar sus vídeos como representación del estado de partida.
+
+## Implemented adaptation (D20)
+
+Card `8a224ea3-f252-43c7-8fae-4922c85d6161`. The vendored copy stays untouched in
+`public/vendor/scroll-world/` (`LICENSE` plus `scrub-engine.upstream.js`); the adaptation lives in
+`src/features/prologue/` and keeps the MIT notice in the module header.
+
+| Upstream behaviour | Adapted behaviour |
+| --- | --- |
+| Video clips fetched as blobs and scrubbed by `requestAnimationFrame` | One existing illustration (`public/assets/abbey.jpg`) in three framings. No clips, no blob URLs, no animation loop: stills cross-dissolve on `scroll`. |
+| Builds its own DOM and injects global CSS | The markup and the scoped CSS live in `Prologue.svelte`; the controller only writes inline `opacity`/`transform`. |
+| No teardown | `destroy()` removes the single passive `scroll` listener. There is no RAF handle and no object URL to release; a future clip path must revoke its blobs there. |
+| Reduced motion keeps the stills but drops the clips | Reduced motion renders one static scene with no scroll track and attaches no listener at all. |
+| `hint`, route dots, nav, particles | Not adapted: the entry screen has one control, the always-available "Saltar a la mesa" button, plus Escape. |
+
+Optional and reversible: the `campaign_prologue` runtime flag (off by default) turns the screen on,
+and the shell behind it stays mounted, inert and untouched. If the illustration or the component
+fails, the gradient backdrop and the skip button remain, and the table keeps working.
+
+No performance claim is made for this screen: no FPS, memory or mobile decode measurement was
+taken, because no video is decoded.

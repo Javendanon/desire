@@ -5,6 +5,9 @@
 /** The flag that swaps the pre-flag placeholder for the campaign hub shell. */
 export const CAMPAIGN_HUB = 'campaign_hub';
 
+/** The flag that opens the optional scroll prologue before a campaign's table. */
+export const CAMPAIGN_PROLOGUE = 'campaign_prologue';
+
 /** Meta tag the dev and build pipeline fills with the flags file text. */
 export const FLAGS_META = 'desire-flags';
 

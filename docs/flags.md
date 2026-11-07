@@ -70,6 +70,7 @@ from a diff, so the reviewer raises it as a blocking finding (coordinated with D
 | --- | --- | --- | --- |
 | `nivel20_import` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | Enable the read-only Nivel20 import endpoints (`crates/api/src/routes/nivel20.rs`) |
 | `campaign_hub` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | mount the campaign hub shell instead of the pre-flag placeholder page |
+| `campaign_prologue` | off | `Flag::DEFAULT` in `crates/core/src/flags.rs` | offer the optional scroll prologue before a campaign's table (see [the scroll-world review](scroll-world-review.md)) |
 
 `nivel20_import` gates the three Nivel20 routes. With the flag off, or with the flags file
 missing or malformed, `GET .../nivel20`, `POST .../nivel20/preview` and

@@ -1,0 +1,4 @@
+# Flags for the prologue browser suite: the hub shell plus the optional scroll prologue. The
+# app is off by default; these suites turn on exactly what they drive.
+campaign_hub = on
+campaign_prologue = on

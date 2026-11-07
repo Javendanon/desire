@@ -19,6 +19,14 @@
   import { createApiContext } from './features/campaign/api-context.ts';
   import CampaignHub from './features/campaign/CampaignHub.svelte';
   import CampaignWorkspace from './features/campaign/CampaignWorkspace.svelte';
+  import Prologue from './features/prologue/Prologue.svelte';
+
+  interface Props {
+    /** `campaign_prologue` is on: offer the optional entry sequence before a campaign's table. */
+    prologue?: boolean;
+  }
+
+  let { prologue = false }: Props = $props();
 
   const CONNECTION_LABELS: Readonly<Record<ConnectionState, MessageKey>> = {
     checking: 'connection.checking',
@@ -36,8 +44,11 @@
   let browserOnline = $state(navigator.onLine);
   let serverReachable = $state<boolean | null>(null);
   let main = $state<HTMLElement>();
+  // The prologue is offered once per page load; skipping it never becomes a stored preference.
+  let prologueSkipped = $state(false);
 
   const connection = $derived(connectionState(browserOnline, serverReachable));
+  const prologueOpen = $derived(prologue && !prologueSkipped && route.view === 'campaign');
 
   // The parked atlas is visibility:hidden until its panel is shown, so focus can land one or two
   // frames later. Retry a few frames instead of dropping the user on the page body.
@@ -90,6 +101,12 @@
     main?.focus();
   }
 
+  /** Leave the prologue for the table it covers, with focus where the shell expects it. */
+  function enterTable(): void {
+    prologueSkipped = true;
+    void tick().then(() => main?.focus());
+  }
+
   const monitor = new ServerMonitor(
     (input, init) => fetch(input, init),
     (reachable) => (serverReachable = reachable),
@@ -120,7 +137,9 @@
 />
 <svelte:head><title>{t('app.title')}</title></svelte:head>
 
-<div class="shell">
+<!-- While the prologue is open the shell is inert, so keyboard and assistive technology reach the
+     one control that leaves it instead of the table it covers. -->
+<div class="shell" inert={prologueOpen}>
   <a class="skip" href={formatRoute(route)} onclick={skipToContent}>{t('app.skip')}</a>
   <header class="bar">
     <a class="brand" href={formatRoute(HUB_ROUTE)}>
@@ -156,6 +175,13 @@
     {/if}
   </main>
 </div>
+<!-- A prologue that fails to mount renders nothing and leaves the table untouched. -->
+<svelte:boundary>
+  {#if prologueOpen}
+    <Prologue onskip={enterTable} />
+  {/if}
+  {#snippet failed()}{/snippet}
+</svelte:boundary>
 
 <style>
   .shell {
