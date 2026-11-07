@@ -113,8 +113,10 @@ pub mod health;
 pub mod journal;
 pub mod knowledge;
 pub mod members;
+pub mod nivel20;
 pub mod scenes;
 pub mod sessions;
+pub mod sync;
 
 use crate::{
     AppState, db,
@@ -125,7 +127,7 @@ use crate::{
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    routing::{delete, get},
+    routing::{delete, get, post},
 };
 
 fn campaign_routes() -> Router<AppState> {
@@ -150,6 +152,7 @@ fn campaign_routes() -> Router<AppState> {
             "/api/v1/campaigns/{campaign_id}/sessions",
             get(sessions::list).post(sessions::create),
         )
+        .route("/api/v1/campaigns/{campaign_id}/sync", get(sync::batch))
 }
 
 fn scene_routes() -> Router<AppState> {
@@ -202,14 +205,49 @@ fn note_routes() -> Router<AppState> {
         )
 }
 
+fn nivel20_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/v1/campaigns/{campaign_id}/nivel20",
+            get(nivel20::stored),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/nivel20/preview",
+            post(nivel20::preview),
+        )
+        .route(
+            "/api/v1/campaigns/{campaign_id}/nivel20/import",
+            post(nivel20::import),
+        )
+}
+
+fn auth_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/v1/auth/login", get(crate::auth::routes::start))
+        .route("/api/v1/auth/callback", get(crate::auth::routes::callback))
+        .route(
+            "/api/v1/auth/sessions/current",
+            delete(crate::auth::routes::logout),
+        )
+        .route("/api/v1/auth/identity", get(crate::auth::routes::identity))
+}
+
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health::health))
+        .merge(auth_routes())
         .merge(campaign_routes())
         .merge(scene_routes())
         .merge(character_routes())
         .merge(note_routes())
+        .merge(nivel20_routes())
         .layer(DefaultBodyLimit::max(64 * 1024))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::auth::origin::enforce,
+        ))
+        // Outermost: private bodies and authentication failures are never shared-cacheable.
+        .layer(axum::middleware::from_fn(crate::auth::routes::no_store))
         .with_state(state)
 }
 

@@ -105,6 +105,7 @@ test('role comes from the membership of this identity only', () => {
 
   assert.equal(roleOf(members, USER), 'player');
   assert.equal(roleOf(members, 'stranger'), null);
+  assert.equal(roleOf(members, undefined), null);
   assert.equal(canManage('dm'), true);
   assert.equal(canManage('player'), false);
   assert.equal(canManage(null), false);

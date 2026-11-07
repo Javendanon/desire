@@ -55,8 +55,10 @@ pub mod characters;
 pub mod journal;
 pub mod knowledge;
 pub mod members;
+pub mod nivel20;
 pub mod scenes;
 pub mod sessions;
+pub mod sync;
 
 use crate::{error::ApiError, extract::Caller, query::Page};
 use desire_core::contracts::common::MemberRole;

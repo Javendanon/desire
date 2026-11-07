@@ -1,7 +1,7 @@
 # Campaign API v1
 
-Status: implemented in `crates/api`. D10 replaces the development identity header before any
-shared deployment; D17 owns player projections in the UI.
+Status: implemented in `crates/api`. OIDC cookie sessions and cursor synchronization are
+documented in [auth-realtime.md](auth-realtime.md); D17 owns player projections in the UI.
 
 ## Boundary
 
@@ -12,9 +12,11 @@ shared deployment; D17 owns player projections in the UI.
   (application operations). Business SQL and transactions live in typed repositories in
   `desire-persistence`; the API does not bind rows or SQL parameters. See
   [the database-access boundary](../database-access.md) for the driver decision and limits.
-- `x-desire-user: <uuid>` is the caller identity. It is a development seam, not
-  authentication: the server refuses a non-loopback bind unless `DESIRE_DEV_IDENTITY=1`
-  is set explicitly. D10 must replace it with authenticated identity.
+- Google OIDC at `/api/v1/auth/login` establishes a 12-hour HttpOnly/Secure/SameSite=Lax
+  session cookie through `/api/v1/auth/callback`. There are no password or bearer-token
+  login endpoints. Cookie mutations require an exact `Origin` matching `DESIRE_PUBLIC_URL`.
+  The `x-desire-user` seam requires `DESIRE_DEV_IDENTITY=1` and a loopback bind;
+  browser development without OIDC also sets a loopback `DESIRE_PUBLIC_URL`.
 - `DATABASE_URL` is required and parsed at startup; the process builds its own Tokio
   runtime only after the first connection exists, so the blocking client never blocks
   inside a runtime. Apply the D08 migrations first
@@ -60,6 +62,10 @@ shared deployment; D17 owns player projections in the UI.
 
 | Method | Path | Role | Result |
 | --- | --- | --- | --- |
+| GET | `/auth/login` | public | 303 to the OIDC provider |
+| GET | `/auth/callback` | browser-bound flow | 303 to public root with session cookie |
+| GET | `/auth/identity` | authenticated | account identity |
+| DELETE | `/auth/sessions/current` | authenticated, same Origin | 204; deletes session and expires cookie |
 | GET | `/campaigns` | any caller | member campaigns |
 | POST | `/campaigns` | any caller | 201 campaign; owner becomes DM |
 | GET | `/campaigns/{campaign}` | member | campaign |
@@ -68,6 +74,7 @@ shared deployment; D17 owns player projections in the UI.
 | POST | `/campaigns/{campaign}/members` | DM | 201 membership |
 | DELETE | `/campaigns/{campaign}/members/{user}` | DM | 204; owner or controlled-character removal is 409 |
 | GET | `/campaigns/{campaign}/sessions` | member | sessions |
+| GET | `/campaigns/{campaign}/sync?after=N` | member | snapshot or ordered events after a stream cursor |
 | POST | `/campaigns/{campaign}/sessions` | DM | 201 session |
 | GET | `/campaigns/{campaign}/scenes` | member | scenes |
 | POST | `/campaigns/{campaign}/scenes` | DM | 201 scene, emits a D08 outbox event |
@@ -166,11 +173,15 @@ or 405 with an empty body), so a client must handle those two statuses without a
 
 ## Sanitized example
 
-Synthetic identifiers and text; no Nivel20 data is read or written.
+Synthetic identifiers and text; no Nivel20 data is read or written. Complete the
+browser OIDC flow first. These CLI examples assume an operator-managed protected
+cookie jar in `SESSION_COOKIE_JAR` and the configured public origin in
+`DESIRE_PUBLIC_URL`. Never store that jar in the repository or share it. The browser
+client sends cookies and Origin automatically.
 
 ```sh
-curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns \
-  -H 'x-desire-user: 00000000-0000-4000-8000-00000000005a' \
+curl -s -X POST "$DESIRE_PUBLIC_URL/api/v1/campaigns" \
+  --cookie "$SESSION_COOKIE_JAR" -H "Origin: $DESIRE_PUBLIC_URL" \
   -H 'content-type: application/json' \
   -d '{"name":"Synthetic campaign","rules_edition":"dnd_2014","city_id":null}'
 ```
@@ -189,12 +200,14 @@ curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns \
 A session and a player-visible journal entry, in the order the API requires them:
 
 ```sh
-curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/sessions \
-  -H "x-desire-user: $DM" -H 'content-type: application/json' \
+curl -s -X POST "$DESIRE_PUBLIC_URL/api/v1/campaigns/$CAMPAIGN/sessions" \
+  --cookie "$SESSION_COOKIE_JAR" -H "Origin: $DESIRE_PUBLIC_URL" \
+  -H 'content-type: application/json' \
   -d '{"title":"Synthetic session"}'
 
-curl -s -X POST http://127.0.0.1:3001/api/v1/campaigns/$CAMPAIGN/journal \
-  -H "x-desire-user: $DM" -H 'content-type: application/json' \
+curl -s -X POST "$DESIRE_PUBLIC_URL/api/v1/campaigns/$CAMPAIGN/journal" \
+  --cookie "$SESSION_COOKIE_JAR" -H "Origin: $DESIRE_PUBLIC_URL" \
+  -H 'content-type: application/json' \
   -d '{"session_id":"<session id>","body":"Synthetic recap","visibility":"players"}'
 ```
 
@@ -212,7 +225,10 @@ single-entry reads.
 
 ## Known gaps
 
-- D10 authentication and realtime transport are not implemented.
+- Identity and cursor synchronization are implemented; see
+  [auth-realtime.md](auth-realtime.md) for the threat model and remaining limits.
+  Ingress login rate limiting, session rotation and outbox retention are still open.
+  Travel events remain empty until D14 adds an authorized writer.
 - D17 owns the final player projection and UI visibility; this API filters DM rows and
   returns 404 for hidden items as a safe default.
 - Campaigns have no DELETE in v1. Deleting a campaign means choosing what happens to its
@@ -224,4 +240,5 @@ single-entry reads.
 - Journal entries support update and delete for a DM only; a player can create a
   `players` entry but cannot edit or remove it afterwards.
 - No pagination totals, filtering, sorting or search.
-- Nivel20 remains read-only and untouched.
+- Nivel20 is read-only: the import boundary is documented in `nivel20.md` and sends no
+  write request.

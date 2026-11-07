@@ -26,14 +26,21 @@ impl Flag {
     pub const DEFAULT: bool = false;
 }
 
-/// Every flag the code base reads. The web shell reads the same file through Vite and mounts the
-/// campaign hub only when `campaign_hub` is on; add flags here and to `docs/flags.md` together.
+/// The read-only Nivel20 import routes. Off by default: they make an outbound request.
+pub const NIVEL20_IMPORT: Flag = Flag {
+    name: "nivel20_import",
+    description: "enable the read-only Nivel20 import endpoints",
+};
+
+/// The web shell reads the same file through Vite and mounts the campaign hub only when
+/// `campaign_hub` is on.
 pub const CAMPAIGN_HUB: Flag = Flag {
     name: "campaign_hub",
     description: "mount the campaign hub shell instead of the pre-flag placeholder page",
 };
 
-pub const REGISTRY: &[Flag] = &[CAMPAIGN_HUB];
+/// Every flag the code base reads. Add a flag here and to `docs/flags.md` in the same change.
+pub const REGISTRY: &[Flag] = &[NIVEL20_IMPORT, CAMPAIGN_HUB];
 
 /// Why a flags file could not be used.
 #[derive(Debug)]

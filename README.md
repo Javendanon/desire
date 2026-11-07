@@ -15,12 +15,13 @@ product.
 | Server | Rust + Axum + Tokio | `GET /api/health` runs and the frontend consumes it |
 | Shared core | Rust, crate `desire-core` | Native compilation verified |
 | WebAssembly | `wasm-bindgen` + `wasm-pack` | `build:wasm` produces `src/generated/wasm/` |
-| Data | PostgreSQL 17 in Docker Compose | Verified on `127.0.0.1:55432`; stopped with the volume preserved |
+| Data | PostgreSQL 17 in Docker Compose | Verified on `localhost:55432`; stopped with the volume preserved |
 | Frontend packages | pnpm 12.11.2 | Single-document lockfile; `--frozen-lockfile` passes |
 
-There is no implementation of maps, authentication, persistence, synchronization, or an
-authenticated Nivel20 integration. The HTTP diagnostic only checks that the process is
-alive; it does not check PostgreSQL. No Nivel20 operation is performed.
+The API includes persistence, Google OIDC identity, campaign authorization and cursor-based
+synchronization; see [D10](docs/reports/d10.md) for verification and limits. The HTTP diagnostic
+only checks that the process is alive; it does not check PostgreSQL. No authenticated Nivel20
+operation is performed.
 
 ## Structure
 
@@ -111,15 +112,25 @@ export the values yourself (`.env.example` lists local-only ones). Apply the D08
 migrations against the Compose database once, then start the server:
 
 ```sh
-export DATABASE_URL=postgres://umbra:umbra_local@127.0.0.1:55432/umbra
+export DATABASE_URL=postgres://umbra:umbra_local@localhost:55432/umbra
 cargo run -p desire-api -- --migrate
 pnpm dev:api
 ```
 
 `--migrate` runs the embedded, history-checked migrations and exits; the server itself
-only connects. Without `DATABASE_URL` the binary exits with an explicit error. Requests
-also need the development identity header
-(`x-desire-user: <uuid>`); D10 replaces it with real authentication.
+only connects. Without `DATABASE_URL` the binary exits with an explicit error. Configure
+Google OIDC with `DESIRE_OIDC_CLIENT_ID`, `DESIRE_OIDC_CLIENT_SECRET` and
+`DESIRE_PUBLIC_URL`; `DESIRE_OIDC_ISSUER` defaults to Google. The optional
+`DESIRE_ALLOWED_EMAILS` restricts admission to a comma-separated verified-email list.
+Navigate to `/api/v1/auth/login`; the callback issues an HttpOnly/Secure/SameSite=Lax
+cookie. There are no password registration/login endpoints. See
+[auth setup and threats](docs/api/auth-realtime.md) for Google Cloud redirect URIs,
+localhost Secure-cookie requirements and proxy configuration. Never commit OAuth secrets.
+Without OIDC the server refuses non-loopback binds. The legacy `x-desire-user` header
+requires both `DESIRE_DEV_IDENTITY=1` and a loopback bind; it is off by default.
+Browser development without OIDC also sets a loopback `DESIRE_PUBLIC_URL`, such as
+`http://localhost:5173`, so only that exact browser Origin can mutate through the seam.
+Cookie-authenticated mutations, including logout, require the configured public Origin.
 
 In two separate terminals:
 
@@ -131,11 +142,11 @@ pnpm dev:api
 pnpm dev
 ```
 
-Interface: `http://127.0.0.1:5173`. API: `http://127.0.0.1:3001/api/health`. Vite
+Interface: `http://localhost:5173`. API: `http://localhost:3001/api/health`. Vite
 proxies `/api` during development; `vite preview` provides neither a backend nor a
 production proxy. The engine check on screen only validates its import, not rendering.
 
-PostgreSQL is exposed on `127.0.0.1:55432` to avoid occupying the usual port 5432. The
+PostgreSQL is exposed on `localhost:55432` to avoid occupying the usual port 5432. The
 values in `.env.example` are local only. To stop the database without deleting data:
 `pnpm db:stop`.
 
@@ -146,6 +157,6 @@ See [docs/entorno.md](docs/entorno.md) and the
 were executed: frontend `check`/`build`, Rust `fmt`/`clippy`/`test`, the Wasm build,
 the `/api/health` round trip and the PostgreSQL service check. The Rust workspace suite
 runs through `crates/persistence/test-postgres.sh` with an isolated PostgreSQL cluster.
-GPU rendering is not verified, the API serves campaign data only to the development
-identity header, and there is no browser-driven end-to-end test, so this is not an
+GPU rendering is not verified, the API serves campaign data only to authenticated
+cookie sessions, and there is no browser-driven end-to-end test, so this is not an
 end-to-end product validation. The Nivel20 integration remains read-only and untouched.

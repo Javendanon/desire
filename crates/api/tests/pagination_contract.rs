@@ -16,6 +16,7 @@ fn page_serialization_matches_the_shared_typescript_envelope() {
         user_id: String::new(),
         request_id: String::new(),
         idempotency_key: None,
+        session_hash: None,
     };
     let page = Page::from_query(&query, &caller).unwrap();
     let body = page.finish(vec!["second", "third", "look-ahead"]);

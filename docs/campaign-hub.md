@@ -68,8 +68,11 @@ labels.
 
 ## Known gaps
 
-- **No authentication.** `x-desire-user` uses a UUID generated per browser. It is a development
-  seam until D10, and clearing site data loses access to that identity's campaigns.
+- **Still on the development identity.** The hub sends `x-desire-user` with a UUID generated per
+  browser. Since D10 the API accepts that header only with `DESIRE_DEV_IDENTITY=1` on loopback;
+  shared deployments use the Google OIDC cookie session, which the hub does not call yet. Moving
+  the client to `/api/v1/auth/login` and the session cookie is follow-up work, and the hub stays
+  behind the off-by-default `campaign_hub` flag until then.
 - **No city on new campaigns.** `campaigns.city_id` references `catalog.cities`, which no migration
   fills, so the hub sends `null` and the atlas uses the first registered city. An unknown id shows
   an explicit state instead of another city's map.

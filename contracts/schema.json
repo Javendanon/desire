@@ -885,6 +885,126 @@
         }
       }
     },
+    "AuthIdentity": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "user_id",
+        "email"
+      ],
+      "properties": {
+        "user_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "email": {
+          "type": "string"
+        }
+      }
+    },
+    "CampaignSnapshot": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "campaign",
+        "scenes",
+        "characters",
+        "journal",
+        "knowledge",
+        "truncated"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "campaign": {
+          "$ref": "#/$defs/Campaign"
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Scene"
+          }
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Character"
+          }
+        },
+        "journal": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JournalEntry"
+          }
+        },
+        "knowledge": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CampaignKnowledge"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "SyncBatch": {
+      "type": "object",
+      "x-module": "transport",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "campaign_id",
+        "role",
+        "revision",
+        "snapshot",
+        "scene_events",
+        "travel_events"
+      ],
+      "properties": {
+        "protocol_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "campaign_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "$ref": "#/$defs/MemberRole"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CampaignSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scene_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SceneChanged"
+          }
+        },
+        "travel_events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TravelUpdated"
+          }
+        }
+      }
+    },
     "ApiError": {
       "type": "object",
       "x-module": "transport",

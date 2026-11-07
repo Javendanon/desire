@@ -5,23 +5,34 @@
 //! SQL or domain calculations.
 
 pub mod access;
+pub mod auth;
 pub mod db;
 pub mod error;
 pub mod extract;
 pub mod ids;
+pub mod nivel20;
 pub mod payloads;
 pub mod query;
 pub mod routes;
 pub mod store;
 pub mod validation;
 
+use desire_core::flags::FlagSource;
+
 pub use error::ApiError;
 
 /// Shared process state. A single blocking client serializes database work for now; a
-/// pool replaces it when concurrent throughput matters.
+/// pool replaces it when concurrent throughput matters. `flags` is read per request, so an
+/// operator can switch a runtime feature off without a restart.
 #[derive(Clone)]
 pub struct AppState {
     pub db: db::Db,
+    pub nivel20: nivel20::Nivel20Client,
+    pub flags: FlagSource,
+    /// Tests may keep the header seam; servers use cookie sessions.
+    pub dev_identity: bool,
+    pub dev_origin: Option<String>,
+    pub oidc: Option<std::sync::Arc<auth::oidc::Oidc>>,
 }
 
 impl AppState {
@@ -29,6 +40,11 @@ impl AppState {
     pub fn from_client(client: postgres::Client) -> Self {
         Self {
             db: db::Db::from_client(client),
+            nivel20: nivel20::Nivel20Client::default(),
+            flags: FlagSource::from_env(),
+            dev_identity: true,
+            dev_origin: None,
+            oidc: None,
         }
     }
 
@@ -36,7 +52,38 @@ impl AppState {
     pub fn with_config(config: tokio_postgres::Config, client: postgres::Client) -> Self {
         Self {
             db: db::Db::with_config(config, client),
+            nivel20: nivel20::Nivel20Client::default(),
+            flags: FlagSource::from_env(),
+            dev_identity: false,
+            dev_origin: None,
+            oidc: None,
         }
+    }
+
+    /// Production keeps the source base URL out of request bodies.
+    pub fn with_nivel20(
+        config: tokio_postgres::Config,
+        client: postgres::Client,
+        nivel20: nivel20::Nivel20Client,
+    ) -> Self {
+        Self {
+            db: db::Db::with_config(config, client),
+            nivel20,
+            flags: FlagSource::from_env(),
+            dev_identity: false,
+            dev_origin: None,
+            oidc: None,
+        }
+    }
+
+    pub fn with_oidc(mut self, oidc: auth::oidc::Oidc) -> Self {
+        self.oidc = Some(std::sync::Arc::new(oidc));
+        self
+    }
+
+    pub fn with_dev_identity(mut self, allow: bool) -> Self {
+        self.dev_identity = allow;
+        self
     }
 }
 

@@ -1,7 +1,7 @@
 //! Campaign persistence with atomic owner membership and optimistic revisions.
-use crate::{Error, ErrorKind, error::Context};
+use crate::{Error, ErrorKind, error::Context, realtime::RealtimeRepository};
 use desire_core::contracts::campaign::Campaign;
-use postgres::Client;
+use postgres::{Client, GenericClient};
 
 pub struct CampaignRepository;
 
@@ -47,7 +47,10 @@ impl CampaignRepository {
             .context(format!("commit campaign {}", campaign.id))
     }
 
-    pub fn get(client: &mut Client, campaign_id: &str) -> Result<Option<Campaign>, Error> {
+    pub fn get(
+        client: &mut impl GenericClient,
+        campaign_id: &str,
+    ) -> Result<Option<Campaign>, Error> {
         let row = client
             .query_opt(
                 concat!(
@@ -62,7 +65,8 @@ impl CampaignRepository {
     }
 
     pub fn rename(client: &mut Client, update: &CampaignRename<'_>) -> Result<Campaign, Error> {
-        let row = client
+        let mut tx = client.transaction().context("begin campaign rename")?;
+        let row = tx
             .query_opt(
                 concat!(
                     "UPDATE campaign.campaigns c SET name = $3, revision = revision + 1 ",
@@ -85,7 +89,11 @@ impl CampaignRepository {
                 ),
             )
         })?;
-        crate::records::decode(row)
+        let campaign = crate::records::decode(row)?;
+        RealtimeRepository::advance_stream(&mut tx, update.campaign_id)?;
+        tx.commit()
+            .context(format!("commit campaign rename {}", update.campaign_id))?;
+        Ok(campaign)
     }
 }
 

@@ -293,8 +293,9 @@ fn startup_shares_one_deadline_across_a_slow_probe_and_a_silent_handshake() {
 }
 
 fn start_binary(url: String, port: u16) -> Child {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_desire-api"))
+    let mut child = server::command()
         .env("DATABASE_URL", url)
+        .env("DESIRE_DEV_IDENTITY", "1")
         .env("HOST", "127.0.0.1")
         .env("PORT", port.to_string())
         .stdout(Stdio::null())
