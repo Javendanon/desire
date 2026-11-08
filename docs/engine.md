@@ -106,3 +106,48 @@ low-detail shell resident so panning never shows a hole.
 Shared additions used by both viewers: `page-watch.ts` (resize and tab visibility) and
 `flatMesh()` in `render/kit.ts`. They replaced duplicated code in `viewer.ts`, `city.ts` and
 `water.ts` (F9 rule of three).
+
+## Interior viewer (D34)
+
+`src/lib/engine/interior-viewer.ts` plays a building interior authored as a `FloorPlan` (D32),
+with the glTF models built from it (D33). The first interior is Trollskull Manor:
+`interior.html` is its development page.
+
+```ts
+const viewer = await createInteriorViewer(canvas, {
+  plan, catalog, modelBase: '/models/trollskull/', quality, reducedMotion, backend,
+});
+viewer.setFloor('primer-piso');          // that floor and the ones below; the camera recentres
+viewer.setPieces([{ id, look, side, cell: { floor, x, y } }]);
+viewer.setMoveMode(id, 6);               // lights the squares reachable in 6 moves
+viewer.on('cell', (cell) => viewer.movePiece(id, cell)); // false when the move is refused
+viewer.setCameraProgress(0.4, keys);     // fly a 0..1 path (previews), null returns to the orbit
+viewer.stats(); viewer.destroy();
+```
+
+| Path | Role | GPU |
+| --- | --- | --- |
+| `plan/floor-board.ts`, `plan/floor-edges.ts` | movement and walls from the plan (D32) | no |
+| `plan/interior-placement.ts` | square centres, turned furniture poses, picking, slide sampling | no |
+| `plan/interior-camera.ts`, `math/camera-path.ts` | orbit around the active floor, 0..1 camera path | no |
+| `interior/interior-assets.ts` | loads the glTF containers and unloads them on destroy | yes |
+| `interior/interior-scene.ts` | floor roots, furniture placed and tinted, the slide | yes |
+| `interior/interior-pieces.ts` | miniatures walking square by square, riding the slide | yes |
+| `interior/move-overlay.ts`, `interior/tints.ts`, `interior/lighting.ts` | lit squares, variant tints, lantern light | yes |
+
+Rules:
+
+- **Movement.** It never reads the models. A route is the shortest legal path on the floor board,
+  through open doors, stairs, the ladder, the trapdoor and the one-way slide. In move mode only a lit
+  square is accepted. Without move mode any reachable square is: that is the DM's path, and player
+  input must go through move mode. A miniature that is still walking refuses a new move.
+- **Floors.** The active floor and the floors under it are visible; the upper ones are hidden, so the
+  camera looks down into the active floor.
+- **Reduced motion.** Moves land at once, and the camera jumps instead of easing.
+- **Lifecycle.** `destroy()` unloads every container, frees the tinted materials, the overlay, the
+  camera frame and the sun, and leaves `liveInteriorViewerCount()` at 0.
+  `tests/browser/interior-smoke.mjs` checks this in the gate. It also checks the floor switch, a wall
+  that blocks, a door that lets a miniature through, and the slide ride.
+- **Budget.** The models weigh about 0.6 MB. On the ground floor, with every floor below visible,
+  the low-quality page draws about 460 calls, because each piece of furniture is its own entity.
+  Pieces lower than 1 m cast no shadow. Batching static furniture per floor is the next optimisation.

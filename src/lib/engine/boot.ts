@@ -8,6 +8,8 @@ export interface BootOptions {
   backend: 'auto' | 'webgl2';
   /** Caps the pixel ratio at 1 instead of 2. */
   lowQuality: boolean;
+  /** Registers the texture and glTF container loaders, for viewers that load model files. */
+  loadsModels?: boolean;
 }
 
 export class ViewerError extends Error {
@@ -48,6 +50,7 @@ export async function bootApp(
     pc.CameraComponentSystem,
     pc.LightComponentSystem,
   ];
+  if (options.loadsModels) appOptions.resourceHandlers = [pc.TextureHandler, pc.ContainerHandler];
   app.init(appOptions);
   app.setCanvasFillMode(pc.FILLMODE_NONE);
   app.setCanvasResolution(pc.RESOLUTION_AUTO);
