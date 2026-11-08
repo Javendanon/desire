@@ -1,0 +1,123 @@
+{
+  "fallback": [{"kind": "box", "name": "bloque", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.8, "h": 0.8, "d": 0.8}],
+  "kinds": {
+    "mesa": [
+      {"kind": "box", "name": "tablero", "material": "variant", "x": 0.5, "z": 0.5, "y": 0.72, "w": 0.85, "h": 0.06, "d": 0.8},
+      {"kind": "box", "name": "pata-0", "material": "trim", "x": 0.15, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72},
+      {"kind": "box", "name": "pata-1", "material": "trim", "x": 0.85, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72},
+      {"kind": "box", "name": "pata-2", "material": "trim", "x": 0.15, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72},
+      {"kind": "box", "name": "pata-3", "material": "trim", "x": 0.85, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72}
+    ],
+    "mesa_larga": [
+      {"kind": "box", "name": "tablero", "material": "variant", "x": 0.5, "z": 0.5, "y": 0.72, "w": 0.85, "h": 0.06, "d": 0.8},
+      {"kind": "box", "name": "pata-0", "material": "trim", "x": 0.15, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72},
+      {"kind": "box", "name": "pata-1", "material": "trim", "x": 0.85, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72},
+      {"kind": "box", "name": "pata-2", "material": "trim", "x": 0.15, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72},
+      {"kind": "box", "name": "pata-3", "material": "trim", "x": 0.85, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.72}
+    ],
+    "mesa_baja": [
+      {"kind": "box", "name": "tablero", "material": "variant", "x": 0.5, "z": 0.5, "y": 0.39, "w": 0.85, "h": 0.06, "d": 0.8},
+      {"kind": "box", "name": "pata-0", "material": "trim", "x": 0.15, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.39},
+      {"kind": "box", "name": "pata-1", "material": "trim", "x": 0.85, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.39},
+      {"kind": "box", "name": "pata-2", "material": "trim", "x": 0.15, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.39},
+      {"kind": "box", "name": "pata-3", "material": "trim", "x": 0.85, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.39}
+    ],
+    "mesa_redonda": [
+      {"kind": "cylinder", "name": "tablero", "material": "variant", "x": 0.5, "z": 0.5, "y": 0.72, "r": 0.6, "h": 0.06},
+      {"kind": "cylinder", "name": "pie", "material": "trim", "x": 0.5, "z": 0.5, "y": 0, "r": 0.06, "h": 0.72}
+    ],
+    "silla": [
+      {"kind": "box", "name": "asiento", "material": "variant", "x": 0.5, "z": 0.55, "y": 0.42, "w": 0.32, "h": 0.05, "d": 0.3},
+      {"kind": "box", "name": "respaldo", "material": "variant", "x": 0.5, "z": 0.38, "y": 0.42, "w": 0.32, "h": 0.5, "d": 0.04},
+      {"kind": "box", "name": "pata-0", "material": "trim", "x": 0.39499999999999996, "z": 0.445, "y": 0, "w": 0.04, "d": 0.04, "h": 0.42},
+      {"kind": "box", "name": "pata-1", "material": "trim", "x": 0.605, "z": 0.445, "y": 0, "w": 0.04, "d": 0.04, "h": 0.42},
+      {"kind": "box", "name": "pata-2", "material": "trim", "x": 0.39499999999999996, "z": 0.655, "y": 0, "w": 0.04, "d": 0.04, "h": 0.42},
+      {"kind": "box", "name": "pata-3", "material": "trim", "x": 0.605, "z": 0.655, "y": 0, "w": 0.04, "d": 0.04, "h": 0.42}
+    ],
+    "taburete": [
+      {"kind": "cylinder", "name": "asiento", "material": "variant", "x": 0.5, "z": 0.5, "y": 0.65, "r": 0.18, "h": 0.05},
+      {"kind": "cylinder", "name": "pie", "material": "trim", "x": 0.5, "z": 0.5, "y": 0, "r": 0.04, "h": 0.65}
+    ],
+    "sillon": [
+      {"kind": "box", "name": "asiento", "material": "variant", "x": 0.5, "z": 0.55, "y": 0, "w": 0.7, "h": 0.45, "d": 0.6},
+      {"kind": "box", "name": "respaldo", "material": "variant", "x": 0.5, "z": 0.2, "y": 0, "w": 0.7, "h": 1, "d": 0.15}
+    ],
+    "sofa": [
+      {"kind": "box", "name": "asiento", "material": "variant", "x": 0.5, "z": 0.55, "y": 0, "w": 0.9, "h": 0.45, "d": 0.6},
+      {"kind": "box", "name": "respaldo", "material": "variant", "x": 0.5, "z": 0.2, "y": 0, "w": 0.9, "h": 0.9, "d": 0.15}
+    ],
+    "barra": [
+      {"kind": "box", "name": "mostrador", "material": "trim", "x": 0.5, "z": 0.5, "y": 0, "w": 1, "h": 1.02, "d": 0.55},
+      {"kind": "box", "name": "cubierta", "material": "variant", "x": 0.5, "z": 0.5, "y": 1.02, "w": 1, "h": 0.06, "d": 0.66}
+    ],
+    "barra_corta": [
+      {"kind": "box", "name": "mostrador", "material": "trim", "x": 0.5, "z": 0.5, "y": 0, "w": 1, "h": 1.02, "d": 0.55},
+      {"kind": "box", "name": "cubierta", "material": "variant", "x": 0.5, "z": 0.5, "y": 1.02, "w": 1, "h": 0.06, "d": 0.66}
+    ],
+    "aparador": [
+      {"kind": "box", "name": "cuerpo", "material": "variant", "x": 0.5, "z": 0.3, "y": 0, "w": 0.85, "h": 1.4, "d": 0.45},
+      {"kind": "box", "name": "cornisa", "material": "trim", "x": 0.5, "z": 0.3, "y": 1.4, "w": 0.9, "h": 0.06, "d": 0.5}
+    ],
+    "estanteria": [
+      {"kind": "box", "name": "mueble", "material": "variant", "x": 0.5, "z": 0.2, "y": 0, "w": 0.9, "h": 2, "d": 0.32},
+      {"kind": "box", "name": "balda-0", "material": "trim", "x": 0.5, "z": 0.25, "y": 0.5, "w": 0.86, "h": 0.04, "d": 0.36},
+      {"kind": "box", "name": "balda-1", "material": "trim", "x": 0.5, "z": 0.25, "y": 1, "w": 0.86, "h": 0.04, "d": 0.36},
+      {"kind": "box", "name": "balda-2", "material": "trim", "x": 0.5, "z": 0.25, "y": 1.5, "w": 0.86, "h": 0.04, "d": 0.36}
+    ],
+    "chimenea": [
+      {"kind": "box", "name": "obra", "material": "stone", "x": 0.5, "z": 0.3, "y": 0, "w": 0.9, "h": 2.4, "d": 0.5},
+      {"kind": "box", "name": "boca", "material": "ember", "x": 0.5, "z": 0.56, "y": 0.1, "w": 0.45, "h": 0.6, "d": 0.03},
+      {"kind": "box", "name": "repisa", "material": "variant", "x": 0.5, "z": 0.32, "y": 1.15, "w": 0.98, "h": 0.08, "d": 0.58}
+    ],
+    "fogon": [
+      {"kind": "box", "name": "obra", "material": "stone", "x": 0.5, "z": 0.3, "y": 0, "w": 0.9, "h": 1.2, "d": 0.5},
+      {"kind": "box", "name": "boca", "material": "ember", "x": 0.5, "z": 0.56, "y": 0.1, "w": 0.45, "h": 0.6, "d": 0.03},
+      {"kind": "box", "name": "repisa", "material": "variant", "x": 0.5, "z": 0.32, "y": 1.15, "w": 0.98, "h": 0.08, "d": 0.58}
+    ],
+    "cama": [
+      {"kind": "box", "name": "armazon", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.9, "h": 0.35, "d": 0.95},
+      {"kind": "box", "name": "colchon", "material": "linen", "x": 0.5, "z": 0.55, "y": 0.35, "w": 0.84, "h": 0.16, "d": 0.8},
+      {"kind": "box", "name": "cabecero", "material": "variant", "x": 0.5, "z": 0.04, "y": 0, "w": 0.9, "h": 0.95, "d": 0.05}
+    ],
+    "cama_doble": [
+      {"kind": "box", "name": "armazon", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.9, "h": 0.35, "d": 0.95},
+      {"kind": "box", "name": "colchon", "material": "linen", "x": 0.5, "z": 0.55, "y": 0.35, "w": 0.84, "h": 0.16, "d": 0.8},
+      {"kind": "box", "name": "cabecero", "material": "variant", "x": 0.5, "z": 0.04, "y": 0, "w": 0.9, "h": 0.95, "d": 0.05}
+    ],
+    "baul": [
+      {"kind": "box", "name": "caja", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.8, "h": 0.5, "d": 0.55},
+      {"kind": "box", "name": "fleje", "material": "iron", "x": 0.5, "z": 0.5, "y": 0.25, "w": 0.82, "h": 0.05, "d": 0.57}
+    ],
+    "escritorio": [
+      {"kind": "box", "name": "tablero", "material": "variant", "x": 0.5, "z": 0.5, "y": 0.74, "w": 0.85, "h": 0.06, "d": 0.8},
+      {"kind": "box", "name": "pata-0", "material": "trim", "x": 0.15, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.74},
+      {"kind": "box", "name": "pata-1", "material": "trim", "x": 0.85, "z": 0.15, "y": 0, "w": 0.04, "d": 0.04, "h": 0.74},
+      {"kind": "box", "name": "pata-2", "material": "trim", "x": 0.15, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.74},
+      {"kind": "box", "name": "pata-3", "material": "trim", "x": 0.85, "z": 0.85, "y": 0, "w": 0.04, "d": 0.04, "h": 0.74},
+      {"kind": "box", "name": "cajonera", "material": "variant", "x": 0.8, "z": 0.5, "y": 0.35, "w": 0.25, "h": 0.35, "d": 0.7}
+    ],
+    "banera": [
+      {"kind": "box", "name": "tina", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.85, "h": 0.6, "d": 0.6},
+      {"kind": "box", "name": "agua", "material": "glass", "x": 0.5, "z": 0.5, "y": 0.45, "w": 0.75, "h": 0.04, "d": 0.5}
+    ],
+    "lavabo": [
+      {"kind": "cylinder", "name": "pie", "material": "trim", "x": 0.5, "z": 0.3, "y": 0, "r": 0.08, "h": 0.75},
+      {"kind": "cylinder", "name": "pila", "material": "variant", "x": 0.5, "z": 0.3, "y": 0.75, "r": 0.25, "h": 0.15}
+    ],
+    "retrete": [
+      {"kind": "box", "name": "asiento", "material": "variant", "x": 0.5, "z": 0.45, "y": 0, "w": 0.3, "h": 0.45, "d": 0.33},
+      {"kind": "box", "name": "cisterna", "material": "trim", "x": 0.5, "z": 0.12, "y": 0, "w": 0.3, "h": 0.9, "d": 0.12}
+    ],
+    "alfombra": [
+      {"kind": "box", "name": "alfombra", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.95, "h": 0.02, "d": 0.95}
+    ],
+    "barril": [
+      {"kind": "cylinder", "name": "duelas", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "r": 0.24, "h": 0.95},
+      {"kind": "cylinder", "name": "aro-0", "material": "iron", "x": 0.5, "z": 0.5, "y": 0.18, "r": 0.25, "h": 0.04},
+      {"kind": "cylinder", "name": "aro-1", "material": "iron", "x": 0.5, "z": 0.5, "y": 0.75, "r": 0.25, "h": 0.04}
+    ],
+    "cajon": [
+      {"kind": "box", "name": "cajon", "material": "variant", "x": 0.5, "z": 0.5, "y": 0, "w": 0.7, "h": 0.7, "d": 0.7}
+    ]
+  }
+}

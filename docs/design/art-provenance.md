@@ -13,5 +13,10 @@
 Fonts are served from `public/fonts/`; the app makes no request to Google at runtime. The OFL
 allows bundling and redistribution with the licence text, which ships next to the files.
 
+| Trollskull Manor models (`public/models/trollskull/`) | Built for D33 from our own floor-plan data by `tools/interior/build.py`; furniture is procedural low-poly (`tools/interior/prop-parts.json`), no third-party kit | Original |
+
+The manor layout is our transcription of a published floor plan; the plan images themselves are not
+in the repository.
+
 No illustration, map image or texture from an external source is used. The 3D textures in D11
 are generated procedurally in code.

@@ -9,6 +9,25 @@ This document describes how a fantasy illustration or map becomes data the app c
 measured and what is interpreted, and why the output is a sector map package rather than a 3D
 model file.
 
+## 0a. Exception: hand-authored interiors ship as GLB (2026-11-07)
+
+Decided on 2026-11-07 by the project owner, for Trollskull Manor (D32/D33). The city keeps the map
+package below; one building interior that players walk through and that the prologue films is a
+different case:
+
+- The source of truth stays data: `content/maps/waterdeep/trollskull/floor-plan.json`. The GLB is a
+  build product, regenerated from it, never edited by hand except under the `Manual` collection.
+- Movement never reads the GLB. The square grid, walls, doors and links come from the same plan
+  (`src/lib/engine/plan/floor-board.ts`), so the model and the rules cannot drift apart. The build
+  writes the sha256 of its whole input to `public/models/trollskull/manifest.json`, and
+  `tests/interior-glb.test.ts` fails when the plan, the catalogue or the furniture parts change
+  without a rebuild.
+- The whole manor, with its 24 furniture models, weighs about 0.6 MB, against an 8 MB budget.
+  Each floor is a handful of merged meshes (floors, walls, openings, glass, stairs), so a floor is a
+  few draw calls, and furniture is instanced from one GLB per kind.
+
+Build steps and the owner's manual edits: `tools/interior/README.md`.
+
 ## 0. Decision: a sector map package, not a GLB
 
 Decided on 2026-10-20 in the review of PR #16, by the project owner.
