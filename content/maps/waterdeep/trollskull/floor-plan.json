@@ -1,0 +1,2025 @@
+{
+  "id": "trollskull-manor",
+  "name": "Mansión y taberna Cráneo de Troll",
+  "cell_size_m": 1.524,
+  "source": "Interpretado a mano del plano de jugadores (Waterdeep: Dragon Heist, apéndice C) y del mapa a color de Lios. 1 casilla = 5 pies. Las imágenes no se incluyen en el repositorio. El tobogán no está en los planos: salió en la campaña.",
+  "floors": [
+    {
+      "id": "sotano",
+      "name": "Sótano",
+      "elevation_m": -3.0,
+      "height_m": 2.6,
+      "origin_x": 3,
+      "origin_y": 4,
+      "rooms": [
+        {
+          "id": "bodega-vino",
+          "name": "Bodega del vino",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 1,
+              "h": 4,
+              "chamfer": false
+            },
+            {
+              "x": 1,
+              "y": 1,
+              "w": 1,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "earth",
+          "wall_material": "stone",
+          "tint": null
+        },
+        {
+          "id": "bodega-cerveza",
+          "name": "Bodega de la cerveza",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 0,
+              "w": 3,
+              "h": 3,
+              "chamfer": false
+            },
+            {
+              "x": 5,
+              "y": 1,
+              "w": 1,
+              "h": 2,
+              "chamfer": false
+            },
+            {
+              "x": 2,
+              "y": 3,
+              "w": 3,
+              "h": 1,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "earth",
+          "wall_material": "stone",
+          "tint": null
+        }
+      ],
+      "doors": [],
+      "windows": [],
+      "openings": [
+        {
+          "id": "paso-bodegas",
+          "edge": {
+            "x": 1,
+            "y": 2,
+            "side": "e"
+          }
+        }
+      ],
+      "furniture": [
+        {
+          "id": "barril-vino-1",
+          "kind": "barril",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-vino-2",
+          "kind": "barril",
+          "x": 0,
+          "y": 1,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-vino-3",
+          "kind": "barril",
+          "x": 0,
+          "y": 2,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-cerveza-1",
+          "kind": "barril",
+          "x": 2,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-cerveza-2",
+          "kind": "barril",
+          "x": 3,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-cerveza-3",
+          "kind": "barril",
+          "x": 4,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "cajon-cerveza",
+          "kind": "cajon",
+          "x": 5,
+          "y": 2,
+          "rotation": 0,
+          "variant": "natural"
+        }
+      ]
+    },
+    {
+      "id": "planta-baja",
+      "name": "Planta baja",
+      "elevation_m": 0.0,
+      "height_m": 3.0,
+      "origin_x": 0,
+      "origin_y": 0,
+      "rooms": [
+        {
+          "id": "taberna",
+          "name": "Taberna",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 3,
+              "h": 3,
+              "chamfer": true
+            },
+            {
+              "x": 3,
+              "y": 1,
+              "w": 5,
+              "h": 2,
+              "chamfer": false
+            },
+            {
+              "x": 2,
+              "y": 3,
+              "w": 7,
+              "h": 5,
+              "chamfer": false
+            },
+            {
+              "x": 3,
+              "y": 8,
+              "w": 3,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "escalera-exterior-baja",
+          "name": "Escalera exterior",
+          "kind": "exterior",
+          "cells": [
+            {
+              "x": 8,
+              "y": 0,
+              "w": 1,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "deck",
+          "wall_material": "stone",
+          "tint": null
+        },
+        {
+          "id": "porche",
+          "name": "Porche",
+          "kind": "exterior",
+          "cells": [
+            {
+              "x": 1,
+              "y": 3,
+              "w": 1,
+              "h": 5,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "deck",
+          "wall_material": "stone",
+          "tint": null
+        },
+        {
+          "id": "callejon",
+          "name": "Callejón Cráneo de Troll",
+          "kind": "exterior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 3,
+              "w": 1,
+              "h": 8,
+              "chamfer": false
+            },
+            {
+              "x": 1,
+              "y": 8,
+              "w": 2,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "flagstone",
+          "wall_material": "stone",
+          "tint": null
+        },
+        {
+          "id": "despensa",
+          "name": "Despensa",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 6,
+              "y": 8,
+              "w": 2,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "cocina",
+          "name": "Cocina",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 11,
+              "w": 6,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "flagstone",
+          "wall_material": "plaster",
+          "tint": null
+        }
+      ],
+      "doors": [
+        {
+          "id": "puerta-principal",
+          "edge": {
+            "x": 2,
+            "y": 6,
+            "side": "w"
+          },
+          "open": false
+        },
+        {
+          "id": "puerta-lateral",
+          "edge": {
+            "x": 3,
+            "y": 9,
+            "side": "w"
+          },
+          "open": false
+        },
+        {
+          "id": "puerta-despensa-exterior",
+          "edge": {
+            "x": 7,
+            "y": 8,
+            "side": "e"
+          },
+          "open": false
+        },
+        {
+          "id": "puerta-despensa-cocina",
+          "edge": {
+            "x": 6,
+            "y": 11,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-cocina-exterior",
+          "edge": {
+            "x": 6,
+            "y": 12,
+            "side": "s"
+          },
+          "open": false
+        },
+        {
+          "id": "puerta-escalera",
+          "edge": {
+            "x": 8,
+            "y": 2,
+            "side": "s"
+          },
+          "open": true
+        }
+      ],
+      "windows": [
+        {
+          "id": "ventana-norte",
+          "edge": {
+            "x": 4,
+            "y": 1,
+            "side": "n"
+          }
+        },
+        {
+          "id": "ventana-oeste",
+          "edge": {
+            "x": 2,
+            "y": 4,
+            "side": "w"
+          }
+        },
+        {
+          "id": "ventana-este",
+          "edge": {
+            "x": 8,
+            "y": 5,
+            "side": "e"
+          }
+        },
+        {
+          "id": "ventana-torre",
+          "edge": {
+            "x": 0,
+            "y": 1,
+            "side": "w"
+          }
+        },
+        {
+          "id": "ventana-cocina",
+          "edge": {
+            "x": 3,
+            "y": 12,
+            "side": "s"
+          }
+        }
+      ],
+      "openings": [
+        {
+          "id": "paso-barra-1",
+          "edge": {
+            "x": 6,
+            "y": 8,
+            "side": "n"
+          }
+        },
+        {
+          "id": "paso-barra-2",
+          "edge": {
+            "x": 7,
+            "y": 8,
+            "side": "n"
+          }
+        }
+      ],
+      "furniture": [
+        {
+          "id": "mesa-torre",
+          "kind": "mesa_redonda",
+          "x": 1,
+          "y": 1,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "sillon-torre-1",
+          "kind": "sillon",
+          "x": 0,
+          "y": 1,
+          "rotation": 90,
+          "variant": "granate"
+        },
+        {
+          "id": "sillon-torre-2",
+          "kind": "sillon",
+          "x": 1,
+          "y": 2,
+          "rotation": 0,
+          "variant": "granate"
+        },
+        {
+          "id": "mesa-1",
+          "kind": "mesa",
+          "x": 3,
+          "y": 1,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "mesa-larga-norte",
+          "kind": "mesa_larga",
+          "x": 6,
+          "y": 1,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "chimenea-taberna",
+          "kind": "chimenea",
+          "x": 4,
+          "y": 2,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "mesa-redonda-1",
+          "kind": "mesa_redonda",
+          "x": 2,
+          "y": 4,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "mesa-redonda-2",
+          "kind": "mesa_redonda",
+          "x": 2,
+          "y": 5,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "aparador",
+          "kind": "aparador",
+          "x": 8,
+          "y": 4,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barra-1",
+          "kind": "barra",
+          "x": 6,
+          "y": 6,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barra-2",
+          "kind": "barra_corta",
+          "x": 6,
+          "y": 7,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "taburete-1",
+          "kind": "taburete",
+          "x": 5,
+          "y": 6,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "taburete-2",
+          "kind": "taburete",
+          "x": 5,
+          "y": 7,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "taburete-3",
+          "kind": "taburete",
+          "x": 6,
+          "y": 5,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "taburete-4",
+          "kind": "taburete",
+          "x": 7,
+          "y": 5,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "mesa-sur",
+          "kind": "mesa",
+          "x": 4,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-despensa-1",
+          "kind": "barril",
+          "x": 7,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-despensa-2",
+          "kind": "barril",
+          "x": 7,
+          "y": 10,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "estanteria-cocina",
+          "kind": "estanteria",
+          "x": 2,
+          "y": 11,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "fogon",
+          "kind": "fogon",
+          "x": 7,
+          "y": 11,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "mesa-cocina",
+          "kind": "mesa_larga",
+          "x": 3,
+          "y": 11,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-cocina",
+          "kind": "barril",
+          "x": 2,
+          "y": 12,
+          "rotation": 0,
+          "variant": "natural"
+        }
+      ]
+    },
+    {
+      "id": "primer-piso",
+      "name": "Primer piso",
+      "elevation_m": 3.0,
+      "height_m": 3.0,
+      "origin_x": 0,
+      "origin_y": 0,
+      "rooms": [
+        {
+          "id": "salon",
+          "name": "Salón",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 3,
+              "h": 3,
+              "chamfer": true
+            },
+            {
+              "x": 3,
+              "y": 1,
+              "w": 5,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": "#8a5a3c"
+        },
+        {
+          "id": "balcon-norte",
+          "name": "Balcón",
+          "kind": "exterior",
+          "cells": [
+            {
+              "x": 3,
+              "y": 0,
+              "w": 5,
+              "h": 1,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "deck",
+          "wall_material": "stone",
+          "tint": null
+        },
+        {
+          "id": "escalera-exterior-primer",
+          "name": "Escalera exterior",
+          "kind": "exterior",
+          "cells": [
+            {
+              "x": 8,
+              "y": 1,
+              "w": 1,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "deck",
+          "wall_material": "stone",
+          "tint": null
+        },
+        {
+          "id": "pasillo",
+          "name": "Pasillo",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 3,
+              "w": 1,
+              "h": 5,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "sala-comun",
+          "name": "Sala común",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 3,
+              "y": 3,
+              "w": 6,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "distribuidor",
+          "name": "Distribuidor",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 3,
+              "y": 6,
+              "w": 6,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "dormitorio-primer",
+          "name": "Dormitorio",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 8,
+              "w": 4,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "habitacion-invitados",
+          "name": "Habitación de invitados",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 6,
+              "y": 8,
+              "w": 2,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "balcon-este",
+          "name": "Balcón",
+          "kind": "exterior",
+          "cells": [
+            {
+              "x": 8,
+              "y": 8,
+              "w": 1,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "deck",
+          "wall_material": "stone",
+          "tint": null
+        }
+      ],
+      "doors": [
+        {
+          "id": "puerta-balcon",
+          "edge": {
+            "x": 5,
+            "y": 1,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-salon-sala",
+          "edge": {
+            "x": 6,
+            "y": 3,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-salon-pasillo",
+          "edge": {
+            "x": 2,
+            "y": 3,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-escalera-sala",
+          "edge": {
+            "x": 8,
+            "y": 3,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-sala-distribuidor",
+          "edge": {
+            "x": 6,
+            "y": 5,
+            "side": "s"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-pasillo-dormitorio",
+          "edge": {
+            "x": 2,
+            "y": 7,
+            "side": "s"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-distribuidor-invitados",
+          "edge": {
+            "x": 7,
+            "y": 7,
+            "side": "s"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-invitados-balcon",
+          "edge": {
+            "x": 7,
+            "y": 8,
+            "side": "e"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-distribuidor-pasillo",
+          "edge": {
+            "x": 3,
+            "y": 6,
+            "side": "w"
+          },
+          "open": true
+        }
+      ],
+      "windows": [
+        {
+          "id": "ventana-salon-norte",
+          "edge": {
+            "x": 4,
+            "y": 1,
+            "side": "n"
+          }
+        },
+        {
+          "id": "ventana-salon-torre",
+          "edge": {
+            "x": 0,
+            "y": 1,
+            "side": "w"
+          }
+        },
+        {
+          "id": "ventana-pasillo",
+          "edge": {
+            "x": 2,
+            "y": 4,
+            "side": "w"
+          }
+        },
+        {
+          "id": "ventana-sala-este",
+          "edge": {
+            "x": 8,
+            "y": 4,
+            "side": "e"
+          }
+        },
+        {
+          "id": "ventana-dormitorio",
+          "edge": {
+            "x": 3,
+            "y": 10,
+            "side": "s"
+          }
+        },
+        {
+          "id": "ventana-invitados",
+          "edge": {
+            "x": 6,
+            "y": 10,
+            "side": "s"
+          }
+        }
+      ],
+      "openings": [],
+      "furniture": [
+        {
+          "id": "sofa-salon",
+          "kind": "sofa",
+          "x": 0,
+          "y": 1,
+          "rotation": 90,
+          "variant": "granate"
+        },
+        {
+          "id": "mesa-baja-salon",
+          "kind": "mesa_baja",
+          "x": 1,
+          "y": 1,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "sillon-salon",
+          "kind": "sillon",
+          "x": 4,
+          "y": 2,
+          "rotation": 180,
+          "variant": "granate"
+        },
+        {
+          "id": "alfombra-salon",
+          "kind": "alfombra",
+          "x": 6,
+          "y": 1,
+          "rotation": 0,
+          "variant": "ocre"
+        },
+        {
+          "id": "chimenea-sala",
+          "kind": "chimenea",
+          "x": 4,
+          "y": 3,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "mesa-comedor",
+          "kind": "mesa_larga",
+          "x": 5,
+          "y": 4,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "silla-1",
+          "kind": "silla",
+          "x": 5,
+          "y": 3,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "silla-2",
+          "kind": "silla",
+          "x": 7,
+          "y": 4,
+          "rotation": 270,
+          "variant": "natural"
+        },
+        {
+          "id": "silla-3",
+          "kind": "silla",
+          "x": 5,
+          "y": 5,
+          "rotation": 180,
+          "variant": "natural"
+        },
+        {
+          "id": "silla-4",
+          "kind": "silla",
+          "x": 6,
+          "y": 5,
+          "rotation": 180,
+          "variant": "natural"
+        },
+        {
+          "id": "alfombra-distribuidor",
+          "kind": "alfombra",
+          "x": 6,
+          "y": 6,
+          "rotation": 0,
+          "variant": "ocre"
+        },
+        {
+          "id": "cama-dormitorio",
+          "kind": "cama_doble",
+          "x": 2,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "chimenea-dormitorio",
+          "kind": "chimenea",
+          "x": 5,
+          "y": 8,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "cama-invitados-1",
+          "kind": "cama",
+          "x": 6,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "cama-invitados-2",
+          "kind": "cama",
+          "x": 7,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        }
+      ]
+    },
+    {
+      "id": "segundo-piso",
+      "name": "Segundo piso",
+      "elevation_m": 6.0,
+      "height_m": 3.0,
+      "origin_x": 0,
+      "origin_y": 1,
+      "rooms": [
+        {
+          "id": "torreta",
+          "name": "Torreta",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 2,
+              "h": 2,
+              "chamfer": true
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "dormitorio-segundo",
+          "name": "Dormitorio",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 0,
+              "w": 4,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "bano-norte",
+          "name": "Baño privado",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 6,
+              "y": 0,
+              "w": 2,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "tile",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "rellano",
+          "name": "Rellano",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 2,
+              "w": 3,
+              "h": 5,
+              "chamfer": false
+            },
+            {
+              "x": 5,
+              "y": 3,
+              "w": 1,
+              "h": 4,
+              "chamfer": false
+            },
+            {
+              "x": 6,
+              "y": 6,
+              "w": 2,
+              "h": 1,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "retrete-norte",
+          "name": "Retrete",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 5,
+              "y": 2,
+              "w": 1,
+              "h": 1,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "tile",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "biblioteca",
+          "name": "Biblioteca y estudio",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 6,
+              "y": 2,
+              "w": 3,
+              "h": 4,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": "#5b4a3a"
+        },
+        {
+          "id": "retrete-sur",
+          "name": "Retrete",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 8,
+              "y": 6,
+              "w": 1,
+              "h": 1,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "tile",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "dormitorio-principal",
+          "name": "Dormitorio principal",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 2,
+              "y": 7,
+              "w": 4,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "bano-sur",
+          "name": "Baño privado",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 6,
+              "y": 7,
+              "w": 2,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "tile",
+          "wall_material": "plaster",
+          "tint": null
+        }
+      ],
+      "doors": [
+        {
+          "id": "puerta-torreta",
+          "edge": {
+            "x": 1,
+            "y": 0,
+            "side": "e"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-bano-norte",
+          "edge": {
+            "x": 5,
+            "y": 0,
+            "side": "e"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-dormitorio-rellano",
+          "edge": {
+            "x": 2,
+            "y": 1,
+            "side": "s"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-retrete-norte",
+          "edge": {
+            "x": 5,
+            "y": 2,
+            "side": "s"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-biblioteca",
+          "edge": {
+            "x": 6,
+            "y": 4,
+            "side": "w"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-retrete-sur",
+          "edge": {
+            "x": 8,
+            "y": 6,
+            "side": "w"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-dormitorio-principal",
+          "edge": {
+            "x": 2,
+            "y": 7,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-bano-sur",
+          "edge": {
+            "x": 6,
+            "y": 8,
+            "side": "w"
+          },
+          "open": true
+        }
+      ],
+      "windows": [
+        {
+          "id": "ventana-dormitorio-norte",
+          "edge": {
+            "x": 3,
+            "y": 0,
+            "side": "n"
+          }
+        },
+        {
+          "id": "ventana-bano-norte",
+          "edge": {
+            "x": 6,
+            "y": 0,
+            "side": "n"
+          }
+        },
+        {
+          "id": "ventana-rellano-1",
+          "edge": {
+            "x": 2,
+            "y": 3,
+            "side": "w"
+          }
+        },
+        {
+          "id": "ventana-rellano-2",
+          "edge": {
+            "x": 2,
+            "y": 5,
+            "side": "w"
+          }
+        },
+        {
+          "id": "ventana-biblioteca",
+          "edge": {
+            "x": 8,
+            "y": 3,
+            "side": "e"
+          }
+        },
+        {
+          "id": "ventana-principal-sur",
+          "edge": {
+            "x": 3,
+            "y": 9,
+            "side": "s"
+          }
+        },
+        {
+          "id": "ventana-principal-oeste",
+          "edge": {
+            "x": 2,
+            "y": 8,
+            "side": "w"
+          }
+        }
+      ],
+      "openings": [],
+      "furniture": [
+        {
+          "id": "cama-segundo-1",
+          "kind": "cama",
+          "x": 4,
+          "y": 1,
+          "rotation": 90,
+          "variant": "natural"
+        },
+        {
+          "id": "chimenea-segundo",
+          "kind": "chimenea",
+          "x": 3,
+          "y": 1,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "banera-norte",
+          "kind": "banera",
+          "x": 7,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "inodoro-norte",
+          "kind": "retrete",
+          "x": 5,
+          "y": 2,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "escritorio-biblioteca",
+          "kind": "escritorio",
+          "x": 7,
+          "y": 3,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "silla-biblioteca",
+          "kind": "silla",
+          "x": 7,
+          "y": 4,
+          "rotation": 180,
+          "variant": "natural"
+        },
+        {
+          "id": "estanteria-biblioteca-1",
+          "kind": "estanteria",
+          "x": 8,
+          "y": 2,
+          "rotation": 270,
+          "variant": "natural"
+        },
+        {
+          "id": "estanteria-biblioteca-2",
+          "kind": "estanteria",
+          "x": 8,
+          "y": 4,
+          "rotation": 270,
+          "variant": "natural"
+        },
+        {
+          "id": "alfombra-rellano",
+          "kind": "alfombra",
+          "x": 3,
+          "y": 4,
+          "rotation": 0,
+          "variant": "ocre"
+        },
+        {
+          "id": "inodoro-sur",
+          "kind": "retrete",
+          "x": 8,
+          "y": 6,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "cama-principal",
+          "kind": "cama_doble",
+          "x": 2,
+          "y": 8,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "chimenea-principal",
+          "kind": "chimenea",
+          "x": 5,
+          "y": 7,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "baul-principal",
+          "kind": "baul",
+          "x": 4,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "banera-sur",
+          "kind": "banera",
+          "x": 7,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "lavabo-sur",
+          "kind": "lavabo",
+          "x": 6,
+          "y": 9,
+          "rotation": 0,
+          "variant": "natural"
+        }
+      ]
+    },
+    {
+      "id": "buhardillas",
+      "name": "Buhardillas",
+      "elevation_m": 9.0,
+      "height_m": 2.6,
+      "origin_x": 3,
+      "origin_y": 2,
+      "rooms": [
+        {
+          "id": "dormitorio-atico",
+          "name": "Dormitorio del ático",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 4,
+              "h": 2,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "pasillo-atico",
+          "name": "Pasillo del ático",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 2,
+              "w": 4,
+              "h": 1,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        },
+        {
+          "id": "trastero-atico",
+          "name": "Trastero del ático",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 3,
+              "w": 4,
+              "h": 3,
+              "chamfer": false
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        }
+      ],
+      "doors": [
+        {
+          "id": "puerta-dormitorio-atico",
+          "edge": {
+            "x": 3,
+            "y": 2,
+            "side": "n"
+          },
+          "open": true
+        },
+        {
+          "id": "puerta-trastero",
+          "edge": {
+            "x": 3,
+            "y": 2,
+            "side": "s"
+          },
+          "open": true
+        }
+      ],
+      "windows": [
+        {
+          "id": "ventana-atico-norte",
+          "edge": {
+            "x": 2,
+            "y": 0,
+            "side": "n"
+          }
+        },
+        {
+          "id": "ventana-atico-sur",
+          "edge": {
+            "x": 2,
+            "y": 5,
+            "side": "s"
+          }
+        },
+        {
+          "id": "ventana-atico-oeste",
+          "edge": {
+            "x": 0,
+            "y": 4,
+            "side": "w"
+          }
+        }
+      ],
+      "openings": [],
+      "furniture": [
+        {
+          "id": "cama-atico",
+          "kind": "cama",
+          "x": 2,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "chimenea-atico",
+          "kind": "chimenea",
+          "x": 1,
+          "y": 1,
+          "rotation": 0,
+          "variant": "piedra"
+        },
+        {
+          "id": "escritorio-atico",
+          "kind": "escritorio",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "cajon-1",
+          "kind": "cajon",
+          "x": 0,
+          "y": 3,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "cajon-2",
+          "kind": "cajon",
+          "x": 1,
+          "y": 5,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "cajon-3",
+          "kind": "cajon",
+          "x": 3,
+          "y": 4,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "barril-atico",
+          "kind": "barril",
+          "x": 3,
+          "y": 5,
+          "rotation": 0,
+          "variant": "natural"
+        },
+        {
+          "id": "estanteria-atico",
+          "kind": "estanteria",
+          "x": 0,
+          "y": 5,
+          "rotation": 90,
+          "variant": "natural"
+        }
+      ]
+    },
+    {
+      "id": "cuspide-torreta",
+      "name": "Cúspide de la torreta",
+      "elevation_m": 12.0,
+      "height_m": 2.4,
+      "origin_x": 0,
+      "origin_y": 1,
+      "rooms": [
+        {
+          "id": "cuspide",
+          "name": "Cúspide de la torreta",
+          "kind": "interior",
+          "cells": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 2,
+              "h": 2,
+              "chamfer": true
+            }
+          ],
+          "floor_material": "wood_plank",
+          "wall_material": "plaster",
+          "tint": null
+        }
+      ],
+      "doors": [],
+      "windows": [
+        {
+          "id": "ventana-cuspide-norte",
+          "edge": {
+            "x": 0,
+            "y": 0,
+            "side": "n"
+          }
+        },
+        {
+          "id": "ventana-cuspide-este",
+          "edge": {
+            "x": 1,
+            "y": 1,
+            "side": "e"
+          }
+        },
+        {
+          "id": "ventana-cuspide-oeste",
+          "edge": {
+            "x": 0,
+            "y": 1,
+            "side": "w"
+          }
+        }
+      ],
+      "openings": [],
+      "furniture": []
+    }
+  ],
+  "links": [
+    {
+      "id": "escalera-exterior",
+      "kind": "stairs",
+      "from": {
+        "floor": "planta-baja",
+        "x": 8,
+        "y": 0
+      },
+      "to": {
+        "floor": "primer-piso",
+        "x": 8,
+        "y": 1
+      },
+      "two_way": true,
+      "path": []
+    },
+    {
+      "id": "escalera-taberna",
+      "kind": "stairs",
+      "from": {
+        "floor": "planta-baja",
+        "x": 3,
+        "y": 7
+      },
+      "to": {
+        "floor": "primer-piso",
+        "x": 3,
+        "y": 7
+      },
+      "two_way": true,
+      "path": []
+    },
+    {
+      "id": "escalera-segundo",
+      "kind": "stairs",
+      "from": {
+        "floor": "primer-piso",
+        "x": 4,
+        "y": 6
+      },
+      "to": {
+        "floor": "segundo-piso",
+        "x": 3,
+        "y": 6
+      },
+      "two_way": true,
+      "path": []
+    },
+    {
+      "id": "escalera-atico",
+      "kind": "stairs",
+      "from": {
+        "floor": "segundo-piso",
+        "x": 3,
+        "y": 2
+      },
+      "to": {
+        "floor": "buhardillas",
+        "x": 1,
+        "y": 2
+      },
+      "two_way": true,
+      "path": []
+    },
+    {
+      "id": "escala-torreta",
+      "kind": "ladder",
+      "from": {
+        "floor": "segundo-piso",
+        "x": 0,
+        "y": 0
+      },
+      "to": {
+        "floor": "cuspide-torreta",
+        "x": 0,
+        "y": 0
+      },
+      "two_way": true,
+      "path": []
+    },
+    {
+      "id": "portilla-sotano",
+      "kind": "trapdoor",
+      "from": {
+        "floor": "planta-baja",
+        "x": 7,
+        "y": 7
+      },
+      "to": {
+        "floor": "sotano",
+        "x": 4,
+        "y": 3
+      },
+      "two_way": true,
+      "path": []
+    },
+    {
+      "id": "tobogan",
+      "kind": "slide",
+      "from": {
+        "floor": "cuspide-torreta",
+        "x": 1,
+        "y": 1
+      },
+      "to": {
+        "floor": "planta-baja",
+        "x": 0,
+        "y": 6
+      },
+      "two_way": false,
+      "path": [
+        {
+          "x": 2.3,
+          "y": 12.4,
+          "z": 3.0
+        },
+        {
+          "x": 2.3,
+          "y": 12.029,
+          "z": 0.5
+        },
+        {
+          "x": 2.388,
+          "y": 11.937,
+          "z": -0.112
+        },
+        {
+          "x": 2.65,
+          "y": 11.862,
+          "z": -0.55
+        },
+        {
+          "x": 3.087,
+          "y": 11.786,
+          "z": -0.812
+        },
+        {
+          "x": 3.7,
+          "y": 11.694,
+          "z": -0.9
+        },
+        {
+          "x": 5.603,
+          "y": 11.412,
+          "z": -0.9
+        },
+        {
+          "x": 7.506,
+          "y": 11.129,
+          "z": -0.9
+        },
+        {
+          "x": 9.41,
+          "y": 10.847,
+          "z": -0.9
+        },
+        {
+          "x": 11.313,
+          "y": 10.565,
+          "z": -0.9
+        },
+        {
+          "x": 13.216,
+          "y": 10.282,
+          "z": -0.9
+        },
+        {
+          "x": 13.829,
+          "y": 10.191,
+          "z": -0.812
+        },
+        {
+          "x": 14.266,
+          "y": 10.115,
+          "z": -0.55
+        },
+        {
+          "x": 14.529,
+          "y": 10.039,
+          "z": -0.113
+        },
+        {
+          "x": 14.616,
+          "y": 9.947,
+          "z": 0.5
+        },
+        {
+          "x": 14.616,
+          "y": 9.694,
+          "z": 2.21
+        },
+        {
+          "x": 14.616,
+          "y": 9.44,
+          "z": 3.92
+        },
+        {
+          "x": 14.616,
+          "y": 9.186,
+          "z": 5.631
+        },
+        {
+          "x": 14.616,
+          "y": 8.933,
+          "z": 7.341
+        },
+        {
+          "x": 14.616,
+          "y": 8.679,
+          "z": 9.051
+        },
+        {
+          "x": 14.616,
+          "y": 8.425,
+          "z": 10.761
+        },
+        {
+          "x": 14.616,
+          "y": 8.171,
+          "z": 12.471
+        },
+        {
+          "x": 14.616,
+          "y": 7.918,
+          "z": 14.181
+        },
+        {
+          "x": 14.616,
+          "y": 7.664,
+          "z": 15.892
+        },
+        {
+          "x": 14.616,
+          "y": 7.41,
+          "z": 17.602
+        },
+        {
+          "x": 14.616,
+          "y": 7.157,
+          "z": 19.312
+        },
+        {
+          "x": 14.529,
+          "y": 7.065,
+          "z": 19.925
+        },
+        {
+          "x": 14.266,
+          "y": 6.989,
+          "z": 20.362
+        },
+        {
+          "x": 13.829,
+          "y": 6.913,
+          "z": 20.624
+        },
+        {
+          "x": 13.216,
+          "y": 6.822,
+          "z": 20.712
+        },
+        {
+          "x": 11.399,
+          "y": 6.552,
+          "z": 20.712
+        },
+        {
+          "x": 9.583,
+          "y": 6.283,
+          "z": 20.712
+        },
+        {
+          "x": 7.766,
+          "y": 6.013,
+          "z": 20.712
+        },
+        {
+          "x": 5.95,
+          "y": 5.744,
+          "z": 20.712
+        },
+        {
+          "x": 4.133,
+          "y": 5.474,
+          "z": 20.712
+        },
+        {
+          "x": 2.317,
+          "y": 5.205,
+          "z": 20.712
+        },
+        {
+          "x": 0.5,
+          "y": 4.73,
+          "z": 20.712
+        },
+        {
+          "x": -0.113,
+          "y": 4.43,
+          "z": 20.624
+        },
+        {
+          "x": -0.55,
+          "y": 4.203,
+          "z": 20.362
+        },
+        {
+          "x": -0.812,
+          "y": 3.987,
+          "z": 19.925
+        },
+        {
+          "x": -0.9,
+          "y": 3.735,
+          "z": 19.312
+        },
+        {
+          "x": -0.9,
+          "y": 3.095,
+          "z": 17.643
+        },
+        {
+          "x": -0.9,
+          "y": 2.492,
+          "z": 15.975
+        },
+        {
+          "x": -0.9,
+          "y": 1.913,
+          "z": 14.306
+        },
+        {
+          "x": -0.858,
+          "y": 1.679,
+          "z": 13.617
+        },
+        {
+          "x": -0.73,
+          "y": 1.452,
+          "z": 12.95
+        },
+        {
+          "x": -0.518,
+          "y": 1.228,
+          "z": 12.305
+        },
+        {
+          "x": -0.222,
+          "y": 1.002,
+          "z": 11.681
+        },
+        {
+          "x": 0.762,
+          "y": 0.35,
+          "z": 9.906
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,7 @@ pub mod adventure;
 pub mod campaign;
 pub mod catalog;
 pub mod common;
+pub mod interior;
 pub mod sheets;
 pub mod transport;
 
